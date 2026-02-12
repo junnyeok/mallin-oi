@@ -4,38 +4,43 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>게시물 | 말린오이닷컴</title>
-    <link rel="shortcut icon" href="/images/favicon.ico" />
+
+    <!-- ✅ 상대경로(상위로 1칸) -->
+    <link rel="shortcut icon" href="../images/favicon.ico" />
 
     <!-- 공통 -->
-    <link rel="stylesheet" href="/assets/css/00-reset.css" />
-    <link rel="stylesheet" href="/assets/css/01-tokens.css" />
-    <link rel="stylesheet" href="/assets/css/02-base.css" />
-    <link rel="stylesheet" href="/assets/css/03-layout.css" />
-    <link rel="stylesheet" href="/assets/css/components/buttons.css" />
-    <link rel="stylesheet" href="/assets/css/components/forms.css" />
-    <link rel="stylesheet" href="/assets/css/components/cursor-buddy.css" />
-    <link rel="stylesheet" href="/assets/css/components/nav.css" />
-    <link rel="stylesheet" href="/assets/css/components/footer.css" />
+    <link rel="stylesheet" href="../assets/css/00-reset.css" />
+    <link rel="stylesheet" href="../assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="../assets/css/02-base.css" />
+    <link rel="stylesheet" href="../assets/css/03-layout.css" />
+    <link rel="stylesheet" href="../assets/css/components/buttons.css" />
+    <link rel="stylesheet" href="../assets/css/components/forms.css" />
+    <link rel="stylesheet" href="../assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="../assets/css/components/nav.css" />
+    <link rel="stylesheet" href="../assets/css/components/footer.css" />
+
     <!-- 페이지 css -->
-    <link rel="stylesheet" href="/assets/css/pages/career.css" />
+    <link rel="stylesheet" href="../assets/css/pages/career.css" />
+
     <!-- 게시물 전용 -->
-    <link rel="stylesheet" href="/assets/css/components/post-main.css" />
+    <link rel="stylesheet" href="../assets/css/components/post-main.css" />
   </head>
 
-  <!-- 이 게시물은 p001 -->
+  <!-- ✅ 이 게시물은 p007 -->
   <body class="theme-career" data-page="career" data-post-id="p007">
     <div class="page">
-      <!-- 헤더(그대로 복붙) -->
+      <!-- 헤더 -->
       <header class="site-header">
         <div class="container header-inner">
-          <a class="logo" href="/" aria-label="홈으로">
-            <img src="/images/logo-career.png" alt="말린오이닷컴" />
-            <img src="/images/logo-word.png" alt="말린오이닷컴" />
+          <a class="logo" href="../index.html" aria-label="홈으로">
+            <img src="../images/logo-career.png" alt="말린오이닷컴" />
+            <img src="../images/logo-word.png" alt="말린오이닷컴" />
           </a>
 
           <form class="search" role="search">
             <label class="sr-only" for="q">검색</label>
             <input
+              id="q"
               class="search__input"
               type="search"
               placeholder="검색어를 입력하세요."
@@ -49,19 +54,22 @@
         <nav class="site-nav" aria-label="주요 메뉴">
           <ul class="site-nav__list">
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/">홈</a>
+              <a class="site-nav__link" href="../index.html">홈</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/study.html">공부</a>
+              <a class="site-nav__link" href="../study.html">공부</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/work.html">업무</a>
+              <a class="site-nav__link" href="../work.html">업무</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/event.html">이벤트</a>
+              <a class="site-nav__link" href="../event.html">이벤트</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/career.html" aria-current="page"
+              <a
+                class="site-nav__link"
+                href="../career.html"
+                aria-current="page"
                 >이력</a
               >
             </li>
@@ -92,7 +100,6 @@
 
               <hr class="post-divider" />
 
-              <!-- 본문은 지금은 비워두고, 나중에 마크다운/HTML로 붙여도 됨 -->
               <section class="post-body">
                 <p class="post-body__hint">
                   (여기는 본문 영역) 나중에 글 내용(HTML/Markdown 변환)을 넣으면
@@ -104,12 +111,16 @@
         </section>
       </main>
 
-      <!-- 푸터(그대로 복붙) -->
+      <!-- 푸터 -->
       <footer class="site-footer">
         <div class="container footer-inner">
           <div class="footer-brand">
-            <a class="footer-brand__logo" href="/" aria-label="홈으로">
-              <img src="/images/logo-career.png" alt="말린오이닷컴" />
+            <a
+              class="footer-brand__logo"
+              href="../index.html"
+              aria-label="홈으로"
+            >
+              <img src="../images/logo-career.png" alt="말린오이닷컴" />
             </a>
             <p class="footer-brand__desc">
               공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
@@ -119,10 +130,10 @@
           <nav class="footer-nav" aria-label="푸터 링크">
             <h2 class="footer-title">바로가기</h2>
             <ul class="footer-list">
-              <li><a class="footer-link" href="/study.html">공부</a></li>
-              <li><a class="footer-link" href="/work.html">업무</a></li>
-              <li><a class="footer-link" href="/event.html">이벤트</a></li>
-              <li><a class="footer-link" href="/career.html">이력</a></li>
+              <li><a class="footer-link" href="../study.html">공부</a></li>
+              <li><a class="footer-link" href="../work.html">업무</a></li>
+              <li><a class="footer-link" href="../event.html">이벤트</a></li>
+              <li><a class="footer-link" href="../career.html">이력</a></li>
             </ul>
           </nav>
 
@@ -130,15 +141,16 @@
             <h2 class="footer-title">연락</h2>
             <ul class="footer-list">
               <li>
-                <a class="footer-link" href="mailto:junna961@icloud.com"
-                  >junna961@icloud.com</a
-                >
+                <a class="footer-link" href="mailto:junna961@icloud.com">
+                  junna961@icloud.com
+                </a>
               </li>
               <li>
                 <a
                   class="footer-link"
                   href="https://www.instagram.com/junnyeok/"
                   target="_blank"
+                  rel="noopener"
                   aria-label="인스타그램"
                   >Instagram</a
                 >
@@ -148,6 +160,7 @@
                   class="footer-link"
                   href="https://github.com"
                   target="_blank"
+                  rel="noopener"
                   aria-label="깃허브"
                   >GitHub</a
                 >
@@ -172,13 +185,13 @@
 
     <img
       id="cukeBuddy"
-      src="/images/logo-home.png"
+      src="../images/logo-home.png"
       alt="말린오이"
       class="cursor-buddy"
     />
 
-    <!-- 기존 main + 게시물 전용 -->
-    <script type="module" src="/assets/js/main.js"></script>
-    <script type="module" src="/assets/js/modules/post-detail.js"></script>
+    <!-- JS -->
+    <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="../assets/js/modules/post-detail.js"></script>
   </body>
 </html>
