@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>말린오이닷컴</title>
     <!-- 공통 css -->
-    <link rel="shortcut icon" href="/images/favicon.ico" />
+    <link rel="shortcut icon" href="images/favicon.ico" />
     <link rel="stylesheet" href="assets/css/00-reset.css" />
     <link rel="stylesheet" href="assets/css/01-tokens.css" />
     <link rel="stylesheet" href="assets/css/02-base.css" />
@@ -17,14 +17,15 @@
     <link rel="stylesheet" href="assets/css/components/footer.css" />
     <!-- 페이지 css -->
     <link rel="stylesheet" href="assets/css/pages/index.css" />
+    <base href="/mallin-oi/" />
   </head>
   <body data-page="home">
     <div class="page">
       <header class="site-header">
         <div class="container header-inner">
-          <a class="logo" href="/" aria-label="홈으로">
-            <img src="/images/logo-home.png" alt="말린오이닷컴" />
-            <img src="/images/logo-word.png" alt="말린오이닷컴" />
+          <a class="logo" href="index.html" aria-label="홈으로">
+            <img src="images/logo-home.png" alt="말린오이닷컴" />
+            <img src="images/logo-word.png" alt="말린오이닷컴" />
           </a>
 
           <form class="search" role="search">
@@ -42,19 +43,21 @@
         <nav class="site-nav" aria-label="주요 메뉴">
           <ul class="site-nav__list">
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/" aria-current="page">홈</a>
+              <a class="site-nav__link" href="index.html" aria-current="page"
+                >홈</a
+              >
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/study.html">공부</a>
+              <a class="site-nav__link" href="study.html">공부</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/work.html">업무</a>
+              <a class="site-nav__link" href="work.html">업무</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/event.html">이벤트</a>
+              <a class="site-nav__link" href="event.html">이벤트</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="/career.html">이력</a>
+              <a class="site-nav__link" href="career.html">이력</a>
             </li>
           </ul>
         </nav>
@@ -65,9 +68,7 @@
           <div class="container">
             <div class="home-section__head">
               <h2 class="home-section__title">🔥 주요 업데이트</h2>
-              <a class="home-section__more" href="/posts-all.html"
-                >전체보기 →</a
-              >
+              <a class="home-section__more" href="posts-all.html">전체보기 →</a>
             </div>
 
             <div class="grid grid--cards" id="cardGrid"></div>
@@ -100,8 +101,8 @@
         <div class="container footer-inner">
           <!-- 1) Brand -->
           <div class="footer-brand">
-            <a class="footer-brand__logo" href="/" aria-label="홈으로">
-              <img src="/images/logo-home.png" alt="말린오이닷컴" />
+            <a class="footer-brand__logo" href="index.html" aria-label="홈으로">
+              <img src="images/logo-home.png" alt="말린오이닷컴" />
             </a>
             <p class="footer-brand__desc">
               공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
@@ -112,10 +113,10 @@
           <nav class="footer-nav" aria-label="푸터 링크">
             <h2 class="footer-title">바로가기</h2>
             <ul class="footer-list">
-              <li><a class="footer-link" href="/study.html">공부</a></li>
-              <li><a class="footer-link" href="/work.html">업무</a></li>
-              <li><a class="footer-link" href="/event.html">이벤트</a></li>
-              <li><a class="footer-link" href="/career.html">이력</a></li>
+              <li><a class="footer-link" href="study.html">공부</a></li>
+              <li><a class="footer-link" href="work.html">업무</a></li>
+              <li><a class="footer-link" href="event.html">이벤트</a></li>
+              <li><a class="footer-link" href="career.html">이력</a></li>
             </ul>
           </nav>
 
@@ -165,7 +166,7 @@
     </div>
     <img
       id="cukeBuddy"
-      src="/images/logo-home.png"
+      src="images/logo-home.png"
       alt="말린오이"
       class="cursor-buddy"
     />
