@@ -30,18 +30,25 @@ function getCombinedViews(post) {
 
 /* ================= 데이터 로드/필터 ================= */
 
-async function loadPosts() {
-  const res = await fetch('/assets/data/posts.json');
-  if (!res.ok) throw new Error('Failed to load posts.json');
+// ✅ (중요) 이 파일은 /assets/js/modules/posts-ui.js 에 있으니까
+// /assets/data/*.json 을 읽으려면 ../../data/*.json 이 맞아.
+const DATA_BASE = new URL('../../data/', import.meta.url);
+
+async function loadJson(fileName) {
+  const url = new URL(fileName, DATA_BASE);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load ${fileName}`);
   return res.json();
+}
+
+async function loadPosts() {
+  return loadJson('posts.json');
 }
 
 // ✅ weekly.json 로드 (여러 주차 지원 + 기존 1주 구조도 호환)
 async function loadWeekly() {
   try {
-    const res = await fetch('/assets/data/weekly.json');
-    if (!res.ok) throw new Error('Failed to load weekly.json');
-    const data = await res.json();
+    const data = await loadJson('weekly.json');
 
     const activeWeek =
       typeof data.activeWeek === 'string' ? data.activeWeek : null;

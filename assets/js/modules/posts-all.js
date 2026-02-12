@@ -38,6 +38,28 @@ function sortByDateDesc(posts) {
   return [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+/**
+ * GitHub Pages(프로젝트 페이지)에서도 안전하게 링크를 만들기 위한 보정
+ * - p.url이 "/posts/p001.html" 같이 슬래시로 시작하면,
+ *   현재 origin 기준 절대경로로 만들어진다(프로젝트 repo에서 깨짐)
+ * - 그래서 "./posts/p001.html" 형태로 바꿔준다.
+ */
+function toRelativeUrl(url) {
+  if (!url) return '#';
+  const u = String(url).trim();
+
+  // 이미 http(s) / mailto / tel / hash면 그대로
+  if (/^(https?:)?\/\//i.test(u)) return u;
+  if (/^(mailto:|tel:)/i.test(u)) return u;
+  if (u.startsWith('#')) return u;
+
+  // "/posts/..." -> "./posts/..."
+  if (u.startsWith('/')) return `.${u}`;
+
+  // 그 외("posts/...", "./posts/...")는 그대로
+  return u;
+}
+
 /* ================= URL 상태 ================= */
 
 const ALLOWED_TABS = new Set(['all', 'study', 'work', 'event', 'career']);
@@ -69,7 +91,6 @@ function setState(tab, page) {
   const sp = new URLSearchParams();
   sp.set('tab', safeTab);
 
-  // page=1은 굳이 URL에 안남겨도 깔끔해서 제거(원하면 이 블록 통째로 지워도 됨)
   if (safePage > 1) sp.set('page', String(safePage));
 
   history.pushState(null, '', `${location.pathname}?${sp.toString()}`);
@@ -78,7 +99,9 @@ function setState(tab, page) {
 /* ================= 데이터 로드 ================= */
 
 async function loadPosts() {
-  const res = await fetch('/assets/data/posts.json');
+  // ✅ GitHub Pages에서도 안전한 상대경로 fetch
+  // posts-all.html이 루트에 있으니 "./assets/..."가 가장 안전함
+  const res = await fetch('./assets/data/posts.json', { cache: 'no-store' });
   if (!res.ok) throw new Error('posts.json load fail');
   return res.json();
 }
@@ -86,8 +109,10 @@ async function loadPosts() {
 /* ================= 렌더 ================= */
 
 function renderRow(p) {
+  const href = toRelativeUrl(p.url);
+
   return `
-    <a class="post-row" href="${p.url}">
+    <a class="post-row" href="${href}">
       <span class="post-row__title">${p.title}</span>
       <span class="post-row__meta">
         ${formatMMDD(p.date)} · 👀 ${getCombinedViews(p)} · ${p.category}
@@ -111,7 +136,16 @@ export async function initPostsAll() {
   if (!pinnedEl || !listEl) return;
 
   const PER_PAGE = 10;
-  const allPosts = await loadPosts();
+
+  let allPosts = [];
+  try {
+    allPosts = await loadPosts();
+  } catch (e) {
+    console.error(e);
+    pinnedEl.innerHTML = `<div class="empty">posts.json을 불러오지 못했어.</div>`;
+    listEl.innerHTML = `<div class="empty">경로(상대/절대)나 파일 위치를 확인해줘.</div>`;
+    return;
+  }
 
   function render() {
     const { tab, page } = getState();
@@ -121,7 +155,7 @@ export async function initPostsAll() {
     tabBtns.forEach((btn) => {
       const active = btn.dataset.tab === tab;
       btn.classList.toggle('is-active', active);
-      btn.setAttribute('aria-selected', active);
+      btn.setAttribute('aria-selected', String(active));
     });
 
     // 🔒 고정(pinned)
@@ -154,7 +188,6 @@ export async function initPostsAll() {
     btnPrev.disabled = safePage <= 1;
     btnNext.disabled = safePage >= totalPages;
 
-    // 주소창 page가 범위 밖이면 바로 정리
     if (safePage !== page) {
       setState(tab, safePage);
     }
@@ -185,7 +218,6 @@ export async function initPostsAll() {
 
   window.addEventListener('popstate', render);
 
-  // ✅ 처음 진입 시 tab/page가 이상하면 URL도 한 번 정리해주기(선택사항인데 꽤 유용함)
   const init = getState();
   setState(init.tab, init.page);
 

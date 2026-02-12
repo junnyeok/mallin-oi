@@ -4,26 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>말린오이닷컴</title>
-    <link rel="shortcut icon" href="images/favicon.ico" />
-    <link rel="stylesheet" href="assets/css/00-reset.css" />
-    <link rel="stylesheet" href="assets/css/01-tokens.css" />
-    <link rel="stylesheet" href="assets/css/02-base.css" />
-    <link rel="stylesheet" href="assets/css/03-layout.css" />
-    <link rel="stylesheet" href="assets/css/components/buttons.css" />
-    <link rel="stylesheet" href="assets/css/components/forms.css" />
-    <link rel="stylesheet" href="assets/css/components/cursor-buddy.css" />
-    <link rel="stylesheet" href="assets/css/components/nav.css" />
-    <link rel="stylesheet" href="assets/css/pages/study.css" />
-    <link rel="stylesheet" href="assets/css/components/main.css" />
-    <link rel="stylesheet" href="assets/css/components/footer.css" />
+
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/pages/study.css" />
+    <link rel="stylesheet" href="./assets/css/components/main.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
   </head>
+
   <body class="theme-study" data-page="study">
     <div class="page">
       <header class="site-header">
         <div class="container header-inner">
-          <a class="logo" href="index.html" aria-label="홈으로">
-            <img src="images/logo-study.png" alt="말린오이닷컴" />
-            <img src="images/logo-word.png" alt="말린오이닷컴" />
+          <a class="logo" href="./index.html" aria-label="홈으로">
+            <img src="./images/logo-study.png" alt="말린오이닷컴" />
+            <img src="./images/logo-word.png" alt="말린오이닷컴" />
           </a>
 
           <form class="search" role="search">
@@ -38,35 +40,36 @@
             </button>
           </form>
         </div>
+
         <nav class="site-nav" aria-label="주요 메뉴">
           <ul class="site-nav__list">
             <li class="site-nav__item">
-              <a class="site-nav__link" href="index.html">홈</a>
+              <a class="site-nav__link" href="./index.html">홈</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="study.html" aria-current="page"
+              <a class="site-nav__link" href="./study.html" aria-current="page"
                 >공부</a
               >
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="work.html">업무</a>
+              <a class="site-nav__link" href="./work.html">업무</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="event.html">이벤트</a>
+              <a class="site-nav__link" href="./event.html">이벤트</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="career.html">이력</a>
+              <a class="site-nav__link" href="./career.html">이력</a>
             </li>
           </ul>
         </nav>
       </header>
+
       <main class="site-main">
-        <!-- 2) 메인 그리드(네모네모) -->
         <section class="home-section">
           <div class="container">
             <div class="home-section__head">
               <h2 class="home-section__title">🔥 주요 업데이트</h2>
-              <a class="home-section__more" href="posts-all.html?tab=study"
+              <a class="home-section__more" href="./posts-all.html?tab=study"
                 >전체보기 →</a
               >
             </div>
@@ -75,7 +78,6 @@
           </div>
         </section>
 
-        <!-- 3) 2분할 영역(텍스트/리스트) -->
         <section class="home-section">
           <div class="container">
             <div class="split">
@@ -83,7 +85,7 @@
                 <h2 class="panel__title">✔️ 이번 주 체크</h2>
                 <ul class="list" id="weeklyList"></ul>
                 <img
-                  src="images/good.png"
+                  src="./images/good.png"
                   alt="체크 완료"
                   class="weekly-done-image"
                 />
@@ -97,30 +99,32 @@
           </div>
         </section>
       </main>
+
       <footer class="site-footer">
         <div class="container footer-inner">
-          <!-- 1) Brand -->
           <div class="footer-brand">
-            <a class="footer-brand__logo" href="index.html" aria-label="홈으로">
-              <img src="images/logo-study.png" alt="말린오이닷컴" />
+            <a
+              class="footer-brand__logo"
+              href="./index.html"
+              aria-label="홈으로"
+            >
+              <img src="./images/logo-study.png" alt="말린오이닷컴" />
             </a>
             <p class="footer-brand__desc">
               공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
             </p>
           </div>
 
-          <!-- 2) Links -->
           <nav class="footer-nav" aria-label="푸터 링크">
             <h2 class="footer-title">바로가기</h2>
             <ul class="footer-list">
-              <li><a class="footer-link" href="study.html">공부</a></li>
-              <li><a class="footer-link" href="work.html">업무</a></li>
-              <li><a class="footer-link" href="event.html">이벤트</a></li>
-              <li><a class="footer-link" href="career.html">이력</a></li>
+              <li><a class="footer-link" href="./study.html">공부</a></li>
+              <li><a class="footer-link" href="./work.html">업무</a></li>
+              <li><a class="footer-link" href="./event.html">이벤트</a></li>
+              <li><a class="footer-link" href="./career.html">이력</a></li>
             </ul>
           </nav>
 
-          <!-- 3) Contact / Social -->
           <div class="footer-contact">
             <h2 class="footer-title">연락</h2>
             <ul class="footer-list">
@@ -164,15 +168,14 @@
         </div>
       </footer>
     </div>
+
     <img
       id="cukeBuddy"
-      src="images/logo-home.png"
+      src="./images/logo-home.png"
       alt="말린오이"
       class="cursor-buddy"
     />
-    <script type="module" src="assets/js/main.js"></script>
-    <!-- type에 module을 쓰면 import, export가 가능,
-    내부적으로 다 읽고 나서 실행하라는 의미도 돼서 DOMContentLoaded와 타이밍 맞음,
-    파일 스코프가 분리됨-> 모듈 안에서 선언한 변수는 전역 오염이 안됨. -->
+
+    <script type="module" src="./assets/js/main.js"></script>
   </body>
 </html>

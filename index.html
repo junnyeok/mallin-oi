@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>말린오이닷컴</title>
+
     <!-- 공통 css -->
     <link rel="shortcut icon" href="./images/favicon.ico" />
     <link rel="stylesheet" href="./assets/css/00-reset.css" />
@@ -15,9 +16,11 @@
     <link rel="stylesheet" href="./assets/css/components/nav.css" />
     <link rel="stylesheet" href="./assets/css/components/main.css" />
     <link rel="stylesheet" href="./assets/css/components/footer.css" />
+
     <!-- 페이지 css -->
     <link rel="stylesheet" href="./assets/css/pages/index.css" />
   </head>
+
   <body data-page="home">
     <div class="page">
       <header class="site-header">
@@ -30,15 +33,19 @@
           <form class="search" role="search">
             <label class="sr-only" for="q">검색</label>
             <input
+              id="q"
+              name="q"
               class="search__input"
               type="search"
               placeholder="검색어를 입력하세요."
+              autocomplete="off"
             />
             <button class="btn search__btn" type="submit" aria-label="검색">
               🔍
             </button>
           </form>
         </div>
+
         <nav class="site-nav" aria-label="주요 메뉴">
           <ul class="site-nav__list">
             <li class="site-nav__item">
@@ -61,8 +68,8 @@
           </ul>
         </nav>
       </header>
+
       <main class="site-main">
-        <!-- 2) 메인 그리드(네모네모) -->
         <section class="home-section">
           <div class="container">
             <div class="home-section__head">
@@ -76,7 +83,6 @@
           </div>
         </section>
 
-        <!-- 3) 2분할 영역(텍스트/리스트) -->
         <section class="home-section">
           <div class="container">
             <div class="split">
@@ -98,9 +104,9 @@
           </div>
         </section>
       </main>
+
       <footer class="site-footer">
         <div class="container footer-inner">
-          <!-- 1) Brand -->
           <div class="footer-brand">
             <a
               class="footer-brand__logo"
@@ -114,7 +120,6 @@
             </p>
           </div>
 
-          <!-- 2) Links -->
           <nav class="footer-nav" aria-label="푸터 링크">
             <h2 class="footer-title">바로가기</h2>
             <ul class="footer-list">
@@ -125,7 +130,6 @@
             </ul>
           </nav>
 
-          <!-- 3) Contact / Social -->
           <div class="footer-contact">
             <h2 class="footer-title">연락</h2>
             <ul class="footer-list">
@@ -139,6 +143,7 @@
                   class="footer-link"
                   href="https://www.instagram.com/junnyeok/"
                   target="_blank"
+                  rel="noopener noreferrer"
                   aria-label="인스타그램"
                   >Instagram</a
                 >
@@ -148,6 +153,7 @@
                   class="footer-link"
                   href="https://github.com"
                   target="_blank"
+                  rel="noopener noreferrer"
                   aria-label="깃허브"
                   >GitHub</a
                 >
@@ -169,15 +175,14 @@
         </div>
       </footer>
     </div>
+
     <img
       id="cukeBuddy"
       src="./images/logo-home.png"
       alt="말린오이"
       class="cursor-buddy"
     />
+
     <script type="module" src="./assets/js/main.js"></script>
-    <!-- type에 module을 쓰면 import, export가 가능,
-    내부적으로 다 읽고 나서 실행하라는 의미도 돼서 DOMContentLoaded와 타이밍 맞음,
-    파일 스코프가 분리됨-> 모듈 안에서 선언한 변수는 전역 오염이 안됨. -->
   </body>
 </html>
