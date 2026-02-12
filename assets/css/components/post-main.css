@@ -1,0 +1,96 @@
+/* assets/css/components/post-main.css */
+
+.post {
+  padding: var(--space-24) 0 var(--space-32);
+}
+
+.post__top {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--space-16);
+}
+
+/* 목록으로 링크 - 버튼 스타일 제거 */
+.post__back {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+
+  color: var(--color-text);
+  text-decoration: none; /* 원하면 underline으로 바꿔도 됨 */
+  cursor: pointer; /* ✅ 손가락 */
+}
+
+.post__back:hover {
+  border-color: transparent;
+}
+
+.post-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-24);
+}
+
+.post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+}
+
+.post-title {
+  font-size: var(--text-h1);
+  line-height: 1.2;
+  margin-bottom: var(--space-12);
+}
+
+.post-excerpt {
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+  color: var(--color-text-sub);
+  margin-bottom: var(--space-16);
+}
+
+.post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  font-size: var(--text-small);
+}
+
+.post-divider {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-24) 0;
+}
+
+.post-body__hint {
+  color: var(--color-text-sub);
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+}
+
+/* 반응형 */
+@media (max-width: 720px) {
+  .post-card {
+    padding: var(--space-16);
+  }
+
+  .post-title {
+    font-size: 24px;
+  }
+}

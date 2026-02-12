@@ -1,0 +1,79 @@
+[
+  {
+    "id": "p001",
+    "title": "flex vs grid 정리",
+    "excerpt": "레이아웃 잡을 때 flex와 grid를 어떻게 구분해서 써야 하는지 기준 정리.",
+    "category": "study",
+    "date": "2026-02-04",
+    "views": 0,
+    "pinned": true,
+    "tags": ["코딩", "css", "layout"],
+    "url": "/posts/p001.html"
+  },
+  {
+    "id": "p002",
+    "title": "CSS 토큰 설계 기본",
+    "excerpt": "tokens.css를 왜 쓰는지, 실제 프로젝트에서 어떻게 관리하는지 정리.",
+    "category": "study",
+    "date": "2026-02-02",
+    "views": 0,
+    "pinned": false,
+    "tags": ["코딩", "css", "design-system"],
+    "url": "/posts/p002.html"
+  },
+  {
+    "id": "p003",
+    "title": "근무 기록 템플릿",
+    "excerpt": "교대근무, 야간근무 기록을 빠르게 남기기 위한 개인 템플릿.",
+    "category": "work",
+    "date": "2026-02-03",
+    "views": 0,
+    "pinned": true,
+    "tags": ["경찰", "template"],
+    "url": "/posts/p003.html"
+  },
+  {
+    "id": "p004",
+    "title": "업무 페이지 구조 설계",
+    "excerpt": "업무 기록 페이지를 카드/리스트 구조로 나눈 이유와 설계 방향.",
+    "category": "work",
+    "date": "2026-01-30",
+    "views": 0,
+    "pinned": false,
+    "tags": ["구조설명"],
+    "url": "/posts/p004.html"
+  },
+  {
+    "id": "p005",
+    "title": "말린오이닷컴 제작 로그",
+    "excerpt": "개인 사이트를 왜 만들었고, 어떤 방향으로 확장할 계획인지 정리.",
+    "category": "career",
+    "date": "2026-01-28",
+    "views": 0,
+    "pinned": false,
+    "tags": ["사이트", "포트폴리오"],
+    "url": "/posts/p005.html"
+  },
+  {
+    "id": "p006",
+    "title": "개인 2월 일정",
+    "excerpt": "업무를 제외한 개인 2월 일정",
+    "category": "event",
+    "date": "2026-02-05",
+    "views": 0,
+    "pinned": false,
+    "tags": ["캘린더", "일정"],
+    "url": "/posts/p006.html"
+  },
+  {
+    "id": "p007",
+    "title": "일진기계 사이트 제작과정",
+    "excerpt": "일진기계 사이트를 만들면서 사용한 것들",
+    "category": "career",
+    "date": "2026-02-05",
+    "views": 0,
+    "pinned": false,
+    "tags": ["사이트", "포트폴리오"],
+    "url": "/posts/p007.html"
+  }
+]

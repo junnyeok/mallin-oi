@@ -1,0 +1,238 @@
+.site-main {
+  flex: 1; /* layout.css에 이미 있지만, 혹시 main 클래스 바뀌면 여기서도 커버 가능 */
+  padding: var(--space-32) 0 0;
+}
+
+/* ===== SECTIONS ===== */
+.home-section {
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-32);
+}
+
+.home-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+}
+/* align-items: baseline: 글씨의 **기준선(베이스라인)**을 맞춰서 제목과 작은 링크가 자연스럽게 정렬됨. */
+
+.home-section__title {
+  font-size: var(--text-h2);
+  color: var(--color-text);
+}
+
+.home-section__more {
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+}
+
+/* ===== GRID VARIANTS ===== */
+/* layout.css의 .grid를 그대로 쓰고, 홈에서만 필요한 변형만 추가 */
+.grid--cards {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ===== CARD ===== */
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+/* overflow: hidden: 내부 썸네일이 둥근 모서리 밖으로 삐져나오지 않게 잘라줌. */
+
+.card__body {
+  padding: var(--space-12);
+  padding-top: var(--space-8);
+}
+
+.card__title {
+  font-size: var(--text-body);
+  margin: 0 0 var(--space-8);
+}
+
+.card__title a {
+  color: var(--color-text);
+}
+
+.card__desc {
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+  min-height: 2.6em; /* 카드 높이 들쭉날쭉 방지 */
+}
+/* min-height: 2.6em: 설명이 짧은 카드가 있어도 카드 높이가 들쭉날쭉하지 않게 최소 높이 확보. 
+em은 현재 폰트 크기 기준. */
+
+.card__meta {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  margin-top: var(--space-12);
+}
+
+/* ===== BADGE / CHIP ===== */
+.badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 20px;
+  padding: var(--space-4) var(--space-12);
+  background: transparent;
+}
+/* position: absolute + left/top: 왼쪽 위에 붙임. */
+
+.chip {
+  font-size: 12px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.chip--muted {
+  color: var(--color-text-sub);
+}
+
+/* ===== SPLIT ===== */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-16);
+}
+
+.panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-16);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.panel__title {
+  font-size: var(--text-body);
+  margin-bottom: var(--space-16);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--space-16);
+  color: var(--color-text-sub);
+}
+
+.list__item {
+  margin: var(--space-8) 0;
+}
+
+.mini {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.mini__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.mini__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini__date {
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 980px) {
+  .home-hero__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .grid--cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .grid--cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 이번주 체크 항목 텍스트 간격 및 정렬 */
+#weeklyList {
+  margin: var(--space-16) 0;
+}
+
+.weekly-status {
+  text-align: center;
+  font-weight: 600;
+}
+
+/* 이번 주 체크 전용 */
+#weeklyList input[type='checkbox'] {
+  accent-color: var(--color-primary);
+}
+
+/* 따봉 이미지 관련 */
+.weekly-done-image {
+  display: none;
+  margin: var(--space-16) auto 0;
+  width: 120px;
+  height: auto;
+}
+
+.weekly-done-image.is-visible {
+  display: block;
+}
+
+/* 주간 체크 네비(패널 우측 상단) */
+.weekly-nav {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.weekly-nav__label {
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.weekly-nav__btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.weekly-nav__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

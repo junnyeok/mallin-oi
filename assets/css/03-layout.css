@@ -1,0 +1,70 @@
+/* 페이지 뼈대(컨테이너, header/nav/main/footer, 섹션 간격, 그리드).
+배치만 담당, 함부로 건드리면 뼈대가 무너짐*/
+
+.container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--space-16);
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  /* flex-colum 위에서 아래로 header-> main-> footer 구조 */
+  flex-direction: column;
+}
+
+/* 메인 영역이 남은 공간 전부 차지
+header footer 높이를 제외한 나머지공간이 main 먹게해서
+푸터가 바닥으로 내려감(sticky footer 구조) */
+.site-main {
+  flex: 1;
+}
+
+.site-header {
+  padding: var(--space-12) 0;
+  background: var(--color-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header-inner {
+  display: flex;
+  /* 로고-> 검색-> 아이콘 수직구조
+  row로 바꿀 때 여기만 수정하면 됨. */
+  flex-direction: column;
+  /* 가로 가운데 정렬 */
+  align-items: center;
+  /* gap이 margin보다 관리 쉽다. */
+  gap: var(--space-12);
+}
+
+.logo {
+  display: flex;
+  gap: 0px;
+}
+.logo img {
+  height: 100px;
+  width: auto;
+  align-items: center;
+}
+
+/* 기본 섹션 간격
+나중에 section 쓸때 쓰면됨 */
+.section {
+  padding: var(--space-24) 0;
+}
+.section--tight {
+  padding: var(--space-16) 0;
+}
+
+/* 기본 그리드(상품 카드 등) */
+.grid {
+  display: grid;
+  gap: var(--space-16);
+}
+/* 데스크탑,태블릿에서 3열 모바일은 자동1열 */
+@media (min-width: 750px) {
+  .grid--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

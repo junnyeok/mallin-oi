@@ -1,0 +1,9 @@
+body.theme-career {
+  --color-primary: var(--theme-career);
+  --color-primary-sub: var(--theme-career-sub);
+}
+
+.logo img:first-child {
+  margin-right: -25px;
+  z-index: 8888;
+}

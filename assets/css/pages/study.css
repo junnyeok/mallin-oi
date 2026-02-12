@@ -1,0 +1,8 @@
+body.theme-study {
+  --color-primary: var(--theme-study);
+  --color-primary-sub: var(--theme-study-sub);
+}
+
+.logo img:first-of-type {
+  margin-right: -20px;
+}

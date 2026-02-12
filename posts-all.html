@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>전체보기 | 말린오이닷컴</title>
+
+    <!-- 공통 css -->
+    <link rel="shortcut icon" href="/images/favicon.ico" />
+    <link rel="stylesheet" href="assets/css/00-reset.css" />
+    <link rel="stylesheet" href="assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="assets/css/02-base.css" />
+    <link rel="stylesheet" href="assets/css/03-layout.css" />
+    <link rel="stylesheet" href="assets/css/components/forms.css" />
+    <link rel="stylesheet" href="assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="assets/css/components/nav.css" />
+    <link rel="stylesheet" href="assets/css/components/main.css" />
+    <link rel="stylesheet" href="assets/css/components/footer.css" />
+
+    <!-- 각페이지 main -->
+    <link rel="stylesheet" href="assets/css/components/posts-all-main.css" />
+
+    <!-- 필요 페이지 -->
+    <link rel="stylesheet" href="assets/css/pages/index.css" />
+  </head>
+
+  <body data-page="posts-all">
+    <div class="page">
+      <!-- ✅ Header 유지 -->
+      <header class="site-header">
+        <div class="container header-inner">
+          <a class="logo" href="/" aria-label="홈으로">
+            <img src="/images/logo-home.png" alt="말린오이닷컴" />
+            <img src="/images/logo-word.png" alt="말린오이닷컴" />
+          </a>
+
+          <form class="search" role="search">
+            <label class="sr-only" for="q">검색</label>
+            <input
+              id="q"
+              class="search__input"
+              type="search"
+              placeholder="검색어를 입력하세요."
+            />
+            <button class="btn search__btn" type="submit" aria-label="검색">
+              🔍
+            </button>
+          </form>
+        </div>
+
+        <nav class="site-nav" aria-label="주요 메뉴">
+          <ul class="site-nav__list">
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="/">홈</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="/study.html">공부</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="/work.html">업무</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="/event.html">이벤트</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="/career.html">이력</a>
+            </li>
+          </ul>
+        </nav>
+      </header>
+
+      <main class="site-main">
+        <section class="home-section">
+          <div class="container">
+            <div class="home-section__head">
+              <h2 class="home-section__title">📚 전체보기</h2>
+            </div>
+
+            <!-- 1) 고정(공지) 영역 = 침하하 '공지!' 느낌 -->
+            <section class="posts-all__notice" aria-label="고정 게시물">
+              <h3 class="posts-all__notice-title">📌 고정</h3>
+
+              <!-- JS가 여기에 pinned(true) 게시글을 넣어줄 예정 -->
+              <div class="posts-all__notice-list" id="pinnedList">
+                <!-- placeholder (나중에 JS 렌더링) -->
+                <!-- <a class="post-row post-row--pinned" href="#">
+                  <span class="post-row__badge">고정</span>
+                  <span class="post-row__title">고정 글 제목</span>
+                  <span class="post-row__meta">02/10 · 👀 123 · study</span>
+                </a> -->
+              </div>
+            </section>
+
+            <!-- 2) 탭 영역 = 전체/공부/업무/이벤트/이력 -->
+            <nav class="posts-all__tabs" aria-label="게시물 분류 탭">
+              <button
+                type="button"
+                class="tab-btn is-active"
+                data-tab="all"
+                aria-selected="true"
+              >
+                전체
+              </button>
+              <button type="button" class="tab-btn" data-tab="study">
+                공부
+              </button>
+              <button type="button" class="tab-btn" data-tab="work">
+                업무
+              </button>
+              <button type="button" class="tab-btn" data-tab="event">
+                이벤트
+              </button>
+              <button type="button" class="tab-btn" data-tab="career">
+                이력
+              </button>
+            </nav>
+
+            <!-- 3) 전체 게시물 리스트 (15개씩 보여줄 영역) -->
+            <section class="posts-all__list" aria-label="전체 게시물 목록">
+              <!-- JS가 posts.json을 읽어서 여기 렌더링 -->
+              <div class="posts-all__rows" id="postsAllList">
+                <!-- placeholder -->
+                <!-- <a class="post-row" href="#">
+                  <span class="post-row__title">게시물 제목</span>
+                  <span class="post-row__meta">02/10 · 👀 10 · work</span>
+                </a> -->
+              </div>
+            </section>
+
+            <!-- 4) 페이지네이션 -->
+            <nav class="posts-all__pager" aria-label="페이지 이동">
+              <button
+                type="button"
+                class="pager-btn"
+                id="pagerPrev"
+                aria-label="이전 페이지"
+              >
+                ←
+              </button>
+
+              <span class="pager-info" id="pagerInfo" aria-live="polite">
+                1 / 1
+              </span>
+
+              <button
+                type="button"
+                class="pager-btn"
+                id="pagerNext"
+                aria-label="다음 페이지"
+              >
+                →
+              </button>
+            </nav>
+          </div>
+        </section>
+      </main>
+
+      <!-- ✅ Footer 유지 -->
+      <footer class="site-footer">
+        <div class="container footer-inner">
+          <div class="footer-brand">
+            <a class="footer-brand__logo" href="/" aria-label="홈으로">
+              <img src="/images/logo-home.png" alt="말린오이닷컴" />
+            </a>
+            <p class="footer-brand__desc">
+              공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
+            </p>
+          </div>
+
+          <nav class="footer-nav" aria-label="푸터 링크">
+            <h2 class="footer-title">바로가기</h2>
+            <ul class="footer-list">
+              <li><a class="footer-link" href="/study.html">공부</a></li>
+              <li><a class="footer-link" href="/work.html">업무</a></li>
+              <li><a class="footer-link" href="/event.html">이벤트</a></li>
+              <li><a class="footer-link" href="/career.html">이력</a></li>
+            </ul>
+          </nav>
+
+          <div class="footer-contact">
+            <h2 class="footer-title">연락</h2>
+            <ul class="footer-list">
+              <li>
+                <a class="footer-link" href="mailto:junna961@icloud.com"
+                  >junna961@icloud.com</a
+                >
+              </li>
+              <li>
+                <a
+                  class="footer-link"
+                  href="https://www.instagram.com/junnyeok/"
+                  target="_blank"
+                  aria-label="인스타그램"
+                  >Instagram</a
+                >
+              </li>
+              <li>
+                <a
+                  class="footer-link"
+                  href="https://github.com"
+                  target="_blank"
+                  aria-label="깃허브"
+                  >GitHub</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <div class="container footer-bottom__inner">
+            <small
+              >© <span id="year"></span> 말린오이닷컴. All rights
+              reserved.</small
+            >
+            <a class="footer-link footer-link--small" href="#"
+              >개인정보처리방침</a
+            >
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="/images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <!-- 일단 main.js는 유지 (연도, 커서버디 등 공통이 들어있을 수 있어서) -->
+    <script type="module" src="assets/js/main.js"></script>
+  </body>
+</html>

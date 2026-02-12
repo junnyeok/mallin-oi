@@ -1,0 +1,10 @@
+body.theme-event {
+  --color-primary: var(--theme-event);
+  --color-primary-sub: var(--theme-event-sub);
+}
+
+.logo img:first-child {
+  margin-right: -15px;
+  margin-top: -10px;
+  z-index: 8888;
+}

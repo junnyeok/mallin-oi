@@ -1,0 +1,9 @@
+body.theme-work {
+  --color-primary: var(--theme-work);
+  --color-primary-sub: var(--theme-work-sub);
+}
+
+.logo img:first-child {
+  margin-right: -20px;
+  z-index: 8888;
+}

@@ -1,0 +1,7 @@
+/* 그리고 “base/layout 그대로 두고 pages/index.css에 일괄” → 지금 단계에선 OK. 다만 원칙은 하나만 지키자:
+layout.css = 배치/뼈대(컨테이너, 페이지 구조, 공통 grid)
+pages/index.css = 홈 화면에서만 쓰는 모양(카드 모양, 섹션 헤딩, 배너 등) */
+
+.logo img:first-child {
+  margin-right: -25px;
+}

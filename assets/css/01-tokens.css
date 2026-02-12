@@ -1,0 +1,63 @@
+/* 디자인 규칙(설계도)
+사이트 전체에서 공유되는 값들임. 색상, 폰트, 간격등을 숫자 말고 의미로 씀.
+색 바뀌면 여기만 고치면 됨. 
+var()로 쓴다.*/
+
+:root {
+  /* Theme Palette */
+  /* home */
+  --theme-home: #b6d86a;
+  --theme-home-sub: #eaffac;
+  /* study */
+  --theme-study: rgb(60, 60, 60);
+  --theme-study-sub: rgb(187, 187, 187);
+  /* work */
+  --theme-work: rgb(52, 52, 206);
+  --theme-work-sub: rgb(245, 245, 70);
+  /* event */
+  --theme-event: pink;
+  --theme-event-sub: rgb(250, 133, 154);
+  /* career */
+  --theme-career: rgb(177, 75, 250);
+  --theme-career-sub: rgb(210, 147, 254);
+
+  /* Colors */
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-text: #111111;
+  --color-text-sub: #666666;
+  --color-border: #d9d9d9;
+  /* Color Tokens */
+  --color-primary: var(--theme-home);
+  --color-primary-sub: var(--theme-home-sub);
+
+  /* Typography */
+  --font-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+
+  --text-h1: 28px;
+  --text-h2: 20px;
+  --text-body: 16px;
+  --text-small: 14px;
+
+  --line-body: 1.5;
+
+  /* Spacing */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  /* Radius */
+  --radius-btn: 12px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-card: 0 6px 18px rgba(0, 0, 0, 0.08);
+
+  /* Layout */
+  --container-max: 1100px;
+}
