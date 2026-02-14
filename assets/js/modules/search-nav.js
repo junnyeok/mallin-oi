@@ -3,24 +3,24 @@ export function initSearchNav({
   baseUrl = './posts-all.html',
   formSelector = '#searchForm',
   inputSelector = '#q',
-  typeBtnSelector = '[data-type]', // 제목/태그 토글 버튼
+  typeBtnSelector = '[data-type]',
 } = {}) {
   const page = document.body?.dataset?.page || 'home';
 
-  // ✅ posts-all 페이지는 posts-all.js가 처리하니까 여기서는 아무것도 안 함(충돌 방지)
   if (page === 'posts-all') return;
 
   const form =
     document.querySelector(formSelector) ||
     document.querySelector('form.search');
+
   const input =
     document.querySelector(inputSelector) ||
     document.querySelector('input[name="q"]');
+
   if (!form || !input) return;
 
   const typeBtns = Array.from(document.querySelectorAll(typeBtnSelector));
 
-  // --- 현재 페이지 -> tab 값으로 변환 ---
   function getTabFromPage() {
     const p = String(page).trim().toLowerCase();
     if (p === 'home') return 'all';
@@ -31,7 +31,6 @@ export function initSearchNav({
     return 'all';
   }
 
-  // --- 토글 상태 읽기(aria-pressed 우선) ---
   function getType() {
     const pressed = typeBtns.find(
       (b) => b.getAttribute('aria-pressed') === 'true'
@@ -40,7 +39,6 @@ export function initSearchNav({
     return t === 'tag' ? 'tag' : 'title';
   }
 
-  // --- 토글 UI 세팅(클릭 시 제목/태그 전환) ---
   function setTypeUI(type) {
     typeBtns.forEach((b) => {
       const active = (b.dataset.type || '').toLowerCase() === type;
@@ -49,9 +47,7 @@ export function initSearchNav({
     });
   }
 
-  // 초기 토글 UI 보정(HTML이 틀려도 한번 정리)
   if (typeBtns.length) {
-    // aria-pressed="true"가 하나도 없으면 title을 true로
     const anyPressed = typeBtns.some(
       (b) => b.getAttribute('aria-pressed') === 'true'
     );
@@ -68,7 +64,7 @@ export function initSearchNav({
     });
   }
 
-  // --- submit: posts-all로 이동 + 쿼리 구성 ---
+  // ✅ 여기 핵심 수정
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -76,12 +72,12 @@ export function initSearchNav({
     const tab = getTabFromPage();
     const type = getType();
 
-    const url = new URL(baseUrl, window.location.origin);
-    url.searchParams.set('tab', tab);
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+    if (type === 'tag') params.set('type', 'tag');
+    if (q) params.set('q', q);
 
-    if (type === 'tag') url.searchParams.set('type', 'tag'); // title은 기본값이라 생략 가능
-    if (q) url.searchParams.set('q', q);
-
-    window.location.href = url.pathname + url.search;
+    // 🔥 상대경로만 사용
+    window.location.href = `${baseUrl}?${params.toString()}`;
   });
 }
