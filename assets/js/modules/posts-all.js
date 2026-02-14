@@ -3,6 +3,7 @@
    전체보기 페이지 전용
    - pinned(고정)
    - 탭 필터 (URL query)
+   - 검색(q) + 검색타입(type=title|tag)
    - 페이지네이션
 ================================================= */
 
@@ -38,36 +39,42 @@ function sortByDateDesc(posts) {
   return [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function normalize(s) {
+  return String(s || '')
+    .toLowerCase()
+    .trim();
+}
+
 /**
  * GitHub Pages(프로젝트 페이지)에서도 안전하게 링크를 만들기 위한 보정
- * - p.url이 "/posts/p001.html" 같이 슬래시로 시작하면,
- *   현재 origin 기준 절대경로로 만들어진다(프로젝트 repo에서 깨짐)
- * - 그래서 "./posts/p001.html" 형태로 바꿔준다.
  */
 function toRelativeUrl(url) {
   if (!url) return '#';
   const u = String(url).trim();
 
-  // 이미 http(s) / mailto / tel / hash면 그대로
   if (/^(https?:)?\/\//i.test(u)) return u;
   if (/^(mailto:|tel:)/i.test(u)) return u;
   if (u.startsWith('#')) return u;
 
-  // "/posts/..." -> "./posts/..."
   if (u.startsWith('/')) return `.${u}`;
-
-  // 그 외("posts/...", "./posts/...")는 그대로
   return u;
 }
 
 /* ================= URL 상태 ================= */
 
 const ALLOWED_TABS = new Set(['all', 'study', 'work', 'event', 'career']);
+const ALLOWED_TYPES = new Set(['title', 'tag']);
 
 function normalizeTab(tab) {
   if (!tab) return 'all';
-  const t = String(tab).trim().toLowerCase();
+  const t = normalize(tab);
   return ALLOWED_TABS.has(t) ? t : 'all';
+}
+
+function normalizeType(type) {
+  if (!type) return 'title';
+  const t = normalize(type);
+  return ALLOWED_TYPES.has(t) ? t : 'title';
 }
 
 function normalizePage(page) {
@@ -81,26 +88,52 @@ function getState() {
   return {
     tab: normalizeTab(sp.get('tab')),
     page: normalizePage(sp.get('page') || 1),
+    q: (sp.get('q') || '').trim(),
+    type: normalizeType(sp.get('type')),
   };
 }
 
-function setState(tab, page) {
+function setState({ tab, page, q, type }) {
   const safeTab = normalizeTab(tab);
+  const safeType = normalizeType(type);
   const safePage = normalizePage(page);
+  const safeQ = (q || '').trim();
 
   const sp = new URLSearchParams();
   sp.set('tab', safeTab);
 
+  // 검색
+  if (safeType !== 'title') sp.set('type', safeType); // 기본값이면 굳이 안 넣어도 되게
+  if (safeQ) sp.set('q', safeQ);
+
+  // 페이지
   if (safePage > 1) sp.set('page', String(safePage));
 
   history.pushState(null, '', `${location.pathname}?${sp.toString()}`);
 }
 
+/* ================= 검색 매칭 ================= */
+
+function matchTitle(post, q) {
+  if (!q) return true;
+  return normalize(post.title).includes(normalize(q));
+}
+
+function matchTag(post, q) {
+  if (!q) return true;
+  const needle = normalize(q);
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+  return tags.some((t) => normalize(t).includes(needle));
+}
+
+function filterByTab(posts, tab) {
+  if (tab === 'all') return posts;
+  return posts.filter((p) => (p.category || '') === tab);
+}
+
 /* ================= 데이터 로드 ================= */
 
 async function loadPosts() {
-  // ✅ GitHub Pages에서도 안전한 상대경로 fetch
-  // posts-all.html이 루트에 있으니 "./assets/..."가 가장 안전함
   const res = await fetch('./assets/data/posts.json', { cache: 'no-store' });
   if (!res.ok) throw new Error('posts.json load fail');
   return res.json();
@@ -132,6 +165,16 @@ export async function initPostsAll() {
   const btnNext = document.getElementById('pagerNext');
   const pagerInfo = document.getElementById('pagerInfo');
 
+  // ✅ 검색폼(있으면 연결)
+  const searchForm =
+    document.getElementById('searchForm') ||
+    document.querySelector('form.search');
+  const searchInput =
+    document.getElementById('q') || document.querySelector('input[name="q"]');
+
+  // ✅ 제목/태그 토글 버튼(있으면 연결)
+  const typeBtns = document.querySelectorAll('[data-type]');
+
   // ❗ 이 페이지가 아니면 조용히 종료
   if (!pinnedEl || !listEl) return;
 
@@ -147,9 +190,19 @@ export async function initPostsAll() {
     return;
   }
 
+  function applyFilters(posts, { tab, q, type }) {
+    let list = filterByTab(posts, tab);
+
+    // 검색 타입
+    if (type === 'tag') list = list.filter((p) => matchTag(p, q));
+    else list = list.filter((p) => matchTitle(p, q));
+
+    return list;
+  }
+
   function render() {
-    const { tab, page } = getState();
-    const category = tab === 'all' ? null : tab;
+    const state = getState();
+    const { tab, page, q, type } = state;
 
     // 탭 UI
     tabBtns.forEach((btn) => {
@@ -158,20 +211,30 @@ export async function initPostsAll() {
       btn.setAttribute('aria-selected', String(active));
     });
 
-    // 🔒 고정(pinned)
-    const pinnedPosts = sortByDateDesc(
-      allPosts.filter((p) => p.pinned && (!category || p.category === category))
-    );
+    // 검색창 값 유지
+    if (searchInput) searchInput.value = q || '';
+
+    // ✅ 검색타입 버튼 UI 동기화
+    if (typeBtns && typeBtns.length) {
+      typeBtns.forEach((b) => {
+        const active = b.dataset.type === type;
+        b.classList.toggle('is-active', active);
+        b.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    // 🔒 고정(pinned)도 동일한 필터 규칙 적용 (탭 + 검색)
+    const pinnedBase = allPosts.filter((p) => p.pinned);
+    const pinnedFiltered = sortByDateDesc(applyFilters(pinnedBase, state));
 
     pinnedEl.innerHTML =
-      pinnedPosts.length === 0
+      pinnedFiltered.length === 0
         ? `<div class="empty">고정된 글이 없어.</div>`
-        : pinnedPosts.map(renderRow).join('');
+        : pinnedFiltered.map(renderRow).join('');
 
-    // 📚 일반 목록
-    const filtered = sortByDateDesc(
-      allPosts.filter((p) => !category || p.category === category)
-    );
+    // 📚 일반 목록(비고정)도 동일한 필터 규칙 적용
+    const normalBase = allPosts.filter((p) => !p.pinned);
+    const filtered = sortByDateDesc(applyFilters(normalBase, state));
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
     const safePage = Math.min(page, totalPages);
@@ -181,45 +244,80 @@ export async function initPostsAll() {
 
     listEl.innerHTML =
       pagePosts.length === 0
-        ? `<div class="empty">게시물이 없어.</div>`
+        ? `<div class="empty">검색 결과가 없어.</div>`
         : pagePosts.map(renderRow).join('');
 
     pagerInfo.textContent = `${safePage} / ${totalPages}`;
-    btnPrev.disabled = safePage <= 1;
-    btnNext.disabled = safePage >= totalPages;
+    if (btnPrev) btnPrev.disabled = safePage <= 1;
+    if (btnNext) btnNext.disabled = safePage >= totalPages;
 
+    // page 보정이 생기면 URL도 맞춰줌
     if (safePage !== page) {
-      setState(tab, safePage);
+      setState({ tab, page: safePage, q, type });
     }
   }
 
   /* ================= 이벤트 ================= */
 
+  // 탭 클릭
   tabBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      setState(btn.dataset.tab, 1);
+      const s = getState();
+      setState({ tab: btn.dataset.tab, page: 1, q: s.q, type: s.type });
       render();
     });
   });
 
-  btnPrev.addEventListener('click', () => {
-    const { tab, page } = getState();
-    if (page > 1) {
-      setState(tab, page - 1);
-      render();
-    }
-  });
+  // 페이지네이션
+  if (btnPrev) {
+    btnPrev.addEventListener('click', () => {
+      const s = getState();
+      if (s.page > 1) {
+        setState({ tab: s.tab, page: s.page - 1, q: s.q, type: s.type });
+        render();
+      }
+    });
+  }
 
-  btnNext.addEventListener('click', () => {
-    const { tab, page } = getState();
-    setState(tab, page + 1);
-    render();
-  });
+  if (btnNext) {
+    btnNext.addEventListener('click', () => {
+      const s = getState();
+      setState({ tab: s.tab, page: s.page + 1, q: s.q, type: s.type });
+      render();
+    });
+  }
+
+  // ✅ 검색타입(제목/태그) 토글
+  if (typeBtns && typeBtns.length) {
+    typeBtns.forEach((b) => {
+      b.addEventListener('click', () => {
+        const s = getState();
+        setState({ tab: s.tab, page: 1, q: s.q, type: b.dataset.type });
+        render();
+      });
+    });
+  }
+
+  // 검색 submit → page 1로 리셋 + q 반영
+  if (searchForm && searchInput) {
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const s = getState();
+      setState({
+        tab: s.tab,
+        page: 1,
+        q: (searchInput.value || '').trim(),
+        type: s.type,
+      });
+      render();
+    });
+  }
 
   window.addEventListener('popstate', render);
 
+  // 초기 URL 정리(기본값 보정)
   const init = getState();
-  setState(init.tab, init.page);
+  setState(init);
 
   render();
 }

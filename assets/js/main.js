@@ -3,6 +3,7 @@ import { initCursorBuddy } from './modules/cursor-buddy.js';
 import { initPostsUI } from './modules/posts-ui.js';
 import { initPostDetail, initBackLink } from './modules/post-detail.js';
 import { initPostsAll } from './modules/posts-all.js';
+import { initSearchNav } from './modules/search-nav.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   initCursorBuddy({
@@ -14,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initPostsUI();
   initPostsAll();
+
+  initSearchNav({ baseUrl: './posts-all.html', defaultTab: 'all' });
 
   // ✅ 상세페이지면 동작하고, 아니면 조용히 종료됨
   initPostDetail().catch((err) => {

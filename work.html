@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="assets/css/pages/work.css" />
     <link rel="stylesheet" href="assets/css/components/main.css" />
     <link rel="stylesheet" href="assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
   </head>
   <body class="theme-work" data-page="work">
     <div class="page">
@@ -26,13 +27,36 @@
             <img src="images/logo-word.png" alt="말린오이닷컴" />
           </a>
 
-          <form class="search" role="search">
+          <form class="search" id="searchForm" role="search">
             <label class="sr-only" for="q">검색</label>
             <input
+              id="q"
+              name="q"
               class="search__input"
               type="search"
               placeholder="검색어를 입력하세요."
             />
+
+            <!-- ✅ 검색타입 토글(제목/태그) -->
+            <div class="search__type" role="group" aria-label="검색 방식">
+              <button
+                type="button"
+                class="search-type-btn is-active"
+                data-type="title"
+                aria-pressed="true"
+              >
+                제목
+              </button>
+              <button
+                type="button"
+                class="search-type-btn"
+                data-type="tag"
+                aria-pressed="false"
+              >
+                태그
+              </button>
+            </div>
+
             <button class="btn search__btn" type="submit" aria-label="검색">
               🔍
             </button>
