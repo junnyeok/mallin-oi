@@ -1,12 +1,11 @@
 // assets/js/modules/search-nav.js
 export function initSearchNav({
-  baseUrl = './posts-all.html',
+  baseUrl = 'posts-all.html', // 이제 ./ 제거 (우리가 basePath를 붙일 거라서)
   formSelector = '#searchForm',
   inputSelector = '#q',
   typeBtnSelector = '[data-type]',
 } = {}) {
   const page = document.body?.dataset?.page || 'home';
-
   if (page === 'posts-all') return;
 
   const form =
@@ -64,7 +63,21 @@ export function initSearchNav({
     });
   }
 
-  // ✅ 여기 핵심 수정
+  // ✅ GitHub Pages에서 "레포 이름 경로(/mallin-oi/)"를 자동으로 잡는 함수
+  function getSiteBasePath() {
+    // 예) /mallin-oi/posts/p001.html  -> /mallin-oi/
+    // 예) /posts/p001.html (유저사이트) -> /
+    const parts = window.location.pathname.split('/').filter(Boolean);
+
+    // github.io에서 프로젝트 페이지면 첫 번째 조각이 repo명
+    if (window.location.hostname.endsWith('github.io') && parts.length > 0) {
+      return `/${parts[0]}/`;
+    }
+
+    // 그 외(커스텀 도메인/유저사이트)는 루트
+    return '/';
+  }
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -77,7 +90,7 @@ export function initSearchNav({
     if (type === 'tag') params.set('type', 'tag');
     if (q) params.set('q', q);
 
-    // 🔥 상대경로만 사용
-    window.location.href = `${baseUrl}?${params.toString()}`;
+    const basePath = getSiteBasePath(); // ✅ /mallin-oi/ 자동
+    window.location.href = `${basePath}${baseUrl}?${params.toString()}`;
   });
 }
