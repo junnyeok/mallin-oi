@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="./assets/css/components/main.css" />
     <link rel="stylesheet" href="./assets/css/components/footer.css" />
     <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/weekly-nav-btn.css" />
 
     <!-- 각페이지 main -->
     <link rel="stylesheet" href="./assets/css/components/posts-all-main.css" />
@@ -138,20 +139,24 @@
             <nav class="posts-all__pager" aria-label="페이지 이동">
               <button
                 type="button"
-                class="pager-btn"
+                class="weekly-nav__btn"
                 id="pagerPrev"
                 aria-label="이전 페이지"
               >
                 ←
               </button>
 
-              <span class="pager-info" id="pagerInfo" aria-live="polite">
+              <span
+                class="pager-info weekly-nav__label"
+                id="pagerInfo"
+                aria-live="polite"
+              >
                 1 / 1
               </span>
 
               <button
                 type="button"
-                class="pager-btn"
+                class="weekly-nav__btn"
                 id="pagerNext"
                 aria-label="다음 페이지"
               >

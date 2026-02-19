@@ -163,26 +163,3 @@
   justify-content: center;
   gap: var(--space-12);
 }
-
-/* 기존 주간체크 버튼 스타일을 여기에도 적용 */
-.pager-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  cursor: pointer;
-  line-height: 1;
-}
-
-.pager-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.pager-info {
-  font-size: 12px;
-  color: var(--color-text-sub);
-  min-width: 56px;
-  text-align: center;
-}

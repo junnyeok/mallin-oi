@@ -4,8 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>게시물 | 말린오이닷컴</title>
-
-    <!-- ✅ 상대경로(상위로 1칸) -->
     <link rel="shortcut icon" href="../images/favicon.ico" />
 
     <!-- 공통 -->
@@ -22,28 +20,27 @@
     <link rel="stylesheet" href="../assets/css/components/post-btn.css" />
 
     <!-- 페이지 css -->
-    <link rel="stylesheet" href="../assets/css/pages/career.css" />
+    <link rel="stylesheet" href="../assets/css/pages/event.css" />
 
     <!-- 게시물 전용 -->
     <link rel="stylesheet" href="../assets/css/components/post-main.css" />
     <link rel="stylesheet" href="../assets/css/components/posts-all-main.css" />
   </head>
 
-  <!-- ✅ 이 게시물은 p007 -->
-  <body class="theme-career" data-page="career" data-post-id="p007">
+  <!-- 이 게시물은 p008 -->
+  <body class="theme-event" data-page="event" data-post-id="p008">
     <div class="page">
-      <!-- 헤더 -->
+      <!-- 헤더(그대로 복붙) -->
       <header class="site-header">
         <div class="container header-inner">
           <a class="logo" href="../index.html" aria-label="홈으로">
-            <img src="../images/logo-career.png" alt="말린오이닷컴" />
+            <img src="../images/logo-event.png" alt="말린오이닷컴" />
             <img src="../images/logo-word.png" alt="말린오이닷컴" />
           </a>
 
           <form class="search" role="search">
             <label class="sr-only" for="q">검색</label>
             <input
-              id="q"
               class="search__input"
               type="search"
               placeholder="검색어를 입력하세요."
@@ -66,15 +63,12 @@
               <a class="site-nav__link" href="../work.html">업무</a>
             </li>
             <li class="site-nav__item">
-              <a class="site-nav__link" href="../event.html">이벤트</a>
+              <a class="site-nav__link" href="../event.html" aria-current="page"
+                >이벤트</a
+              >
             </li>
             <li class="site-nav__item">
-              <a
-                class="site-nav__link"
-                href="../career.html"
-                aria-current="page"
-                >이력</a
-              >
+              <a class="site-nav__link" href="../career.html">이력</a>
             </li>
           </ul>
         </nav>
@@ -192,7 +186,7 @@
         </section>
       </main>
 
-      <!-- 푸터 -->
+      <!-- 푸터(그대로 복붙) -->
       <footer class="site-footer">
         <div class="container footer-inner">
           <div class="footer-brand">
@@ -201,7 +195,7 @@
               href="../index.html"
               aria-label="홈으로"
             >
-              <img src="../images/logo-career.png" alt="말린오이닷컴" />
+              <img src="../images/logo-event.png" alt="말린오이닷컴" />
             </a>
             <p class="footer-brand__desc">
               공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
@@ -222,16 +216,15 @@
             <h2 class="footer-title">연락</h2>
             <ul class="footer-list">
               <li>
-                <a class="footer-link" href="mailto:junna961@icloud.com">
-                  junna961@icloud.com
-                </a>
+                <a class="footer-link" href="mailto:junna961@icloud.com"
+                  >junna961@icloud.com</a
+                >
               </li>
               <li>
                 <a
                   class="footer-link"
                   href="https://www.instagram.com/junnyeok/"
                   target="_blank"
-                  rel="noopener"
                   aria-label="인스타그램"
                   >Instagram</a
                 >
@@ -241,7 +234,6 @@
                   class="footer-link"
                   href="https://github.com"
                   target="_blank"
-                  rel="noopener"
                   aria-label="깃허브"
                   >GitHub</a
                 >
@@ -271,7 +263,7 @@
       class="cursor-buddy"
     />
 
-    <!-- JS -->
+    <!-- 기존 main + 게시물 전용 -->
     <script type="module" src="../assets/js/main.js"></script>
     <script type="module" src="../assets/js/modules/post-detail.js"></script>
   </body>

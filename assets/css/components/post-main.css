@@ -94,3 +94,25 @@
     font-size: 24px;
   }
 }
+
+.post-detail-list__title {
+  margin: 10px 20px;
+}
+
+/* 상세 하단 목록용 - UL 기본 스타일 제거 */
+.post-detail-list__items,
+#detailPostList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.post-detail-list__li {
+  margin: 0;
+  padding: 0;
+}
+
+.post-detail-list__empty {
+  padding: var(--space-12) var(--space-16);
+  color: var(--color-text-sub);
+}

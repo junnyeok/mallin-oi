@@ -4,6 +4,8 @@ import { initPostsUI } from './modules/posts-ui.js';
 import { initPostDetail, initBackLink } from './modules/post-detail.js';
 import { initPostsAll } from './modules/posts-all.js';
 import { initSearchNav } from './modules/search-nav.js';
+import { initPostDetailList } from './modules/post-detail-list.js';
+import { initPostPrevNext } from './modules/post-prev-next.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   initCursorBuddy({
@@ -15,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initPostsUI();
   initPostsAll();
+  initPostDetailList();
+  initPostPrevNext();
 
   initSearchNav({ baseUrl: './posts-all.html', defaultTab: 'all' });
 

@@ -75,5 +75,16 @@
     "pinned": false,
     "tags": ["사이트", "포트폴리오"],
     "url": "posts/p007.html"
+  },
+  {
+    "id": "p008",
+    "title": "개인 3월 일정",
+    "excerpt": "업무를 제외한 개인 3월 일정",
+    "category": "event",
+    "date": "2026-02-19",
+    "views": 0,
+    "pinned": false,
+    "tags": ["캘린더", "일정"],
+    "url": "posts/p008.html"
   }
 ]
