@@ -10,6 +10,9 @@
 
 const STORAGE_KEY = 'writeOutput_v1';
 
+// ✅ home 제외: write에서 허용하는 카테고리 고정
+const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
+
 function $(sel) {
   return document.querySelector(sel);
 }
@@ -189,7 +192,7 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
       <header class="site-header">
         <div class="container header-inner">
           <a class="logo" href="../index.html" aria-label="홈으로">
-            <img src="${logo}" alt="말린오이닷컴" />
+            <img src="${logo}" alt="말린오이닷com" />
             <img src="../images/logo-word.png" alt="말린오이닷컴" />
           </a>
 
@@ -374,8 +377,12 @@ export function initWrite() {
 
     const title = $('#title')?.value || '';
     const excerpt = $('#excerpt')?.value || '';
-    const body = $('#body')?.value || ''; // ✅✅ 추가
-    const category = $('#category')?.value || 'study';
+    const body = $('#body')?.value || '';
+
+    // ✅ home 완전 차단: 허용 목록으로만 고정
+    let category = $('#category')?.value || 'study';
+    if (!ALLOWED_CATEGORIES.has(category)) category = 'study';
+
     const date = $('#date')?.value || todayISO();
     const tags = parseTags($('#tags')?.value || '');
     const pinned = !!$('#pinned')?.checked;
