@@ -119,5 +119,16 @@
     "pinned": false,
     "tags": ["코딩"],
     "url": "posts/p011.html"
+  },
+  {
+    "id": "p012",
+    "title": "사이트 제작자는 보시오",
+    "excerpt": "경고합니다",
+    "category": "event",
+    "date": "2026-02-22",
+    "views": 0,
+    "pinned": true,
+    "tags": ["흥"],
+    "url": "posts/p012.html"
   }
 ]
