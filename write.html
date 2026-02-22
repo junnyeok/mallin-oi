@@ -3,30 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>말린오이닷컴</title>
+    <title>새글쓰기 | 말린오이닷컴</title>
 
-    <!-- 공통 css -->
+    <!-- 공통 -->
     <link rel="shortcut icon" href="./images/favicon.ico" />
     <link rel="stylesheet" href="./assets/css/00-reset.css" />
     <link rel="stylesheet" href="./assets/css/01-tokens.css" />
     <link rel="stylesheet" href="./assets/css/02-base.css" />
     <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/forms.css" />
     <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
     <link rel="stylesheet" href="./assets/css/components/nav.css" />
     <link rel="stylesheet" href="./assets/css/components/footer.css" />
     <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
-    <link rel="stylesheet" href="../assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
 
-    <!-- 페이지 css -->
-    <link rel="stylesheet" href="./assets/css/pages/index.css" />
-    <!-- main -->
-    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <!-- ✅ write 전용(main 폴더로 변경) -->
+    <link rel="stylesheet" href="./assets/css/main/write-main.css" />
   </head>
 
-  <body data-page="home">
+  <body class="theme-home" data-page="write">
     <div class="page">
+      <!-- 헤더 -->
       <header class="site-header">
         <div class="container header-inner">
           <a class="logo" href="./index.html" aria-label="홈으로">
@@ -44,7 +44,6 @@
               placeholder="검색어를 입력하세요."
             />
 
-            <!-- ✅ 검색타입 토글(제목/태그) -->
             <div class="search__type" role="group" aria-label="검색 방식">
               <button
                 type="button"
@@ -68,6 +67,7 @@
               🔍
             </button>
           </form>
+
           <a
             class="write-btn write-btn--corner"
             href="./write.html"
@@ -80,9 +80,7 @@
         <nav class="site-nav" aria-label="주요 메뉴">
           <ul class="site-nav__list">
             <li class="site-nav__item">
-              <a class="site-nav__link" href="./index.html" aria-current="page"
-                >홈</a
-              >
+              <a class="site-nav__link" href="./index.html">홈</a>
             </li>
             <li class="site-nav__item">
               <a class="site-nav__link" href="./study.html">공부</a>
@@ -101,41 +99,137 @@
       </header>
 
       <main class="site-main">
-        <section class="home-section">
+        <section class="write">
           <div class="container">
-            <div class="home-section__head">
-              <h2 class="home-section__title">🔥 주요 업데이트</h2>
-              <a class="home-section__more" href="./posts-all.html"
-                >전체보기 →</a
-              >
+            <div class="write__head">
+              <h1 class="write__title">✍️ 새 글 쓰기</h1>
+              <p class="write__desc">
+                등록을 누르면 <strong>posts.json에 넣을 JSON</strong>과
+                <strong>posts/pXXX.html 템플릿</strong>이 생성돼. <br />
+                ⭐️오른쪽 코드를 복붙해서 박준혁한테 보내주면 글을 올려줄 거야.
+              </p>
             </div>
 
-            <div class="grid grid--cards" id="cardGrid"></div>
-          </div>
-        </section>
+            <div class="write__grid">
+              <!-- 폼 -->
+              <section class="write-card" aria-label="작성 폼">
+                <form class="write-form" id="writeForm">
+                  <div class="write-row">
+                    <label class="write-label" for="category">카테고리</label>
+                    <select id="category" name="category" class="write-control">
+                      <option value="study">study</option>
+                      <option value="work">work</option>
+                      <option value="event">event</option>
+                      <option value="career">career</option>
+                    </select>
+                  </div>
 
-        <section class="home-section">
-          <div class="container">
-            <div class="split">
-              <div class="panel">
-                <h2 class="panel__title">✔️ 이번 주 체크</h2>
-                <ul class="list" id="weeklyList"></ul>
-                <img
-                  src="./images/good.png"
-                  alt="체크 완료"
-                  class="weekly-done-image"
-                />
-              </div>
+                  <div class="write-row">
+                    <label class="write-label" for="date">날짜</label>
+                    <input
+                      id="date"
+                      name="date"
+                      class="write-control"
+                      type="date"
+                    />
+                  </div>
 
-              <div class="panel">
-                <h2 class="panel__title">🆕 최신 업로드</h2>
-                <div class="mini" id="latestList"></div>
-              </div>
+                  <div class="write-row">
+                    <label class="write-label" for="title">제목</label>
+                    <input
+                      id="title"
+                      name="title"
+                      class="write-control"
+                      type="text"
+                      placeholder="예) flex vs grid 정리"
+                      required
+                    />
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="excerpt">요약</label>
+                    <textarea
+                      id="excerpt"
+                      name="excerpt"
+                      class="write-control write-control--area"
+                      rows="3"
+                      placeholder="목록 카드에 보일 짧은 설명"
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="tags">태그</label>
+                    <input
+                      id="tags"
+                      name="tags"
+                      class="write-control"
+                      type="text"
+                      placeholder="예) 코딩, css, layout (쉼표로 구분)"
+                    />
+                    <p class="write-help">쉼표(,)로 구분. #은 없어도 됨.</p>
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="pinned">고정</label>
+                    <label class="write-check">
+                      <input id="pinned" name="pinned" type="checkbox" />
+                      고정글(pinned)로 등록
+                    </label>
+                  </div>
+
+                  <div class="write-actions">
+                    <button type="submit" class="write-action" id="btnGenerate">
+                      등록(복붙 코드 생성)
+                    </button>
+                  </div>
+
+                  <p class="write-note" id="writeNote" aria-live="polite"></p>
+                </form>
+              </section>
+
+              <!-- 출력 -->
+              <section class="write-card" aria-label="생성 결과">
+                <div class="write-out-head">
+                  <h2 class="write-out-title">복붙 코드</h2>
+                  <div class="write-out-actions">
+                    <button
+                      type="button"
+                      class="write-mini-btn"
+                      id="copyJson"
+                      disabled
+                    >
+                      JSON 복사
+                    </button>
+                    <button
+                      type="button"
+                      class="write-mini-btn"
+                      id="copyHtml"
+                      disabled
+                    >
+                      HTML 복사
+                    </button>
+                  </div>
+                </div>
+
+                <div class="write-out">
+                  <p class="write-out-label">
+                    1) <code>assets/data/posts.json</code>에 추가할 항목
+                  </p>
+                  <pre class="write-pre" id="outJson" tabindex="0"></pre>
+
+                  <p class="write-out-label">
+                    2) <code>posts/pXXX.html</code> 새 파일 템플릿
+                  </p>
+                  <pre class="write-pre" id="outHtml" tabindex="0"></pre>
+                </div>
+              </section>
             </div>
           </div>
         </section>
       </main>
 
+      <!-- 푸터 -->
       <footer class="site-footer">
         <div class="container footer-inner">
           <div class="footer-brand">

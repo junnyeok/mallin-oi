@@ -6,6 +6,8 @@ import { initPostsAll } from './modules/posts-all.js';
 import { initSearchNav } from './modules/search-nav.js';
 import { initPostDetailList } from './modules/post-detail-list.js';
 import { initPostPrevNext } from './modules/post-prev-next.js';
+import { initScrollButtons } from './modules/scroll-buttons.js';
+import { initWrite } from './modules/write.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   initCursorBuddy({
@@ -19,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initPostsAll();
   initPostDetailList();
   initPostPrevNext();
+  initScrollButtons();
+  initWrite();
 
   initSearchNav({ baseUrl: './posts-all.html', defaultTab: 'all' });
 

@@ -1,0 +1,77 @@
+/* =========================
+  Write Button (Header)
+  - tokens 기반
+  - header 오른쪽 아래(초록 영역 하단) 배치용
+========================= */
+
+/* header-inner를 기준으로 absolute 배치 */
+.site-header .header-inner {
+  position: relative;
+}
+
+/* 기본 버튼 스타일 */
+.write-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+
+  height: 40px;
+  padding: 0 var(--space-16);
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+
+  background: var(--color-surface);
+  color: var(--color-text);
+
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+.write-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.write-btn:active {
+  transform: translateY(0);
+  opacity: 0.92;
+}
+
+.write-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ✅ 오른쪽 아래 배치 (네가 원하는 위치) */
+.write-btn--corner {
+  position: absolute;
+  right: var(--space-16);
+  top: calc(100% + var(--space-8)); /* 헤더 아래로 8px 내려서 여유 */
+  z-index: 3;
+}
+
+/* 모바일: 헤더 폭이 줄어드니 자연스럽게 흐름에 합류 */
+@media (max-width: 700px) {
+  .write-btn {
+    height: 36px;
+    padding: 0 var(--space-12);
+    font-size: 13px;
+  }
+
+  .write-btn--corner {
+    position: static;
+    margin-top: var(--space-12);
+  }
+}

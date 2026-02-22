@@ -86,5 +86,16 @@
     "pinned": false,
     "tags": ["캘린더", "일정"],
     "url": "posts/p008.html"
+  },
+  {
+    "id": "p009",
+    "title": "과연",
+    "excerpt": "두근",
+    "category": "study",
+    "date": "2026-02-22",
+    "views": 0,
+    "pinned": false,
+    "tags": ["코딩"],
+    "url": "posts/p009.html"
   }
 ]
