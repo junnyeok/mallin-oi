@@ -1,21 +1,38 @@
+/* assets/css/components/cursor-buddy.css */
+
 .cursor-buddy {
-  /* 뷰포트(화면)에 고정시킴. 스크롤해도 같이 따라옴.
-  커서 따라다니는 건 거의 fixed가 정답 */
   position: fixed;
-  /* 기준점을 화면 왼쪽 위로 두는 설정 
-  실제위치는 transform으로 계속 바꿀 거라서 기준점 0,0으로*/
   left: 0;
   top: 0;
-  /* 오토로 원본비율유지 */
   width: 60px;
   height: auto;
   z-index: 9999;
-  /* 캐릭터가 마우스 클릭을 가로채지않게함
-  없으면 캐릭터가 링크/버튼 위로 지나갈때 클릭 안되는 버그 */
   pointer-events: none;
-  /* 페이지 로드 순간, 마우스 좌표를 아직 못 받아서 0,0 왼쪽 위에 툭 보이는 걸 막음. */
+
+  /* 초기엔 화면 밖 + 안 보이게 */
   transform: translate(-9999px, -9999px);
-  /* 이요소는 transform이 계속 바뀔 거라는 미리 힌트를 줌
-  잔렉 줄이기 */
-  will-change: transform;
+  opacity: 0;
+
+  /* transform은 계속 바뀌니까 transition 걸면 버벅일 수 있어서
+     opacity만 부드럽게 처리 */
+  transition: opacity 220ms ease;
+
+  will-change: transform, opacity;
+}
+
+/* 보이는 상태 */
+.cursor-buddy.is-visible {
+  opacity: 1;
+}
+
+/* 모바일에서 약간 더 “나타났다 사라짐” 느낌 주고 싶으면(선택)
+  scale까지 주려면 wrapper가 필요하지만,
+  img 단일 요소로는 transform을 포지션에 쓰고 있어서 scale 섞으면 꼬일 수 있음.
+   그래서 여기선 opacity만 안전하게 사용. */
+
+/* 접근성: 모션 싫어하는 사람은 페이드도 끔 */
+@media (prefers-reduced-motion: reduce) {
+  .cursor-buddy {
+    transition: none;
+  }
 }
