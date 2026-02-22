@@ -34,12 +34,27 @@ function formatMMDD(dateStr) {
   return `${mm}/${dd}`;
 }
 
+function getIdNum(id) {
+  const m = String(id || '').match(/(\d+)/);
+  return m ? Number(m[1]) : -1;
+}
+
+// ✅ pinned 먼저 + date 최신순 + (date 같으면) id 큰 게 먼저
 function sortPinnedThenDateDesc(posts) {
   return [...posts].sort((a, b) => {
     const ap = a.pinned ? 1 : 0;
     const bp = b.pinned ? 1 : 0;
-    if (bp !== ap) return bp - ap; // pinned 먼저
-    return new Date(b.date) - new Date(a.date); // 최신 먼저
+    if (bp !== ap) return bp - ap;
+
+    const bt = new Date(b.date).getTime();
+    const at = new Date(a.date).getTime();
+    if (bt !== at) return bt - at;
+
+    const bn = getIdNum(b.id);
+    const an = getIdNum(a.id);
+    if (bn !== an) return bn - an;
+
+    return String(b.title || '').localeCompare(String(a.title || ''), 'ko');
   });
 }
 
@@ -55,27 +70,19 @@ function getPostsJsonUrl() {
 
 /**
  * 상세페이지에서 "다른 글" 링크를 안전하게 만들기
- * - posts.json의 url이 /posts/p007.html 이든 posts/p007.html 이든 ./p007.html 이든 다 처리
  */
 function toDetailHref(url) {
   if (!url) return '#';
   const u = String(url).trim();
 
-  // 외부/프로토콜
   if (/^(https?:)?\/\//i.test(u)) return u;
   if (/^(mailto:|tel:)/i.test(u)) return u;
   if (u.startsWith('#')) return u;
 
-  // ✅ /posts/p007.html -> ./p007.html
   if (u.startsWith('/posts/')) return `.${u.replace('/posts/', '/')}`;
-
-  // ✅ posts/p007.html -> ./p007.html
   if (u.startsWith('posts/')) return `./${u.replace(/^posts\//, '')}`;
-
-  // ✅ /something -> .. + 절대경로 (fallback)
   if (u.startsWith('/')) return `..${u}`;
 
-  // ✅ 이미 ./p007.html 또는 p007.html 형태면 그대로
   return u;
 }
 
@@ -105,12 +112,10 @@ export async function initPostDetailList() {
   const btnNext = document.getElementById('detailNextBtn');
   const pageInfo = document.getElementById('detailPageInfo');
 
-  // ❗ 상세페이지에 영역 없으면 조용히 종료
   if (!listEl || !btnPrev || !btnNext || !pageInfo) return;
 
   const PER_PAGE = 10;
 
-  // 현재 글 id (body data-post-id 우선)
   const currentId =
     document.body?.dataset?.postId ||
     (location.pathname.split('/').pop() || '').replace('.html', '');
@@ -129,7 +134,6 @@ export async function initPostDetailList() {
     return;
   }
 
-  // 현재 글 제외
   const filtered = sortPinnedThenDateDesc(
     allPosts.filter((p) => (p.id || '') !== currentId)
   );

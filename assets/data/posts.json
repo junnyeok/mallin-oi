@@ -97,5 +97,27 @@
     "pinned": false,
     "tags": ["코딩"],
     "url": "posts/p009.html"
+  },
+  {
+    "id": "p010",
+    "title": "박준혁 바보",
+    "excerpt": "바보",
+    "category": "career",
+    "date": "2026-02-22",
+    "views": 0,
+    "pinned": false,
+    "tags": ["바보"],
+    "url": "posts/p010.html"
+  },
+  {
+    "id": "p011",
+    "title": "근데 왜 같은 날짜 최신글이 위로 안 올라가는가",
+    "excerpt": "그지?",
+    "category": "study",
+    "date": "2026-02-22",
+    "views": 0,
+    "pinned": false,
+    "tags": ["코딩"],
+    "url": "posts/p011.html"
   }
 ]

@@ -35,8 +35,25 @@ function formatMMDD(dateStr) {
   return `${mm}/${dd}`;
 }
 
+function getIdNum(id) {
+  const m = String(id || '').match(/(\d+)/);
+  return m ? Number(m[1]) : -1;
+}
+
+// ✅ date 최신순 + (date 같으면) id 큰 게 먼저
 function sortByDateDesc(posts) {
-  return [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  return [...posts].sort((a, b) => {
+    const bt = new Date(b.date).getTime();
+    const at = new Date(a.date).getTime();
+    if (bt !== at) return bt - at;
+
+    const bn = getIdNum(b.id);
+    const an = getIdNum(a.id);
+    if (bn !== an) return bn - an;
+
+    // 마지막 안전장치(완전 동일하면 타이틀로)
+    return String(b.title || '').localeCompare(String(a.title || ''), 'ko');
+  });
 }
 
 function normalize(s) {
@@ -103,7 +120,7 @@ function setState({ tab, page, q, type }) {
   sp.set('tab', safeTab);
 
   // 검색
-  if (safeType !== 'title') sp.set('type', safeType); // 기본값이면 굳이 안 넣어도 되게
+  if (safeType !== 'title') sp.set('type', safeType);
   if (safeQ) sp.set('q', safeQ);
 
   // 페이지

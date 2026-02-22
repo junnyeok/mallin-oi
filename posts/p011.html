@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>게시물 | 말린오이닷컴</title>
+
+    <!-- ✅ 상위폴더 기준 상대경로 -->
+    <link rel="shortcut icon" href="../images/favicon.ico" />
+
+    <!-- 공통 -->
+    <link rel="stylesheet" href="../assets/css/00-reset.css" />
+    <link rel="stylesheet" href="../assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="../assets/css/02-base.css" />
+    <link rel="stylesheet" href="../assets/css/03-layout.css" />
+    <link rel="stylesheet" href="../assets/css/components/buttons.css" />
+    <link rel="stylesheet" href="../assets/css/components/forms.css" />
+    <link rel="stylesheet" href="../assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="../assets/css/components/nav.css" />
+    <link rel="stylesheet" href="../assets/css/components/footer.css" />
+    <link rel="stylesheet" href="../assets/css/components/weekly-nav-btn.css" />
+    <link rel="stylesheet" href="../assets/css/components/post-btn.css" />
+    <link rel="stylesheet" href="../assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="../assets/css/components/write-btn.css" />
+
+    <!-- 페이지 css -->
+    <link rel="stylesheet" href="../assets/css/pages/study.css" />
+
+    <!-- main -->
+    <link rel="stylesheet" href="../assets/css/main/post-main.css" />
+    <link rel="stylesheet" href="../assets/css/main/posts-all-main.css" />
+  </head>
+
+  <!-- ✅ 이 게시물은 p011 -->
+  <body class="theme-study" data-page="study" data-post-id="p011">
+    <div class="page">
+      <!-- 헤더 -->
+      <header class="site-header">
+        <div class="container header-inner">
+          <a class="logo" href="../index.html" aria-label="홈으로">
+            <img src="../images/logo-study.png" alt="말린오이닷com" />
+            <img src="../images/logo-word.png" alt="말린오이닷컴" />
+          </a>
+
+          <form class="search" role="search">
+            <label class="sr-only" for="q">검색</label>
+            <input
+              id="q"
+              class="search__input"
+              type="search"
+              placeholder="검색어를 입력하세요."
+            />
+            <button class="btn search__btn" type="submit" aria-label="검색">
+              🔍
+            </button>
+          </form>
+
+          <a
+            class="write-btn write-btn--corner"
+            href="../write.html"
+            aria-label="새 글 쓰기"
+          >
+            ✍️ 새글쓰기
+          </a>
+        </div>
+
+        <nav class="site-nav" aria-label="주요 메뉴">
+          <ul class="site-nav__list">
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="../index.html">홈</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="../study.html">공부</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="../work.html">업무</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="../event.html">이벤트</a>
+            </li>
+            <li class="site-nav__item">
+              <a class="site-nav__link" href="../career.html">이력</a>
+            </li>
+          </ul>
+        </nav>
+      </header>
+
+      <main class="site-main">
+        <section class="post">
+          <div class="container">
+            <div class="post__top">
+              <a class="post__back" href="#" id="postBack">← 뒤로가기</a>
+            </div>
+
+            <article class="post-card" aria-labelledby="postTitle">
+              <header class="post-head">
+                <div class="post-meta">
+                  <span class="chip" id="postCategory">category</span>
+                  <span class="chip chip--muted" id="postViews">👀 0</span>
+                </div>
+
+                <h1 class="post-title" id="postTitle">로딩중...</h1>
+                <p class="post-excerpt" id="postExcerpt"></p>
+                <div class="post-tags" id="postTags"></div>
+              </header>
+
+              <hr class="post-divider" />
+
+              <section class="post-body">
+                <p>봐바</p>
+              </section>
+            </article>
+
+            <nav
+              class="post-pager"
+              aria-label="이전글 다음글"
+              style="
+                margin: var(--space-16) 0 var(--space-24);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--space-12);
+              "
+            >
+              <a
+                href="#"
+                id="postPrevBtn"
+                class="weekly-nav__btn"
+                aria-disabled="true"
+                >← 이전글</a
+              >
+              <a
+                href="../posts-all.html"
+                id="postListBtn"
+                class="weekly-nav__btn"
+                >목록</a
+              >
+              <a
+                href="#"
+                id="postNextBtn"
+                class="weekly-nav__btn"
+                aria-disabled="true"
+                >다음글 →</a
+              >
+            </nav>
+
+            <section
+              class="post-detail-list posts-all__list"
+              aria-label="다른 게시물 목록"
+            >
+              <div class="post-detail-list__head">
+                <h2 class="post-detail-list__title">다른 게시물</h2>
+              </div>
+
+              <div class="posts-all__rows" id="detailPostList"></div>
+
+              <div
+                class="post-detail-list__pager post posts-all__pager"
+                aria-label="목록 페이지네이션"
+              >
+                <button
+                  type="button"
+                  class="weekly-nav__btn"
+                  id="detailPrevBtn"
+                  aria-label="이전 페이지"
+                >
+                  ←
+                </button>
+                <span class="post-detail-list__page" id="detailPageInfo"
+                  >1 / 1</span
+                >
+                <button
+                  type="button"
+                  class="weekly-nav__btn"
+                  id="detailNextBtn"
+                  aria-label="다음 페이지"
+                >
+                  →
+                </button>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="container footer-inner">
+          <div class="footer-brand">
+            <a
+              class="footer-brand__logo"
+              href="../index.html"
+              aria-label="홈으로"
+            >
+              <img src="../images/logo-study.png" alt="말린오이닷컴" />
+            </a>
+            <p class="footer-brand__desc">
+              공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
+            </p>
+          </div>
+
+          <nav class="footer-nav" aria-label="푸터 링크">
+            <h2 class="footer-title">바로가기</h2>
+            <ul class="footer-list">
+              <li><a class="footer-link" href="../study.html">공부</a></li>
+              <li><a class="footer-link" href="../work.html">업무</a></li>
+              <li><a class="footer-link" href="../event.html">이벤트</a></li>
+              <li><a class="footer-link" href="../career.html">이력</a></li>
+            </ul>
+          </nav>
+
+          <div class="footer-contact">
+            <h2 class="footer-title">연락</h2>
+            <ul class="footer-list">
+              <li>
+                <a class="footer-link" href="mailto:junna961@icloud.com"
+                  >junna961@icloud.com</a
+                >
+              </li>
+              <li>
+                <a
+                  class="footer-link"
+                  href="https://www.instagram.com/junnyeok/"
+                  target="_blank"
+                  rel="noopener"
+                  >Instagram</a
+                >
+              </li>
+              <li>
+                <a
+                  class="footer-link"
+                  href="https://github.com"
+                  target="_blank"
+                  rel="noopener"
+                  >GitHub</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <div class="container footer-bottom__inner">
+            <small
+              >© <span id="year"></span> 말린오이닷컴. All rights
+              reserved.</small
+            >
+            <a class="footer-link footer-link--small" href="#"
+              >개인정보처리방침</a
+            >
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="../images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+    <script type="module" src="../assets/js/main.js"></script>
+  </body>
+</html>

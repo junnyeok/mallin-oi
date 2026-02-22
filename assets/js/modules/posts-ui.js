@@ -30,8 +30,6 @@ function getCombinedViews(post) {
 
 /* ================= 데이터 로드/필터 ================= */
 
-// ✅ (중요) 이 파일은 /assets/js/modules/posts-ui.js 에 있으니까
-// /assets/data/*.json 을 읽으려면 ../../data/*.json 이 맞아.
 const DATA_BASE = new URL('../../data/', import.meta.url);
 
 async function loadJson(fileName) {
@@ -45,7 +43,6 @@ async function loadPosts() {
   return loadJson('posts.json');
 }
 
-// ✅ weekly.json 로드 (여러 주차 지원 + 기존 1주 구조도 호환)
 async function loadWeekly() {
   try {
     const data = await loadJson('weekly.json');
@@ -53,7 +50,6 @@ async function loadWeekly() {
     const activeWeek =
       typeof data.activeWeek === 'string' ? data.activeWeek : null;
 
-    // ✅ 새 구조: { activeWeek, weeks:[{ week, items }] }
     if (Array.isArray(data.weeks)) {
       const map = new Map();
       const order = [];
@@ -67,17 +63,14 @@ async function loadWeekly() {
         order.push(week);
       });
 
-      // 날짜 정렬(오름차순)
       order.sort((a, b) => new Date(a) - new Date(b));
 
-      // activeWeek가 없거나 목록에 없으면 가장 최신(마지막)으로
       let idx = activeWeek ? order.indexOf(activeWeek) : -1;
       if (idx < 0) idx = order.length - 1;
 
       return { mode: 'multi', order, map, index: idx };
     }
 
-    // ✅ 구 구조(호환): { activeWeek, items }
     const items = Array.isArray(data.items) ? data.items : [];
     if (!activeWeek) return { mode: 'single', week: null, items: [] };
     return { mode: 'single', week: activeWeek, items };
@@ -95,8 +88,26 @@ function scopePosts(posts, pageCategory) {
   return posts.filter((p) => p.category === pageCategory);
 }
 
+/* ================= 정렬 (✅ 같은 날짜 보정) ================= */
+
+function getIdNum(id) {
+  const m = String(id || '').match(/(\d+)/);
+  return m ? Number(m[1]) : -1;
+}
+
+// ✅ date 최신순 + (date 같으면) id 큰 게 먼저
 function sortByDateDesc(posts) {
-  return [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  return [...posts].sort((a, b) => {
+    const bt = new Date(b.date).getTime();
+    const at = new Date(a.date).getTime();
+    if (bt !== at) return bt - at;
+
+    const bn = getIdNum(b.id);
+    const an = getIdNum(a.id);
+    if (bn !== an) return bn - an;
+
+    return String(b.title || '').localeCompare(String(a.title || ''), 'ko');
+  });
 }
 
 /**
@@ -104,6 +115,7 @@ function sortByDateDesc(posts) {
  * 1. pinned 우선
  * 2. (합산) views 내림차순
  * 3. date 최신순
+ * 4. (date 같으면) id 큰 게 먼저
  */
 function sortForFeatured(posts) {
   return [...posts].sort((a, b) => {
@@ -115,7 +127,11 @@ function sortForFeatured(posts) {
     const av = getCombinedViews(a);
     if (bv !== av) return bv - av;
 
-    return new Date(b.date) - new Date(a.date);
+    const bt = new Date(b.date).getTime();
+    const at = new Date(a.date).getTime();
+    if (bt !== at) return bt - at;
+
+    return getIdNum(b.id) - getIdNum(a.id);
   });
 }
 
@@ -128,7 +144,6 @@ function formatMMDD(dateStr) {
 
 /* ================= 카드/리스트 클릭 추적 ================= */
 
-/** ✅ 목록 클릭으로 상세 진입할 때 중복 bump 방지용 플래그 */
 function markViewFromList(id) {
   try {
     sessionStorage.setItem(`viewFromList:${id}`, '1');
@@ -139,7 +154,6 @@ function attachViewTracker(rootEl) {
   if (!rootEl) return;
 
   rootEl.addEventListener('click', (e) => {
-    // 카드 그리드: <a class="card" data-id="...">
     const cardLink = e.target.closest('a.card[data-id]');
     if (cardLink) {
       const id = cardLink.dataset.id;
@@ -148,7 +162,6 @@ function attachViewTracker(rootEl) {
       return;
     }
 
-    // 최신 업로드: <a class="mini__row" data-id="...">
     const miniRow = e.target.closest('a.mini__row[data-id]');
     if (miniRow) {
       const id = miniRow.dataset.id;
@@ -254,12 +267,10 @@ function formatWeekLabel(weekStr) {
   return weekStr.replaceAll('-', '.');
 }
 
-// ✅ 타이틀 우측에 화살표 네비 넣기
 function mountWeeklyNav(weeklyEl, state, onChange) {
   const panel = weeklyEl.closest('.panel');
   if (!panel) return;
 
-  // 패널 기준으로 absolute 배치
   panel.style.position = 'relative';
 
   let nav = panel.querySelector('.weekly-nav');
@@ -295,7 +306,6 @@ function mountWeeklyNav(weeklyEl, state, onChange) {
   if (nextBtn) nextBtn.disabled = state.index >= state.order.length - 1;
 }
 
-// ✅ 실제 렌더 (특정 week + items로 그림)
 function renderWeeklyListForWeek(week, items, listEl) {
   if (!listEl) return;
 
@@ -390,7 +400,6 @@ export async function initPostsUI() {
   if (latestEl) renderLatestList(latest, latestEl);
 
   if (weeklyEl) {
-    // ✅ multi(여러 주) / single(1주) 분기
     if (weeklyData?.mode === 'multi') {
       const state = weeklyData;
 
@@ -409,7 +418,6 @@ export async function initPostsUI() {
 
       renderNow();
     } else {
-      // single(기존 weekly.json 구조)
       renderWeeklyListForWeek(weeklyData.week, weeklyData.items, weeklyEl);
     }
   }
