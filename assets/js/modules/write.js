@@ -4,7 +4,7 @@
   - write.html 전용
   - 등록 클릭:
     1) posts.json에 추가할 객체(JSON) 생성
-    2) posts/pXXX.html 템플릿 생성
+    2) posts/pXXX.html 템플릿 생성 (✅ 본문 포함)
     3) 결과를 localStorage에 저장 -> 다음 등록 전까지 안 사라짐
 ================================================= */
 
@@ -99,8 +99,53 @@ function buildPostObject({ id, title, excerpt, category, date, pinned, tags }) {
   };
 }
 
+/* ========= 본문 변환 =========
+  - HTML 태그가 있으면: 그대로 넣음
+  - 순수 텍스트면: 문단/줄바꿈을 HTML로 변환 + XSS 방지용 escape
+*/
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function looksLikeHtml(text) {
+  // 아주 단순 판단: "<"가 있고, 태그처럼 보이면 HTML로 간주
+  const t = String(text || '').trim();
+  if (!t) return false;
+  return /<\s*[a-zA-Z][\s\S]*>/.test(t);
+}
+
+function renderBodyHtml(bodyInput) {
+  const raw = String(bodyInput || '').trim();
+
+  if (!raw) {
+    return `<p class="post-body__hint">
+  (여기는 본문 영역) 나중에 글 내용(HTML/Markdown 변환)을 넣으면 됨.
+</p>`;
+  }
+
+  // HTML이면 그대로(사용자 책임)
+  if (looksLikeHtml(raw)) return raw;
+
+  // 텍스트면 안전하게 escape 후 문단 처리
+  const safe = escapeHtml(raw);
+
+  // \n\n 기준 문단, 문단 내부 \n 은 <br>
+  const paras = safe
+    .split(/\n{2,}/g)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${p.replaceAll('\n', '<br />')}</p>`);
+
+  return paras.join('\n');
+}
+
 /* ✅ 현재 프로젝트 post 페이지 구조 기반 템플릿 */
-function buildPostHtmlTemplate({ id, category }) {
+function buildPostHtmlTemplate({ id, category, bodyHtml }) {
   const logo = categoryLogo(category);
   const pageCss = categoryPageCss(category);
 
@@ -192,9 +237,10 @@ function buildPostHtmlTemplate({ id, category }) {
               <hr class="post-divider" />
 
               <section class="post-body">
-                <p class="post-body__hint">
-                  (여기는 본문 영역) 나중에 글 내용(HTML/Markdown 변환)을 넣으면 됨.
-                </p>
+${bodyHtml
+  .split('\n')
+  .map((line) => `                ${line}`)
+  .join('\n')}
               </section>
             </article>
 
@@ -328,6 +374,7 @@ export function initWrite() {
 
     const title = $('#title')?.value || '';
     const excerpt = $('#excerpt')?.value || '';
+    const body = $('#body')?.value || ''; // ✅✅ 추가
     const category = $('#category')?.value || 'study';
     const date = $('#date')?.value || todayISO();
     const tags = parseTags($('#tags')?.value || '');
@@ -351,7 +398,10 @@ export function initWrite() {
     });
 
     const jsonText = JSON.stringify(postObj, null, 2);
-    const htmlText = buildPostHtmlTemplate({ id, category });
+
+    // ✅✅ 본문 HTML 생성해서 템플릿에 주입
+    const bodyHtml = renderBodyHtml(body);
+    const htmlText = buildPostHtmlTemplate({ id, category, bodyHtml });
 
     outJson.textContent = jsonText;
     outHtml.textContent = htmlText;

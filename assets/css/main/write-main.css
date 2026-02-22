@@ -75,6 +75,11 @@
   line-height: var(--line-body);
 }
 
+/* ✅✅ 본문은 기본 높이 넉넉하게 */
+.write-control--body {
+  min-height: 220px;
+}
+
 .write-control:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
