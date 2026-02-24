@@ -10,6 +10,11 @@
 
 const STORAGE_KEY = 'writeOutput_v1';
 
+// ✅ 로그인 가드용 키 (login.js와 동일)
+const AUTH_KEY = 'mallinLoggedIn';
+const AUTH_USER_KEY = 'mallinUser';
+const AUTH_REDIRECT_KEY = 'authRedirectTo';
+
 // ✅ home 제외: write에서 허용하는 카테고리 고정
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 
@@ -45,6 +50,26 @@ async function copyToClipboard(text) {
     document.body.removeChild(ta);
     return ok;
   }
+}
+
+/* ================= 로그인 체크/가드 ================= */
+
+function isLoggedIn() {
+  try {
+    return localStorage.getItem(AUTH_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function redirectToLogin() {
+  try {
+    // ✅ 로그인 후 돌아올 페이지 저장
+    sessionStorage.setItem(AUTH_REDIRECT_KEY, './write.html');
+  } catch {}
+
+  // ✅ login.html로 이동
+  window.location.href = './login.html';
 }
 
 /* ===== posts.json에서 다음 id 자동 계산 ===== */
@@ -176,6 +201,7 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
     <link rel="stylesheet" href="../assets/css/components/post-btn.css" />
     <link rel="stylesheet" href="../assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="../assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="../assets/css/components/auth-links.css" />
 
     <!-- 페이지 css -->
     <link rel="stylesheet" href="${pageCss}" />
@@ -205,6 +231,10 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
           <a class="write-btn write-btn--corner" href="../write.html" aria-label="새 글 쓰기">
             ✍️ 새글쓰기
           </a>
+        </div>
+        <div class="auth-links" aria-label="계정 메뉴">
+          <a class="auth-link" href="./login.html">로그인</a>
+          <a class="auth-link" href="./mypage.html">마이페이지</a>
         </div>
 
         <nav class="site-nav" aria-label="주요 메뉴">
@@ -345,6 +375,12 @@ function loadOutput() {
 export function initWrite() {
   const form = $('#writeForm');
   if (!form) return;
+
+  // ✅✅✅ 로그인 안 했으면 write 페이지 진입 자체를 막음
+  if (!isLoggedIn()) {
+    redirectToLogin();
+    return;
+  }
 
   const outJson = $('#outJson');
   const outHtml = $('#outHtml');

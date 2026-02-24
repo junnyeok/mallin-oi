@@ -130,5 +130,16 @@
     "pinned": true,
     "tags": ["흥"],
     "url": "posts/p012.html"
+  },
+  {
+    "id": "p013",
+    "title": "시험용 게시물",
+    "excerpt": "헤더에 로그인이 잘 뜨는지 확인",
+    "category": "study",
+    "date": "2026-02-24",
+    "views": 0,
+    "pinned": false,
+    "tags": ["코딩", "css"],
+    "url": "posts/p013.html"
   }
 ]
