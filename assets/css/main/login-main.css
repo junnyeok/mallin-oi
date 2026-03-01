@@ -61,3 +61,44 @@
   font-size: var(--text-small);
   color: red;
 }
+
+/* ✅ 로그인 버튼 아래 링크(회원가입 / 아이디·비밀번호 찾기)
+   - auth-links.css의 .auth-link 스타일을 그대로 재사용
+   - 배치/톤만 login-main.css에서 조정
+*/
+.login-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.login-links__sep {
+  color: var(--color-border);
+  font-size: var(--text-small);
+  line-height: 1;
+}
+
+/* auth-link 모양은 유지하되, 로그인 카드 안에서는 톤만 살짝 정리 */
+.login-links .auth-link {
+  height: 28px;
+  padding: 0 var(--space-8);
+  font-size: var(--text-body);
+  color: var(--color-text-sub);
+}
+
+.login-links .auth-link:hover {
+  color: var(--color-text);
+}
+
+@media (max-width: 700px) {
+  .login-links {
+    gap: var(--space-4);
+  }
+
+  .login-links .auth-link {
+    height: 26px;
+    padding: 0 var(--space-8);
+  }
+}
