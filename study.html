@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -28,82 +28,7 @@
 
   <body class="theme-study" data-page="study">
     <div class="page">
-      <header class="site-header">
-        <div class="container header-inner">
-          <a class="logo" href="./index.html" aria-label="홈으로">
-            <img src="./images/logo-study.png" alt="말린오이닷컴" />
-            <img src="./images/logo-word.png" alt="말린오이닷컴" />
-          </a>
-
-          <form class="search" id="searchForm" role="search">
-            <label class="sr-only" for="q">검색</label>
-            <input
-              id="q"
-              name="q"
-              class="search__input"
-              type="search"
-              placeholder="검색어를 입력하세요."
-            />
-
-            <!-- ✅ 검색타입 토글(제목/태그) -->
-            <div class="search__type" role="group" aria-label="검색 방식">
-              <button
-                type="button"
-                class="search-type-btn is-active"
-                data-type="title"
-                aria-pressed="true"
-              >
-                제목
-              </button>
-              <button
-                type="button"
-                class="search-type-btn"
-                data-type="tag"
-                aria-pressed="false"
-              >
-                태그
-              </button>
-            </div>
-
-            <button class="btn search__btn" type="submit" aria-label="검색">
-              🔍
-            </button>
-          </form>
-          <a
-            class="write-btn write-btn--corner"
-            href="./write.html"
-            aria-label="새 글 쓰기"
-          >
-            ✍️ 새글쓰기
-          </a>
-        </div>
-        <div class="auth-links" aria-label="계정 메뉴">
-          <a class="auth-link" href="./login.html">로그인</a>
-          <a class="auth-link" href="./mypage.html">마이페이지</a>
-        </div>
-
-        <nav class="site-nav" aria-label="주요 메뉴">
-          <ul class="site-nav__list">
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="./index.html">홈</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="./study.html" aria-current="page"
-                >공부</a
-              >
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="./work.html">업무</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="./event.html">이벤트</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="./career.html">이력</a>
-            </li>
-          </ul>
-        </nav>
-      </header>
+      <div data-include="header"></div>
 
       <main class="site-main">
         <section class="home-section">
@@ -141,73 +66,7 @@
         </section>
       </main>
 
-      <footer class="site-footer">
-        <div class="container footer-inner">
-          <div class="footer-brand">
-            <a
-              class="footer-brand__logo"
-              href="./index.html"
-              aria-label="홈으로"
-            >
-              <img src="./images/logo-study.png" alt="말린오이닷컴" />
-            </a>
-            <p class="footer-brand__desc">
-              공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
-            </p>
-          </div>
-
-          <nav class="footer-nav" aria-label="푸터 링크">
-            <h2 class="footer-title">바로가기</h2>
-            <ul class="footer-list">
-              <li><a class="footer-link" href="./study.html">공부</a></li>
-              <li><a class="footer-link" href="./work.html">업무</a></li>
-              <li><a class="footer-link" href="./event.html">이벤트</a></li>
-              <li><a class="footer-link" href="./career.html">이력</a></li>
-            </ul>
-          </nav>
-
-          <div class="footer-contact">
-            <h2 class="footer-title">연락</h2>
-            <ul class="footer-list">
-              <li>
-                <a class="footer-link" href="mailto:junna961@icloud.com"
-                  >junna961@icloud.com</a
-                >
-              </li>
-              <li>
-                <a
-                  class="footer-link"
-                  href="https://www.instagram.com/junnyeok/"
-                  target="_blank"
-                  aria-label="인스타그램"
-                  >Instagram</a
-                >
-              </li>
-              <li>
-                <a
-                  class="footer-link"
-                  href="https://github.com"
-                  target="_blank"
-                  aria-label="깃허브"
-                  >GitHub</a
-                >
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="footer-bottom">
-          <div class="container footer-bottom__inner">
-            <small
-              >© <span id="year"></span> 말린오이닷컴. All rights
-              reserved.</small
-            >
-            <a class="footer-link footer-link--small" href="#"
-              >개인정보처리방침</a
-            >
-          </div>
-        </div>
-      </footer>
+      <div data-include="footer"></div>
     </div>
 
     <img

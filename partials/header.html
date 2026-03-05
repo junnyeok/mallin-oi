@@ -1,0 +1,83 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="__BASE__index.html" aria-label="홈으로">
+      <img
+        id="siteLogoImg"
+        src="__BASE__images/logo-home.png"
+        alt="말린오이닷컴"
+      />
+      <img
+        id="siteLogoWord"
+        src="__BASE__images/logo-word.png"
+        alt="말린오이닷컴"
+      />
+    </a>
+
+    <form class="search" id="searchForm" role="search">
+      <label class="sr-only" for="q">검색</label>
+      <input
+        id="q"
+        name="q"
+        class="search__input"
+        type="search"
+        placeholder="검색어를 입력하세요."
+      />
+
+      <div class="search__type" role="group" aria-label="검색 방식">
+        <button
+          type="button"
+          class="search-type-btn is-active"
+          data-type="title"
+          aria-pressed="true"
+        >
+          제목
+        </button>
+        <button
+          type="button"
+          class="search-type-btn"
+          data-type="tag"
+          aria-pressed="false"
+        >
+          태그
+        </button>
+      </div>
+
+      <button class="btn search__btn" type="submit" aria-label="검색">
+        🔍
+      </button>
+    </form>
+
+    <a
+      class="write-btn write-btn--corner"
+      href="__BASE__write.html"
+      aria-label="새 글 쓰기"
+    >
+      ✍️ 새글쓰기
+    </a>
+  </div>
+
+  <div class="auth-links" aria-label="계정 메뉴">
+    <a class="auth-link" href="__BASE__login.html">로그인</a>
+    <a class="auth-link" href="__BASE__mypage.html">마이페이지</a>
+  </div>
+
+  <nav class="site-nav" aria-label="주요 메뉴">
+    <ul class="site-nav__list">
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__index.html">홈</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__study.html">공부</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__work.html">업무</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__event.html">이벤트</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__career.html">이력</a>
+      </li>
+    </ul>
+  </nav>
+</header>

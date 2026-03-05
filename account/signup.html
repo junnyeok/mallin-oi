@@ -29,83 +29,8 @@
 
   <body data-page="signup">
     <div class="page">
-      <!-- ✅ 헤더: login.html과 동일 구조(경로만 account 기준으로 ../ 처리) -->
-      <header class="site-header">
-        <div class="container header-inner">
-          <a class="logo" href="../index.html" aria-label="홈으로">
-            <img src="../images/logo-home.png" alt="말린오이닷컴" />
-            <img src="../images/logo-word.png" alt="말린오이닷컴" />
-          </a>
-
-          <form class="search" id="searchForm" role="search">
-            <label class="sr-only" for="q">검색</label>
-            <input
-              id="q"
-              name="q"
-              class="search__input"
-              type="search"
-              placeholder="검색어를 입력하세요."
-            />
-
-            <!-- ✅ 검색타입 토글(제목/태그) -->
-            <div class="search__type" role="group" aria-label="검색 방식">
-              <button
-                type="button"
-                class="search-type-btn is-active"
-                data-type="title"
-                aria-pressed="true"
-              >
-                제목
-              </button>
-              <button
-                type="button"
-                class="search-type-btn"
-                data-type="tag"
-                aria-pressed="false"
-              >
-                태그
-              </button>
-            </div>
-
-            <button class="btn search__btn" type="submit" aria-label="검색">
-              🔍
-            </button>
-          </form>
-
-          <a
-            class="write-btn write-btn--corner"
-            href="../write.html"
-            aria-label="새 글 쓰기"
-          >
-            ✍️ 새글쓰기
-          </a>
-        </div>
-
-        <div class="auth-links" aria-label="계정 메뉴">
-          <a class="auth-link" href="../login.html">로그인</a>
-          <a class="auth-link" href="../mypage.html">마이페이지</a>
-        </div>
-
-        <nav class="site-nav" aria-label="주요 메뉴">
-          <ul class="site-nav__list">
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="../index.html">홈</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="../study.html">공부</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="../work.html">업무</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="../event.html">이벤트</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="../career.html">이력</a>
-            </li>
-          </ul>
-        </nav>
-      </header>
+      <!-- ✅ 헤더 -->
+      <div data-include="header"></div>
 
       <!-- ✅ 회원가입 영역 -->
       <main class="signup-main">
@@ -143,7 +68,7 @@
             <div class="signup-field">
               <label for="signupNickname">닉네임</label>
               <input
-                type="nickname"
+                type="text"
                 id="signupNickname"
                 name="signupNickname"
                 required
@@ -204,7 +129,8 @@
                 >이미 계정이 있어? 로그인</a
               >
               <span class="signup-links__sep" aria-hidden="true">|</span>
-              <a class="auth-link" href="../find-account.html"
+              <!-- ✅ account 폴더 안이니까 ./ 가 맞음 -->
+              <a class="auth-link" href="./find-account.html"
                 >아이디/비밀번호 찾기</a
               >
             </div>
@@ -214,76 +140,8 @@
         </div>
       </main>
 
-      <!-- ✅ 푸터: login.html과 동일 구조(경로만 account 기준으로 ../ 처리) -->
-      <footer class="site-footer">
-        <div class="container footer-inner">
-          <div class="footer-brand">
-            <a
-              class="footer-brand__logo"
-              href="../index.html"
-              aria-label="홈으로"
-            >
-              <img src="../images/logo-home.png" alt="말린오이닷컴" />
-            </a>
-            <p class="footer-brand__desc">
-              공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.
-            </p>
-          </div>
-
-          <nav class="footer-nav" aria-label="푸터 링크">
-            <h2 class="footer-title">바로가기</h2>
-            <ul class="footer-list">
-              <li><a class="footer-link" href="../study.html">공부</a></li>
-              <li><a class="footer-link" href="../work.html">업무</a></li>
-              <li><a class="footer-link" href="../event.html">이벤트</a></li>
-              <li><a class="footer-link" href="../career.html">이력</a></li>
-            </ul>
-          </nav>
-
-          <div class="footer-contact">
-            <h2 class="footer-title">연락</h2>
-            <ul class="footer-list">
-              <li>
-                <a class="footer-link" href="mailto:junna961@icloud.com"
-                  >junna961@icloud.com</a
-                >
-              </li>
-              <li>
-                <a
-                  class="footer-link"
-                  href="https://www.instagram.com/junnyeok/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="인스타그램"
-                  >Instagram</a
-                >
-              </li>
-              <li>
-                <a
-                  class="footer-link"
-                  href="https://github.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="깃허브"
-                  >GitHub</a
-                >
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="footer-bottom">
-          <div class="container footer-bottom__inner">
-            <small
-              >© <span id="year"></span> 말린오이닷컴. All rights
-              reserved.</small
-            >
-            <a class="footer-link footer-link--small" href="#"
-              >개인정보처리방침</a
-            >
-          </div>
-        </div>
-      </footer>
+      <!-- ✅ 푸터 -->
+      <div data-include="footer"></div>
     </div>
 
     <img
@@ -294,33 +152,5 @@
     />
 
     <script type="module" src="../assets/js/main.js"></script>
-
-    <!-- ✅ 초안용: 비번 확인만 프론트에서 가볍게 체크 (백엔드 붙이기 전) -->
-    <script>
-      (function () {
-        const form = document.getElementById('signupForm');
-        const msg = document.getElementById('signupMsg');
-        const pw = document.getElementById('signupPw');
-        const pw2 = document.getElementById('signupPw2');
-
-        function setMsg(text) {
-          msg.textContent = text || '';
-        }
-
-        form.addEventListener('submit', (e) => {
-          setMsg('');
-          if (pw.value !== pw2.value) {
-            e.preventDefault();
-            setMsg('비밀번호가 일치하지 않아.');
-            pw2.focus();
-            return;
-          }
-
-          // ✅ 지금은 “초안”이니까 실제 가입 처리 없이 안내만
-          e.preventDefault();
-          setMsg('초안 페이지야. 다음 단계에서 회원가입 저장 로직 붙이자.');
-        });
-      })();
-    </script>
   </body>
 </html>
