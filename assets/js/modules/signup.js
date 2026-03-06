@@ -1,119 +1,176 @@
 // assets/js/modules/signup.js
-import {
-  readUsers,
-  writeUsers,
-  findUserById,
-  sha256,
-  loginHref,
-} from './auth-store.js';
+
+import { readUsers, writeUsers, sha256, loginHref } from './auth-store.js';
 
 function $(id) {
   return document.getElementById(id);
 }
 
-function setMsg(el, text, color = '') {
-  if (!el) return;
-  el.textContent = text || '';
-  el.style.color = color || '';
+/* ================= 메시지 생성 ================= */
+
+function ensureMsgEl(inputId) {
+  const input = $(inputId);
+  if (!input) return null;
+
+  let msg = input.parentElement.querySelector('.field-msg');
+
+  if (!msg) {
+    msg = document.createElement('p');
+    msg.className = 'field-msg';
+    input.parentElement.appendChild(msg);
+  }
+
+  return msg;
 }
 
+function setMsg(el, text, color = 'red') {
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = color;
+}
+
+function clearMsg(el) {
+  if (!el) return;
+  el.textContent = '';
+}
+
+/* ================= 유효성 ================= */
+
 function isValidUserId(v) {
-  // signup.html 도움말: 4~20자, 공백X (영문/숫자 권장)
-  // 너무 빡세게 막진 말고 공백만 금지 + 길이 기본
   if (v.length < 4 || v.length > 20) return false;
   if (/\s/.test(v)) return false;
   return true;
 }
 
 function isValidEmail(v) {
-  // 브라우저 input type=email이 1차로 걸러주긴 하지만 한번 더
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
+/* ================= 중복 체크 ================= */
+
+function checkDuplicateId(id) {
+  const users = readUsers();
+  return users.some((u) => u.userId === id);
+}
+
+function checkDuplicateEmail(email) {
+  const users = readUsers();
+  return users.some((u) => u.email === email);
+}
+
+function checkDuplicateNick(nick) {
+  const users = readUsers();
+  return users.some((u) => u.nickname === nick);
+}
+
+/* ================= init ================= */
+
 export function initSignup() {
   const form = $('signupForm');
-  if (!form) return; // signup 페이지 아니면 종료
+  if (!form) return;
 
-  const msg = $('signupMsg');
+  const idInput = $('signupId');
+  const emailInput = $('signupEmail');
+  const nickInput = $('signupNickname');
+  const pwInput = $('signupPw');
+  const pw2Input = $('signupPw2');
 
-  const elId = $('signupId');
-  const elEmail = $('signupEmail');
-  const elNick = $('signupNickname');
-  const elPw = $('signupPw');
-  const elPw2 = $('signupPw2');
+  const msgId = ensureMsgEl('signupId');
+  const msgEmail = ensureMsgEl('signupEmail');
+  const msgNick = ensureMsgEl('signupNickname');
 
   const agreeTerms = $('agreeTerms');
   const agreePrivacy = $('agreePrivacy');
-  // const agreeMarketing = $('agreeMarketing'); // 저장은 선택
+
+  /* ================= 아이디 실시간 체크 ================= */
+
+  idInput.addEventListener('blur', () => {
+    const val = idInput.value.trim();
+
+    if (!val) return clearMsg(msgId);
+
+    if (!isValidUserId(val)) {
+      setMsg(msgId, '아이디는 4~20자, 공백 없이 입력해줘.');
+      return;
+    }
+
+    if (checkDuplicateId(val)) {
+      setMsg(msgId, '중복된 아이디입니다.');
+    } else {
+      clearMsg(msgId);
+    }
+  });
+
+  /* ================= 이메일 실시간 체크 ================= */
+
+  emailInput.addEventListener('blur', () => {
+    const val = emailInput.value.trim();
+
+    if (!val) return clearMsg(msgEmail);
+
+    if (!isValidEmail(val)) {
+      setMsg(msgEmail, '이메일 형식이 올바르지 않습니다.');
+      return;
+    }
+
+    if (checkDuplicateEmail(val)) {
+      setMsg(msgEmail, '중복된 이메일입니다.');
+    } else {
+      clearMsg(msgEmail);
+    }
+  });
+
+  /* ================= 닉네임 실시간 체크 ================= */
+
+  nickInput.addEventListener('blur', () => {
+    const val = nickInput.value.trim();
+
+    if (!val) return clearMsg(msgNick);
+
+    if (val.length < 2) {
+      setMsg(msgNick, '닉네임은 최소 2글자 이상입니다.');
+      return;
+    }
+
+    if (checkDuplicateNick(val)) {
+      setMsg(msgNick, '중복된 닉네임입니다.');
+    } else {
+      clearMsg(msgNick);
+    }
+  });
+
+  /* ================= 회원가입 ================= */
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    setMsg(msg, '');
 
-    const userId = (elId?.value || '').trim();
-    const email = (elEmail?.value || '').trim();
-    const nickname = (elNick?.value || '').trim();
-    const pw = elPw?.value || '';
-    const pw2 = elPw2?.value || '';
+    const userId = idInput.value.trim();
+    const email = emailInput.value.trim();
+    const nickname = nickInput.value.trim();
+    const pw = pwInput.value;
+    const pw2 = pw2Input.value;
 
-    // 필수
-    if (!userId || !email || !nickname || !pw || !pw2) {
-      setMsg(msg, '모든 항목을 입력해줘.', 'red');
+    if (
+      checkDuplicateId(userId) ||
+      checkDuplicateEmail(email) ||
+      checkDuplicateNick(nickname)
+    ) {
+      alert('중복된 정보가 있습니다.');
       return;
     }
 
-    // 약관(필수)
-    if (agreeTerms && !agreeTerms.checked) {
-      setMsg(msg, '이용약관(필수)에 동의해줘.', 'red');
-      agreeTerms.focus();
-      return;
-    }
-    if (agreePrivacy && !agreePrivacy.checked) {
-      setMsg(msg, '개인정보처리방침(필수)에 동의해줘.', 'red');
-      agreePrivacy.focus();
-      return;
-    }
-
-    // 유효성
-    if (!isValidUserId(userId)) {
-      setMsg(msg, '아이디는 4~20자, 공백 없이 입력해줘.', 'red');
-      elId?.focus();
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setMsg(msg, '이메일 형식이 올바르지 않아.', 'red');
-      elEmail?.focus();
-      return;
-    }
-
-    if (nickname.length < 2) {
-      setMsg(msg, '닉네임은 최소 2글자 이상으로 해줘.', 'red');
-      elNick?.focus();
-      return;
-    }
-
-    if (pw.length < 6) {
-      setMsg(msg, '비밀번호는 최소 6자 이상으로 해줘.', 'red');
-      elPw?.focus();
+    if (!agreeTerms.checked || !agreePrivacy.checked) {
+      alert('필수 약관에 동의해야 합니다.');
       return;
     }
 
     if (pw !== pw2) {
-      setMsg(msg, '비밀번호가 일치하지 않아.', 'red');
-      elPw2?.focus();
+      alert('비밀번호가 일치하지 않습니다.');
       return;
     }
 
-    // 중복 체크
-    if (findUserById(userId)) {
-      setMsg(msg, '이미 존재하는 아이디야.', 'red');
-      elId?.focus();
-      return;
-    }
-
-    // 저장
     const users = readUsers();
+
     const passHash = await sha256(pw);
 
     users.push({
@@ -126,10 +183,8 @@ export function initSignup() {
 
     writeUsers(users);
 
-    setMsg(msg, '회원가입 완료! 로그인 페이지로 이동할게.', 'green');
+    alert('회원가입 완료!');
 
-    setTimeout(() => {
-      window.location.href = loginHref(); // account/signup -> ../login.html
-    }, 500);
+    window.location.href = loginHref();
   });
 }

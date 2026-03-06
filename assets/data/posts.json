@@ -141,5 +141,18 @@
     "pinned": false,
     "tags": ["코딩", "css"],
     "url": "posts/p013.html"
+  },
+  {
+    "id": "p014",
+    "title": "확인용 글 등록!",
+    "excerpt": "작성자가 뜨는가",
+    "category": "study",
+    "date": "2026-03-06",
+    "views": 0,
+    "pinned": false,
+    "tags": ["코딩", "layout"],
+    "authorId": "admin",
+    "authorNickname": "준혁스",
+    "url": "posts/p014.html"
   }
 ]

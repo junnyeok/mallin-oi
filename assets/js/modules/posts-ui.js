@@ -193,7 +193,7 @@ function renderCardGrid(posts, gridEl) {
           </div>
         </article>
       </a>
-    `
+    `,
     )
     .join('');
 }
@@ -208,7 +208,7 @@ function renderLatestList(posts, listEl) {
         <span class="mini__title">${p.title}</span>
         <span class="mini__date">${formatMMDD(p.date)}</span>
       </a>
-    `
+    `,
     )
     .join('');
 }
@@ -363,7 +363,7 @@ function renderWeeklyListForWeek(week, items, listEl) {
       writeWeeklyCheckedSet(w, set);
 
       const ids = [...listEl.querySelectorAll('li[data-id]')].map(
-        (x) => x.dataset.id
+        (x) => x.dataset.id,
       );
       const doneNow = ids.length > 0 && ids.every((x) => set.has(x));
 

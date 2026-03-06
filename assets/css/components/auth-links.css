@@ -52,3 +52,8 @@
     padding: 0 var(--space-8);
   }
 }
+
+.auth-nickname {
+  margin-right: 10px;
+  font-weight: 600;
+}

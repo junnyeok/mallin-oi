@@ -4,16 +4,17 @@
   - write.html 전용
   - 등록 클릭:
     1) posts.json에 추가할 객체(JSON) 생성
-    2) posts/pXXX.html 템플릿 생성 (✅ 본문 포함)
+    2) posts/pXXX.html 템플릿 생성 (본문 + 작성자 포함)
     3) 결과를 localStorage에 저장 -> 다음 등록 전까지 안 사라짐
 ================================================= */
 
 const STORAGE_KEY = 'writeOutput_v1';
 
-// ✅ 로그인 가드용 키 (login.js와 동일)
+// ✅ 로그인 가드용 키
 const AUTH_KEY = 'mallinLoggedIn';
 const AUTH_USER_KEY = 'mallinUser';
 const AUTH_REDIRECT_KEY = 'authRedirectTo';
+const USERS_KEY = 'mallinUsers_v1';
 
 // ✅ home 제외: write에서 허용하는 카테고리 고정
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
@@ -64,12 +65,36 @@ function isLoggedIn() {
 
 function redirectToLogin() {
   try {
-    // ✅ 로그인 후 돌아올 페이지 저장
     sessionStorage.setItem(AUTH_REDIRECT_KEY, './write.html');
   } catch {}
 
-  // ✅ login.html로 이동
   window.location.href = './login.html';
+}
+
+function readUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function getCurrentAuthor() {
+  try {
+    const authorId = localStorage.getItem(AUTH_USER_KEY) || '';
+    const users = readUsers();
+    const me = users.find((u) => u.userId === authorId);
+
+    return {
+      authorId: authorId || 'unknown',
+      authorNickname: me?.nickname || authorId || '알수없음',
+    };
+  } catch {
+    return {
+      authorId: 'unknown',
+      authorNickname: '알수없음',
+    };
+  }
 }
 
 /* ===== posts.json에서 다음 id 자동 계산 ===== */
@@ -105,15 +130,21 @@ function parseTags(input) {
   return Array.from(new Set(clean));
 }
 
-function categoryLogo(category) {
-  return `../images/logo-${category}.png`;
-}
-
 function categoryPageCss(category) {
   return `../assets/css/pages/${category}.css`;
 }
 
-function buildPostObject({ id, title, excerpt, category, date, pinned, tags }) {
+function buildPostObject({
+  id,
+  title,
+  excerpt,
+  category,
+  date,
+  pinned,
+  tags,
+  authorId,
+  authorNickname,
+}) {
   return {
     id,
     title: title.trim(),
@@ -123,14 +154,14 @@ function buildPostObject({ id, title, excerpt, category, date, pinned, tags }) {
     views: 0,
     pinned: !!pinned,
     tags,
+    authorId,
+    authorNickname,
     url: `posts/${id}.html`,
   };
 }
 
-/* ========= 본문 변환 =========
-  - HTML 태그가 있으면: 그대로 넣음
-  - 순수 텍스트면: 문단/줄바꿈을 HTML로 변환 + XSS 방지용 escape
-*/
+/* ========= 본문 변환 ========= */
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll('&', '&amp;')
@@ -141,7 +172,6 @@ function escapeHtml(str) {
 }
 
 function looksLikeHtml(text) {
-  // 아주 단순 판단: "<"가 있고, 태그처럼 보이면 HTML로 간주
   const t = String(text || '').trim();
   if (!t) return false;
   return /<\s*[a-zA-Z][\s\S]*>/.test(t);
@@ -156,13 +186,10 @@ function renderBodyHtml(bodyInput) {
 </p>`;
   }
 
-  // HTML이면 그대로(사용자 책임)
   if (looksLikeHtml(raw)) return raw;
 
-  // 텍스트면 안전하게 escape 후 문단 처리
   const safe = escapeHtml(raw);
 
-  // \n\n 기준 문단, 문단 내부 \n 은 <br>
   const paras = safe
     .split(/\n{2,}/g)
     .map((p) => p.trim())
@@ -172,9 +199,8 @@ function renderBodyHtml(bodyInput) {
   return paras.join('\n');
 }
 
-/* ✅ 현재 프로젝트 post 페이지 구조 기반 템플릿 */
-function buildPostHtmlTemplate({ id, category, bodyHtml }) {
-  const logo = categoryLogo(category);
+/* ✅ include 방식 반영한 게시물 템플릿 */
+function buildPostHtmlTemplate({ id, category, bodyHtml, authorNickname }) {
   const pageCss = categoryPageCss(category);
 
   return `<!DOCTYPE html>
@@ -184,7 +210,6 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>게시물 | 말린오이닷컴</title>
 
-    <!-- ✅ 상위폴더 기준 상대경로 -->
     <link rel="shortcut icon" href="../images/favicon.ico" />
 
     <!-- 공통 -->
@@ -202,6 +227,8 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
     <link rel="stylesheet" href="../assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="../assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="../assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="../assets/css/components/search-btn.css" />
+    
 
     <!-- 페이지 css -->
     <link rel="stylesheet" href="${pageCss}" />
@@ -211,42 +238,14 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
     <link rel="stylesheet" href="../assets/css/main/posts-all-main.css" />
   </head>
 
-  <!-- ✅ 이 게시물은 ${id} -->
-  <body class="theme-${category}" data-page="${category}" data-post-id="${id}">
+  <body
+    class="theme-${category}"
+    data-page="${category}"
+    data-post-id="${id}"
+    data-base="../"
+  >
     <div class="page">
-      <!-- 헤더 -->
-      <header class="site-header">
-        <div class="container header-inner">
-          <a class="logo" href="../index.html" aria-label="홈으로">
-            <img src="${logo}" alt="말린오이닷com" />
-            <img src="../images/logo-word.png" alt="말린오이닷컴" />
-          </a>
-
-          <form class="search" role="search">
-            <label class="sr-only" for="q">검색</label>
-            <input id="q" class="search__input" type="search" placeholder="검색어를 입력하세요." />
-            <button class="btn search__btn" type="submit" aria-label="검색">🔍</button>
-          </form>
-
-          <a class="write-btn write-btn--corner" href="../write.html" aria-label="새 글 쓰기">
-            ✍️ 새글쓰기
-          </a>
-        </div>
-        <div class="auth-links" aria-label="계정 메뉴">
-          <a class="auth-link" href="./login.html">로그인</a>
-          <a class="auth-link" href="./mypage.html">마이페이지</a>
-        </div>
-
-        <nav class="site-nav" aria-label="주요 메뉴">
-          <ul class="site-nav__list">
-            <li class="site-nav__item"><a class="site-nav__link" href="../index.html">홈</a></li>
-            <li class="site-nav__item"><a class="site-nav__link" href="../study.html">공부</a></li>
-            <li class="site-nav__item"><a class="site-nav__link" href="../work.html">업무</a></li>
-            <li class="site-nav__item"><a class="site-nav__link" href="../event.html">이벤트</a></li>
-            <li class="site-nav__item"><a class="site-nav__link" href="../career.html">이력</a></li>
-          </ul>
-        </nav>
-      </header>
+      <div data-include="header"></div>
 
       <main class="site-main">
         <section class="post">
@@ -264,6 +263,7 @@ function buildPostHtmlTemplate({ id, category, bodyHtml }) {
 
                 <h1 class="post-title" id="postTitle">로딩중...</h1>
                 <p class="post-excerpt" id="postExcerpt"></p>
+                <p class="post-author" id="postAuthor">작성자 : ${escapeHtml(authorNickname)}</p>
                 <div class="post-tags" id="postTags"></div>
               </header>
 
@@ -277,8 +277,11 @@ ${bodyHtml
               </section>
             </article>
 
-            <nav class="post-pager" aria-label="이전글 다음글"
-              style="margin: var(--space-16) 0 var(--space-24); display:flex; align-items:center; justify-content:space-between; gap: var(--space-12);">
+            <nav
+              class="post-pager"
+              aria-label="이전글 다음글"
+              style="margin: var(--space-16) 0 var(--space-24); display:flex; align-items:center; justify-content:space-between; gap: var(--space-12);"
+            >
               <a href="#" id="postPrevBtn" class="weekly-nav__btn" aria-disabled="true">← 이전글</a>
               <a href="../posts-all.html" id="postListBtn" class="weekly-nav__btn">목록</a>
               <a href="#" id="postNextBtn" class="weekly-nav__btn" aria-disabled="true">다음글 →</a>
@@ -301,42 +304,7 @@ ${bodyHtml
         </section>
       </main>
 
-      <footer class="site-footer">
-        <div class="container footer-inner">
-          <div class="footer-brand">
-            <a class="footer-brand__logo" href="../index.html" aria-label="홈으로">
-              <img src="${logo}" alt="말린오이닷컴" />
-            </a>
-            <p class="footer-brand__desc">공부 · 업무 · 이벤트 · 이력을 한 곳에 정리하는 개인 사이트.</p>
-          </div>
-
-          <nav class="footer-nav" aria-label="푸터 링크">
-            <h2 class="footer-title">바로가기</h2>
-            <ul class="footer-list">
-              <li><a class="footer-link" href="../study.html">공부</a></li>
-              <li><a class="footer-link" href="../work.html">업무</a></li>
-              <li><a class="footer-link" href="../event.html">이벤트</a></li>
-              <li><a class="footer-link" href="../career.html">이력</a></li>
-            </ul>
-          </nav>
-
-          <div class="footer-contact">
-            <h2 class="footer-title">연락</h2>
-            <ul class="footer-list">
-              <li><a class="footer-link" href="mailto:junna961@icloud.com">junna961@icloud.com</a></li>
-              <li><a class="footer-link" href="https://www.instagram.com/junnyeok/" target="_blank" rel="noopener">Instagram</a></li>
-              <li><a class="footer-link" href="https://github.com" target="_blank" rel="noopener">GitHub</a></li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="footer-bottom">
-          <div class="container footer-bottom__inner">
-            <small>© <span id="year"></span> 말린오이닷컴. All rights reserved.</small>
-            <a class="footer-link footer-link--small" href="#">개인정보처리방침</a>
-          </div>
-        </div>
-      </footer>
+      <div data-include="footer"></div>
     </div>
 
     <img id="cukeBuddy" src="../images/logo-home.png" alt="말린오이" class="cursor-buddy" />
@@ -355,7 +323,7 @@ function saveOutput({ id, jsonText, htmlText }) {
         jsonText,
         htmlText,
         savedAt: Date.now(),
-      })
+      }),
     );
   } catch (e) {
     console.warn('[write] saveOutput failed:', e);
@@ -376,7 +344,7 @@ export function initWrite() {
   const form = $('#writeForm');
   if (!form) return;
 
-  // ✅✅✅ 로그인 안 했으면 write 페이지 진입 자체를 막음
+  // ✅ 로그인 안 했으면 write 페이지 진입 자체를 막음
   if (!isLoggedIn()) {
     redirectToLogin();
     return;
@@ -391,7 +359,6 @@ export function initWrite() {
 
   if (dateEl && !dateEl.value) dateEl.value = todayISO();
 
-  // ✅ 페이지 들어왔을 때 이전 결과가 있으면 복원 (다음 등록 전까지 유지)
   const cached = loadOutput();
   if (cached?.jsonText || cached?.htmlText) {
     outJson.textContent = cached.jsonText || '';
@@ -415,7 +382,6 @@ export function initWrite() {
     const excerpt = $('#excerpt')?.value || '';
     const body = $('#body')?.value || '';
 
-    // ✅ home 완전 차단: 허용 목록으로만 고정
     let category = $('#category')?.value || 'study';
     if (!ALLOWED_CATEGORIES.has(category)) category = 'study';
 
@@ -428,6 +394,7 @@ export function initWrite() {
       return;
     }
 
+    const { authorId, authorNickname } = getCurrentAuthor();
     const id = await getNextPostId();
 
     const postObj = buildPostObject({
@@ -438,13 +405,19 @@ export function initWrite() {
       date,
       pinned,
       tags,
+      authorId,
+      authorNickname,
     });
 
     const jsonText = JSON.stringify(postObj, null, 2);
 
-    // ✅✅ 본문 HTML 생성해서 템플릿에 주입
     const bodyHtml = renderBodyHtml(body);
-    const htmlText = buildPostHtmlTemplate({ id, category, bodyHtml });
+    const htmlText = buildPostHtmlTemplate({
+      id,
+      category,
+      bodyHtml,
+      authorNickname,
+    });
 
     outJson.textContent = jsonText;
     outHtml.textContent = htmlText;
@@ -452,14 +425,12 @@ export function initWrite() {
     copyJsonBtn.disabled = false;
     copyHtmlBtn.disabled = false;
 
-    // ✅ 저장: 다음 등록 전까지 출력 유지
     saveOutput({ id, jsonText, htmlText });
 
-    // 속도용: JSON 자동 복사
     const ok = await copyToClipboard(jsonText);
     note.textContent = ok
-      ? `완료! 새 글 ID: ${id} — JSON 복사됨. (posts.json에 붙여넣고, posts/${id}.html 파일 만들어서 HTML 붙여넣기)`
-      : `완료! 새 글 ID: ${id} — 복사는 실패했어. 아래 출력에서 직접 복사해줘.`;
+      ? `완료! 새 글 ID: ${id} — JSON 복사됨. 작성자(${authorNickname})도 함께 저장됐어. posts.json에 붙여넣고, posts/${id}.html 파일 만들어서 HTML 붙여넣기 해줘.`
+      : `완료! 새 글 ID: ${id} — 복사는 실패했어. 아래 출력에서 직접 복사해줘. 작성자(${authorNickname})는 포함돼 있어.`;
   });
 
   copyJsonBtn?.addEventListener('click', async () => {

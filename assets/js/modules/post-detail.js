@@ -48,9 +48,6 @@ function consumeViewFromList(id) {
 
 /* ================= 데이터 로드 ================= */
 
-// ✅ 이 파일: /assets/js/modules/post-detail.js
-// posts.json: /assets/data/posts.json
-// => ../../data/posts.json 이 맞음 (import.meta.url로 안전하게)
 const DATA_BASE = new URL('../../data/', import.meta.url);
 
 async function loadPosts() {
@@ -75,12 +72,32 @@ function renderTags(tags = []) {
     .join('');
 }
 
+function renderAuthor(post) {
+  const authorEl = $('postAuthor');
+  if (!authorEl) return;
+
+  const nickname = String(post.authorNickname || '').trim();
+  const userId = String(post.authorId || '').trim();
+
+  if (nickname) {
+    authorEl.textContent = `작성자 : ${nickname}`;
+    return;
+  }
+
+  if (userId) {
+    authorEl.textContent = `작성자 : ${userId}`;
+    return;
+  }
+
+  authorEl.textContent = '작성자 : 관리자';
+}
+
 /**
  * ✅ 상세 페이지 초기화
- * - body[data-post-id] 없으면 아무것도 안 하고 종료 (다른 페이지에서 안전)
+ * - body[data-post-id] 없으면 아무것도 안 하고 종료
  */
 export async function initPostDetail() {
-  const postId = document.body.dataset.postId; // 예: "p001"
+  const postId = document.body.dataset.postId;
   if (!postId) return;
 
   const posts = await loadPosts();
@@ -92,14 +109,12 @@ export async function initPostDetail() {
     return;
   }
 
-  // ✅ 목록 클릭으로 이미 bump 했으면 상세에서 추가 bump 하지 않음
   if (wasViewFromList(postId)) {
     consumeViewFromList(postId);
   } else {
     bumpLocalView(postId);
   }
 
-  // DOM 반영
   const titleEl = $('postTitle');
   const excerptEl = $('postExcerpt');
   const categoryEl = $('postCategory');
@@ -110,6 +125,7 @@ export async function initPostDetail() {
   if (categoryEl) categoryEl.textContent = post.category || '';
   if (viewsEl) viewsEl.textContent = `👀 ${getCombinedViews(post)}`;
 
+  renderAuthor(post);
   renderTags(post.tags);
 
   document.title = `${post.title} | 말린오이닷컴`;
@@ -117,8 +133,6 @@ export async function initPostDetail() {
 
 /**
  * ✅ 목록으로 / 뒤로가기 버튼
- * - history 없으면 홈으로 보냄
- * - GitHub Pages에서도 안전하게 "프로젝트 루트(index.html)"로 이동
  */
 export function initBackLink() {
   const backBtn = document.getElementById('postBack');
@@ -132,7 +146,6 @@ export function initBackLink() {
       return;
     }
 
-    // ✅ '/' 대신 상대경로 (posts/p006.html 같은 곳에서도 안전)
     window.location.href = '../index.html';
   });
 }
