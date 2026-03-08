@@ -11,6 +11,8 @@ import { initWrite } from './modules/write.js';
 import { initLogin } from './modules/login.js';
 import { initSignup } from './modules/signup.js';
 import { initLayoutIncludes } from './modules/layout-includes.js';
+import { initPrevMypage } from './modules/prev-mypage.js';
+import { initMypage } from './modules/mypage.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -76,6 +78,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     initWrite();
   } catch (e) {
     console.error('[main] write module failed:', e);
+  }
+
+  try {
+    initPrevMypage();
+  } catch (e) {
+    console.error('[main] prev mypage module failed:', e);
+  }
+
+  try {
+    initMypage();
+  } catch (e) {
+    console.error('[main] mypage module failed:', e);
   }
 
   // ✅ 4) auth (header 주입 후 실행이 안전)

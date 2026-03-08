@@ -102,6 +102,7 @@ async function getNextPostId() {
   try {
     const res = await fetch('./assets/data/posts.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('posts.json fetch failed');
+
     const posts = await res.json();
 
     const nums = posts
@@ -154,8 +155,14 @@ function buildPostObject({
     views: 0,
     pinned: !!pinned,
     tags,
+
+    // ✅ 작성자 정보 (마이페이지 작성글 수 카운트용 호환 필드 포함)
     authorId,
+    userId: authorId,
     authorNickname,
+    author: authorNickname,
+    nickname: authorNickname,
+
     url: `posts/${id}.html`,
   };
 }
@@ -228,7 +235,6 @@ function buildPostHtmlTemplate({ id, category, bodyHtml, authorNickname }) {
     <link rel="stylesheet" href="../assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="../assets/css/components/auth-links.css" />
     <link rel="stylesheet" href="../assets/css/components/search-btn.css" />
-    
 
     <!-- 페이지 css -->
     <link rel="stylesheet" href="${pageCss}" />

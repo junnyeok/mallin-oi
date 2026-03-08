@@ -1,0 +1,36 @@
+.mypage-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.mypage-links__sep {
+  color: var(--color-border);
+  font-size: var(--text-small);
+  line-height: 1;
+}
+
+.mypage-links .auth-link {
+  height: 28px;
+  padding: 0 var(--space-8);
+  font-size: var(--text-body);
+  color: var(--color-text-sub);
+}
+
+.mypage-links .auth-link:hover {
+  color: var(--color-text);
+}
+
+@media (max-width: 700px) {
+  .mypage-links {
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .mypage-links .auth-link {
+    height: 26px;
+    padding: 0 var(--space-8);
+  }
+}
