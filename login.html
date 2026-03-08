@@ -31,7 +31,7 @@
     <div class="page">
       <div data-include="header"></div>
 
-      <!-- ✅ 로그인 영역 -->
+      <!-- 로그인 영역 -->
       <main class="login-main">
         <div class="login-card">
           <h1 class="login-title">로그인</h1>
@@ -49,16 +49,17 @@
 
             <button type="submit" class="login-btn">로그인</button>
 
-            <!-- ✅ 로그인 하단 링크 -->
+            <!-- 로그인 하단 링크 -->
             <div class="login-links" aria-label="계정 도움말">
               <a class="auth-link" href="./account/signup.html">회원가입</a>
               <span class="login-links__sep" aria-hidden="true">|</span>
-              <a class="auth-link" href="./account/find-account.html"
-                >아이디/비밀번호 찾기</a
+              <a class="auth-link" href="./account/find-id.html">아이디 찾기</a>
+              <span class="login-links__sep" aria-hidden="true">|</span>
+              <a class="auth-link" href="./account/find-password.html"
+                >비밀번호 찾기</a
               >
             </div>
 
-            <!-- ✅ 중복 id 제거: loginMsg는 1개만 -->
             <p class="login-msg" id="loginMsg"></p>
           </form>
         </div>

@@ -100,5 +100,6 @@
   .login-links .auth-link {
     height: 26px;
     padding: 0 var(--space-8);
+    white-space: nowrap;
   }
 }
