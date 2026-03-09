@@ -1,34 +1,16 @@
 import { loadPosts, sortByDateDesc, formatMMDD } from './posts-repo.js';
+import { getDisplayViews } from './post-views.js';
 
-const VIEWS_KEY = 'viewsMap_v1';
-
-function readViewsMap() {
-  try {
-    return JSON.parse(localStorage.getItem(VIEWS_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function getCombinedViews(post) {
-  const base = post.views || 0;
-  const map = readViewsMap();
-  const extra = map[post.id] || 0;
-  return base + extra;
-}
-
-function markViewFromList(id) {
-  try {
-    sessionStorage.setItem(`viewFromList:${id}`, '1');
-  } catch {}
+function getViews(post) {
+  return getDisplayViews(post);
 }
 
 function renderRow(p) {
   return `
-    <a class="post-row" href="${p.url}" data-id="${p.id}">
+    <a class="post-row" href="${p.url}" data-id="${p.id}" data-views="${getViews(p)}">
       <span class="post-row__title">${p.title}</span>
       <span class="post-row__meta">
-        ${formatMMDD(p.date)} · 👀 ${getCombinedViews(p)} · ${p.category}
+        ${formatMMDD(p.date)} · 👀 ${getViews(p)} · ${p.category}
       </span>
     </a>
   `;
@@ -75,10 +57,6 @@ export async function initPostDetailList() {
     pageInfo.textContent = `${page} / ${totalPages}`;
     prevBtn.disabled = page <= 1;
     nextBtn.disabled = page >= totalPages;
-
-    listEl.querySelectorAll('a.post-row[data-id]').forEach((a) => {
-      a.addEventListener('click', () => markViewFromList(a.dataset.id));
-    });
   }
 
   prevBtn.addEventListener('click', () => {

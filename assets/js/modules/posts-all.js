@@ -1,23 +1,5 @@
 import { loadPosts, formatMMDD, sortByDateDesc } from './posts-repo.js';
-
-/* ================= 조회수(localStorage) ================= */
-
-const VIEWS_KEY = 'viewsMap_v1';
-
-function readViewsMap() {
-  try {
-    return JSON.parse(localStorage.getItem(VIEWS_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function getCombinedViews(post) {
-  const base = post.views || 0;
-  const map = readViewsMap();
-  const extra = map[post.id] || 0;
-  return base + extra;
-}
+import { getDisplayViews } from './post-views.js';
 
 /* ================= 유틸 ================= */
 
@@ -25,6 +7,10 @@ function normalize(s) {
   return String(s || '')
     .toLowerCase()
     .trim();
+}
+
+function getViews(post) {
+  return getDisplayViews(post);
 }
 
 /* ================= URL 상태 ================= */
@@ -99,19 +85,13 @@ function filterByTab(posts, tab) {
 
 function renderRow(p) {
   return `
-    <a class="post-row" href="${p.url}" data-id="${p.id}">
+    <a class="post-row" href="${p.url}" data-id="${p.id}" data-views="${getViews(p)}">
       <span class="post-row__title">${p.title}</span>
       <span class="post-row__meta">
-        ${formatMMDD(p.date)} · 👀 ${getCombinedViews(p)} · ${p.category}
+        ${formatMMDD(p.date)} · 👀 ${getViews(p)} · ${p.category}
       </span>
     </a>
   `;
-}
-
-function markViewFromList(id) {
-  try {
-    sessionStorage.setItem(`viewFromList:${id}`, '1');
-  } catch {}
 }
 
 /* ================= 초기화 ================= */
@@ -205,14 +185,6 @@ export async function initPostsAll() {
     if (safePage !== page) {
       setState({ tab, page: safePage, q, type });
     }
-
-    listEl.querySelectorAll('a.post-row[data-id]').forEach((a) => {
-      a.addEventListener('click', () => markViewFromList(a.dataset.id));
-    });
-
-    pinnedEl.querySelectorAll('a.post-row[data-id]').forEach((a) => {
-      a.addEventListener('click', () => markViewFromList(a.dataset.id));
-    });
   }
 
   tabBtns.forEach((btn) => {

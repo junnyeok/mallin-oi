@@ -14,6 +14,7 @@ import { initPrevMypage } from './modules/prev-mypage.js';
 import { initMypage } from './modules/mypage.js';
 import { initAccountRecovery } from './modules/account-recovery.js';
 import { initAuthUI } from './modules/auth-store.js';
+import { initPostViews } from './modules/post-views.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -34,6 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initAuthUI();
   } catch (e) {
     console.error('[main] auth ui failed:', e);
+  }
+
+  try {
+    initPostViews();
+  } catch (e) {
+    console.error('[main] post views failed:', e);
   }
 
   try {

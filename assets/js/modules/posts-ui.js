@@ -4,36 +4,7 @@ import {
   formatMMDD,
   sortByDateDesc,
 } from './posts-repo.js';
-
-/* ================= 조회수(localStorage) ================= */
-
-const VIEWS_KEY = 'viewsMap_v1';
-
-function readViewsMap() {
-  try {
-    return JSON.parse(localStorage.getItem(VIEWS_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function writeViewsMap(map) {
-  localStorage.setItem(VIEWS_KEY, JSON.stringify(map));
-}
-
-function bumpLocalView(id) {
-  if (!id) return;
-  const map = readViewsMap();
-  map[id] = (map[id] || 0) + 1;
-  writeViewsMap(map);
-}
-
-function getCombinedViews(post) {
-  const base = post.views || 0;
-  const map = readViewsMap();
-  const extra = map[post.id] || 0;
-  return base + extra;
-}
+import { getDisplayViews } from './post-views.js';
 
 /* ================= 데이터/필터 ================= */
 
@@ -47,14 +18,18 @@ function scopePosts(posts, pageCategory) {
   return posts.filter((p) => p.category === pageCategory);
 }
 
+function getViews(post) {
+  return getDisplayViews(post);
+}
+
 function sortForFeatured(posts) {
   return [...posts].sort((a, b) => {
     if ((b.pinned ? 1 : 0) !== (a.pinned ? 1 : 0)) {
       return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
     }
 
-    const bv = getCombinedViews(b);
-    const av = getCombinedViews(a);
+    const bv = getViews(b);
+    const av = getViews(a);
     if (bv !== av) return bv - av;
 
     const bt = new Date(b.createdAt || b.date || 0).getTime();
@@ -65,42 +40,13 @@ function sortForFeatured(posts) {
   });
 }
 
-/* ================= 클릭 추적 ================= */
-
-function markViewFromList(id) {
-  try {
-    sessionStorage.setItem(`viewFromList:${id}`, '1');
-  } catch {}
-}
-
-function attachViewTracker(rootEl) {
-  if (!rootEl) return;
-
-  rootEl.addEventListener('click', (e) => {
-    const cardLink = e.target.closest('a.card[data-id]');
-    if (cardLink) {
-      const id = cardLink.dataset.id;
-      bumpLocalView(id);
-      markViewFromList(id);
-      return;
-    }
-
-    const miniRow = e.target.closest('a.mini__row[data-id]');
-    if (miniRow) {
-      const id = miniRow.dataset.id;
-      bumpLocalView(id);
-      markViewFromList(id);
-    }
-  });
-}
-
 /* ================= 렌더 ================= */
 
 function renderCardGrid(posts, gridEl) {
   gridEl.innerHTML = posts
     .map(
       (p) => `
-      <a href="${p.url}" class="card" data-id="${p.id}">
+      <a href="${p.url}" class="card" data-id="${p.id}" data-views="${getViews(p)}">
         <article class="card__body">
           ${p.pinned ? `<span class="badge">📌</span>` : ''}
 
@@ -110,7 +56,7 @@ function renderCardGrid(posts, gridEl) {
 
           <div class="card__meta">
             <span class="chip chip--muted">${formatMMDD(p.date)}</span>
-            <span class="chip chip--muted">👀 ${getCombinedViews(p)}</span>
+            <span class="chip chip--muted">👀 ${getViews(p)}</span>
             <span class="chip">${p.category}</span>
           </div>
         </article>
@@ -124,7 +70,7 @@ function renderLatestList(posts, listEl) {
   listEl.innerHTML = posts
     .map(
       (p) => `
-      <a class="mini__row" href="${p.url}" data-id="${p.id}">
+      <a class="mini__row" href="${p.url}" data-id="${p.id}" data-views="${getViews(p)}">
         <span class="mini__title">${p.title}</span>
         <span class="mini__date">${formatMMDD(p.date)}</span>
       </a>
@@ -302,8 +248,6 @@ export async function initPostsUI() {
   const gridEl = document.querySelector('#cardGrid');
   const latestEl = document.querySelector('#latestList');
   const weeklyEl = document.querySelector('#weeklyList');
-
-  attachViewTracker(document);
 
   if (!gridEl && !latestEl && !weeklyEl) return;
 

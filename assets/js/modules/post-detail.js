@@ -1,48 +1,11 @@
 import { loadPostById } from './posts-repo.js';
-
-/* ================= 조회수(localStorage) ================= */
-
-const VIEWS_KEY = 'viewsMap_v1';
-
-function readViewsMap() {
-  try {
-    return JSON.parse(localStorage.getItem(VIEWS_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function writeViewsMap(map) {
-  localStorage.setItem(VIEWS_KEY, JSON.stringify(map));
-}
-
-function bumpLocalView(id) {
-  if (!id) return;
-  const map = readViewsMap();
-  map[id] = (map[id] || 0) + 1;
-  writeViewsMap(map);
-}
-
-function getCombinedViews(post) {
-  const base = post.views || 0;
-  const map = readViewsMap();
-  const extra = map[post.id] || 0;
-  return base + extra;
-}
-
-function wasViewFromList(id) {
-  try {
-    return sessionStorage.getItem(`viewFromList:${id}`) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function consumeViewFromList(id) {
-  try {
-    sessionStorage.removeItem(`viewFromList:${id}`);
-  } catch {}
-}
+import {
+  consumeViewFromList,
+  countPostViewOnce,
+  getDisplayViews,
+  getOptimisticViews,
+  wasViewFromList,
+} from './post-views.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -178,7 +141,6 @@ function syncHeaderFooterLogos(category) {
   const footerLogo = document.getElementById('footerLogoImg');
   if (footerLogo) footerLogo.src = info.logo;
 
-  // ✅ 커서 오이는 항상 기본 홈 오이로 고정
   const buddy = document.getElementById('cukeBuddy');
   if (buddy) buddy.src = `${base}images/logo-home.png`;
 }
@@ -219,7 +181,7 @@ export async function initPostDetail() {
     return;
   }
 
-  const post = await loadPostById(postId);
+  let post = await loadPostById(postId);
 
   if (!post) {
     const titleEl = $('postTitle');
@@ -228,13 +190,20 @@ export async function initPostDetail() {
     return;
   }
 
+  const optimisticViews = getOptimisticViews(post.id);
+  if (Number.isFinite(optimisticViews)) {
+    post = { ...post, views: optimisticViews };
+  }
+
   if (wasViewFromList(post.id)) {
     consumeViewFromList(post.id);
   } else {
-    bumpLocalView(post.id);
+    const newViews = await countPostViewOnce(post.id, post.views);
+    if (Number.isFinite(newViews)) {
+      post = { ...post, views: newViews };
+    }
   }
 
-  // ✅ 카테고리 테마 반영
   syncThemeByCategory(post.category);
 
   const titleEl = $('postTitle');
@@ -245,7 +214,7 @@ export async function initPostDetail() {
   if (titleEl) titleEl.textContent = post.title || '';
   if (excerptEl) excerptEl.textContent = post.excerpt || '';
   if (categoryEl) categoryEl.textContent = post.category || '';
-  if (viewsEl) viewsEl.textContent = `👀 ${getCombinedViews(post)}`;
+  if (viewsEl) viewsEl.textContent = `👀 ${getDisplayViews(post)}`;
 
   renderAuthor(post);
   renderTags(post.tags);
