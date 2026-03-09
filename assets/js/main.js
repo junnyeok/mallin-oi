@@ -14,6 +14,7 @@ import { initLayoutIncludes } from './modules/layout-includes.js';
 import { initPrevMypage } from './modules/prev-mypage.js';
 import { initMypage } from './modules/mypage.js';
 import { initAccountRecovery } from './modules/account-recovery.js';
+import { initAuthUI } from './modules/auth-store.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -28,6 +29,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initLayoutIncludes();
   } catch (e) {
     console.error('[main] layout includes failed:', e);
+  }
+
+  try {
+    await initAuthUI();
+  } catch (e) {
+    console.error('[main] auth ui failed:', e);
   }
 
   try {
@@ -72,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    initWrite();
+    await initWrite();
   } catch (e) {
     console.error('[main] write module failed:', e);
   }
@@ -84,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    initMypage();
+    await initMypage();
   } catch (e) {
     console.error('[main] mypage module failed:', e);
   }

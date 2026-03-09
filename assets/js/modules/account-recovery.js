@@ -1,9 +1,19 @@
 // assets/js/modules/account-recovery.js
+import { supabase } from '../lib/supabase-client.js';
+import { resetPasswordHref } from './auth-store.js';
 
 function setMessage(el, text, type = '') {
   if (!el) return;
   el.textContent = text;
   el.className = type ? `account-auth-msg ${type}` : 'account-auth-msg';
+}
+
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+}
+
+function getResetRedirectUrl() {
+  return new URL(resetPasswordHref(), window.location.origin).toString();
 }
 
 function initFindIdPage() {
@@ -23,9 +33,14 @@ function initFindIdPage() {
       return;
     }
 
+    if (!isValidEmail(email)) {
+      setMessage(msg, '이메일 형식을 확인해줘.', 'is-error');
+      return;
+    }
+
     setMessage(
       msg,
-      '아이디 안내 메일 발송 기능은 백엔드 연결 후 동작해. 지금은 프론트 초안까지 완료된 상태야.',
+      '지금 Supabase 로그인 기준에서는 가입한 이메일 자체가 로그인 아이디야.',
       'is-success',
     );
   });
@@ -39,14 +54,14 @@ function initFindPasswordPage() {
 
   if (!form || !idInput || !emailInput || !msg) return;
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const id = idInput.value.trim();
+    const idValue = idInput.value.trim();
     const email = emailInput.value.trim();
 
-    if (!id) {
-      setMessage(msg, '아이디를 입력해줘.', 'is-error');
+    if (!idValue) {
+      setMessage(msg, '이메일(아이디)을 입력해줘.', 'is-error');
       return;
     }
 
@@ -55,15 +70,45 @@ function initFindPasswordPage() {
       return;
     }
 
+    if (!isValidEmail(idValue) || !isValidEmail(email)) {
+      setMessage(msg, '이메일 형식을 확인해줘.', 'is-error');
+      return;
+    }
+
+    if (idValue !== email) {
+      setMessage(
+        msg,
+        '현재 로그인 아이디는 이메일이야. 두 칸 모두 같은 이메일로 입력해줘.',
+        'is-error',
+      );
+      return;
+    }
+
+    setMessage(msg, '비밀번호 재설정 메일 보내는 중...', '');
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: getResetRedirectUrl(),
+    });
+
+    if (error) {
+      console.error('[account-recovery] resetPasswordForEmail error:', error);
+      setMessage(
+        msg,
+        '재설정 메일 전송에 실패했어. Supabase Redirect URL 설정도 같이 확인해줘.',
+        'is-error',
+      );
+      return;
+    }
+
     setMessage(
       msg,
-      '아이디와 이메일이 일치하면 비밀번호 재설정 링크가 이메일로 전송돼. 지금은 백엔드 연결 전이라 안내 메시지만 보여주는 상태야.',
+      '이메일이 맞다면 비밀번호 재설정 링크가 전송됐어. 메일함을 확인해줘.',
       'is-success',
     );
   });
 }
 
-function initResetPasswordPage() {
+async function initResetPasswordPage() {
   const form = document.getElementById('resetPasswordForm');
   const pw1Input = document.getElementById('newPassword');
   const pw2Input = document.getElementById('confirmPassword');
@@ -71,7 +116,19 @@ function initResetPasswordPage() {
 
   if (!form || !pw1Input || !pw2Input || !msg) return;
 
-  form.addEventListener('submit', (e) => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    setMessage(
+      msg,
+      '재설정 링크로 들어온 세션을 찾지 못했어. 이메일에서 다시 들어와줘.',
+      'is-error',
+    );
+  }
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const pw1 = pw1Input.value.trim();
@@ -92,17 +149,33 @@ function initResetPasswordPage() {
       return;
     }
 
+    const { error } = await supabase.auth.updateUser({
+      password: pw1,
+    });
+
+    if (error) {
+      console.error('[account-recovery] updateUser error:', error);
+      setMessage(
+        msg,
+        '비밀번호 변경에 실패했어. 재설정 링크를 다시 받아서 시도해줘.',
+        'is-error',
+      );
+      return;
+    }
+
     setMessage(
       msg,
-      '비밀번호 변경 기능은 백엔드 연결 후 실제로 동작해. 지금은 입력 검증까지 완료된 상태야.',
+      '비밀번호가 변경됐어. 이제 새 비밀번호로 로그인하면 돼.',
       'is-success',
     );
+
+    pw1Input.value = '';
+    pw2Input.value = '';
   });
 }
 
 export function initAccountRecovery() {
   const page = document.body?.dataset?.page;
-
   if (!page) return;
 
   if (page === 'find-id') {

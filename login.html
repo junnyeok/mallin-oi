@@ -38,13 +38,26 @@
 
           <form id="loginForm" class="login-form">
             <div class="login-field">
-              <label for="loginId">아이디</label>
-              <input type="text" id="loginId" required />
+              <label for="loginId">이메일</label>
+              <input
+                type="email"
+                id="loginId"
+                required
+                placeholder="가입한 이메일 입력"
+                autocomplete="email"
+              />
+              <p class="help-text">회원가입할 때 사용한 이메일로 로그인해줘.</p>
             </div>
 
             <div class="login-field">
               <label for="loginPw">비밀번호</label>
-              <input type="password" id="loginPw" required />
+              <input
+                type="password"
+                id="loginPw"
+                required
+                placeholder="비밀번호 입력"
+                autocomplete="current-password"
+              />
             </div>
 
             <button type="submit" class="login-btn">로그인</button>

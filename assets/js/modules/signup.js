@@ -1,12 +1,10 @@
 // assets/js/modules/signup.js
-
-import { readUsers, writeUsers, sha256, loginHref } from './auth-store.js';
+import { supabase } from '../lib/supabase-client.js';
+import { loginHref } from './auth-store.js';
 
 function $(id) {
   return document.getElementById(id);
 }
-
-/* ================= 메시지 생성 ================= */
 
 function ensureMsgEl(inputId) {
   const input = $(inputId);
@@ -34,157 +32,140 @@ function clearMsg(el) {
   el.textContent = '';
 }
 
-/* ================= 유효성 ================= */
-
-function isValidUserId(v) {
-  if (v.length < 4 || v.length > 20) return false;
-  if (/\s/.test(v)) return false;
-  return true;
-}
-
 function isValidEmail(v) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
 }
 
-/* ================= 중복 체크 ================= */
-
-function checkDuplicateId(id) {
-  const users = readUsers();
-  return users.some((u) => u.userId === id);
+function isValidNickname(v) {
+  return String(v || '').trim().length >= 2;
 }
-
-function checkDuplicateEmail(email) {
-  const users = readUsers();
-  return users.some((u) => u.email === email);
-}
-
-function checkDuplicateNick(nick) {
-  const users = readUsers();
-  return users.some((u) => u.nickname === nick);
-}
-
-/* ================= init ================= */
 
 export function initSignup() {
   const form = $('signupForm');
   if (!form) return;
 
-  const idInput = $('signupId');
   const emailInput = $('signupEmail');
   const nickInput = $('signupNickname');
   const pwInput = $('signupPw');
   const pw2Input = $('signupPw2');
+  const signupMsg = $('signupMsg');
 
-  const msgId = ensureMsgEl('signupId');
   const msgEmail = ensureMsgEl('signupEmail');
   const msgNick = ensureMsgEl('signupNickname');
 
   const agreeTerms = $('agreeTerms');
   const agreePrivacy = $('agreePrivacy');
 
-  /* ================= 아이디 실시간 체크 ================= */
-
-  idInput.addEventListener('blur', () => {
-    const val = idInput.value.trim();
-
-    if (!val) return clearMsg(msgId);
-
-    if (!isValidUserId(val)) {
-      setMsg(msgId, '아이디는 4~20자, 공백 없이 입력해줘.');
-      return;
-    }
-
-    if (checkDuplicateId(val)) {
-      setMsg(msgId, '중복된 아이디입니다.');
-    } else {
-      clearMsg(msgId);
-    }
-  });
-
-  /* ================= 이메일 실시간 체크 ================= */
-
-  emailInput.addEventListener('blur', () => {
+  emailInput?.addEventListener('blur', () => {
     const val = emailInput.value.trim();
-
     if (!val) return clearMsg(msgEmail);
 
     if (!isValidEmail(val)) {
-      setMsg(msgEmail, '이메일 형식이 올바르지 않습니다.');
+      setMsg(msgEmail, '이메일 형식이 올바르지 않아.');
       return;
     }
 
-    if (checkDuplicateEmail(val)) {
-      setMsg(msgEmail, '중복된 이메일입니다.');
-    } else {
-      clearMsg(msgEmail);
-    }
+    clearMsg(msgEmail);
   });
 
-  /* ================= 닉네임 실시간 체크 ================= */
-
-  nickInput.addEventListener('blur', () => {
+  nickInput?.addEventListener('blur', () => {
     const val = nickInput.value.trim();
-
     if (!val) return clearMsg(msgNick);
 
-    if (val.length < 2) {
-      setMsg(msgNick, '닉네임은 최소 2글자 이상입니다.');
+    if (!isValidNickname(val)) {
+      setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
       return;
     }
 
-    if (checkDuplicateNick(val)) {
-      setMsg(msgNick, '중복된 닉네임입니다.');
-    } else {
-      clearMsg(msgNick);
-    }
+    clearMsg(msgNick);
   });
-
-  /* ================= 회원가입 ================= */
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const userId = idInput.value.trim();
-    const email = emailInput.value.trim();
-    const nickname = nickInput.value.trim();
-    const pw = pwInput.value;
-    const pw2 = pw2Input.value;
+    const email = emailInput?.value.trim() || '';
+    const nickname = nickInput?.value.trim() || '';
+    const pw = pwInput?.value || '';
+    const pw2 = pw2Input?.value || '';
 
-    if (
-      checkDuplicateId(userId) ||
-      checkDuplicateEmail(email) ||
-      checkDuplicateNick(nickname)
-    ) {
-      alert('중복된 정보가 있습니다.');
+    clearMsg(msgEmail);
+    clearMsg(msgNick);
+    if (signupMsg) {
+      signupMsg.textContent = '';
+      signupMsg.style.color = 'var(--color-text-sub)';
+    }
+
+    if (!isValidEmail(email)) {
+      setMsg(msgEmail, '이메일 형식을 확인해줘.');
       return;
     }
 
-    if (!agreeTerms.checked || !agreePrivacy.checked) {
-      alert('필수 약관에 동의해야 합니다.');
+    if (!isValidNickname(nickname)) {
+      setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
+      return;
+    }
+
+    if (!agreeTerms?.checked || !agreePrivacy?.checked) {
+      alert('필수 약관에 동의해야 해.');
+      return;
+    }
+
+    if (!pw || pw.length < 6) {
+      alert('비밀번호는 최소 6자 이상으로 입력해줘.');
       return;
     }
 
     if (pw !== pw2) {
-      alert('비밀번호가 일치하지 않습니다.');
+      alert('비밀번호가 일치하지 않아.');
       return;
     }
 
-    const users = readUsers();
+    if (signupMsg) {
+      signupMsg.textContent = '회원가입 처리 중...';
+      signupMsg.style.color = 'var(--color-text-sub)';
+    }
 
-    const passHash = await sha256(pw);
-
-    users.push({
-      userId,
+    const { data, error } = await supabase.auth.signUp({
       email,
-      nickname,
-      passHash,
-      createdAt: new Date().toISOString(),
+      password: pw,
+      options: {
+        data: {
+          nickname,
+        },
+      },
     });
 
-    writeUsers(users);
+    if (error) {
+      console.error('[signup] signUp error:', error);
 
-    alert('회원가입 완료!');
+      if (signupMsg) {
+        signupMsg.textContent = `회원가입 실패: ${error.message}`;
+        signupMsg.style.color = 'red';
+      } else {
+        alert(`회원가입 실패: ${error.message}`);
+      }
+      return;
+    }
 
-    window.location.href = loginHref();
+    if (!data.session) {
+      if (signupMsg) {
+        signupMsg.textContent = '회원가입 완료! 이메일 인증 후 로그인해줘.';
+        signupMsg.style.color = 'green';
+      }
+
+      setTimeout(() => {
+        window.location.href = loginHref();
+      }, 500);
+      return;
+    }
+
+    if (signupMsg) {
+      signupMsg.textContent = '회원가입 완료! 로그인 페이지로 이동할게.';
+      signupMsg.style.color = 'green';
+    }
+
+    setTimeout(() => {
+      window.location.href = loginHref();
+    }, 500);
   });
 }

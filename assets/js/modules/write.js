@@ -1,4 +1,13 @@
 // assets/js/modules/write.js
+import {
+  getCurrentUser,
+  getUserIdValue,
+  getNicknameValue,
+  getUserEmail,
+  saveRedirect,
+  loginHref,
+} from './auth-store.js';
+
 /* =================================================
   write.js
   - write.html 전용
@@ -9,14 +18,6 @@
 ================================================= */
 
 const STORAGE_KEY = 'writeOutput_v1';
-
-// ✅ 로그인 가드용 키
-const AUTH_KEY = 'mallinLoggedIn';
-const AUTH_USER_KEY = 'mallinUser';
-const AUTH_REDIRECT_KEY = 'authRedirectTo';
-const USERS_KEY = 'mallinUsers_v1';
-
-// ✅ home 제외: write에서 허용하는 카테고리 고정
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 
 function $(sel) {
@@ -53,51 +54,23 @@ async function copyToClipboard(text) {
   }
 }
 
-/* ================= 로그인 체크/가드 ================= */
-
-function isLoggedIn() {
-  try {
-    return localStorage.getItem(AUTH_KEY) === 'true';
-  } catch {
-    return false;
-  }
-}
-
 function redirectToLogin() {
-  try {
-    sessionStorage.setItem(AUTH_REDIRECT_KEY, './write.html');
-  } catch {}
-
-  window.location.href = './login.html';
+  saveRedirect(`${window.location.pathname}${window.location.search}`);
+  window.location.href = loginHref();
 }
 
-function readUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-  } catch {
-    return [];
-  }
+function getCurrentAuthor(user) {
+  const customUserId = getUserIdValue(user);
+  const nickname = getNicknameValue(user);
+  const email = getUserEmail(user);
+
+  return {
+    authorId: customUserId || email || user?.id || 'unknown',
+    authorNickname:
+      nickname || (email.includes('@') ? email.split('@')[0] : '알수없음'),
+  };
 }
 
-function getCurrentAuthor() {
-  try {
-    const authorId = localStorage.getItem(AUTH_USER_KEY) || '';
-    const users = readUsers();
-    const me = users.find((u) => u.userId === authorId);
-
-    return {
-      authorId: authorId || 'unknown',
-      authorNickname: me?.nickname || authorId || '알수없음',
-    };
-  } catch {
-    return {
-      authorId: 'unknown',
-      authorNickname: '알수없음',
-    };
-  }
-}
-
-/* ===== posts.json에서 다음 id 자동 계산 ===== */
 async function getNextPostId() {
   try {
     const res = await fetch('./assets/data/posts.json', { cache: 'no-store' });
@@ -155,19 +128,14 @@ function buildPostObject({
     views: 0,
     pinned: !!pinned,
     tags,
-
-    // ✅ 작성자 정보 (마이페이지 작성글 수 카운트용 호환 필드 포함)
     authorId,
     userId: authorId,
     authorNickname,
     author: authorNickname,
     nickname: authorNickname,
-
     url: `posts/${id}.html`,
   };
 }
-
-/* ========= 본문 변환 ========= */
 
 function escapeHtml(str) {
   return String(str)
@@ -206,7 +174,6 @@ function renderBodyHtml(bodyInput) {
   return paras.join('\n');
 }
 
-/* ✅ include 방식 반영한 게시물 템플릿 */
 function buildPostHtmlTemplate({ id, category, bodyHtml, authorNickname }) {
   const pageCss = categoryPageCss(category);
 
@@ -319,7 +286,6 @@ ${bodyHtml
 </html>`;
 }
 
-/* ===== localStorage 저장/복원 ===== */
 function saveOutput({ id, jsonText, htmlText }) {
   try {
     localStorage.setItem(
@@ -346,12 +312,13 @@ function loadOutput() {
   }
 }
 
-export function initWrite() {
+export async function initWrite() {
   const form = $('#writeForm');
   if (!form) return;
 
-  // ✅ 로그인 안 했으면 write 페이지 진입 자체를 막음
-  if (!isLoggedIn()) {
+  const user = await getCurrentUser();
+
+  if (!user) {
     redirectToLogin();
     return;
   }
@@ -400,7 +367,7 @@ export function initWrite() {
       return;
     }
 
-    const { authorId, authorNickname } = getCurrentAuthor();
+    const { authorId, authorNickname } = getCurrentAuthor(user);
     const id = await getNextPostId();
 
     const postObj = buildPostObject({

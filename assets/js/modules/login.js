@@ -1,143 +1,68 @@
 // assets/js/modules/login.js
+import { supabase } from '../lib/supabase-client.js';
+import { consumeRedirect, homeHref } from './auth-store.js';
 
-import {
-  STORAGE_KEY,
-  USER_KEY,
-  REDIRECT_KEY,
-  findUserById,
-  readUsers,
-  sha256,
-  setLoggedIn,
-  logoutAndClear,
-  isLoggedIn,
-  homeHref,
-} from './auth-store.js';
-
-export function initLogin() {
-  initLoginForm();
-  initAuthUI();
+function $(id) {
+  return document.getElementById(id);
 }
 
-/* ================= 로그인 폼 ================= */
+function setMsg(el, text, color = 'var(--color-text-sub)') {
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = color;
+}
 
-function initLoginForm() {
-  const form = document.getElementById('loginForm');
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+}
+
+export function initLogin() {
+  const form = $('loginForm');
   if (!form) return;
 
-  const msg = document.getElementById('loginMsg');
+  const msg = $('loginMsg');
+  const idInput = $('loginId');
+  const pwInput = $('loginPw');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const id = document.getElementById('loginId')?.value.trim();
-    const pw = document.getElementById('loginPw')?.value;
+    const email = idInput?.value.trim() || '';
+    const password = pwInput?.value || '';
 
-    if (!id || !pw) {
-      msg.style.color = 'red';
-      msg.textContent = '아이디/비밀번호를 입력해줘.';
+    if (!email || !password) {
+      setMsg(msg, '이메일(아이디)과 비밀번호를 입력해줘.', 'red');
       return;
     }
 
-    const user = findUserById(id);
-
-    if (!user) {
-      msg.style.color = 'red';
-      msg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+    if (!isValidEmail(email)) {
+      setMsg(msg, '지금 Supabase 로그인은 가입한 이메일로 해야 해.', 'red');
       return;
     }
 
-    const inputHash = await sha256(pw);
+    setMsg(msg, '로그인 중...', 'var(--color-text-sub)');
 
-    if (user.passHash !== inputHash) {
-      msg.style.color = 'red';
-      msg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error('[login] signInWithPassword error:', error);
+      setMsg(
+        msg,
+        '로그인에 실패했어. 이메일 또는 비밀번호를 다시 확인해줘.',
+        'red',
+      );
       return;
     }
 
-    setLoggedIn(user.userId);
+    setMsg(msg, '로그인 성공! 이동할게.', 'green');
 
-    msg.style.color = 'green';
-    msg.textContent = '로그인 성공! 이동합니다...';
-
-    const redirectTo = sessionStorage.getItem(REDIRECT_KEY);
+    const redirectTo = consumeRedirect(homeHref());
 
     setTimeout(() => {
-      if (redirectTo) {
-        sessionStorage.removeItem(REDIRECT_KEY);
-        window.location.href = redirectTo;
-        return;
-      }
-
-      if (document.referrer) {
-        window.location.href = document.referrer;
-        return;
-      }
-
-      window.location.href = homeHref();
-    }, 500);
+      window.location.href = redirectTo;
+    }, 300);
   });
-}
-
-/* ================= 헤더 로그인 UI ================= */
-
-function initAuthUI() {
-  const loginLink = document.querySelector(
-    '.auth-links .auth-link[href$="login.html"]',
-  );
-
-  const mypageLink = document.querySelector(
-    '.auth-links .auth-link[href$="mypage.html"]',
-  );
-
-  if (!loginLink) return;
-
-  const loggedIn = isLoggedIn();
-
-  if (loggedIn) {
-    const userId = localStorage.getItem(USER_KEY);
-    const users = readUsers();
-    const user = users.find((u) => u.userId === userId);
-
-    const nickname = user?.nickname || userId;
-
-    /* ===== 로그인 버튼 -> 로그아웃 ===== */
-
-    loginLink.textContent = '로그아웃';
-    loginLink.href = '#';
-
-    loginLink.addEventListener('click', (e) => {
-      e.preventDefault();
-
-      logoutAndClear();
-      window.location.href = homeHref();
-    });
-
-    /* ===== 닉네임 표시 ===== */
-
-    const nickEl = document.createElement('span');
-    nickEl.className = 'auth-nickname';
-    nickEl.textContent = `${nickname}님`;
-
-    loginLink.before(nickEl);
-  } else {
-    /* ===== 로그인 안된 상태 ===== */
-
-    loginLink.addEventListener('click', () => {
-      const current = window.location.pathname + window.location.search;
-
-      sessionStorage.setItem(REDIRECT_KEY, current);
-    });
-
-    /* ===== 마이페이지 접근 제한 ===== */
-
-    if (mypageLink) {
-      mypageLink.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        sessionStorage.setItem(REDIRECT_KEY, window.location.pathname);
-
-        window.location.href = './login.html';
-      });
-    }
-  }
 }

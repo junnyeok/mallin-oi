@@ -1,36 +1,217 @@
-.mypage-links {
+/* mypage-main.css */
+
+.mypage-main {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--space-8);
-  margin-top: var(--space-8);
+  padding: var(--space-32);
+  min-height: 60vh;
 }
 
-.mypage-links__sep {
-  color: var(--color-border);
-  font-size: var(--text-small);
-  line-height: 1;
+.mypage-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-32);
+  box-shadow: var(--shadow-card);
 }
 
-.mypage-links .auth-link {
-  height: 28px;
-  padding: 0 var(--space-8);
+.mypage-title {
+  font-size: var(--text-h1);
+  margin: 0 0 var(--space-8);
+  text-align: center;
+}
+
+.mypage-desc {
+  margin: 0 0 var(--space-24);
+  text-align: center;
+  color: var(--color-text-sub);
   font-size: var(--text-body);
+  line-height: var(--line-body);
+}
+
+.mypage-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-12);
+  margin-bottom: var(--space-24);
+}
+
+.mypage-summary-item {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  padding: var(--space-16);
+  text-align: center;
+}
+
+.mypage-summary-label {
+  display: block;
+  margin-bottom: var(--space-8);
+  font-size: var(--text-small);
   color: var(--color-text-sub);
 }
 
-.mypage-links .auth-link:hover {
+.mypage-summary-value {
+  font-size: var(--text-body);
   color: var(--color-text);
 }
 
+.mypage-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  margin-bottom: var(--space-24);
+}
+
+.mypage-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.mypage-section + .mypage-section {
+  margin-top: var(--space-24);
+  padding-top: var(--space-24);
+  border-top: 2px solid var(--color-border);
+}
+
+.mypage-section--account,
+.mypage-section--danger {
+  margin-top: 0;
+  padding-top: var(--space-24);
+  border-top: 2px solid var(--color-border);
+}
+
+.mypage-section--danger {
+  margin-top: var(--space-24);
+}
+
+.mypage-section-title {
+  margin: 0;
+  font-size: var(--text-h2);
+  color: var(--color-text);
+}
+
+.mypage-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.mypage-field label {
+  font-size: var(--text-body);
+  color: var(--color-text);
+}
+
+.mypage-field input {
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  border: 2px solid var(--color-border);
+  font-size: var(--text-body);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.mypage-field input::placeholder {
+  color: var(--color-text-sub);
+}
+
+.mypage-field input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.mypage-field input[readonly] {
+  background: #f5f5f5;
+  color: var(--color-text-sub);
+  cursor: not-allowed;
+}
+
+.mypage-field .help-text,
+.mypage-field .field-msg {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+  line-height: var(--line-body);
+}
+
+.mypage-btn,
+.mypage-sub-btn,
+.mypage-danger-btn {
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+
+.mypage-btn {
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-text);
+  margin-top: var(--space-24);
+  margin-bottom: 0;
+}
+
+.mypage-sub-btn {
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.mypage-danger-btn {
+  border: 2px solid #f0b9b9;
+  background: #fff1f1;
+  color: #b42318;
+}
+
+.mypage-btn:hover,
+.mypage-sub-btn:hover,
+.mypage-danger-btn:hover {
+  opacity: 0.9;
+}
+
+.mypage-action-row {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.mypage-action-row > * {
+  flex: 1;
+}
+
+.mypage-msg,
+.mypage-withdraw-msg {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+}
+
+.mypage-danger-text {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+  line-height: 1.6;
+}
+
 @media (max-width: 700px) {
-  .mypage-links {
-    gap: var(--space-4);
-    flex-wrap: wrap;
+  .mypage-main {
+    padding: var(--space-20);
+    align-items: flex-start;
   }
 
-  .mypage-links .auth-link {
-    height: 26px;
-    padding: 0 var(--space-8);
+  .mypage-card {
+    padding: var(--space-20);
+  }
+
+  .mypage-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .mypage-action-row {
+    flex-direction: column;
   }
 }
