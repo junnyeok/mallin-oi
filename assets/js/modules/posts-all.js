@@ -1,11 +1,4 @@
-/* =================================================
-  posts-all.js
-  전체보기 페이지 전용
-  - pinned(고정)
-  - 탭 필터 (URL query)
-  - 검색(q) + 검색타입(type=title|tag)
-  - 페이지네이션
-================================================= */
+import { loadPosts, formatMMDD, sortByDateDesc } from './posts-repo.js';
 
 /* ================= 조회수(localStorage) ================= */
 
@@ -28,53 +21,10 @@ function getCombinedViews(post) {
 
 /* ================= 유틸 ================= */
 
-function formatMMDD(dateStr) {
-  const d = new Date(dateStr);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${mm}/${dd}`;
-}
-
-function getIdNum(id) {
-  const m = String(id || '').match(/(\d+)/);
-  return m ? Number(m[1]) : -1;
-}
-
-// ✅ date 최신순 + (date 같으면) id 큰 게 먼저
-function sortByDateDesc(posts) {
-  return [...posts].sort((a, b) => {
-    const bt = new Date(b.date).getTime();
-    const at = new Date(a.date).getTime();
-    if (bt !== at) return bt - at;
-
-    const bn = getIdNum(b.id);
-    const an = getIdNum(a.id);
-    if (bn !== an) return bn - an;
-
-    // 마지막 안전장치(완전 동일하면 타이틀로)
-    return String(b.title || '').localeCompare(String(a.title || ''), 'ko');
-  });
-}
-
 function normalize(s) {
   return String(s || '')
     .toLowerCase()
     .trim();
-}
-
-/**
- * GitHub Pages(프로젝트 페이지)에서도 안전하게 링크를 만들기 위한 보정
- */
-function toRelativeUrl(url) {
-  if (!url) return '#';
-  const u = String(url).trim();
-
-  if (/^(https?:)?\/\//i.test(u)) return u;
-  if (/^(mailto:|tel:)/i.test(u)) return u;
-  if (u.startsWith('#')) return u;
-
-  if (u.startsWith('/')) return `.${u}`;
-  return u;
 }
 
 /* ================= URL 상태 ================= */
@@ -119,17 +69,14 @@ function setState({ tab, page, q, type }) {
   const sp = new URLSearchParams();
   sp.set('tab', safeTab);
 
-  // 검색
   if (safeType !== 'title') sp.set('type', safeType);
   if (safeQ) sp.set('q', safeQ);
-
-  // 페이지
   if (safePage > 1) sp.set('page', String(safePage));
 
   history.pushState(null, '', `${location.pathname}?${sp.toString()}`);
 }
 
-/* ================= 검색 매칭 ================= */
+/* ================= 검색 ================= */
 
 function matchTitle(post, q) {
   if (!q) return true;
@@ -148,27 +95,23 @@ function filterByTab(posts, tab) {
   return posts.filter((p) => (p.category || '') === tab);
 }
 
-/* ================= 데이터 로드 ================= */
-
-async function loadPosts() {
-  const res = await fetch('./assets/data/posts.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('posts.json load fail');
-  return res.json();
-}
-
 /* ================= 렌더 ================= */
 
 function renderRow(p) {
-  const href = toRelativeUrl(p.url);
-
   return `
-    <a class="post-row" href="${href}">
+    <a class="post-row" href="${p.url}" data-id="${p.id}">
       <span class="post-row__title">${p.title}</span>
       <span class="post-row__meta">
         ${formatMMDD(p.date)} · 👀 ${getCombinedViews(p)} · ${p.category}
       </span>
     </a>
   `;
+}
+
+function markViewFromList(id) {
+  try {
+    sessionStorage.setItem(`viewFromList:${id}`, '1');
+  } catch {}
 }
 
 /* ================= 초기화 ================= */
@@ -182,17 +125,14 @@ export async function initPostsAll() {
   const btnNext = document.getElementById('pagerNext');
   const pagerInfo = document.getElementById('pagerInfo');
 
-  // ✅ 검색폼(있으면 연결)
   const searchForm =
     document.getElementById('searchForm') ||
     document.querySelector('form.search');
   const searchInput =
     document.getElementById('q') || document.querySelector('input[name="q"]');
 
-  // ✅ 제목/태그 토글 버튼(있으면 연결)
   const typeBtns = document.querySelectorAll('[data-type]');
 
-  // ❗ 이 페이지가 아니면 조용히 종료
   if (!pinnedEl || !listEl) return;
 
   const PER_PAGE = 10;
@@ -202,15 +142,14 @@ export async function initPostsAll() {
     allPosts = await loadPosts();
   } catch (e) {
     console.error(e);
-    pinnedEl.innerHTML = `<div class="empty">posts.json을 불러오지 못했어.</div>`;
-    listEl.innerHTML = `<div class="empty">경로(상대/절대)나 파일 위치를 확인해줘.</div>`;
+    pinnedEl.innerHTML = `<div class="empty">게시글을 불러오지 못했어.</div>`;
+    listEl.innerHTML = `<div class="empty">Supabase 연결값과 RLS를 확인해줘.</div>`;
     return;
   }
 
   function applyFilters(posts, { tab, q, type }) {
     let list = filterByTab(posts, tab);
 
-    // 검색 타입
     if (type === 'tag') list = list.filter((p) => matchTag(p, q));
     else list = list.filter((p) => matchTitle(p, q));
 
@@ -221,17 +160,14 @@ export async function initPostsAll() {
     const state = getState();
     const { tab, page, q, type } = state;
 
-    // 탭 UI
     tabBtns.forEach((btn) => {
       const active = btn.dataset.tab === tab;
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', String(active));
     });
 
-    // 검색창 값 유지
     if (searchInput) searchInput.value = q || '';
 
-    // ✅ 검색타입 버튼 UI 동기화
     if (typeBtns && typeBtns.length) {
       typeBtns.forEach((b) => {
         const active = b.dataset.type === type;
@@ -240,7 +176,6 @@ export async function initPostsAll() {
       });
     }
 
-    // 🔒 고정(pinned)도 동일한 필터 규칙 적용 (탭 + 검색)
     const pinnedBase = allPosts.filter((p) => p.pinned);
     const pinnedFiltered = sortByDateDesc(applyFilters(pinnedBase, state));
 
@@ -249,7 +184,6 @@ export async function initPostsAll() {
         ? `<div class="empty">고정된 글이 없어.</div>`
         : pinnedFiltered.map(renderRow).join('');
 
-    // 📚 일반 목록(비고정)도 동일한 필터 규칙 적용
     const normalBase = allPosts.filter((p) => !p.pinned);
     const filtered = sortByDateDesc(applyFilters(normalBase, state));
 
@@ -268,15 +202,19 @@ export async function initPostsAll() {
     if (btnPrev) btnPrev.disabled = safePage <= 1;
     if (btnNext) btnNext.disabled = safePage >= totalPages;
 
-    // page 보정이 생기면 URL도 맞춰줌
     if (safePage !== page) {
       setState({ tab, page: safePage, q, type });
     }
+
+    listEl.querySelectorAll('a.post-row[data-id]').forEach((a) => {
+      a.addEventListener('click', () => markViewFromList(a.dataset.id));
+    });
+
+    pinnedEl.querySelectorAll('a.post-row[data-id]').forEach((a) => {
+      a.addEventListener('click', () => markViewFromList(a.dataset.id));
+    });
   }
 
-  /* ================= 이벤트 ================= */
-
-  // 탭 클릭
   tabBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const s = getState();
@@ -285,7 +223,6 @@ export async function initPostsAll() {
     });
   });
 
-  // 페이지네이션
   if (btnPrev) {
     btnPrev.addEventListener('click', () => {
       const s = getState();
@@ -304,7 +241,6 @@ export async function initPostsAll() {
     });
   }
 
-  // ✅ 검색타입(제목/태그) 토글
   if (typeBtns && typeBtns.length) {
     typeBtns.forEach((b) => {
       b.addEventListener('click', () => {
@@ -315,7 +251,6 @@ export async function initPostsAll() {
     });
   }
 
-  // 검색 submit → page 1로 리셋 + q 반영
   if (searchForm && searchInput) {
     searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -332,7 +267,6 @@ export async function initPostsAll() {
 
   window.addEventListener('popstate', render);
 
-  // 초기 URL 정리(기본값 보정)
   const init = getState();
   setState(init);
 

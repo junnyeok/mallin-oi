@@ -1,4 +1,3 @@
-// assets/js/main.js
 import { initCursorBuddy } from './modules/cursor-buddy.js';
 import { initPostsUI } from './modules/posts-ui.js';
 import { initPostDetail, initBackLink } from './modules/post-detail.js';
@@ -49,25 +48,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    initPostsUI();
+    await initPostsUI();
   } catch (e) {
     console.error('[main] posts ui failed:', e);
   }
 
   try {
-    initPostsAll();
+    await initPostsAll();
   } catch (e) {
     console.error('[main] posts all failed:', e);
   }
 
   try {
-    initPostDetailList();
+    await initPostDetailList();
   } catch (e) {
     console.error('[main] post detail list failed:', e);
   }
 
   try {
-    initPostPrevNext();
+    await initPostPrevNext();
   } catch (e) {
     console.error('[main] post prev/next failed:', e);
   }

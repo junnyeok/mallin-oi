@@ -31,7 +31,6 @@
 
   <body class="theme-home" data-page="write">
     <div class="page">
-      <!-- 헤더 -->
       <div data-include="header"></div>
 
       <main class="site-main">
@@ -40,16 +39,12 @@
             <header class="write__head">
               <h1 class="write__title">새 글 쓰기</h1>
               <p class="write__desc">
-                제목/요약/태그/고정 설정 후 등록하면,
-                <strong>posts.json용 JSON</strong>과
-                <strong>posts/pXXX.html 템플릿</strong>이 생성돼. <br />
-                ⭐️pc기준:오른쪽 코드, 모바일기준: 화면 아래 코드를 박준혁한테
-                복붙해서 보내주면 새글을 대신 올려줄 거야.
+                이제 글은 수파베이스 DB에 바로 저장돼. 등록하면 자동으로
+                전체보기와 상세 페이지에 반영돼.
               </p>
             </header>
 
-            <div class="write__grid">
-              <!-- 폼 -->
+            <div class="write__grid" style="grid-template-columns: 1fr">
               <section class="write-card" aria-label="새 글 입력">
                 <form class="write-form" id="writeForm">
                   <div class="write-row">
@@ -74,19 +69,15 @@
                     ></textarea>
                   </div>
 
-                  <!-- ✅✅ 추가: 본문 -->
                   <div class="write-row">
-                    <label class="write-label" for="body">글내용(본문)</label>
+                    <label class="write-label" for="body">글내용(본문) *</label>
                     <textarea
                       class="write-control write-control--area write-control--body"
                       id="body"
-                      rows="10"
-                      placeholder="여기에 본문을 입력해. (HTML이면 그대로 들어가고, 일반 텍스트면 자동으로 문단/줄바꿈 처리돼)"
+                      rows="12"
+                      placeholder="여기에 본문을 입력해. 현재는 보안상 텍스트 기준으로 저장돼."
                     ></textarea>
-                    <p class="write-help">
-                      팁) &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt; 같은 HTML로 써도
-                      되고, 그냥 텍스트로 써도 돼.
-                    </p>
+                    <p class="write-help">줄바꿈과 문단은 자동으로 처리돼.</p>
                   </div>
 
                   <div class="write-row">
@@ -97,11 +88,6 @@
                       <option value="event">event (이벤트)</option>
                       <option value="career">career (이력)</option>
                     </select>
-                  </div>
-
-                  <div class="write-row">
-                    <label class="write-label" for="date">날짜</label>
-                    <input class="write-control" id="date" type="date" />
                   </div>
 
                   <div class="write-row">
@@ -127,53 +113,23 @@
                   </div>
 
                   <div class="write-actions">
-                    <button class="write-action" type="submit">
-                      등록(생성)
+                    <button
+                      class="write-action"
+                      id="writeSubmitBtn"
+                      type="submit"
+                    >
+                      등록
                     </button>
                   </div>
 
                   <p class="write-note" id="writeNote" aria-live="polite"></p>
                 </form>
               </section>
-
-              <!-- 출력 -->
-              <section class="write-card" aria-label="생성 결과">
-                <div class="write-out">
-                  <div class="write-out-head">
-                    <h2 class="write-out-title">출력</h2>
-                    <div class="write-out-actions">
-                      <button
-                        class="write-mini-btn"
-                        id="copyJson"
-                        type="button"
-                        disabled
-                      >
-                        JSON 복사
-                      </button>
-                      <button
-                        class="write-mini-btn"
-                        id="copyHtml"
-                        type="button"
-                        disabled
-                      >
-                        HTML 복사
-                      </button>
-                    </div>
-                  </div>
-
-                  <p class="write-out-label">posts.json에 추가할 JSON</p>
-                  <pre class="write-pre" id="outJson"></pre>
-
-                  <p class="write-out-label">posts/pXXX.html 템플릿</p>
-                  <pre class="write-pre" id="outHtml"></pre>
-                </div>
-              </section>
             </div>
           </div>
         </section>
       </main>
 
-      <!-- 푸터 -->
       <div data-include="footer"></div>
     </div>
 

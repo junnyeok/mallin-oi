@@ -1,53 +1,63 @@
-// assets/js/modules/post-prev-next.js
+import { loadPosts, sortByDateDesc } from './posts-repo.js';
+
+function setDisabledLink(el, text) {
+  if (!el) return;
+  el.href = '#';
+  el.setAttribute('aria-disabled', 'true');
+  el.textContent = text;
+}
+
+function setEnabledLink(el, href, text, id) {
+  if (!el) return;
+  el.href = href;
+  el.setAttribute('aria-disabled', 'false');
+  el.textContent = text;
+
+  el.addEventListener(
+    'click',
+    () => {
+      try {
+        sessionStorage.setItem(`viewFromList:${id}`, '1');
+      } catch {}
+    },
+    { once: true },
+  );
+}
 
 export async function initPostPrevNext() {
-  const body = document.body;
-  const currentId = body.dataset.postId;
-
-  // 상세페이지가 아니면 종료
-  if (!currentId) return;
-
   const prevBtn = document.getElementById('postPrevBtn');
   const nextBtn = document.getElementById('postNextBtn');
 
   if (!prevBtn || !nextBtn) return;
 
+  const sp = new URLSearchParams(window.location.search);
+  const currentId = Number(sp.get('id') || 0);
+  if (!currentId) return;
+
+  let posts = [];
   try {
-    const res = await fetch('../assets/data/posts.json');
-    const posts = await res.json();
+    posts = await loadPosts();
+  } catch (e) {
+    console.error('[post-prev-next] load failed:', e);
+    return;
+  }
 
-    if (!Array.isArray(posts) || posts.length === 0) return;
+  const ordered = sortByDateDesc(posts);
+  const idx = ordered.findIndex((p) => Number(p.id) === currentId);
+  if (idx < 0) return;
 
-    // 🔹 pinned 우선 + date 최신순 정렬
-    const sorted = [...posts].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
+  const prevPost = ordered[idx + 1] || null;
+  const nextPost = ordered[idx - 1] || null;
 
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return dateB - dateA; // 최신순
-    });
+  if (prevPost) {
+    setEnabledLink(prevBtn, prevPost.url, `← 이전글`, prevPost.id);
+  } else {
+    setDisabledLink(prevBtn, '← 이전글');
+  }
 
-    const currentIndex = sorted.findIndex((p) => p.id === currentId);
-    if (currentIndex === -1) return;
-
-    const prevPost = sorted[currentIndex - 1];
-    const nextPost = sorted[currentIndex + 1];
-
-    // 🔹 이전글
-    if (prevPost) {
-      prevBtn.href = `../${prevPost.url}`;
-      prevBtn.removeAttribute('aria-disabled');
-      prevBtn.title = prevPost.title;
-    }
-
-    // 🔹 다음글
-    if (nextPost) {
-      nextBtn.href = `../${nextPost.url}`;
-      nextBtn.removeAttribute('aria-disabled');
-      nextBtn.title = nextPost.title;
-    }
-  } catch (err) {
-    console.error('prev/next 로딩 실패:', err);
+  if (nextPost) {
+    setEnabledLink(nextBtn, nextPost.url, `다음글 →`, nextPost.id);
+  } else {
+    setDisabledLink(nextBtn, '다음글 →');
   }
 }

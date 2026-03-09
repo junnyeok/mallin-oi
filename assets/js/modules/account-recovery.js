@@ -1,5 +1,5 @@
 // assets/js/modules/account-recovery.js
-import { supabase } from '../lib/supabase-client.js';
+import { supabase } from './supabase-client.js';
 import { resetPasswordHref } from './auth-store.js';
 
 function setMessage(el, text, type = '') {

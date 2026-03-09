@@ -1,6 +1,6 @@
-// assets/js/modules/post-detail.js
+import { loadPostById } from './posts-repo.js';
 
-/* ================= 조회수(localStorage) - posts-ui.js와 동일 ================= */
+/* ================= 조회수(localStorage) ================= */
 
 const VIEWS_KEY = 'viewsMap_v1';
 
@@ -30,8 +30,6 @@ function getCombinedViews(post) {
   return base + extra;
 }
 
-/* ================= 상세페이지 중복 bump 방지(목록 클릭과 호환) ================= */
-
 function wasViewFromList(id) {
   try {
     return sessionStorage.getItem(`viewFromList:${id}`) === '1';
@@ -46,21 +44,17 @@ function consumeViewFromList(id) {
   } catch {}
 }
 
-/* ================= 데이터 로드 ================= */
-
-const DATA_BASE = new URL('../../data/', import.meta.url);
-
-async function loadPosts() {
-  const url = new URL('posts.json', DATA_BASE);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to load posts.json');
-  return res.json();
-}
-
-/* ================= 렌더링 ================= */
-
 function $(id) {
   return document.getElementById(id);
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function renderTags(tags = []) {
@@ -68,52 +62,180 @@ function renderTags(tags = []) {
   if (!wrap) return;
 
   wrap.innerHTML = (tags || [])
-    .map((t) => `<span class="tag">#${t}</span>`)
+    .map((t) => `<span class="tag">#${escapeHtml(t)}</span>`)
     .join('');
 }
 
 function renderAuthor(post) {
   const authorEl = $('postAuthor');
   if (!authorEl) return;
-
-  const nickname = String(post.authorNickname || '').trim();
-  const userId = String(post.authorId || '').trim();
-
-  if (nickname) {
-    authorEl.textContent = `작성자 : ${nickname}`;
-    return;
-  }
-
-  if (userId) {
-    authorEl.textContent = `작성자 : ${userId}`;
-    return;
-  }
-
-  authorEl.textContent = '작성자 : 관리자';
+  authorEl.textContent = `작성자 : ${post.authorNickname || '익명'}`;
 }
 
-/**
- * ✅ 상세 페이지 초기화
- * - body[data-post-id] 없으면 아무것도 안 하고 종료
- */
-export async function initPostDetail() {
-  const postId = document.body.dataset.postId;
-  if (!postId) return;
+function renderBodyText(text) {
+  const raw = String(text || '').trim();
 
-  const posts = await loadPosts();
-  const post = posts.find((p) => p.id === postId);
+  if (!raw) {
+    return `<p class="post-body__hint">본문이 아직 없어.</p>`;
+  }
+
+  return raw
+    .split(/\n{2,}/g)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p).replaceAll('\n', '<br />')}</p>`)
+    .join('');
+}
+
+/* ================= 테마 유틸 ================= */
+
+function getBasePath() {
+  return document.body?.dataset?.base || './';
+}
+
+function getThemeInfo(category) {
+  const base = getBasePath();
+
+  const map = {
+    home: {
+      bodyClass: 'theme-home',
+      pageCss: `${base}assets/css/pages/index.css`,
+      logo: `${base}images/logo-home.png`,
+      navHref: `${base}index.html`,
+    },
+    study: {
+      bodyClass: 'theme-study',
+      pageCss: `${base}assets/css/pages/study.css`,
+      logo: `${base}images/logo-study.png`,
+      navHref: `${base}study.html`,
+    },
+    work: {
+      bodyClass: 'theme-work',
+      pageCss: `${base}assets/css/pages/work.css`,
+      logo: `${base}images/logo-work.png`,
+      navHref: `${base}work.html`,
+    },
+    event: {
+      bodyClass: 'theme-event',
+      pageCss: `${base}assets/css/pages/event.css`,
+      logo: `${base}images/logo-event.png`,
+      navHref: `${base}event.html`,
+    },
+    career: {
+      bodyClass: 'theme-career',
+      pageCss: `${base}assets/css/pages/career.css`,
+      logo: `${base}images/logo-career.png`,
+      navHref: `${base}career.html`,
+    },
+  };
+
+  return map[category] || map.home;
+}
+
+function ensureCategoryPageCss(category) {
+  const info = getThemeInfo(category);
+  const head = document.head;
+  if (!head) return;
+
+  const EXISTING_ID = 'dynamic-category-theme-css';
+  let link = document.getElementById(EXISTING_ID);
+
+  if (!link) {
+    link = document.createElement('link');
+    link.id = EXISTING_ID;
+    link.rel = 'stylesheet';
+    head.appendChild(link);
+  }
+
+  if (link.getAttribute('href') !== info.pageCss) {
+    link.setAttribute('href', info.pageCss);
+  }
+}
+
+function syncBodyTheme(category) {
+  const info = getThemeInfo(category);
+  const body = document.body;
+
+  body.classList.remove(
+    'theme-home',
+    'theme-study',
+    'theme-work',
+    'theme-event',
+    'theme-career',
+  );
+
+  body.classList.add(info.bodyClass);
+  body.dataset.page = category;
+}
+
+function syncHeaderFooterLogos(category) {
+  const info = getThemeInfo(category);
+  const base = getBasePath();
+
+  const headerLogo = document.getElementById('siteLogoImg');
+  if (headerLogo) headerLogo.src = info.logo;
+
+  const footerLogo = document.getElementById('footerLogoImg');
+  if (footerLogo) footerLogo.src = info.logo;
+
+  // ✅ 커서 오이는 항상 기본 홈 오이로 고정
+  const buddy = document.getElementById('cukeBuddy');
+  if (buddy) buddy.src = `${base}images/logo-home.png`;
+}
+
+function syncNavCurrent(category) {
+  const info = getThemeInfo(category);
+
+  document.querySelectorAll('.site-nav__link').forEach((link) => {
+    link.removeAttribute('aria-current');
+
+    const href = link.getAttribute('href') || '';
+    if (href === info.navHref) {
+      link.setAttribute('aria-current', 'page');
+    }
+  });
+}
+
+function syncThemeByCategory(category) {
+  ensureCategoryPageCss(category);
+  syncBodyTheme(category);
+  syncHeaderFooterLogos(category);
+  syncNavCurrent(category);
+}
+
+/* ================= 상세 초기화 ================= */
+
+export async function initPostDetail() {
+  const bodyEl = document.getElementById('postBody');
+  if (!bodyEl) return;
+
+  const sp = new URLSearchParams(window.location.search);
+  const postId = sp.get('id');
+
+  if (!postId) {
+    const titleEl = $('postTitle');
+    if (titleEl) titleEl.textContent = '잘못된 접근';
+    bodyEl.innerHTML = `<p class="post-body__hint">게시글 id가 없어.</p>`;
+    return;
+  }
+
+  const post = await loadPostById(postId);
 
   if (!post) {
     const titleEl = $('postTitle');
     if (titleEl) titleEl.textContent = '게시물을 찾을 수 없음';
+    bodyEl.innerHTML = `<p class="post-body__hint">삭제됐거나 존재하지 않는 글이야.</p>`;
     return;
   }
 
-  if (wasViewFromList(postId)) {
-    consumeViewFromList(postId);
+  if (wasViewFromList(post.id)) {
+    consumeViewFromList(post.id);
   } else {
-    bumpLocalView(postId);
+    bumpLocalView(post.id);
   }
+
+  // ✅ 카테고리 테마 반영
+  syncThemeByCategory(post.category);
 
   const titleEl = $('postTitle');
   const excerptEl = $('postExcerpt');
@@ -128,12 +250,11 @@ export async function initPostDetail() {
   renderAuthor(post);
   renderTags(post.tags);
 
+  bodyEl.innerHTML = renderBodyText(post.body);
+
   document.title = `${post.title} | 말린오이닷컴`;
 }
 
-/**
- * ✅ 목록으로 / 뒤로가기 버튼
- */
 export function initBackLink() {
   const backBtn = document.getElementById('postBack');
   if (!backBtn) return;
@@ -146,6 +267,6 @@ export function initBackLink() {
       return;
     }
 
-    window.location.href = '../index.html';
+    window.location.href = './index.html';
   });
 }

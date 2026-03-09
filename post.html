@@ -5,39 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>게시물 | 말린오이닷컴</title>
 
-    <link rel="shortcut icon" href="../images/favicon.ico" />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
 
     <!-- 공통 -->
-    <link rel="stylesheet" href="../assets/css/00-reset.css" />
-    <link rel="stylesheet" href="../assets/css/01-tokens.css" />
-    <link rel="stylesheet" href="../assets/css/02-base.css" />
-    <link rel="stylesheet" href="../assets/css/03-layout.css" />
-    <link rel="stylesheet" href="../assets/css/components/buttons.css" />
-    <link rel="stylesheet" href="../assets/css/components/forms.css" />
-    <link rel="stylesheet" href="../assets/css/components/cursor-buddy.css" />
-    <link rel="stylesheet" href="../assets/css/components/nav.css" />
-    <link rel="stylesheet" href="../assets/css/components/footer.css" />
-    <link rel="stylesheet" href="../assets/css/components/weekly-nav-btn.css" />
-    <link rel="stylesheet" href="../assets/css/components/post-btn.css" />
-    <link rel="stylesheet" href="../assets/css/components/scroll-buttons.css" />
-    <link rel="stylesheet" href="../assets/css/components/write-btn.css" />
-    <link rel="stylesheet" href="../assets/css/components/auth-links.css" />
-    <link rel="stylesheet" href="../assets/css/components/search-btn.css" />
-
-    <!-- 페이지 css -->
-    <link rel="stylesheet" href="../assets/css/pages/study.css" />
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/weekly-nav-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/post-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
 
     <!-- main -->
-    <link rel="stylesheet" href="../assets/css/main/post-main.css" />
-    <link rel="stylesheet" href="../assets/css/main/posts-all-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/post-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
   </head>
 
-  <body
-    class="theme-study"
-    data-page="study"
-    data-post-id="p014"
-    data-base="../"
-  >
+  <body class="theme-home" data-page="post">
     <div class="page">
       <div data-include="header"></div>
 
@@ -57,14 +49,14 @@
 
                 <h1 class="post-title" id="postTitle">로딩중...</h1>
                 <p class="post-excerpt" id="postExcerpt"></p>
-                <p class="post-author" id="postAuthor">작성자 : 준혁스</p>
+                <p class="post-author" id="postAuthor">작성자 : -</p>
                 <div class="post-tags" id="postTags"></div>
               </header>
 
               <hr class="post-divider" />
 
-              <section class="post-body">
-                <p>헤더 푸터도 변경이 되었는지.</p>
+              <section class="post-body" id="postBody">
+                <p class="post-body__hint">본문을 불러오는 중이야.</p>
               </section>
             </article>
 
@@ -84,21 +76,26 @@
                 id="postPrevBtn"
                 class="weekly-nav__btn"
                 aria-disabled="true"
-                >← 이전글</a
               >
+                ← 이전글
+              </a>
+
               <a
-                href="../posts-all.html"
+                href="./posts-all.html"
                 id="postListBtn"
                 class="weekly-nav__btn"
-                >목록</a
               >
+                목록
+              </a>
+
               <a
                 href="#"
                 id="postNextBtn"
                 class="weekly-nav__btn"
                 aria-disabled="true"
-                >다음글 →</a
               >
+                다음글 →
+              </a>
             </nav>
 
             <section
@@ -123,9 +120,11 @@
                 >
                   ←
                 </button>
+
                 <span class="post-detail-list__page" id="detailPageInfo"
                   >1 / 1</span
                 >
+
                 <button
                   type="button"
                   class="weekly-nav__btn"
@@ -145,10 +144,11 @@
 
     <img
       id="cukeBuddy"
-      src="../images/logo-home.png"
+      src="./images/logo-home.png"
       alt="말린오이"
       class="cursor-buddy"
     />
-    <script type="module" src="../assets/js/main.js"></script>
+
+    <script type="module" src="./assets/js/main.js"></script>
   </body>
 </html>

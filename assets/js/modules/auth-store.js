@@ -1,5 +1,5 @@
 // assets/js/modules/auth-store.js
-import { supabase } from '../lib/supabase-client.js';
+import { supabase } from './supabase-client.js';
 
 export const REDIRECT_KEY = 'authRedirectTo';
 export const MYPAGE_VERIFY_KEY = 'mypageVerified_v1';

@@ -1,5 +1,5 @@
 // assets/js/modules/signup.js
-import { supabase } from '../lib/supabase-client.js';
+import { supabase } from './supabase-client.js';
 import { loginHref } from './auth-store.js';
 
 function $(id) {

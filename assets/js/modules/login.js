@@ -1,5 +1,5 @@
 // assets/js/modules/login.js
-import { supabase } from '../lib/supabase-client.js';
+import { supabase } from './supabase-client.js';
 import { consumeRedirect, homeHref } from './auth-store.js';
 
 function $(id) {

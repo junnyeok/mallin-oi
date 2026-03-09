@@ -1,318 +1,174 @@
-// assets/js/modules/mypage.js
-import { supabase } from '../lib/supabase-client.js';
-import {
-  getCurrentUser,
-  getNicknameValue,
-  getDisplayName,
-  getUserEmail,
-  saveRedirect,
-  loginHref,
-  homeHref,
-  signOutUser,
-  verifyCurrentPassword,
-} from './auth-store.js';
+import { supabase } from './supabase-client.js';
+import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 
 function $(id) {
   return document.getElementById(id);
 }
 
-function ensureMsgEl(inputId) {
-  const input = $(inputId);
-  if (!input) return null;
-
-  let msg = input.parentElement.querySelector('.field-msg');
-
-  if (!msg) {
-    msg = document.createElement('p');
-    msg.className = 'field-msg';
-    input.parentElement.appendChild(msg);
-  }
-
-  return msg;
+function saveRedirectHere() {
+  try {
+    sessionStorage.setItem(
+      'redirectAfterLogin',
+      `${window.location.pathname}${window.location.search}`,
+    );
+  } catch {}
 }
 
-function setMsg(el, text, color = 'red') {
-  if (!el) return;
-  el.textContent = text;
-  el.style.color = color;
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '-';
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function clearMsg(el) {
-  if (!el) return;
-  el.textContent = '';
+function renderMyPostRow(post) {
+  return `
+    <a class="post-row" href="${post.url}">
+      <span class="post-row__title">${post.title}</span>
+      <span class="post-row__meta">
+        ${formatMMDD(post.date)} · ${post.category}
+      </span>
+    </a>
+  `;
 }
 
-function isValidNickname(v) {
-  return String(v || '').trim().length >= 2;
-}
-
-async function guardMypage() {
-  const form = $('mypageForm');
-  if (!form) return null;
-
-  const user = await getCurrentUser();
-
-  if (!user) {
-    saveRedirect(`${window.location.pathname}${window.location.search}`);
-    window.location.href = loginHref();
+async function getCurrentUser() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error('[mypage] getUser failed:', error);
     return null;
   }
-
-  return user;
-}
-
-function formatDate(isoString) {
-  if (!isoString) return '-';
-
-  const d = new Date(isoString);
-  if (Number.isNaN(d.getTime())) return '-';
-
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}.${m}.${day}`;
-}
-
-async function loadPostsData() {
-  const candidates = [
-    './assets/data/posts.json',
-    './data/posts.json',
-    './posts.json',
-    '../assets/data/posts.json',
-    '../data/posts.json',
-    '../posts.json',
-  ];
-
-  for (const url of candidates) {
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
-    } catch {
-      // continue
-    }
-  }
-
-  return [];
-}
-
-function countUserPosts(posts, user) {
-  if (!Array.isArray(posts) || !user) return 0;
-
-  const nickname = getNicknameValue(user);
-  const email = getUserEmail(user);
-
-  return posts.filter((post) => {
-    const authorId = String(post.authorId || post.userId || '').trim();
-    const authorNick = String(
-      post.author || post.nickname || post.authorNickname || '',
-    ).trim();
-
-    return (
-      (!!nickname && authorNick === nickname) || (!!email && authorId === email)
-    );
-  }).length;
-}
-
-async function fillSummary(user) {
-  const createdAtEl = $('mypageCreatedAt');
-  const postCountEl = $('mypagePostCount');
-
-  if (createdAtEl) {
-    createdAtEl.textContent = formatDate(user?.created_at);
-  }
-
-  if (postCountEl) {
-    const posts = await loadPostsData();
-    postCountEl.textContent = String(countUserPosts(posts, user));
-  }
-}
-
-function fillUserInfo(user) {
-  const form = $('mypageForm');
-  if (!form || !user) return;
-
-  const emailInput = $('mypageEmail');
-  const nickInput = $('mypageNickname');
-
-  if (emailInput) emailInput.value = getUserEmail(user);
-  if (nickInput)
-    nickInput.value = getNicknameValue(user) || getDisplayName(user);
-}
-
-function initRealtimeValidation() {
-  const form = $('mypageForm');
-  if (!form) return;
-
-  const nickInput = $('mypageNickname');
-  const msgNick = ensureMsgEl('mypageNickname');
-
-  if (nickInput) {
-    nickInput.addEventListener('blur', () => {
-      const val = nickInput.value.trim();
-
-      if (!val) {
-        setMsg(msgNick, '닉네임을 입력해줘.');
-        return;
-      }
-
-      if (!isValidNickname(val)) {
-        setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
-        return;
-      }
-
-      clearMsg(msgNick);
-    });
-  }
-}
-
-function initMypageSubmit(user) {
-  const form = $('mypageForm');
-  if (!form) return;
-
-  const msg = $('mypageMsg');
-
-  const emailInput = $('mypageEmail');
-  const nickInput = $('mypageNickname');
-  const currentPwInput = $('mypageCurrentPw');
-  const newPwInput = $('mypageNewPw');
-  const newPw2Input = $('mypageNewPw2');
-
-  const msgNick = ensureMsgEl('mypageNickname');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const email = emailInput?.value.trim() || '';
-    const nickname = nickInput?.value.trim() || '';
-
-    const currentPw = currentPwInput?.value || '';
-    const newPw = newPwInput?.value || '';
-    const newPw2 = newPw2Input?.value || '';
-
-    clearMsg(msgNick);
-    setMsg(msg, '', 'var(--color-text-sub)');
-
-    if (!nickname || !isValidNickname(nickname)) {
-      setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
-      setMsg(msg, '닉네임을 다시 확인해줘.', 'red');
-      return;
-    }
-
-    if (email !== getUserEmail(user)) {
-      setMsg(msg, '이메일은 현재 변경할 수 없어.', 'red');
-      if (emailInput) emailInput.value = getUserEmail(user);
-      return;
-    }
-
-    const wantsPwChange = currentPw || newPw || newPw2;
-
-    if (wantsPwChange) {
-      if (!currentPw || !newPw || !newPw2) {
-        setMsg(
-          msg,
-          '비밀번호를 변경하려면 현재/새 비밀번호를 모두 입력해줘.',
-          'red',
-        );
-        return;
-      }
-
-      const verify = await verifyCurrentPassword(currentPw);
-
-      if (!verify.ok) {
-        setMsg(msg, verify.message, 'red');
-        if (currentPwInput) {
-          currentPwInput.value = '';
-          currentPwInput.focus();
-        }
-        return;
-      }
-
-      if (newPw.length < 6) {
-        setMsg(msg, '새 비밀번호는 최소 6자 이상이어야 해.', 'red');
-        return;
-      }
-
-      if (newPw !== newPw2) {
-        setMsg(msg, '새 비밀번호가 서로 일치하지 않아.', 'red');
-        return;
-      }
-    }
-
-    const payload = {
-      data: {
-        ...(user.user_metadata || {}),
-        nickname,
-      },
-    };
-
-    if (wantsPwChange) {
-      payload.password = newPw;
-    }
-
-    const { error } = await supabase.auth.updateUser(payload);
-
-    if (error) {
-      console.error('[mypage] updateUser error:', error);
-      setMsg(msg, `저장 실패: ${error.message}`, 'red');
-      return;
-    }
-
-    if (currentPwInput) currentPwInput.value = '';
-    if (newPwInput) newPwInput.value = '';
-    if (newPw2Input) newPw2Input.value = '';
-
-    setMsg(msg, '회원정보가 저장됐어.', 'green');
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 400);
-  });
-}
-
-function initLogoutButton() {
-  const btn = $('mypageLogoutBtn');
-  if (!btn) return;
-
-  btn.addEventListener('click', async () => {
-    try {
-      await signOutUser();
-      window.location.href = homeHref();
-    } catch (err) {
-      console.error(err);
-      alert(`로그아웃 실패: ${err.message}`);
-    }
-  });
-}
-
-function initWithdraw() {
-  const btn = $('mypageWithdrawBtn');
-  if (!btn) return;
-
-  const msg = $('mypageWithdrawMsg');
-
-  btn.addEventListener('click', () => {
-    setMsg(
-      msg,
-      '회원탈퇴는 아직 프론트만으로 안전하게 처리할 수 없어. 이건 다음에 백엔드/관리자 권한까지 붙여서 처리하자.',
-      'red',
-    );
-  });
+  return data.user || null;
 }
 
 export async function initMypage() {
   const form = $('mypageForm');
   if (!form) return;
 
-  const user = await guardMypage();
-  if (!user) return;
+  const msgEl = $('mypageMsg');
+  const withdrawMsgEl = $('mypageWithdrawMsg');
+  const logoutBtn = $('mypageLogoutBtn');
+  const withdrawBtn = $('mypageWithdrawBtn');
+  const emailEl = $('mypageEmail');
+  const nicknameEl = $('mypageNickname');
+  const createdAtEl = $('mypageCreatedAt');
+  const postCountEl = $('mypagePostCount');
+  const myPostListEl = $('mypagePostList');
 
-  fillUserInfo(user);
-  await fillSummary(user);
-  initRealtimeValidation();
-  initMypageSubmit(user);
-  initLogoutButton();
-  initWithdraw();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    saveRedirectHere();
+    window.location.href = './account/login.html';
+    return;
+  }
+
+  if (emailEl) emailEl.value = user.email || '';
+  if (nicknameEl) {
+    nicknameEl.value =
+      user.user_metadata?.nickname ||
+      user.user_metadata?.display_name ||
+      (user.email ? user.email.split('@')[0] : '');
+  }
+  if (createdAtEl) createdAtEl.textContent = formatDate(user.created_at);
+
+  try {
+    const myPosts = await loadPostsByAuthorId(user.id);
+
+    if (postCountEl) postCountEl.textContent = String(myPosts.length);
+
+    if (myPostListEl) {
+      myPostListEl.innerHTML =
+        myPosts.length > 0
+          ? myPosts.map(renderMyPostRow).join('')
+          : `<div class="empty">아직 작성한 글이 없어.</div>`;
+    }
+  } catch (e) {
+    console.error('[mypage] load my posts failed:', e);
+    if (myPostListEl) {
+      myPostListEl.innerHTML = `<div class="empty">내 글 목록을 불러오지 못했어.</div>`;
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (msgEl) msgEl.textContent = '저장 중...';
+
+    const nickname = (nicknameEl?.value || '').trim();
+    const currentPw = ($('mypageCurrentPw')?.value || '').trim();
+    const newPw = ($('mypageNewPw')?.value || '').trim();
+    const newPw2 = ($('mypageNewPw2')?.value || '').trim();
+
+    if (!nickname || nickname.length < 2) {
+      if (msgEl) msgEl.textContent = '닉네임은 2글자 이상이어야 해.';
+      return;
+    }
+
+    const { error: metaError } = await supabase.auth.updateUser({
+      data: { nickname },
+    });
+
+    if (metaError) {
+      console.error('[mypage] nickname update failed:', metaError);
+      if (msgEl) msgEl.textContent = `닉네임 저장 실패: ${metaError.message}`;
+      return;
+    }
+
+    if (newPw || newPw2) {
+      if (!currentPw) {
+        if (msgEl)
+          msgEl.textContent =
+            '비밀번호를 바꾸려면 현재 비밀번호를 입력해야 해.';
+        return;
+      }
+
+      if (newPw.length < 6) {
+        if (msgEl) msgEl.textContent = '새 비밀번호는 6자 이상이어야 해.';
+        return;
+      }
+
+      if (newPw !== newPw2) {
+        if (msgEl) msgEl.textContent = '새 비밀번호 확인이 맞지 않아.';
+        return;
+      }
+
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPw,
+      });
+
+      if (reauthError) {
+        console.error('[mypage] current password check failed:', reauthError);
+        if (msgEl) msgEl.textContent = '현재 비밀번호가 맞지 않아.';
+        return;
+      }
+
+      const { error: pwError } = await supabase.auth.updateUser({
+        password: newPw,
+      });
+
+      if (pwError) {
+        console.error('[mypage] password update failed:', pwError);
+        if (msgEl) msgEl.textContent = `비밀번호 변경 실패: ${pwError.message}`;
+        return;
+      }
+    }
+
+    $('mypageCurrentPw').value = '';
+    $('mypageNewPw').value = '';
+    $('mypageNewPw2').value = '';
+
+    if (msgEl) msgEl.textContent = '회원정보 저장 완료!';
+  });
+
+  logoutBtn?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = './index.html';
+  });
+
+  withdrawBtn?.addEventListener('click', () => {
+    if (withdrawMsgEl) {
+      withdrawMsgEl.textContent = '회원탈퇴는 아직 연결 전이야.';
+    }
+  });
 }

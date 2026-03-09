@@ -36,7 +36,6 @@
           <h1 class="mypage-title">마이페이지</h1>
           <p class="mypage-desc">회원정보를 확인하고 수정할 수 있어.</p>
 
-          <!-- 요약 정보 -->
           <section class="mypage-summary" aria-label="회원 요약 정보">
             <div class="mypage-summary-item">
               <span class="mypage-summary-label">가입일</span>
@@ -54,7 +53,6 @@
           </section>
 
           <form id="mypageForm" class="mypage-form" autocomplete="on">
-            <!-- 계정 정보 -->
             <section class="mypage-section">
               <h2 class="mypage-section-title">계정 정보</h2>
 
@@ -83,7 +81,6 @@
               </div>
             </section>
 
-            <!-- 비밀번호 변경 -->
             <section class="mypage-section">
               <h2 class="mypage-section-title">비밀번호 변경</h2>
 
@@ -133,7 +130,11 @@
             <p class="mypage-msg" id="mypageMsg"></p>
           </form>
 
-          <!-- 계정 관리 -->
+          <section class="mypage-section" aria-label="내가 쓴 글">
+            <h2 class="mypage-section-title">내가 쓴 글</h2>
+            <div id="mypagePostList" class="posts-all__rows"></div>
+          </section>
+
           <section class="mypage-section mypage-section--account">
             <h2 class="mypage-section-title">계정 관리</h2>
 
@@ -144,7 +145,6 @@
             </div>
           </section>
 
-          <!-- 회원탈퇴 -->
           <section class="mypage-section mypage-section--danger">
             <h2 class="mypage-section-title">회원탈퇴</h2>
             <p class="mypage-danger-text">

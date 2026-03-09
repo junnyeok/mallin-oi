@@ -1,3 +1,10 @@
+import {
+  loadPosts,
+  loadWeekly,
+  formatMMDD,
+  sortByDateDesc,
+} from './posts-repo.js';
+
 /* ================= 조회수(localStorage) ================= */
 
 const VIEWS_KEY = 'viewsMap_v1';
@@ -22,62 +29,13 @@ function bumpLocalView(id) {
 }
 
 function getCombinedViews(post) {
-  const base = post.views || 0; // posts.json 기본값
-  const map = readViewsMap(); // 내 브라우저 증가분
+  const base = post.views || 0;
+  const map = readViewsMap();
   const extra = map[post.id] || 0;
   return base + extra;
 }
 
-/* ================= 데이터 로드/필터 ================= */
-
-const DATA_BASE = new URL('../../data/', import.meta.url);
-
-async function loadJson(fileName) {
-  const url = new URL(fileName, DATA_BASE);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load ${fileName}`);
-  return res.json();
-}
-
-async function loadPosts() {
-  return loadJson('posts.json');
-}
-
-async function loadWeekly() {
-  try {
-    const data = await loadJson('weekly.json');
-
-    const activeWeek =
-      typeof data.activeWeek === 'string' ? data.activeWeek : null;
-
-    if (Array.isArray(data.weeks)) {
-      const map = new Map();
-      const order = [];
-
-      data.weeks.forEach((w) => {
-        const week = typeof w?.week === 'string' ? w.week : null;
-        const items = Array.isArray(w?.items) ? w.items : [];
-        if (!week) return;
-
-        map.set(week, items);
-        order.push(week);
-      });
-
-      order.sort((a, b) => new Date(a) - new Date(b));
-
-      let idx = activeWeek ? order.indexOf(activeWeek) : -1;
-      if (idx < 0) idx = order.length - 1;
-
-      return { mode: 'multi', order, map, index: idx };
-    }
-
-    const items = Array.isArray(data.items) ? data.items : [];
-    if (!activeWeek) return { mode: 'single', week: null, items: [] };
-    return { mode: 'single', week: activeWeek, items };
-  } catch {
-    return { mode: 'single', week: null, items: [] };
-  }
-}
+/* ================= 데이터/필터 ================= */
 
 function getPageCategory() {
   return document.body.dataset.page || 'home';
@@ -85,38 +43,10 @@ function getPageCategory() {
 
 function scopePosts(posts, pageCategory) {
   if (pageCategory === 'home') return posts;
+  if (pageCategory === 'post') return posts;
   return posts.filter((p) => p.category === pageCategory);
 }
 
-/* ================= 정렬 (✅ 같은 날짜 보정) ================= */
-
-function getIdNum(id) {
-  const m = String(id || '').match(/(\d+)/);
-  return m ? Number(m[1]) : -1;
-}
-
-// ✅ date 최신순 + (date 같으면) id 큰 게 먼저
-function sortByDateDesc(posts) {
-  return [...posts].sort((a, b) => {
-    const bt = new Date(b.date).getTime();
-    const at = new Date(a.date).getTime();
-    if (bt !== at) return bt - at;
-
-    const bn = getIdNum(b.id);
-    const an = getIdNum(a.id);
-    if (bn !== an) return bn - an;
-
-    return String(b.title || '').localeCompare(String(a.title || ''), 'ko');
-  });
-}
-
-/**
- * 주요 업데이트 정렬 규칙
- * 1. pinned 우선
- * 2. (합산) views 내림차순
- * 3. date 최신순
- * 4. (date 같으면) id 큰 게 먼저
- */
 function sortForFeatured(posts) {
   return [...posts].sort((a, b) => {
     if ((b.pinned ? 1 : 0) !== (a.pinned ? 1 : 0)) {
@@ -127,22 +57,15 @@ function sortForFeatured(posts) {
     const av = getCombinedViews(a);
     if (bv !== av) return bv - av;
 
-    const bt = new Date(b.date).getTime();
-    const at = new Date(a.date).getTime();
+    const bt = new Date(b.createdAt || b.date || 0).getTime();
+    const at = new Date(a.createdAt || a.date || 0).getTime();
     if (bt !== at) return bt - at;
 
-    return getIdNum(b.id) - getIdNum(a.id);
+    return Number(b.id || 0) - Number(a.id || 0);
   });
 }
 
-function formatMMDD(dateStr) {
-  const d = new Date(dateStr);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${mm}/${dd}`;
-}
-
-/* ================= 카드/리스트 클릭 추적 ================= */
+/* ================= 클릭 추적 ================= */
 
 function markViewFromList(id) {
   try {
@@ -167,12 +90,11 @@ function attachViewTracker(rootEl) {
       const id = miniRow.dataset.id;
       bumpLocalView(id);
       markViewFromList(id);
-      return;
     }
   });
 }
 
-/* ================= 카드 그리드 ================= */
+/* ================= 렌더 ================= */
 
 function renderCardGrid(posts, gridEl) {
   gridEl.innerHTML = posts
@@ -198,8 +120,6 @@ function renderCardGrid(posts, gridEl) {
     .join('');
 }
 
-/* ================= 최신 업로드 ================= */
-
 function renderLatestList(posts, listEl) {
   listEl.innerHTML = posts
     .map(
@@ -213,7 +133,7 @@ function renderLatestList(posts, listEl) {
     .join('');
 }
 
-/* ================= 이번주 체크 (주차별 체크 유지 + 완료 이미지 + 주차 네비) ================= */
+/* ================= weekly ================= */
 
 function weeklyStorageKey(week) {
   return `weeklyChecked:${week}`;
