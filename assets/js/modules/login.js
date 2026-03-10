@@ -51,7 +51,7 @@ export function initLogin() {
       console.error('[login] signInWithPassword error:', error);
       setMsg(
         msg,
-        '로그인에 실패했어. 이메일 또는 비밀번호를 다시 확인해줘.',
+        '로그인에 실패했어. 이메일 인증을 완료했는지 확인해줘. 인증메일을 확인하지 않았다면 메일함을 확인해줘.',
         'red',
       );
       return;
