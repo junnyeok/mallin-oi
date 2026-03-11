@@ -14,7 +14,7 @@ import { initPrevMypage } from './modules/prev-mypage.js';
 import { initMypage } from './modules/mypage.js';
 import { initAccountRecovery } from './modules/account-recovery.js';
 import { initAuthUI } from './modules/auth-store.js';
-import { initPostViews } from './modules/post-views.js';
+import { initPostViews } from './modules/post-views.js?v=20260311-1325';
 import { initPostComments } from './modules/post-comments.js';
 
 function isInAccountFolder() {
