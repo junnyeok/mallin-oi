@@ -18,15 +18,73 @@ function formatDate(dateStr) {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return '-';
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
+    2,
+    '0',
+  )}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '-';
+
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
+    2,
+    '0',
+  )}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(
+    2,
+    '0',
+  )}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function trimCommentPreview(text, max = 70) {
+  const clean = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean) return '(내용 없음)';
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max)}...`;
 }
 
 function renderMyPostRow(post) {
   return `
-    <a class="post-row" href="${post.url}">
-      <span class="post-row__title">${post.title}</span>
-      <span class="post-row__meta">
-        ${formatMMDD(post.date)} · ${post.category}
+    <a class="mypage-row" href="${post.url}">
+      <div class="mypage-row__main">
+        <div class="mypage-row__title">${escapeHtml(post.title)}</div>
+        <div class="mypage-row__body">${escapeHtml(post.excerpt || '(요약 없음)')}</div>
+      </div>
+      <span class="mypage-row__meta">
+        ${formatMMDD(post.date)} · ${escapeHtml(post.category)}
+      </span>
+    </a>
+  `;
+}
+
+function renderMyCommentRow(comment, postMap) {
+  const post = postMap.get(Number(comment.post_id));
+  const postTitle = post?.title || `게시물 #${comment.post_id}`;
+  const postCategory = post?.category || '-';
+  const postUrl = `./post.html?id=${encodeURIComponent(comment.post_id)}`;
+  const preview = trimCommentPreview(comment.body);
+
+  return `
+    <a class="mypage-row" href="${postUrl}">
+      <div class="mypage-row__main">
+        <div class="mypage-row__title">${escapeHtml(postTitle)}</div>
+        <div class="mypage-row__body">${escapeHtml(preview)}</div>
+      </div>
+      <span class="mypage-row__meta">
+        ${formatDateTime(comment.created_at)} · ${escapeHtml(postCategory)}
       </span>
     </a>
   `;
@@ -41,6 +99,87 @@ async function getCurrentUser() {
   return data.user || null;
 }
 
+async function loadMyCommentsWithPosts(authorId) {
+  const { data: comments, error: commentsError } = await supabase
+    .from('post_comments')
+    .select('id, post_id, body, created_at')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (commentsError) throw commentsError;
+
+  const commentList = comments || [];
+  const postIds = [
+    ...new Set(commentList.map((item) => Number(item.post_id)).filter(Boolean)),
+  ];
+
+  if (postIds.length === 0) {
+    return { comments: [], postMap: new Map() };
+  }
+
+  const { data: posts, error: postsError } = await supabase
+    .from('posts')
+    .select('id, title, category')
+    .in('id', postIds);
+
+  if (postsError) throw postsError;
+
+  const postMap = new Map((posts || []).map((post) => [Number(post.id), post]));
+  return { comments: commentList, postMap };
+}
+
+function setupPagedList({
+  items,
+  perPage = 10,
+  listEl,
+  prevBtn,
+  nextBtn,
+  pageInfoEl,
+  emptyHtml,
+  renderItem,
+}) {
+  let page = 1;
+
+  function render() {
+    const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+
+    if (page > totalPages) page = totalPages;
+    if (page < 1) page = 1;
+
+    if (!items.length) {
+      listEl.innerHTML = emptyHtml;
+      pageInfoEl.textContent = `1 / 1`;
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      return;
+    }
+
+    const start = (page - 1) * perPage;
+    const pageItems = items.slice(start, start + perPage);
+
+    listEl.innerHTML = pageItems.map(renderItem).join('');
+    pageInfoEl.textContent = `${page} / ${totalPages}`;
+    prevBtn.disabled = page <= 1;
+    nextBtn.disabled = page >= totalPages;
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (page <= 1) return;
+    page -= 1;
+    render();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+    if (page >= totalPages) return;
+    page += 1;
+    render();
+  });
+
+  render();
+}
+
 export async function initMypage() {
   const form = $('mypageForm');
   if (!form) return;
@@ -53,7 +192,17 @@ export async function initMypage() {
   const nicknameEl = $('mypageNickname');
   const createdAtEl = $('mypageCreatedAt');
   const postCountEl = $('mypagePostCount');
+
   const myPostListEl = $('mypagePostList');
+  const myCommentListEl = $('mypageCommentList');
+
+  const mypagePostPrevBtn = $('mypagePostPrevBtn');
+  const mypagePostNextBtn = $('mypagePostNextBtn');
+  const mypagePostPageInfo = $('mypagePostPageInfo');
+
+  const mypageCommentPrevBtn = $('mypageCommentPrevBtn');
+  const mypageCommentNextBtn = $('mypageCommentNextBtn');
+  const mypageCommentPageInfo = $('mypageCommentPageInfo');
 
   const user = await getCurrentUser();
 
@@ -64,12 +213,14 @@ export async function initMypage() {
   }
 
   if (emailEl) emailEl.value = user.email || '';
+
   if (nicknameEl) {
     nicknameEl.value =
       user.user_metadata?.nickname ||
       user.user_metadata?.display_name ||
       (user.email ? user.email.split('@')[0] : '');
   }
+
   if (createdAtEl) createdAtEl.textContent = formatDate(user.created_at);
 
   try {
@@ -77,17 +228,63 @@ export async function initMypage() {
 
     if (postCountEl) postCountEl.textContent = String(myPosts.length);
 
-    if (myPostListEl) {
-      myPostListEl.innerHTML =
-        myPosts.length > 0
-          ? myPosts.map(renderMyPostRow).join('')
-          : `<div class="empty">아직 작성한 글이 없어.</div>`;
+    if (
+      myPostListEl &&
+      mypagePostPrevBtn &&
+      mypagePostNextBtn &&
+      mypagePostPageInfo
+    ) {
+      setupPagedList({
+        items: myPosts,
+        perPage: 10,
+        listEl: myPostListEl,
+        prevBtn: mypagePostPrevBtn,
+        nextBtn: mypagePostNextBtn,
+        pageInfoEl: mypagePostPageInfo,
+        emptyHtml: `<div class="empty">아직 작성한 글이 없어.</div>`,
+        renderItem: renderMyPostRow,
+      });
     }
   } catch (e) {
     console.error('[mypage] load my posts failed:', e);
+
     if (myPostListEl) {
       myPostListEl.innerHTML = `<div class="empty">내 글 목록을 불러오지 못했어.</div>`;
     }
+    if (mypagePostPageInfo) mypagePostPageInfo.textContent = `1 / 1`;
+    if (mypagePostPrevBtn) mypagePostPrevBtn.disabled = true;
+    if (mypagePostNextBtn) mypagePostNextBtn.disabled = true;
+  }
+
+  try {
+    const { comments, postMap } = await loadMyCommentsWithPosts(user.id);
+
+    if (
+      myCommentListEl &&
+      mypageCommentPrevBtn &&
+      mypageCommentNextBtn &&
+      mypageCommentPageInfo
+    ) {
+      setupPagedList({
+        items: comments,
+        perPage: 10,
+        listEl: myCommentListEl,
+        prevBtn: mypageCommentPrevBtn,
+        nextBtn: mypageCommentNextBtn,
+        pageInfoEl: mypageCommentPageInfo,
+        emptyHtml: `<div class="empty">아직 작성한 댓글이 없어.</div>`,
+        renderItem: (comment) => renderMyCommentRow(comment, postMap),
+      });
+    }
+  } catch (e) {
+    console.error('[mypage] load my comments failed:', e);
+
+    if (myCommentListEl) {
+      myCommentListEl.innerHTML = `<div class="empty">내 댓글 목록을 불러오지 못했어.</div>`;
+    }
+    if (mypageCommentPageInfo) mypageCommentPageInfo.textContent = `1 / 1`;
+    if (mypageCommentPrevBtn) mypageCommentPrevBtn.disabled = true;
+    if (mypageCommentNextBtn) mypageCommentNextBtn.disabled = true;
   }
 
   form.addEventListener('submit', async (e) => {
@@ -116,9 +313,10 @@ export async function initMypage() {
 
     if (newPw || newPw2) {
       if (!currentPw) {
-        if (msgEl)
+        if (msgEl) {
           msgEl.textContent =
             '비밀번호를 바꾸려면 현재 비밀번호를 입력해야 해.';
+        }
         return;
       }
 

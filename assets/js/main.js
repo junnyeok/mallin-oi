@@ -15,6 +15,7 @@ import { initMypage } from './modules/mypage.js';
 import { initAccountRecovery } from './modules/account-recovery.js';
 import { initAuthUI } from './modules/auth-store.js';
 import { initPostViews } from './modules/post-views.js';
+import { initPostComments } from './modules/post-comments.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -132,6 +133,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error(err);
     const titleEl = document.getElementById('postTitle');
     if (titleEl) titleEl.textContent = '로딩 실패';
+  }
+
+  try {
+    await initPostComments();
+  } catch (e) {
+    console.error('[main] post comments failed:', e);
   }
 
   try {

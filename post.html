@@ -42,9 +42,33 @@
 
             <article class="post-card" aria-labelledby="postTitle">
               <header class="post-head">
-                <div class="post-meta">
-                  <span class="chip" id="postCategory">category</span>
-                  <span class="chip chip--muted" id="postViews">👀 0</span>
+                <div class="post-head__top">
+                  <div class="post-meta">
+                    <span class="chip" id="postCategory">category</span>
+                    <span class="chip chip--muted" id="postViews">👀 0</span>
+                  </div>
+
+                  <div
+                    class="post-owner-actions"
+                    id="postOwnerActions"
+                    hidden
+                    aria-label="게시물 관리"
+                  >
+                    <button
+                      type="button"
+                      class="post-owner-btn"
+                      id="postEditBtn"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      class="post-owner-btn post-owner-btn--danger"
+                      id="postDeleteBtn"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
 
                 <h1 class="post-title" id="postTitle">로딩중...</h1>
@@ -60,17 +84,7 @@
               </section>
             </article>
 
-            <nav
-              class="post-pager"
-              aria-label="이전글 다음글"
-              style="
-                margin: var(--space-16) 0 var(--space-24);
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: var(--space-12);
-              "
-            >
+            <nav class="post-pager" aria-label="이전글 다음글">
               <a
                 href="#"
                 id="postPrevBtn"
@@ -97,6 +111,52 @@
                 다음글 →
               </a>
             </nav>
+
+            <section class="post-comments" aria-label="댓글">
+              <div class="post-comments__head">
+                <h2 class="post-comments__title">
+                  댓글 <span id="commentCount">0</span>
+                </h2>
+                <p class="post-comments__desc" id="commentLoginHint">
+                  로그인하면 댓글을 남길 수 있어.
+                </p>
+              </div>
+
+              <form class="comment-form" id="commentForm">
+                <div class="comment-form__top">
+                  <div class="comment-form__user" id="commentUserBox">
+                    작성자: 게스트
+                  </div>
+                </div>
+
+                <label class="comment-form__field" for="commentBody">
+                  <span class="comment-form__label">댓글</span>
+                  <textarea
+                    id="commentBody"
+                    name="commentBody"
+                    class="comment-form__textarea"
+                    rows="4"
+                    maxlength="500"
+                    placeholder="댓글을 입력해줘. (최대 500자)"
+                  ></textarea>
+                </label>
+
+                <div class="comment-form__bottom">
+                  <p class="comment-form__msg" id="commentFormMsg"></p>
+                  <button
+                    type="submit"
+                    class="weekly-nav__btn comment-form__submit"
+                    id="commentSubmitBtn"
+                  >
+                    등록
+                  </button>
+                </div>
+              </form>
+
+              <div class="comment-list" id="commentList">
+                <div class="comment-empty">댓글을 불러오는 중이야.</div>
+              </div>
+            </section>
 
             <section
               class="post-detail-list posts-all__list"
