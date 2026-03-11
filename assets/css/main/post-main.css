@@ -63,6 +63,10 @@
   flex-wrap: wrap;
 }
 
+.post-owner-actions[hidden] {
+  display: none !important;
+}
+
 .post-owner-btn {
   display: inline-flex;
   align-items: center;
