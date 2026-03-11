@@ -195,10 +195,18 @@ export function updateViewsInLink(linkEl, nextViews) {
   }
 }
 
-export function attachImmediateViewTracking(rootEl = document) {
-  if (!rootEl || rootEl.dataset.viewTrackingBound === '1') return;
+function getTrackingRoot(rootEl) {
+  if (rootEl instanceof HTMLElement) return rootEl;
+  return document.body;
+}
 
-  rootEl.addEventListener('click', (e) => {
+export function attachImmediateViewTracking(rootEl = document.body) {
+  const target = getTrackingRoot(rootEl);
+  if (!target) return;
+
+  if (target.dataset.viewTrackingBound === '1') return;
+
+  target.addEventListener('click', (e) => {
     const link = e.target.closest('a[data-id]');
     if (!link) return;
 
@@ -223,9 +231,9 @@ export function attachImmediateViewTracking(rootEl = document) {
     });
   });
 
-  rootEl.dataset.viewTrackingBound = '1';
+  target.dataset.viewTrackingBound = '1';
 }
 
 export function initPostViews() {
-  attachImmediateViewTracking(document);
+  attachImmediateViewTracking(document.body);
 }
