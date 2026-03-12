@@ -41,10 +41,9 @@ function isValidNickname(v) {
 }
 
 function getEmailRedirectTo() {
-  // 회원가입 인증 메일 클릭 후 돌아올 주소
-  // GitHub Pages 기준: 로그인 페이지로 보내는 게 제일 무난
-  const origin = window.location.origin;
-  return `${origin}/login.html`;
+  // ✅ 현재 실제 폴더 구조 기준:
+  // login.html 은 루트(/login.html)에 있음
+  return `${window.location.origin}/login.html`;
 }
 
 function getFriendlySignupError(error) {
@@ -52,8 +51,8 @@ function getFriendlySignupError(error) {
 
   const code = error.code || '';
   const message = error.message || '';
+  const lowerMessage = message.toLowerCase();
 
-  // Supabase 공식 에러 코드 우선 처리
   if (code === 'over_email_send_rate_limit') {
     return '인증 메일 발송 제한에 걸렸어. 잠시 후 다시 시도해줘.';
   }
@@ -71,7 +70,7 @@ function getFriendlySignupError(error) {
   }
 
   if (code === 'email_address_not_authorized') {
-    return '현재 메일 발송 설정으로는 이 이메일 주소에 인증 메일을 보낼 수 없어. Supabase SMTP 설정을 확인해줘.';
+    return '현재 메일 발송 설정으로는 이 이메일 주소에 인증 메일을 보낼 수 없어. SMTP 설정을 확인해줘.';
   }
 
   if (code === 'signup_disabled') {
@@ -82,9 +81,22 @@ function getFriendlySignupError(error) {
     return '이메일 회원가입이 비활성화되어 있어. Supabase Auth 설정을 확인해줘.';
   }
 
-  // message 기반 보조 처리
-  if (message.toLowerCase().includes('email rate limit exceeded')) {
+  if (lowerMessage.includes('email rate limit exceeded')) {
     return '인증 메일 발송 제한에 걸렸어. 잠시 후 다시 시도해줘.';
+  }
+
+  if (
+    lowerMessage.includes('error sending confirmation email') ||
+    lowerMessage.includes('error sending email')
+  ) {
+    return '인증 메일 발송에 실패했어. SMTP 설정이나 도메인 인증 상태를 확인해줘.';
+  }
+
+  if (
+    lowerMessage.includes('redirect') ||
+    lowerMessage.includes('confirmationurl')
+  ) {
+    return '인증 링크 주소 설정이 올바르지 않아. URL Configuration과 redirect 경로를 확인해줘.';
   }
 
   return `회원가입 실패: ${message}`;
@@ -109,7 +121,10 @@ export function initSignup() {
 
   emailInput?.addEventListener('blur', () => {
     const val = emailInput.value.trim();
-    if (!val) return clearMsg(msgEmail);
+    if (!val) {
+      clearMsg(msgEmail);
+      return;
+    }
 
     if (!isValidEmail(val)) {
       setMsg(msgEmail, '이메일 형식이 올바르지 않아.');
@@ -121,7 +136,10 @@ export function initSignup() {
 
   nickInput?.addEventListener('blur', () => {
     const val = nickInput.value.trim();
-    if (!val) return clearMsg(msgNick);
+    if (!val) {
+      clearMsg(msgNick);
+      return;
+    }
 
     if (!isValidNickname(val)) {
       setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
@@ -138,6 +156,7 @@ export function initSignup() {
     const nickname = nickInput?.value.trim() || '';
     const pw = pwInput?.value || '';
     const pw2 = pw2Input?.value || '';
+    const emailRedirectTo = getEmailRedirectTo();
 
     clearMsg(msgEmail);
     clearMsg(msgNick);
@@ -183,17 +202,22 @@ export function initSignup() {
       signupMsg.style.color = 'var(--color-text-sub)';
     }
 
+    console.log('[signup] emailRedirectTo:', emailRedirectTo);
+    console.log('[signup] signup email:', email);
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password: pw,
         options: {
-          emailRedirectTo: getEmailRedirectTo(),
+          emailRedirectTo,
           data: {
             nickname,
           },
         },
       });
+
+      console.log('[signup] signUp result:', data);
 
       if (error) {
         console.error('[signup] signUp error:', error);
@@ -207,7 +231,7 @@ export function initSignup() {
         return;
       }
 
-      // 이메일 인증이 켜져 있으면 session 없이 가입 완료됨
+      // confirm email ON 상태면 보통 session 없이 가입됨
       if (!data.session) {
         if (signupMsg) {
           signupMsg.textContent =
@@ -223,7 +247,7 @@ export function initSignup() {
         return;
       }
 
-      // 이메일 인증이 꺼져 있으면 바로 세션 생성될 수 있음
+      // confirm email OFF 상태면 바로 세션이 생길 수 있음
       if (signupMsg) {
         signupMsg.textContent = '회원가입 완료! 로그인 페이지로 이동할게.';
         signupMsg.style.color = 'green';

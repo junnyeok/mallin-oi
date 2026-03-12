@@ -1,15 +1,18 @@
 // assets/js/modules/scroll-buttons.js
 /* =================================================
   scroll-buttons.js
-  - 상단/하단 이동 플로팅 버튼 (항상 노출)
+  - 상단/댓글/하단 이동 플로팅 버튼
   - TOP: 맨 위에서는 비활성
+  - COMMENT: 댓글 영역 있으면 생성
   - END: 바닥 근처에서는 비활성
 ================================================= */
 
 export function initScrollButtons(options = {}) {
   const {
-    topOffset = 60, // ✅ 상단에서 이 px 이내면 TOP 비활성
+    topOffset = 60, // 상단에서 이 px 이내면 TOP 비활성
     bottomOffset = 240, // 바닥에서 이 px 이내면 END 비활성
+    commentTarget = '#postCommentsSection', // 댓글 이동 대상
+    commentActiveOffset = 120, // 댓글 영역 근처면 COMMENT 비활성
     scrollBehavior = 'smooth', // 'smooth' | 'auto'
   } = options;
 
@@ -36,6 +39,21 @@ export function initScrollButtons(options = {}) {
     <span class="scroll-fab__text">TOP</span>
   `;
 
+  const commentSection = document.querySelector(commentTarget);
+  let btnComment = null;
+
+  if (commentSection) {
+    btnComment = document.createElement('button');
+    btnComment.type = 'button';
+    btnComment.className = 'scroll-fab__btn';
+    btnComment.setAttribute('data-scroll-fab', 'comment');
+    btnComment.setAttribute('aria-label', '댓글로 이동');
+    btnComment.innerHTML = `
+      <span class="scroll-fab__icon" aria-hidden="true">💬</span>
+      <span class="scroll-fab__text">댓글</span>
+    `;
+  }
+
   const btnBottom = document.createElement('button');
   btnBottom.type = 'button';
   btnBottom.className = 'scroll-fab__btn';
@@ -46,7 +64,12 @@ export function initScrollButtons(options = {}) {
     <span class="scroll-fab__text">END</span>
   `;
 
-  wrap.append(btnTop, btnBottom);
+  if (btnComment) {
+    wrap.append(btnTop, btnComment, btnBottom);
+  } else {
+    wrap.append(btnTop, btnBottom);
+  }
+
   document.body.appendChild(wrap);
 
   function scrollToTop() {
@@ -54,17 +77,32 @@ export function initScrollButtons(options = {}) {
     window.scrollTo({ top: 0, behavior });
   }
 
+  function scrollToComments() {
+    if (!btnComment || btnComment.disabled || !commentSection) return;
+
+    const rect = commentSection.getBoundingClientRect();
+    const absoluteTop = window.pageYOffset + rect.top - 16;
+
+    window.scrollTo({
+      top: Math.max(0, absoluteTop),
+      behavior,
+    });
+  }
+
   function scrollToBottom() {
     if (btnBottom.disabled) return;
     const maxY = Math.max(
       document.documentElement.scrollHeight,
-      document.body.scrollHeight
+      document.body.scrollHeight,
     );
     window.scrollTo({ top: maxY, behavior });
   }
 
   btnTop.addEventListener('click', scrollToTop);
   btnBottom.addEventListener('click', scrollToBottom);
+  if (btnComment) {
+    btnComment.addEventListener('click', scrollToComments);
+  }
 
   function updateState() {
     const doc = document.documentElement;
@@ -75,21 +113,31 @@ export function initScrollButtons(options = {}) {
 
     const canScroll = scrollHeight > clientHeight + 10;
 
-    const nearTop = scrollTop <= topOffset; // ✅ 맨 위 근처
+    const nearTop = scrollTop <= topOffset;
     const nearBottom = scrollHeight - (scrollTop + clientHeight) < bottomOffset;
 
-    // 스크롤할 게 없으면 둘 다 비활성
     if (!canScroll) {
       btnTop.disabled = true;
       btnBottom.disabled = true;
+      if (btnComment) btnComment.disabled = true;
       return;
     }
 
-    // ✅ TOP: 위에 있으면 비활성
     btnTop.disabled = nearTop;
-
-    // ✅ END: 아래에 있으면 비활성
     btnBottom.disabled = nearBottom;
+
+    if (btnComment && commentSection) {
+      const rect = commentSection.getBoundingClientRect();
+
+      // 댓글 섹션 상단 근처에 오면 비활성
+      const isNearComment =
+        rect.top <= commentActiveOffset && rect.bottom > commentActiveOffset;
+
+      // 댓글 섹션이 화면에 이미 꽤 보이면 비활성
+      const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
+
+      btnComment.disabled = isNearComment || isVisible;
+    }
   }
 
   // 가벼운 rAF 스로틀
