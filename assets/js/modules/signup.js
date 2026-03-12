@@ -41,9 +41,31 @@ function isValidNickname(v) {
 }
 
 function getEmailRedirectTo() {
-  // ✅ 현재 실제 폴더 구조 기준:
-  // login.html 은 루트(/login.html)에 있음
-  return `${window.location.origin}/login.html`;
+  return new URL(loginHref(), window.location.origin).toString();
+}
+
+async function checkAccountAvailability({
+  email = '',
+  nickname = '',
+  excludeUserId = null,
+} = {}) {
+  const { data, error } = await supabase.rpc('check_account_availability', {
+    p_email: email || null,
+    p_nickname: nickname || null,
+    p_exclude_user_id: excludeUserId || null,
+  });
+
+  if (error) {
+    console.error('[signup] check_account_availability error:', error);
+    throw error;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+
+  return {
+    emailExists: !!row?.email_exists,
+    nicknameExists: !!row?.nickname_exists,
+  };
 }
 
 function getFriendlySignupError(error) {
@@ -99,6 +121,22 @@ function getFriendlySignupError(error) {
     return '인증 링크 주소 설정이 올바르지 않아. URL Configuration과 redirect 경로를 확인해줘.';
   }
 
+  if (
+    lowerMessage.includes('profiles_nickname_unique_idx') ||
+    (lowerMessage.includes('duplicate key value') &&
+      lowerMessage.includes('nickname'))
+  ) {
+    return '이미 사용 중인 닉네임이야. 다른 닉네임으로 시도해줘.';
+  }
+
+  if (
+    lowerMessage.includes('profiles_email_unique_idx') ||
+    (lowerMessage.includes('duplicate key value') &&
+      lowerMessage.includes('email'))
+  ) {
+    return '이미 가입된 이메일이야. 로그인하거나 비밀번호 찾기를 이용해줘.';
+  }
+
   return `회원가입 실패: ${message}`;
 }
 
@@ -119,8 +157,9 @@ export function initSignup() {
   const agreePrivacy = $('agreePrivacy');
   const submitBtn = form.querySelector('button[type="submit"]');
 
-  emailInput?.addEventListener('blur', () => {
+  emailInput?.addEventListener('blur', async () => {
     const val = emailInput.value.trim();
+
     if (!val) {
       clearMsg(msgEmail);
       return;
@@ -131,11 +170,22 @@ export function initSignup() {
       return;
     }
 
-    clearMsg(msgEmail);
+    try {
+      const { emailExists } = await checkAccountAvailability({ email: val });
+      if (emailExists) {
+        setMsg(msgEmail, '이미 가입된 이메일이야.');
+        return;
+      }
+      clearMsg(msgEmail);
+    } catch (err) {
+      console.error('[signup] email blur check failed:', err);
+      clearMsg(msgEmail);
+    }
   });
 
-  nickInput?.addEventListener('blur', () => {
+  nickInput?.addEventListener('blur', async () => {
     const val = nickInput.value.trim();
+
     if (!val) {
       clearMsg(msgNick);
       return;
@@ -146,7 +196,19 @@ export function initSignup() {
       return;
     }
 
-    clearMsg(msgNick);
+    try {
+      const { nicknameExists } = await checkAccountAvailability({
+        nickname: val,
+      });
+      if (nicknameExists) {
+        setMsg(msgNick, '이미 사용 중인 닉네임이야.');
+        return;
+      }
+      clearMsg(msgNick);
+    } catch (err) {
+      console.error('[signup] nickname blur check failed:', err);
+      clearMsg(msgNick);
+    }
   });
 
   form.addEventListener('submit', async (e) => {
@@ -197,15 +259,29 @@ export function initSignup() {
 
     if (submitBtn) submitBtn.disabled = true;
 
-    if (signupMsg) {
-      signupMsg.textContent = '회원가입 처리 중...';
-      signupMsg.style.color = 'var(--color-text-sub)';
-    }
-
-    console.log('[signup] emailRedirectTo:', emailRedirectTo);
-    console.log('[signup] signup email:', email);
-
     try {
+      const availability = await checkAccountAvailability({ email, nickname });
+
+      if (availability.emailExists) {
+        setMsg(msgEmail, '이미 가입된 이메일이야.');
+        emailInput?.focus();
+        return;
+      }
+
+      if (availability.nicknameExists) {
+        setMsg(msgNick, '이미 사용 중인 닉네임이야.');
+        nickInput?.focus();
+        return;
+      }
+
+      if (signupMsg) {
+        signupMsg.textContent = '회원가입 처리 중...';
+        signupMsg.style.color = 'var(--color-text-sub)';
+      }
+
+      console.log('[signup] emailRedirectTo:', emailRedirectTo);
+      console.log('[signup] signup email:', email);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password: pw,
@@ -231,7 +307,6 @@ export function initSignup() {
         return;
       }
 
-      // confirm email ON 상태면 보통 session 없이 가입됨
       if (!data.session) {
         if (signupMsg) {
           signupMsg.textContent =
@@ -244,10 +319,10 @@ export function initSignup() {
         setTimeout(() => {
           window.location.href = loginHref();
         }, 1200);
+
         return;
       }
 
-      // confirm email OFF 상태면 바로 세션이 생길 수 있음
       if (signupMsg) {
         signupMsg.textContent = '회원가입 완료! 로그인 페이지로 이동할게.';
         signupMsg.style.color = 'green';
@@ -263,7 +338,7 @@ export function initSignup() {
 
       if (signupMsg) {
         signupMsg.textContent =
-          '회원가입 중 예상치 못한 오류가 발생했어. 잠시 후 다시 시도해줘.';
+          '회원가입 중 오류가 발생했어. 잠시 후 다시 시도해줘.';
         signupMsg.style.color = 'red';
       }
     } finally {

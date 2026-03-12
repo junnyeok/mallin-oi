@@ -1,3 +1,4 @@
+// assets/js/modules/mypage.js
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 
@@ -28,7 +29,6 @@ function formatDateTime(dateStr) {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return '-';
-
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
     2,
     '0',
@@ -51,6 +51,7 @@ function trimCommentPreview(text, max = 70) {
   const clean = String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
+
   if (!clean) return '(내용 없음)';
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max)}...`;
@@ -92,11 +93,37 @@ function renderMyCommentRow(comment, postMap) {
 
 async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
+
   if (error) {
     console.error('[mypage] getUser failed:', error);
     return null;
   }
+
   return data.user || null;
+}
+
+async function checkAccountAvailability({
+  email = '',
+  nickname = '',
+  excludeUserId = null,
+} = {}) {
+  const { data, error } = await supabase.rpc('check_account_availability', {
+    p_email: email || null,
+    p_nickname: nickname || null,
+    p_exclude_user_id: excludeUserId || null,
+  });
+
+  if (error) {
+    console.error('[mypage] check_account_availability error:', error);
+    throw error;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+
+  return {
+    emailExists: !!row?.email_exists,
+    nicknameExists: !!row?.nickname_exists,
+  };
 }
 
 async function loadMyCommentsWithPosts(authorId) {
@@ -149,7 +176,7 @@ function setupPagedList({
 
     if (!items.length) {
       listEl.innerHTML = emptyHtml;
-      pageInfoEl.textContent = `1 / 1`;
+      pageInfoEl.textContent = '1 / 1';
       prevBtn.disabled = true;
       nextBtn.disabled = true;
       return;
@@ -188,6 +215,7 @@ export async function initMypage() {
   const withdrawMsgEl = $('mypageWithdrawMsg');
   const logoutBtn = $('mypageLogoutBtn');
   const withdrawBtn = $('mypageWithdrawBtn');
+
   const emailEl = $('mypageEmail');
   const nicknameEl = $('mypageNickname');
   const createdAtEl = $('mypageCreatedAt');
@@ -251,7 +279,7 @@ export async function initMypage() {
     if (myPostListEl) {
       myPostListEl.innerHTML = `<div class="empty">내 글 목록을 불러오지 못했어.</div>`;
     }
-    if (mypagePostPageInfo) mypagePostPageInfo.textContent = `1 / 1`;
+    if (mypagePostPageInfo) mypagePostPageInfo.textContent = '1 / 1';
     if (mypagePostPrevBtn) mypagePostPrevBtn.disabled = true;
     if (mypagePostNextBtn) mypagePostNextBtn.disabled = true;
   }
@@ -282,13 +310,14 @@ export async function initMypage() {
     if (myCommentListEl) {
       myCommentListEl.innerHTML = `<div class="empty">내 댓글 목록을 불러오지 못했어.</div>`;
     }
-    if (mypageCommentPageInfo) mypageCommentPageInfo.textContent = `1 / 1`;
+    if (mypageCommentPageInfo) mypageCommentPageInfo.textContent = '1 / 1';
     if (mypageCommentPrevBtn) mypageCommentPrevBtn.disabled = true;
     if (mypageCommentNextBtn) mypageCommentNextBtn.disabled = true;
   }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     if (msgEl) msgEl.textContent = '저장 중...';
 
     const nickname = (nicknameEl?.value || '').trim();
@@ -301,12 +330,39 @@ export async function initMypage() {
       return;
     }
 
+    try {
+      const availability = await checkAccountAvailability({
+        nickname,
+        excludeUserId: user.id,
+      });
+
+      if (availability.nicknameExists) {
+        if (msgEl) msgEl.textContent = '이미 사용 중인 닉네임이야.';
+        return;
+      }
+    } catch (err) {
+      console.error('[mypage] nickname availability check failed:', err);
+      if (msgEl) msgEl.textContent = '닉네임 확인 중 오류가 발생했어.';
+      return;
+    }
+
     const { error: metaError } = await supabase.auth.updateUser({
       data: { nickname },
     });
 
     if (metaError) {
       console.error('[mypage] nickname update failed:', metaError);
+
+      const lowerMessage = String(metaError.message || '').toLowerCase();
+      if (
+        lowerMessage.includes('profiles_nickname_unique_idx') ||
+        (lowerMessage.includes('duplicate key value') &&
+          lowerMessage.includes('nickname'))
+      ) {
+        if (msgEl) msgEl.textContent = '이미 사용 중인 닉네임이야.';
+        return;
+      }
+
       if (msgEl) msgEl.textContent = `닉네임 저장 실패: ${metaError.message}`;
       return;
     }
@@ -352,9 +408,13 @@ export async function initMypage() {
       }
     }
 
-    $('mypageCurrentPw').value = '';
-    $('mypageNewPw').value = '';
-    $('mypageNewPw2').value = '';
+    const currentPwEl = $('mypageCurrentPw');
+    const newPwEl = $('mypageNewPw');
+    const newPw2El = $('mypageNewPw2');
+
+    if (currentPwEl) currentPwEl.value = '';
+    if (newPwEl) newPwEl.value = '';
+    if (newPw2El) newPw2El.value = '';
 
     if (msgEl) msgEl.textContent = '회원정보 저장 완료!';
   });
