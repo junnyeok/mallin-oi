@@ -7,7 +7,7 @@ import {
   wasViewFromList,
 } from './post-views.js';
 import { supabase } from './supabase-client.js';
-import { getCurrentUser, loginHref, saveRedirect } from './auth-store.js';
+import { getCurrentUser } from './auth-store.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -167,9 +167,25 @@ function syncThemeByCategory(category) {
   syncNavCurrent(category);
 }
 
+/* ================= 권한 유틸 ================= */
+
+async function getMyRole() {
+  const { data, error } = await supabase.rpc('get_my_role');
+
+  if (error) {
+    console.error('[post-detail] get_my_role failed:', error);
+    return { isAdmin: false };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    isAdmin: !!row?.is_admin,
+  };
+}
+
 /* ================= 게시물 관리 ================= */
 
-function bindOwnerActions(post) {
+async function bindOwnerActions(post) {
   const actionWrap = $('postOwnerActions');
   const editBtn = $('postEditBtn');
   const deleteBtn = $('postDeleteBtn');
@@ -178,51 +194,59 @@ function bindOwnerActions(post) {
 
   actionWrap.hidden = true;
 
-  getCurrentUser()
-    .then((user) => {
-      if (
-        !user ||
-        !post?.authorId ||
-        String(user.id) !== String(post.authorId)
-      ) {
-        return;
-      }
+  try {
+    const [user, role] = await Promise.all([getCurrentUser(), getMyRole()]);
 
-      actionWrap.hidden = false;
+    const isOwner =
+      !!user && !!post?.authorId && String(user.id) === String(post.authorId);
+    const isAdmin = !!role?.isAdmin;
 
+    if (!isOwner && !isAdmin) return;
+
+    actionWrap.hidden = false;
+
+    if (isOwner || isAdmin) {
+      editBtn.hidden = false;
+      editBtn.disabled = false;
       editBtn.onclick = () => {
         window.location.href = `./write.html?edit=${encodeURIComponent(post.id)}`;
       };
+    } else {
+      editBtn.hidden = true;
+      editBtn.disabled = true;
+    }
 
-      deleteBtn.onclick = async () => {
-        const ok = window.confirm(
-          '이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.',
-        );
-        if (!ok) return;
+    deleteBtn.hidden = false;
+    deleteBtn.disabled = false;
 
-        deleteBtn.disabled = true;
-        editBtn.disabled = true;
+    deleteBtn.onclick = async () => {
+      const isMyPost = isOwner;
+      const ok = window.confirm(
+        isMyPost
+          ? '이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.'
+          : '관리자 권한으로 이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.',
+      );
+      if (!ok) return;
 
-        const { error } = await supabase
-          .from('posts')
-          .delete()
-          .eq('id', post.id);
+      deleteBtn.disabled = true;
+      editBtn.disabled = true;
 
-        if (error) {
-          console.error('[post-detail] delete failed:', error);
-          alert('게시물 삭제에 실패했어.');
-          deleteBtn.disabled = false;
-          editBtn.disabled = false;
-          return;
-        }
+      const { error } = await supabase.from('posts').delete().eq('id', post.id);
 
-        alert('게시물이 삭제됐어.');
-        window.location.href = './posts-all.html';
-      };
-    })
-    .catch((err) => {
-      console.error('[post-detail] owner action bind failed:', err);
-    });
+      if (error) {
+        console.error('[post-detail] delete failed:', error);
+        alert('게시물 삭제에 실패했어.');
+        deleteBtn.disabled = false;
+        editBtn.disabled = false;
+        return;
+      }
+
+      alert('게시물이 삭제됐어.');
+      window.location.href = './posts-all.html';
+    };
+  } catch (err) {
+    console.error('[post-detail] owner action bind failed:', err);
+  }
 }
 
 /* ================= 상세 초기화 ================= */
@@ -280,7 +304,7 @@ export async function initPostDetail() {
   renderTags(post.tags);
 
   bodyEl.innerHTML = renderBodyText(post.body);
-  bindOwnerActions(post);
+  await bindOwnerActions(post);
 
   document.title = `${post.title} | 말린오이닷컴`;
 }

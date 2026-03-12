@@ -49,6 +49,20 @@ async function getCurrentUser() {
   return data.user || null;
 }
 
+async function getMyRole() {
+  const { data, error } = await supabase.rpc('get_my_role');
+
+  if (error) {
+    console.error('[write] get_my_role failed:', error);
+    return { isAdmin: false };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    isAdmin: !!row?.is_admin,
+  };
+}
+
 function getEditPostId() {
   const sp = new URLSearchParams(window.location.search);
   const id = Number(sp.get('edit') || 0);
@@ -78,7 +92,15 @@ function setWriteModeUi(isEdit) {
   if (note) note.textContent = '';
 }
 
-async function loadEditablePost(postId, userId) {
+function setPinnedUiVisible(visible) {
+  const pinnedRow = $('#pinnedRow');
+  const pinnedEl = $('#pinned');
+
+  if (pinnedRow) pinnedRow.hidden = !visible;
+  if (!visible && pinnedEl) pinnedEl.checked = false;
+}
+
+async function loadEditablePost(postId, userId, isAdmin = false) {
   const { data, error } = await supabase
     .from('posts')
     .select(
@@ -90,14 +112,17 @@ async function loadEditablePost(postId, userId) {
   if (error) throw error;
   if (!data) return null;
 
-  if (!data.author_id || String(data.author_id) !== String(userId)) {
+  if (
+    !isAdmin &&
+    (!data.author_id || String(data.author_id) !== String(userId))
+  ) {
     return 'FORBIDDEN';
   }
 
   return data;
 }
 
-function fillWriteForm(post) {
+function fillWriteForm(post, isAdmin = false) {
   const titleEl = $('#title');
   const excerptEl = $('#excerpt');
   const bodyEl = $('#body');
@@ -111,7 +136,10 @@ function fillWriteForm(post) {
   if (categoryEl) categoryEl.value = normalizeCategory(post.category);
   if (tagsEl)
     tagsEl.value = Array.isArray(post.tags) ? post.tags.join(', ') : '';
-  if (pinnedEl) pinnedEl.checked = !!post.pinned;
+
+  if (pinnedEl) {
+    pinnedEl.checked = isAdmin ? !!post.pinned : false;
+  }
 }
 
 export async function initWrite() {
@@ -132,11 +160,14 @@ export async function initWrite() {
     return;
   }
 
+  const { isAdmin } = await getMyRole();
+  setPinnedUiVisible(isAdmin);
+
   if (editPostId) {
     if (note) note.textContent = '수정할 글을 불러오는 중...';
 
     try {
-      const editablePost = await loadEditablePost(editPostId, user.id);
+      const editablePost = await loadEditablePost(editPostId, user.id, isAdmin);
 
       if (editablePost === 'FORBIDDEN') {
         if (note) note.textContent = '본인이 작성한 글만 수정할 수 있어.';
@@ -150,8 +181,12 @@ export async function initWrite() {
         return;
       }
 
-      fillWriteForm(editablePost);
-      if (note) note.textContent = '수정 모드야. 내용을 바꾼 뒤 저장해줘.';
+      fillWriteForm(editablePost, isAdmin);
+      if (note) {
+        note.textContent = isAdmin
+          ? '수정 모드야. 관리자 권한으로 게시물을 수정할 수 있어.'
+          : '수정 모드야. 내용을 바꾼 뒤 저장해줘.';
+      }
     } catch (error) {
       console.error('[write] load editable post failed:', error);
       if (note) note.textContent = '게시물 정보를 불러오지 못했어.';
@@ -168,7 +203,7 @@ export async function initWrite() {
     const body = $('#body')?.value?.trim() || '';
     const category = normalizeCategory($('#category')?.value || 'study');
     const tags = parseTags($('#tags')?.value || '');
-    const pinned = !!$('#pinned')?.checked;
+    const pinned = isAdmin ? !!$('#pinned')?.checked : false;
 
     if (!title || !excerpt || !body) {
       note.textContent = '제목, 요약, 본문은 필수야.';
@@ -188,11 +223,13 @@ export async function initWrite() {
         pinned,
       };
 
-      const { error } = await supabase
-        .from('posts')
-        .update(payload)
-        .eq('id', editPostId)
-        .eq('author_id', user.id);
+      let query = supabase.from('posts').update(payload).eq('id', editPostId);
+
+      if (!isAdmin) {
+        query = query.eq('author_id', user.id);
+      }
+
+      const { error } = await query;
 
       if (submitBtn) submitBtn.disabled = false;
 
@@ -238,6 +275,7 @@ export async function initWrite() {
 
     note.textContent = '등록 완료! 상세 페이지로 이동할게.';
     form.reset();
+    setPinnedUiVisible(isAdmin);
 
     setTimeout(() => {
       window.location.href = `./post.html?id=${data.id}`;
