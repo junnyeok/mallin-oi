@@ -102,6 +102,38 @@ async function getCurrentUser() {
   return data.user || null;
 }
 
+function toBoolean(value) {
+  if (value === true) return true;
+  if (value === false) return false;
+
+  const text = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  return text === 'true' || text === 't' || text === '1';
+}
+
+async function getMyRole() {
+  const { data, error } = await supabase.rpc('get_my_role');
+
+  if (error) {
+    console.error('[mypage] get_my_role failed:', error);
+    return { isAdmin: false };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+
+  return {
+    isAdmin: toBoolean(row?.is_admin),
+  };
+}
+
+function syncRoleBadge(isAdmin) {
+  const badgeEl = $('mypageRoleBadge');
+  if (!badgeEl) return;
+  badgeEl.hidden = !isAdmin;
+}
+
 async function checkAccountAvailability({
   email = '',
   nickname = '',
@@ -238,6 +270,14 @@ export async function initMypage() {
     saveRedirectHere();
     window.location.href = './account/login.html';
     return;
+  }
+
+  try {
+    const role = await getMyRole();
+    syncRoleBadge(role.isAdmin);
+  } catch (e) {
+    console.error('[mypage] role check failed:', e);
+    syncRoleBadge(false);
   }
 
   if (emailEl) emailEl.value = user.email || '';
