@@ -123,6 +123,8 @@ async function getMyRole() {
 
   const row = Array.isArray(data) ? data[0] : data;
 
+  console.log('[mypage] get_my_role raw:', row);
+
   return {
     isAdmin: toBoolean(row?.is_admin),
   };
@@ -131,7 +133,19 @@ async function getMyRole() {
 function syncRoleBadge(isAdmin) {
   const badgeEl = $('mypageRoleBadge');
   if (!badgeEl) return;
-  badgeEl.hidden = !isAdmin;
+
+  badgeEl.classList.remove('is-admin', 'is-member');
+
+  if (isAdmin) {
+    badgeEl.textContent = '관리자';
+    badgeEl.setAttribute('aria-label', '관리자 계정');
+    badgeEl.classList.add('is-admin');
+    return;
+  }
+
+  badgeEl.textContent = '일반회원';
+  badgeEl.setAttribute('aria-label', '일반회원 계정');
+  badgeEl.classList.add('is-member');
 }
 
 async function checkAccountAvailability({
