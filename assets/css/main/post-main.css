@@ -1,5 +1,5 @@
 /* =========================
-   POST LAYOUT
+  POST LAYOUT
 ========================= */
 
 .post {
@@ -24,7 +24,7 @@
 }
 
 /* =========================
-   POST CARD
+  POST CARD
 ========================= */
 
 .post-card {
@@ -137,7 +137,7 @@
 }
 
 /* =========================
-   POST PAGER
+  POST PAGER
 ========================= */
 
 .post-pager {
@@ -153,8 +153,50 @@
   opacity: 0.45;
 }
 
+.post-pager__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
+  min-height: 48px;
+  padding: 0 18px;
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+
+  color: var(--color-text);
+  text-decoration: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  word-break: keep-all;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.post-pager__btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.post-pager__btn:active {
+  transform: translateY(0);
+}
+
+.post-pager__btn--center {
+  min-width: 88px;
+}
+
 /* =========================
-   COMMENTS
+  COMMENTS
 ========================= */
 
 .post-comments {
@@ -277,8 +319,25 @@
 .comment-form__submit {
   flex-shrink: 0;
   min-width: 72px;
+  min-height: 44px;
+  padding: 0 16px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   white-space: nowrap;
   word-break: keep-all;
+
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-text-fill-color: var(--color-text);
 }
 
 /* 댓글 목록 */
@@ -435,6 +494,17 @@
 
   .post-pager {
     gap: var(--space-8);
+  }
+
+  .post-pager__btn {
+    min-width: 96px;
+    min-height: 46px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+
+  .post-pager__btn--center {
+    min-width: 72px;
   }
 
   .comment-form__bottom,
