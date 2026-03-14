@@ -590,3 +590,11 @@
     flex: 1;
   }
 }
+
+/* hidden 속성 강제 적용 */
+.suggestion-edit-form[hidden],
+.suggestion-reply-edit-form[hidden],
+.suggestion-item__view[hidden],
+.suggestion-reply__view[hidden] {
+  display: none !important;
+}
