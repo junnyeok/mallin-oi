@@ -66,6 +66,18 @@
 .post-owner-actions[hidden] {
   display: none !important;
 }
+.post-owner-btn[hidden] {
+  display: none !important;
+}
+
+.comment-action-btn[hidden] {
+  display: none !important;
+}
+
+.comment-edit-form[hidden],
+.comment-item__view[hidden] {
+  display: none !important;
+}
 
 .post-owner-btn {
   display: inline-flex;

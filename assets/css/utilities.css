@@ -1,7 +1,7 @@
 /* 의도적으로 강하게 에외 상황 해결해야 할 때 
 !important 같은거 */
 
-/* hidden attribute 강제 적용 */
+/* hidden attribute 강제 적용 pinned */
 [hidden] {
   display: none !important;
 }
