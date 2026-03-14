@@ -1,13 +1,12 @@
 import { supabase } from './supabase-client.js';
 
-const DATA_BASE = new URL('../../data/', import.meta.url);
-
 export const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 
 function normalizeCategory(category) {
   const value = String(category || '')
     .trim()
     .toLowerCase();
+
   return ALLOWED_CATEGORIES.has(value) ? value : 'study';
 }
 
@@ -127,43 +126,4 @@ export async function loadPostsByAuthorId(authorId) {
 
   if (error) throw error;
   return (data || []).map(mapPostRow);
-}
-
-export async function loadWeekly() {
-  try {
-    const url = new URL('weekly.json', DATA_BASE);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to load weekly.json');
-    const data = await res.json();
-
-    const activeWeek =
-      typeof data.activeWeek === 'string' ? data.activeWeek : null;
-
-    if (Array.isArray(data.weeks)) {
-      const map = new Map();
-      const order = [];
-
-      data.weeks.forEach((w) => {
-        const week = typeof w?.week === 'string' ? w.week : null;
-        const items = Array.isArray(w?.items) ? w.items : [];
-        if (!week) return;
-
-        map.set(week, items);
-        order.push(week);
-      });
-
-      order.sort((a, b) => new Date(a) - new Date(b));
-
-      let idx = activeWeek ? order.indexOf(activeWeek) : -1;
-      if (idx < 0) idx = order.length - 1;
-
-      return { mode: 'multi', order, map, index: idx };
-    }
-
-    const items = Array.isArray(data.items) ? data.items : [];
-    if (!activeWeek) return { mode: 'single', week: null, items: [] };
-    return { mode: 'single', week: activeWeek, items };
-  } catch {
-    return { mode: 'single', week: null, items: [] };
-  }
 }
