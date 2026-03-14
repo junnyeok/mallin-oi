@@ -2,14 +2,15 @@ import { supabase } from './supabase-client.js';
 
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 
-function $(sel) {
-  return document.querySelector(sel);
+function $(selector) {
+  return document.querySelector(selector);
 }
 
 function normalizeCategory(value) {
   const v = String(value || '')
     .trim()
     .toLowerCase();
+
   return ALLOWED_CATEGORIES.has(v) ? v : 'study';
 }
 
@@ -19,8 +20,9 @@ function parseTags(input) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const clean = raw.map((t) => t.replace(/^#/, ''));
-  return Array.from(new Set(clean));
+  const clean = raw.map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean);
+
+  return [...new Set(clean)];
 }
 
 function saveRedirectHere() {
@@ -42,11 +44,24 @@ function getNicknameFromUser(user) {
 
 async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
+
   if (error) {
     console.error('[write] getUser failed:', error);
     return null;
   }
+
   return data.user || null;
+}
+
+function toBoolean(value) {
+  if (value === true) return true;
+  if (value === false) return false;
+
+  const text = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  return text === 'true' || text === 't' || text === '1';
 }
 
 async function getMyRole() {
@@ -58,8 +73,9 @@ async function getMyRole() {
   }
 
   const row = Array.isArray(data) ? data[0] : data;
+
   return {
-    isAdmin: !!row?.is_admin,
+    isAdmin: toBoolean(row?.is_admin),
   };
 }
 
@@ -96,8 +112,14 @@ function setPinnedUiVisible(visible) {
   const pinnedRow = $('#pinnedRow');
   const pinnedEl = $('#pinned');
 
-  if (pinnedRow) pinnedRow.hidden = !visible;
-  if (!visible && pinnedEl) pinnedEl.checked = false;
+  if (pinnedRow) {
+    pinnedRow.hidden = !visible;
+    pinnedRow.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
+
+  if (!visible && pinnedEl) {
+    pinnedEl.checked = false;
+  }
 }
 
 async function loadEditablePost(postId, userId, isAdmin = false) {
@@ -134,8 +156,10 @@ function fillWriteForm(post, isAdmin = false) {
   if (excerptEl) excerptEl.value = post.excerpt || '';
   if (bodyEl) bodyEl.value = post.body || '';
   if (categoryEl) categoryEl.value = normalizeCategory(post.category);
-  if (tagsEl)
+
+  if (tagsEl) {
     tagsEl.value = Array.isArray(post.tags) ? post.tags.join(', ') : '';
+  }
 
   if (pinnedEl) {
     pinnedEl.checked = isAdmin ? !!post.pinned : false;
@@ -151,6 +175,7 @@ export async function initWrite() {
   const editPostId = getEditPostId();
 
   setWriteModeUi(!!editPostId);
+  setPinnedUiVisible(false); // 기본은 무조건 숨김
 
   const user = await getCurrentUser();
 
@@ -160,7 +185,16 @@ export async function initWrite() {
     return;
   }
 
-  const { isAdmin } = await getMyRole();
+  let isAdmin = false;
+
+  try {
+    const role = await getMyRole();
+    isAdmin = !!role.isAdmin;
+  } catch (err) {
+    console.error('[write] role check failed:', err);
+    isAdmin = false;
+  }
+
   setPinnedUiVisible(isAdmin);
 
   if (editPostId) {
@@ -182,6 +216,7 @@ export async function initWrite() {
       }
 
       fillWriteForm(editablePost, isAdmin);
+
       if (note) {
         note.textContent = isAdmin
           ? '수정 모드야. 관리자 권한으로 게시물을 수정할 수 있어.'
@@ -203,14 +238,16 @@ export async function initWrite() {
     const body = $('#body')?.value?.trim() || '';
     const category = normalizeCategory($('#category')?.value || 'study');
     const tags = parseTags($('#tags')?.value || '');
+
+    // 일반회원은 프론트에서 체크박스를 억지로 만들어도 무조건 false
     const pinned = isAdmin ? !!$('#pinned')?.checked : false;
 
     if (!title || !excerpt || !body) {
-      note.textContent = '제목, 요약, 본문은 필수야.';
+      if (note) note.textContent = '제목, 요약, 본문은 필수야.';
       return;
     }
 
-    note.textContent = editPostId ? '수정 중...' : '등록 중...';
+    if (note) note.textContent = editPostId ? '수정 중...' : '등록 중...';
     if (submitBtn) submitBtn.disabled = true;
 
     if (editPostId) {
@@ -235,11 +272,11 @@ export async function initWrite() {
 
       if (error) {
         console.error('[write] update failed:', error);
-        note.textContent = `수정 실패: ${error.message}`;
+        if (note) note.textContent = `수정 실패: ${error.message}`;
         return;
       }
 
-      note.textContent = '수정 완료! 상세 페이지로 이동할게.';
+      if (note) note.textContent = '수정 완료! 상세 페이지로 이동할게.';
 
       setTimeout(() => {
         window.location.href = `./post.html?id=${editPostId}`;
@@ -269,11 +306,11 @@ export async function initWrite() {
 
     if (error) {
       console.error('[write] insert failed:', error);
-      note.textContent = `등록 실패: ${error.message}`;
+      if (note) note.textContent = `등록 실패: ${error.message}`;
       return;
     }
 
-    note.textContent = '등록 완료! 상세 페이지로 이동할게.';
+    if (note) note.textContent = '등록 완료! 상세 페이지로 이동할게.';
     form.reset();
     setPinnedUiVisible(isAdmin);
 

@@ -105,7 +105,13 @@
                     </p>
                   </div>
 
-                  <div class="write-row" id="pinnedRow" hidden>
+                  <!-- 관리자만 표시 -->
+                  <div
+                    class="write-row"
+                    id="pinnedRow"
+                    hidden
+                    aria-hidden="true"
+                  >
                     <label class="write-check">
                       <input id="pinned" type="checkbox" />
                       고정글(pinned)
@@ -139,6 +145,7 @@
       alt="말린오이"
       class="cursor-buddy"
     />
+
     <script type="module" src="./assets/js/main.js"></script>
   </body>
 </html>
