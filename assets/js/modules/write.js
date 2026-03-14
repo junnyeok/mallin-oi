@@ -156,7 +156,7 @@ export async function initWrite() {
 
   if (!user) {
     saveRedirectHere();
-    window.location.href = './account/login.html';
+    window.location.href = './login.html';
     return;
   }
 
