@@ -1,5 +1,5 @@
 .site-main {
-  flex: 1; /* layout.css에 이미 있지만, 혹시 main 클래스 바뀌면 여기서도 커버 가능 */
+  flex: 1;
   padding: var(--space-32) 0 0;
 }
 
@@ -16,7 +16,6 @@
   gap: var(--space-12);
   margin-bottom: var(--space-12);
 }
-/* align-items: baseline: 글씨의 **기준선(베이스라인)**을 맞춰서 제목과 작은 링크가 자연스럽게 정렬됨. */
 
 .home-section__title {
   font-size: var(--text-h2);
@@ -29,7 +28,6 @@
 }
 
 /* ===== GRID VARIANTS ===== */
-/* layout.css의 .grid를 그대로 쓰고, 홈에서만 필요한 변형만 추가 */
 .grid--cards {
   grid-template-columns: repeat(4, 1fr);
 }
@@ -46,7 +44,6 @@
   color: inherit;
   text-decoration: none;
 }
-/* overflow: hidden: 내부 썸네일이 둥근 모서리 밖으로 삐져나오지 않게 잘라줌. */
 
 .card__body {
   padding: var(--space-12);
@@ -65,10 +62,8 @@
 .card__desc {
   font-size: var(--text-small);
   color: var(--color-text-sub);
-  min-height: 2.6em; /* 카드 높이 들쭉날쭉 방지 */
+  min-height: 2.6em;
 }
-/* min-height: 2.6em: 설명이 짧은 카드가 있어도 카드 높이가 들쭉날쭉하지 않게 최소 높이 확보. 
-em은 현재 폰트 크기 기준. */
 
 .card__meta {
   display: flex;
@@ -86,7 +81,6 @@ em은 현재 폰트 크기 기준. */
   padding: var(--space-4) var(--space-12);
   background: transparent;
 }
-/* position: absolute + left/top: 왼쪽 위에 붙임. */
 
 .chip {
   font-size: 12px;
@@ -116,9 +110,20 @@ em은 현재 폰트 크기 기준. */
   box-shadow: var(--shadow-card);
 }
 
+.panel__head {
+  margin-bottom: var(--space-16);
+}
+
 .panel__title {
   font-size: var(--text-body);
-  margin-bottom: var(--space-16);
+  margin-bottom: var(--space-8);
+}
+
+.panel__desc {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+  line-height: 1.5;
 }
 
 .list {
@@ -159,80 +164,264 @@ em은 현재 폰트 크기 기준. */
   color: var(--color-text-sub);
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 980px) {
-  .home-hero__inner {
-    grid-template-columns: 1fr;
-  }
-
-  .grid--cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .split {
-    grid-template-columns: 1fr;
-  }
+/* ===== 건의사항 ===== */
+.suggestion-panel {
+  min-height: auto;
 }
 
-@media (max-width: 520px) {
-  .grid--cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* 이번주 체크 항목 텍스트 간격 및 정렬 */
-#weeklyList {
-  margin: var(--space-16) 0;
-}
-
-.weekly-status {
-  text-align: center;
-  font-weight: 600;
-}
-
-/* 이번 주 체크 전용 */
-#weeklyList input[type='checkbox'] {
-  accent-color: var(--color-primary);
-}
-
-/* 따봉 이미지 관련 */
-.weekly-done-image {
-  display: none;
-  margin: var(--space-16) auto 0;
-  width: 120px;
-  height: auto;
-}
-
-.weekly-done-image.is-visible {
-  display: block;
-}
-
-/* 주간 체크 네비(패널 우측 상단) */
-.weekly-nav {
-  position: absolute;
-  top: var(--space-12);
-  right: var(--space-12);
-  display: flex;
-  align-items: center;
+.suggestion-form {
+  display: grid;
   gap: var(--space-8);
+  margin-bottom: var(--space-12);
 }
 
-.weekly-nav__label {
+.suggestion-form__top {
   font-size: 12px;
   color: var(--color-text-sub);
 }
 
-.weekly-nav__btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+.suggestion-form__textarea {
+  width: 100%;
+  min-height: 30px;
+  height: 30px;
+  resize: vertical;
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
   background: var(--color-surface);
-  cursor: pointer;
-  line-height: 1;
+  color: var(--color-text);
+  outline: none;
 }
 
-.weekly-nav__btn:disabled {
-  opacity: 0.35;
+.suggestion-form__textarea:focus {
+  border-color: var(--color-primary);
+}
+
+.suggestion-form__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.suggestion-form__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.suggestion-form__msg {
+  margin: 0;
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.suggestion-form__msg.is-error {
+  color: #d93025;
+}
+
+.suggestion-form__msg.is-success {
+  color: #188038;
+}
+
+.suggestion-btn {
+  flex-shrink: 0;
+  min-width: 58px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.suggestion-btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
+}
+
+.suggestion-btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.suggestion-list {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.suggestion-empty {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-sub);
+  font-size: 13px;
+}
+
+.suggestion-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  padding: 10px 12px;
+}
+
+.suggestion-item__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.suggestion-item__author {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.suggestion-item__date {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  white-space: nowrap;
+}
+
+.suggestion-item__body {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.suggestion-replies {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.suggestion-reply {
+  border-top: 1px dashed var(--color-border);
+  padding-top: 6px;
+}
+
+.suggestion-reply__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-bottom: 2px;
+}
+
+.suggestion-reply__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.suggestion-reply__date {
+  font-size: 10px;
+  color: var(--color-text-sub);
+}
+
+.suggestion-reply__body {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.suggestion-admin-form {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.suggestion-admin-form__textarea {
+  width: 100%;
+  min-height: 30px;
+  height: 30px;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.suggestion-admin-form__textarea:focus {
+  border-color: var(--color-primary);
+}
+
+.suggestion-admin-form__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.suggestion-admin-form__msg {
+  margin: 0;
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.suggestion-admin-form__msg.is-error {
+  color: #d93025;
+}
+
+.suggestion-admin-form__msg.is-success {
+  color: #188038;
+}
+
+.suggestion-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.suggestion-pager__numbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.suggestion-page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.suggestion-page-btn.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  font-weight: 700;
 }
