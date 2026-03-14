@@ -50,11 +50,40 @@ function nl2brSafe(text) {
   return escapeHtml(text || '').replaceAll('\n', '<br />');
 }
 
-function renderCommentItem(comment, currentUserId = '') {
+function toBoolean(value) {
+  if (value === true) return true;
+  if (value === false) return false;
+
+  const text = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  return text === 'true' || text === 't' || text === '1';
+}
+
+async function getMyRole() {
+  const { data, error } = await supabase.rpc('get_my_role');
+
+  if (error) {
+    console.error('[post-comments] get_my_role failed:', error);
+    return { isAdmin: false };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+
+  return {
+    isAdmin: toBoolean(row?.is_admin),
+  };
+}
+
+function renderCommentItem(comment, currentUserId = '', isAdmin = false) {
   const isMine =
     currentUserId &&
     comment.author_id &&
     String(currentUserId) === String(comment.author_id);
+
+  const canEdit = !!isMine;
+  const canDelete = !!isMine || !!isAdmin;
 
   return `
     <article class="comment-item" data-comment-id="${comment.id}">
@@ -69,25 +98,39 @@ function renderCommentItem(comment, currentUserId = '') {
         </div>
 
         ${
-          isMine
+          canDelete || canEdit
             ? `
           <div class="comment-item__actions">
-            <button
-              type="button"
-              class="comment-action-btn"
-              data-action="edit"
-              data-comment-id="${comment.id}"
-            >
-              수정
-            </button>
-            <button
-              type="button"
-              class="comment-action-btn is-danger"
-              data-action="delete"
-              data-comment-id="${comment.id}"
-            >
-              삭제
-            </button>
+            ${
+              canEdit
+                ? `
+              <button
+                type="button"
+                class="comment-action-btn"
+                data-action="edit"
+                data-comment-id="${comment.id}"
+              >
+                수정
+              </button>
+            `
+                : ''
+            }
+
+            ${
+              canDelete
+                ? `
+              <button
+                type="button"
+                class="comment-action-btn is-danger"
+                data-action="delete"
+                data-comment-id="${comment.id}"
+                data-is-mine="${isMine ? 'true' : 'false'}"
+              >
+                삭제
+              </button>
+            `
+                : ''
+            }
           </div>
         `
             : ''
@@ -99,7 +142,7 @@ function renderCommentItem(comment, currentUserId = '') {
       </div>
 
       ${
-        isMine
+        canEdit
           ? `
         <form class="comment-edit-form" data-role="comment-edit-form" hidden>
           <textarea
@@ -159,12 +202,15 @@ async function renderComments(postId) {
   listEl.innerHTML = `<div class="comment-empty">댓글을 불러오는 중이야.</div>`;
 
   try {
-    const [comments, user] = await Promise.all([
+    const [comments, user, role] = await Promise.all([
       loadComments(postId),
       getCurrentUser(),
+      getMyRole(),
     ]);
 
     const currentUserId = user?.id || '';
+    const isAdmin = !!role?.isAdmin;
+
     countEl.textContent = String(comments.length);
 
     if (!comments.length) {
@@ -173,7 +219,7 @@ async function renderComments(postId) {
     }
 
     listEl.innerHTML = comments
-      .map((comment) => renderCommentItem(comment, currentUserId))
+      .map((comment) => renderCommentItem(comment, currentUserId, isAdmin))
       .join('');
   } catch (error) {
     console.error('[post-comments] render failed:', error);
@@ -318,8 +364,10 @@ async function handleCreateComment(postId) {
   });
 }
 
-async function handleDeleteComment(commentId, postId) {
-  const ok = window.confirm('이 댓글을 삭제할까?');
+async function handleDeleteComment(commentId, postId, isMine = true) {
+  const ok = window.confirm(
+    isMine ? '이 댓글을 삭제할까?' : '관리자 권한으로 이 댓글을 삭제할까?',
+  );
   if (!ok) return;
 
   const { error } = await supabase
@@ -396,7 +444,8 @@ function bindCommentListEvents(postId) {
     }
 
     if (action === 'delete') {
-      await handleDeleteComment(commentId, postId);
+      const isMine = btn.dataset.isMine === 'true';
+      await handleDeleteComment(commentId, postId, isMine);
     }
   });
 

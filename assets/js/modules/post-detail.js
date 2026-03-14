@@ -169,6 +169,17 @@ function syncThemeByCategory(category) {
 
 /* ================= 권한 유틸 ================= */
 
+function toBoolean(value) {
+  if (value === true) return true;
+  if (value === false) return false;
+
+  const text = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  return text === 'true' || text === 't' || text === '1';
+}
+
 async function getMyRole() {
   const { data, error } = await supabase.rpc('get_my_role');
 
@@ -178,8 +189,9 @@ async function getMyRole() {
   }
 
   const row = Array.isArray(data) ? data[0] : data;
+
   return {
-    isAdmin: !!row?.is_admin,
+    isAdmin: toBoolean(row?.is_admin),
   };
 }
 
@@ -193,6 +205,10 @@ async function bindOwnerActions(post) {
   if (!actionWrap || !editBtn || !deleteBtn) return;
 
   actionWrap.hidden = true;
+  editBtn.hidden = true;
+  deleteBtn.hidden = true;
+  editBtn.disabled = true;
+  deleteBtn.disabled = true;
 
   try {
     const [user, role] = await Promise.all([getCurrentUser(), getMyRole()]);
@@ -200,50 +216,54 @@ async function bindOwnerActions(post) {
     const isOwner =
       !!user && !!post?.authorId && String(user.id) === String(post.authorId);
     const isAdmin = !!role?.isAdmin;
+    const canDelete = isOwner || isAdmin;
+    const canEdit = isOwner; // 관리자라도 남의 글 수정 불가
 
-    if (!isOwner && !isAdmin) return;
+    if (!canDelete && !canEdit) return;
 
     actionWrap.hidden = false;
 
-    if (isOwner || isAdmin) {
+    if (canEdit) {
       editBtn.hidden = false;
       editBtn.disabled = false;
       editBtn.onclick = () => {
         window.location.href = `./write.html?edit=${encodeURIComponent(post.id)}`;
       };
-    } else {
-      editBtn.hidden = true;
-      editBtn.disabled = true;
     }
 
-    deleteBtn.hidden = false;
-    deleteBtn.disabled = false;
+    if (canDelete) {
+      deleteBtn.hidden = false;
+      deleteBtn.disabled = false;
 
-    deleteBtn.onclick = async () => {
-      const isMyPost = isOwner;
-      const ok = window.confirm(
-        isMyPost
-          ? '이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.'
-          : '관리자 권한으로 이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.',
-      );
-      if (!ok) return;
+      deleteBtn.onclick = async () => {
+        const isMyPost = isOwner;
+        const ok = window.confirm(
+          isMyPost
+            ? '이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.'
+            : '관리자 권한으로 이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.',
+        );
+        if (!ok) return;
 
-      deleteBtn.disabled = true;
-      editBtn.disabled = true;
+        deleteBtn.disabled = true;
+        editBtn.disabled = true;
 
-      const { error } = await supabase.from('posts').delete().eq('id', post.id);
+        const { error } = await supabase
+          .from('posts')
+          .delete()
+          .eq('id', post.id);
 
-      if (error) {
-        console.error('[post-detail] delete failed:', error);
-        alert('게시물 삭제에 실패했어.');
-        deleteBtn.disabled = false;
-        editBtn.disabled = false;
-        return;
-      }
+        if (error) {
+          console.error('[post-detail] delete failed:', error);
+          alert('게시물 삭제에 실패했어.');
+          deleteBtn.disabled = false;
+          if (!editBtn.hidden) editBtn.disabled = false;
+          return;
+        }
 
-      alert('게시물이 삭제됐어.');
-      window.location.href = './posts-all.html';
-    };
+        alert('게시물이 삭제됐어.');
+        window.location.href = './posts-all.html';
+      };
+    }
   } catch (err) {
     console.error('[post-detail] owner action bind failed:', err);
   }

@@ -122,7 +122,7 @@ function setPinnedUiVisible(visible) {
   }
 }
 
-async function loadEditablePost(postId, userId, isAdmin = false) {
+async function loadEditablePost(postId, userId) {
   const { data, error } = await supabase
     .from('posts')
     .select(
@@ -134,10 +134,7 @@ async function loadEditablePost(postId, userId, isAdmin = false) {
   if (error) throw error;
   if (!data) return null;
 
-  if (
-    !isAdmin &&
-    (!data.author_id || String(data.author_id) !== String(userId))
-  ) {
+  if (!data.author_id || String(data.author_id) !== String(userId)) {
     return 'FORBIDDEN';
   }
 
@@ -175,7 +172,7 @@ export async function initWrite() {
   const editPostId = getEditPostId();
 
   setWriteModeUi(!!editPostId);
-  setPinnedUiVisible(false); // 기본은 무조건 숨김
+  setPinnedUiVisible(false);
 
   const user = await getCurrentUser();
 
@@ -201,10 +198,12 @@ export async function initWrite() {
     if (note) note.textContent = '수정할 글을 불러오는 중...';
 
     try {
-      const editablePost = await loadEditablePost(editPostId, user.id, isAdmin);
+      const editablePost = await loadEditablePost(editPostId, user.id);
 
       if (editablePost === 'FORBIDDEN') {
-        if (note) note.textContent = '본인이 작성한 글만 수정할 수 있어.';
+        if (note) {
+          note.textContent = '본인이 작성한 글만 수정할 수 있어.';
+        }
         if (submitBtn) submitBtn.disabled = true;
         return;
       }
@@ -218,9 +217,7 @@ export async function initWrite() {
       fillWriteForm(editablePost, isAdmin);
 
       if (note) {
-        note.textContent = isAdmin
-          ? '수정 모드야. 관리자 권한으로 게시물을 수정할 수 있어.'
-          : '수정 모드야. 내용을 바꾼 뒤 저장해줘.';
+        note.textContent = '수정 모드야. 내용을 바꾼 뒤 저장해줘.';
       }
     } catch (error) {
       console.error('[write] load editable post failed:', error);
@@ -238,8 +235,6 @@ export async function initWrite() {
     const body = $('#body')?.value?.trim() || '';
     const category = normalizeCategory($('#category')?.value || 'study');
     const tags = parseTags($('#tags')?.value || '');
-
-    // 일반회원은 프론트에서 체크박스를 억지로 만들어도 무조건 false
     const pinned = isAdmin ? !!$('#pinned')?.checked : false;
 
     if (!title || !excerpt || !body) {
@@ -260,13 +255,11 @@ export async function initWrite() {
         pinned,
       };
 
-      let query = supabase.from('posts').update(payload).eq('id', editPostId);
-
-      if (!isAdmin) {
-        query = query.eq('author_id', user.id);
-      }
-
-      const { error } = await query;
+      const { error } = await supabase
+        .from('posts')
+        .update(payload)
+        .eq('id', editPostId)
+        .eq('author_id', user.id);
 
       if (submitBtn) submitBtn.disabled = false;
 
