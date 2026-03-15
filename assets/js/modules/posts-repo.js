@@ -31,6 +31,23 @@ function normalizeTags(tags) {
   return [];
 }
 
+function normalizeMediaItems(items) {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item) => ({
+      id: String(item?.id || ''),
+      type: String(item?.type || '').trim(),
+      title: String(item?.title || '').trim(),
+      url: String(item?.url || '').trim(),
+      path: String(item?.path || '').trim(),
+      fileName: String(item?.fileName || '').trim(),
+      mimeType: String(item?.mimeType || '').trim(),
+      size: Number(item?.size || 0),
+    }))
+    .filter((item) => item.type && (item.url || item.path));
+}
+
 function formatDateOnly(value) {
   if (!value) return '';
   const d = new Date(value);
@@ -39,6 +56,8 @@ function formatDateOnly(value) {
 }
 
 export function mapPostRow(row) {
+  const mediaItems = normalizeMediaItems(row.media_items);
+
   return {
     id: row.id,
     title: String(row.title || ''),
@@ -51,6 +70,8 @@ export function mapPostRow(row) {
     views: Number(row.views || 0),
     pinned: !!row.pinned,
     tags: normalizeTags(row.tags),
+    mediaItems,
+    hasAttachments: mediaItems.length > 0,
     authorId: row.author_id || '',
     authorNickname: String(row.author_nickname || '익명'),
     url: `./post.html?id=${encodeURIComponent(row.id)}`,
@@ -86,7 +107,7 @@ export async function loadPosts() {
   const { data, error } = await supabase
     .from('posts')
     .select(
-      'id, title, excerpt, body, category, tags, pinned, views, author_id, author_nickname, created_at, updated_at',
+      'id, title, excerpt, body, category, tags, pinned, views, media_items, author_id, author_nickname, created_at, updated_at',
     )
     .order('pinned', { ascending: false })
     .order('created_at', { ascending: false })
@@ -103,7 +124,7 @@ export async function loadPostById(id) {
   const { data, error } = await supabase
     .from('posts')
     .select(
-      'id, title, excerpt, body, category, tags, pinned, views, author_id, author_nickname, created_at, updated_at',
+      'id, title, excerpt, body, category, tags, pinned, views, media_items, author_id, author_nickname, created_at, updated_at',
     )
     .eq('id', safeId)
     .maybeSingle();
@@ -118,7 +139,7 @@ export async function loadPostsByAuthorId(authorId) {
   const { data, error } = await supabase
     .from('posts')
     .select(
-      'id, title, excerpt, body, category, tags, pinned, views, author_id, author_nickname, created_at, updated_at',
+      'id, title, excerpt, body, category, tags, pinned, views, media_items, author_id, author_nickname, created_at, updated_at',
     )
     .eq('author_id', authorId)
     .order('created_at', { ascending: false })

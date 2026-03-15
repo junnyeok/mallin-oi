@@ -52,6 +52,237 @@ function renderBodyText(text) {
     .join('');
 }
 
+/* ================= 첨부 렌더 ================= */
+
+function normalizeMediaItems(items) {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item) => ({
+      id: String(item?.id || ''),
+      type: String(item?.type || '').trim(),
+      title: String(item?.title || '').trim(),
+      url: String(item?.url || '').trim(),
+      path: String(item?.path || '').trim(),
+      fileName: String(item?.fileName || '').trim(),
+      mimeType: String(item?.mimeType || '').trim(),
+      size: Number(item?.size || 0),
+    }))
+    .filter((item) => item.type && item.url);
+}
+
+function formatBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)}MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(1)}GB`;
+}
+
+function getAttachmentLabel(type) {
+  switch (type) {
+    case 'image':
+      return '사진';
+    case 'video':
+      return '영상';
+    case 'file':
+      return '파일';
+    case 'link':
+      return '링크';
+    case 'map':
+      return '지도';
+    default:
+      return '첨부';
+  }
+}
+
+function getAttachmentIcon(type) {
+  switch (type) {
+    case 'image':
+      return '🖼️';
+    case 'video':
+      return '🎬';
+    case 'file':
+      return '📎';
+    case 'link':
+      return '🔗';
+    case 'map':
+      return '🗺️';
+    default:
+      return '📄';
+  }
+}
+
+function renderImageItem(item) {
+  const title = item.title || item.fileName || '이미지';
+
+  return `
+    <figure class="post-attach-card post-attach-card--image">
+      <a
+        class="post-attach-media-link"
+        href="${escapeHtml(item.url)}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <img
+          class="post-attach-image"
+          src="${escapeHtml(item.url)}"
+          alt="${escapeHtml(title)}"
+          loading="lazy"
+        />
+      </a>
+      <figcaption class="post-attach-caption">
+        <span class="post-attach-badge">🖼️ 사진</span>
+        <span class="post-attach-title">${escapeHtml(title)}</span>
+      </figcaption>
+    </figure>
+  `;
+}
+
+function renderVideoItem(item) {
+  const title = item.title || item.fileName || '영상';
+  const meta = [getAttachmentLabel(item.type), formatBytes(item.size)]
+    .filter(Boolean)
+    .join(' · ');
+
+  return `
+    <article class="post-attach-card">
+      <video
+        class="post-attach-video"
+        controls
+        preload="metadata"
+        playsinline
+        src="${escapeHtml(item.url)}"
+      ></video>
+      <div class="post-attach-info">
+        <p class="post-attach-title">${escapeHtml(title)}</p>
+        <p class="post-attach-meta">${escapeHtml(meta)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderFileItem(item) {
+  const title = item.title || item.fileName || '파일';
+  const meta = [
+    getAttachmentLabel(item.type),
+    item.fileName || '',
+    formatBytes(item.size),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return `
+    <article class="post-attach-card post-attach-card--file">
+      <div class="post-attach-file">
+        <div class="post-attach-file__icon">📎</div>
+        <div class="post-attach-file__body">
+          <p class="post-attach-title">${escapeHtml(title)}</p>
+          <p class="post-attach-meta">${escapeHtml(meta)}</p>
+        </div>
+        <a
+          class="post-attach-file__btn"
+          href="${escapeHtml(item.url)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+        >
+          다운로드
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+function renderLinkLikeItem(item) {
+  const title =
+    item.title ||
+    item.fileName ||
+    item.url ||
+    (item.type === 'map' ? '지도 링크' : '링크');
+
+  const badge =
+    item.type === 'map'
+      ? `${getAttachmentIcon(item.type)} 지도`
+      : `${getAttachmentIcon(item.type)} 링크`;
+
+  return `
+    <article class="post-attach-card post-attach-card--link">
+      <div class="post-attach-link">
+        <div class="post-attach-link__body">
+          <p class="post-attach-badge">${escapeHtml(badge)}</p>
+          <p class="post-attach-title">${escapeHtml(title)}</p>
+          <p class="post-attach-url">${escapeHtml(item.url)}</p>
+        </div>
+        <a
+          class="post-attach-link__btn"
+          href="${escapeHtml(item.url)}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          열기
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+function renderAttachmentItem(item) {
+  switch (item.type) {
+    case 'image':
+      return renderImageItem(item);
+    case 'video':
+      return renderVideoItem(item);
+    case 'file':
+      return renderFileItem(item);
+    case 'link':
+    case 'map':
+      return renderLinkLikeItem(item);
+    default:
+      return '';
+  }
+}
+
+function renderAttachments(items = []) {
+  const mediaItems = normalizeMediaItems(items);
+
+  if (!mediaItems.length) return '';
+
+  const imageItems = mediaItems.filter((item) => item.type === 'image');
+  const otherItems = mediaItems.filter((item) => item.type !== 'image');
+
+  const imageSection = imageItems.length
+    ? `
+      <section class="post-attachments__section">
+        <h3 class="post-attachments__sub">사진</h3>
+        <div class="post-attach-gallery">
+          ${imageItems.map(renderAttachmentItem).join('')}
+        </div>
+      </section>
+    `
+    : '';
+
+  const otherSection = otherItems.length
+    ? `
+      <section class="post-attachments__section">
+        <h3 class="post-attachments__sub">첨부</h3>
+        <div class="post-attach-stack">
+          ${otherItems.map(renderAttachmentItem).join('')}
+        </div>
+      </section>
+    `
+    : '';
+
+  return `
+    <section class="post-attachments">
+      <h2 class="post-attachments__title">첨부 자료</h2>
+      ${imageSection}
+      ${otherSection}
+    </section>
+  `;
+}
+
 /* ================= 테마 유틸 ================= */
 
 function getBasePath() {
@@ -217,7 +448,7 @@ async function bindOwnerActions(post) {
       !!user && !!post?.authorId && String(user.id) === String(post.authorId);
     const isAdmin = !!role?.isAdmin;
     const canDelete = isOwner || isAdmin;
-    const canEdit = isOwner; // 관리자라도 남의 글 수정 불가
+    const canEdit = isOwner;
 
     if (!canDelete && !canEdit) return;
 
@@ -323,7 +554,12 @@ export async function initPostDetail() {
   renderAuthor(post);
   renderTags(post.tags);
 
-  bodyEl.innerHTML = renderBodyText(post.body);
+  const bodyHtml = renderBodyText(post.body);
+  const attachHtml = renderAttachments(
+    post.mediaItems || post.media_items || [],
+  );
+  bodyEl.innerHTML = `${bodyHtml}${attachHtml}`;
+
   await bindOwnerActions(post);
 
   document.title = `${post.title} | 말린오이닷컴`;

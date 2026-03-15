@@ -66,6 +66,7 @@
 .post-owner-actions[hidden] {
   display: none !important;
 }
+
 .post-owner-btn[hidden] {
   display: none !important;
 }
@@ -110,11 +111,13 @@
   font-size: var(--text-h1);
   font-weight: 800;
   line-height: 1.3;
+  word-break: break-word;
 }
 
 .post-excerpt {
   font-size: var(--text-body);
   color: var(--color-text-sub);
+  word-break: break-word;
 }
 
 .post-author {
@@ -138,6 +141,7 @@
   font-size: var(--text-body);
   line-height: 1.9;
   min-height: 160px;
+  word-break: break-word;
 }
 
 .post-body p + p {
@@ -146,6 +150,184 @@
 
 .post-body__hint {
   color: var(--color-text-sub);
+}
+
+/* =========================
+  POST ATTACHMENTS
+========================= */
+
+.post-attachments {
+  margin-top: var(--space-24);
+  padding-top: var(--space-20);
+  border-top: 1px solid var(--color-border);
+}
+
+.post-attachments__title {
+  margin: 0 0 var(--space-16);
+  font-size: var(--text-h2);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.post-attachments__section + .post-attachments__section {
+  margin-top: var(--space-20);
+}
+
+.post-attachments__sub {
+  margin: 0 0 var(--space-12);
+  font-size: var(--text-body);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.post-attach-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+.post-attach-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.post-attach-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: #fff;
+  overflow: hidden;
+}
+
+.post-attach-card--image {
+  box-shadow: var(--shadow-soft);
+}
+
+.post-attach-media-link {
+  display: block;
+  text-decoration: none;
+}
+
+.post-attach-media-link:hover {
+  opacity: 0.96;
+}
+
+.post-attach-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #f3f3f3;
+}
+
+.post-attach-caption,
+.post-attach-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-12) var(--space-16);
+}
+
+.post-attach-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-sub);
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.post-attach-title {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: 800;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.post-attach-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-sub);
+  word-break: break-word;
+}
+
+.post-attach-video {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  background: #000;
+}
+
+.post-attach-file,
+.post-attach-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-16);
+}
+
+.post-attach-file__icon {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.post-attach-file__body,
+.post-attach-link__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.post-attach-url {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-sub);
+  word-break: break-all;
+}
+
+.post-attach-file__btn,
+.post-attach-link__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: var(--color-text);
+  text-decoration: none;
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 700;
+  white-space: nowrap;
+  word-break: keep-all;
+  flex-shrink: 0;
+}
+
+.post-attach-file__btn:hover,
+.post-attach-link__btn:hover {
+  opacity: 0.88;
 }
 
 /* =========================
@@ -493,6 +675,10 @@
   color: var(--color-text-sub);
 }
 
+/* =========================
+  MOBILE
+========================= */
+
 @media (max-width: 768px) {
   .post-card,
   .post-comments,
@@ -546,5 +732,20 @@
 
   .post-owner-actions {
     justify-content: flex-start;
+  }
+
+  .post-attach-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .post-attach-file,
+  .post-attach-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .post-attach-file__btn,
+  .post-attach-link__btn {
+    width: 100%;
   }
 }

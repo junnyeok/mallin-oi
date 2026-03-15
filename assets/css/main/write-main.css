@@ -1,6 +1,5 @@
 /* =========================
   Write Page Main
-  - tokens 기반
 ========================= */
 
 .write {
@@ -23,7 +22,6 @@
   line-height: var(--line-body);
 }
 
-/* 2열: 폼 / 출력 */
 .write__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -75,7 +73,6 @@
   line-height: var(--line-body);
 }
 
-/* ✅✅ 본문은 기본 높이 넉넉하게 */
 .write-control--body {
   min-height: 220px;
 }
@@ -125,6 +122,198 @@
   font-size: 12px;
   color: var(--color-text-sub);
   min-height: 16px;
+}
+
+/* =========================
+  Attachments
+========================= */
+
+.write-attach-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.write-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+.write-hidden-file {
+  display: none;
+}
+
+.write-upload-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 110px;
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.write-upload-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.write-upload-tile__icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.write-upload-tile__title {
+  font-size: var(--text-body);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.write-upload-tile__desc {
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.write-inline-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+}
+
+.write-inline-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
+}
+
+.write-inline-card__title {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.write-inline-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.write-mini-action {
+  height: 40px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.write-mini-action:hover {
+  border-color: var(--color-primary);
+}
+
+.write-attach-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.write-attach-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
+}
+
+.write-attach-item__main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.write-attach-item__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.write-attach-item__body {
+  min-width: 0;
+}
+
+.write-attach-item__title {
+  margin: 0 0 4px;
+  font-size: var(--text-body);
+  font-weight: 800;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.write-attach-item__meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-sub);
+  word-break: break-word;
+}
+
+.write-attach-item__link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.write-attach-remove {
+  height: 36px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.write-attach-remove:hover {
+  border-color: var(--color-primary);
+}
+
+.write-empty {
+  margin: 0;
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
+  font-size: 12px;
+  color: var(--color-text-sub);
 }
 
 /* output */
@@ -196,11 +385,29 @@
     padding: var(--space-16);
   }
 
+  .write-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .write-inline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .write-attach-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .write-actions {
     justify-content: stretch;
   }
 
   .write-action {
+    width: 100%;
+  }
+
+  .write-mini-action,
+  .write-attach-remove {
     width: 100%;
   }
 }
