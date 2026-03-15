@@ -104,7 +104,7 @@ export async function initPostsUI() {
   const scoped = scopePosts(allPosts, pageCategory);
 
   const featured = sortForFeatured(scoped).slice(0, 4);
-  const latest = sortByDateDesc(scoped).slice(0, 10);
+  const latest = sortByDateDesc(scoped).slice(0, 12);
 
   if (gridEl) {
     if (featured.length === 0) {
