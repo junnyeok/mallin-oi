@@ -61,6 +61,12 @@ function toBoolean(value) {
   return text === 'true' || text === 't' || text === '1';
 }
 
+function syncTopCommentMeta(count) {
+  const topMetaEl = $('postCommentMeta');
+  if (!topMetaEl) return;
+  topMetaEl.textContent = `💬 ${Number(count || 0)}`;
+}
+
 async function getMyRole() {
   const { data, error } = await supabase.rpc('get_my_role');
 
@@ -210,8 +216,10 @@ async function renderComments(postId) {
 
     const currentUserId = user?.id || '';
     const isAdmin = !!role?.isAdmin;
+    const nextCount = comments.length;
 
-    countEl.textContent = String(comments.length);
+    countEl.textContent = String(nextCount);
+    syncTopCommentMeta(nextCount);
 
     if (!comments.length) {
       listEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어. 첫 댓글을 남겨봐.</div>`;
@@ -224,6 +232,7 @@ async function renderComments(postId) {
   } catch (error) {
     console.error('[post-comments] render failed:', error);
     countEl.textContent = '0';
+    syncTopCommentMeta(0);
     listEl.innerHTML = `<div class="comment-empty">댓글을 불러오지 못했어.</div>`;
   }
 }

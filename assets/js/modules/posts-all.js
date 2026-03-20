@@ -13,6 +13,10 @@ function getViews(post) {
   return getDisplayViews(post);
 }
 
+function getCommentCount(post) {
+  return Number(post?.commentCount || 0);
+}
+
 /* ================= URL 상태 ================= */
 
 const ALLOWED_TABS = new Set(['all', 'study', 'work', 'event', 'career']);
@@ -85,10 +89,15 @@ function filterByTab(posts, tab) {
 
 function renderRow(p) {
   return `
-    <a class="post-row" href="${p.url}" data-id="${p.id}" data-views="${getViews(p)}">
+    <a
+      class="post-row"
+      href="${p.url}"
+      data-id="${p.id}"
+      data-views="${getViews(p)}"
+    >
       <span class="post-row__title">${p.title}</span>
       <span class="post-row__meta">
-        ${formatMMDD(p.date)} · 👀 ${getViews(p)} · ${p.category}
+        ${formatMMDD(p.date)} · 👀 ${getViews(p)} · 💬 ${getCommentCount(p)} · ${p.category}
       </span>
     </a>
   `;

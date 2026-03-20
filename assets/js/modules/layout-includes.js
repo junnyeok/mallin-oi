@@ -1,28 +1,41 @@
 // assets/js/modules/layout-includes.js
-/* =================================================
-  layout-includes.js
-  - header/footer를 partials에서 fetch해서 주입
-  - __BASE__ 토큰을 현재 페이지 깊이에 맞게 치환
-  - body data-base 가 있으면 그 값을 최우선으로 사용
-  - 페이지(data-page)에 따라 header/footer 로고 자동 교체
-  - 현재 페이지에 맞는 nav 활성화 처리
-================================================= */
+
+function normalizeBase(base) {
+  const value = String(base || './').trim();
+  if (!value) return './';
+  return value.endsWith('/') ? value : `${value}/`;
+}
 
 function detectBasePath() {
-  const body = document.body;
-  const forced = body?.dataset?.base;
-  if (forced) return forced;
+  const forced = document.body?.dataset?.base;
+  if (forced) return normalizeBase(forced);
 
   const path = window.location.pathname || '';
-  const isSubDir = path.includes('/account/') || path.includes('/menu/');
+  const isSubDir =
+    path.includes('/account/') ||
+    path.includes('/menu/') ||
+    path.includes('/account') ||
+    path.includes('/menu');
+
   return isSubDir ? '../' : './';
 }
 
-async function injectPartial(whereEl, url, base) {
+async function fetchPartial(url) {
   const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`Failed to fetch: ${url} (${res.status})`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch: ${url} (${res.status})`);
+  }
+  return res.text();
+}
 
-  let html = await res.text();
+async function injectPartial(whereEl, fileName, base) {
+  if (!whereEl) return;
+
+  const url = new URL(
+    `${base}partials/${fileName}`,
+    window.location.href,
+  ).toString();
+  let html = await fetchPartial(url);
   html = html.replaceAll('__BASE__', base);
   whereEl.innerHTML = html;
 }
@@ -41,14 +54,22 @@ function getLogoSrcByPage(page, base) {
     signup: `${base}images/logo-home.png`,
     mypage: `${base}images/logo-home.png`,
     write: `${base}images/logo-home.png`,
-    post: `${base}images/logo-home.png`, // 상세페이지는 post-detail.js에서 카테고리별 재적용
+    post: `${base}images/logo-home.png`,
+    'posts-all': `${base}images/logo-home.png`,
+    'prev-mypage': `${base}images/logo-home.png`,
+    'find-id': `${base}images/logo-home.png`,
+    'find-password': `${base}images/logo-home.png`,
+    'reset-password': `${base}images/logo-home.png`,
   };
 
   return map[page] || `${base}images/logo-home.png`;
 }
 
 function applyPageLogos(base) {
-  const page = (document.body?.dataset?.page || '').trim().toLowerCase();
+  const page = String(document.body?.dataset?.page || '')
+    .trim()
+    .toLowerCase();
+
   const src = getLogoSrcByPage(page, base);
 
   const headerLogo = document.getElementById('siteLogoImg');
@@ -74,10 +95,13 @@ function getNavHrefByPage(page, base) {
 }
 
 function applyCurrentNav(base) {
-  const page = (document.body?.dataset?.page || '').trim().toLowerCase();
-  const currentHref = getNavHrefByPage(page, base);
+  const page = String(document.body?.dataset?.page || '')
+    .trim()
+    .toLowerCase();
 
+  const currentHref = getNavHrefByPage(page, base);
   const links = document.querySelectorAll('.site-nav__link');
+
   if (!links.length) return;
 
   links.forEach((link) => {
@@ -101,26 +125,36 @@ function applyCurrentNav(base) {
 export async function initLayoutIncludes() {
   const base = detectBasePath();
 
+  if (document.body) {
+    document.body.dataset.base = base;
+  }
+
   const headerHost = document.querySelector('[data-include="header"]');
   const footerHost = document.querySelector('[data-include="footer"]');
 
   if (!headerHost && !footerHost) return;
 
-  try {
-    if (headerHost) {
-      await injectPartial(headerHost, `${base}partials/header.html`, base);
+  if (headerHost) {
+    try {
+      await injectPartial(headerHost, 'header.html', base);
+    } catch (err) {
+      console.error('[layout-includes] header inject error:', err);
+      headerHost.innerHTML = '';
     }
-
-    if (footerHost) {
-      await injectPartial(footerHost, `${base}partials/footer.html`, base);
-    }
-
-    applyPageLogos(base);
-    applyCurrentNav(base);
-
-    const year = document.getElementById('year');
-    if (year) year.textContent = String(new Date().getFullYear());
-  } catch (err) {
-    console.error('[layout-includes] error:', err);
   }
+
+  if (footerHost) {
+    try {
+      await injectPartial(footerHost, 'footer.html', base);
+    } catch (err) {
+      console.error('[layout-includes] footer inject error:', err);
+      footerHost.innerHTML = '';
+    }
+  }
+
+  applyPageLogos(base);
+  applyCurrentNav(base);
+
+  const year = document.getElementById('year');
+  if (year) year.textContent = String(new Date().getFullYear());
 }

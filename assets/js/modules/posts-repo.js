@@ -55,7 +55,43 @@ function formatDateOnly(value) {
   return d.toISOString().slice(0, 10);
 }
 
-export function mapPostRow(row) {
+function createCommentCountMap(commentRows = []) {
+  const map = new Map();
+
+  commentRows.forEach((row) => {
+    const postId = Number(row?.post_id || 0);
+    if (!Number.isFinite(postId) || postId <= 0) return;
+
+    map.set(postId, (map.get(postId) || 0) + 1);
+  });
+
+  return map;
+}
+
+async function loadCommentCountMap(postIds = []) {
+  const safeIds = [
+    ...new Set(
+      postIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    ),
+  ];
+
+  if (!safeIds.length) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from('post_comments')
+    .select('post_id')
+    .in('post_id', safeIds);
+
+  if (error) throw error;
+
+  return createCommentCountMap(data || []);
+}
+
+export function mapPostRow(row, commentCount = 0) {
   const mediaItems = normalizeMediaItems(row.media_items);
 
   return {
@@ -68,6 +104,7 @@ export function mapPostRow(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     views: Number(row.views || 0),
+    commentCount: Number(commentCount || 0),
     pinned: !!row.pinned,
     tags: normalizeTags(row.tags),
     mediaItems,
@@ -114,7 +151,13 @@ export async function loadPosts() {
     .order('id', { ascending: false });
 
   if (error) throw error;
-  return (data || []).map(mapPostRow);
+
+  const rows = data || [];
+  const commentCountMap = await loadCommentCountMap(rows.map((row) => row.id));
+
+  return rows.map((row) =>
+    mapPostRow(row, commentCountMap.get(Number(row.id)) || 0),
+  );
 }
 
 export async function loadPostById(id) {
@@ -130,7 +173,10 @@ export async function loadPostById(id) {
     .maybeSingle();
 
   if (error) throw error;
-  return data ? mapPostRow(data) : null;
+  if (!data) return null;
+
+  const commentCountMap = await loadCommentCountMap([safeId]);
+  return mapPostRow(data, commentCountMap.get(safeId) || 0);
 }
 
 export async function loadPostsByAuthorId(authorId) {
@@ -146,5 +192,11 @@ export async function loadPostsByAuthorId(authorId) {
     .order('id', { ascending: false });
 
   if (error) throw error;
-  return (data || []).map(mapPostRow);
+
+  const rows = data || [];
+  const commentCountMap = await loadCommentCountMap(rows.map((row) => row.id));
+
+  return rows.map((row) =>
+    mapPostRow(row, commentCountMap.get(Number(row.id)) || 0),
+  );
 }
