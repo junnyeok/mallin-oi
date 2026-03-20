@@ -909,3 +909,43 @@
   font-size: 12px;
   color: var(--color-text-sub);
 }
+
+/* =========================
+  POST PAGER (이전/다음)
+========================= */
+
+.post-pager__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-direction: row;
+  text-align: center;
+}
+
+/* 라벨 */
+.post-pager__btn .pager-label {
+  font-weight: 600;
+}
+
+/* PC용 (한 줄) */
+.post-pager__btn .pager-title-inline {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* 모바일용 (두 줄) */
+@media (max-width: 768px) {
+  .post-pager__btn {
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 6px;
+  }
+
+  .post-pager__btn .pager-title {
+    font-size: 12px;
+    opacity: 0.75;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+}
