@@ -10,17 +10,35 @@ function getCommentCount(post) {
   return Number(post?.commentCount || 0);
 }
 
-function renderRow(p) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderRow(post, currentId) {
+  const isCurrent = Number(post?.id) === Number(currentId);
+
   return `
     <a
-      class="post-row"
-      href="${p.url}"
-      data-id="${p.id}"
-      data-views="${getViews(p)}"
+      class="post-row post-detail-row ${isCurrent ? 'is-current' : ''}"
+      href="${post.url}"
+      data-id="${post.id}"
+      data-views="${getViews(post)}"
+      ${isCurrent ? 'aria-current="page"' : ''}
     >
-      <span class="post-row__title">${p.title}</span>
-      <span class="post-row__meta">
-        ${formatMMDD(p.date)} · 👀 ${getViews(p)} · 💬 ${getCommentCount(p)} · ${p.category}
+      <span class="post-detail-row__left">
+        <span class="post-row__title post-detail-row__title">
+          ${escapeHtml(post.title)}
+          ${isCurrent ? '<span class="post-detail-row__badge">현재글</span>' : ''}
+        </span>
+      </span>
+
+      <span class="post-row__meta post-detail-row__meta">
+        ${formatMMDD(post.date)} · 👀 ${getViews(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
@@ -46,16 +64,18 @@ export async function initPostDetailList() {
     return;
   }
 
-  const source = sortByDateDesc(posts).filter(
-    (p) => Number(p.id) !== currentId,
-  );
-
+  const source = sortByDateDesc(posts);
   const PER_PAGE = 5;
-  let page = 1;
+
+  const currentIndex = source.findIndex((p) => Number(p.id) === currentId);
+  const totalPages = Math.max(1, Math.ceil(source.length / PER_PAGE));
+
+  let page = currentIndex >= 0 ? Math.floor(currentIndex / PER_PAGE) + 1 : 1;
 
   function render() {
-    const totalPages = Math.max(1, Math.ceil(source.length / PER_PAGE));
-    if (page > totalPages) page = totalPages;
+    const safeTotalPages = Math.max(1, Math.ceil(source.length / PER_PAGE));
+
+    if (page > safeTotalPages) page = safeTotalPages;
     if (page < 1) page = 1;
 
     const start = (page - 1) * PER_PAGE;
@@ -63,12 +83,12 @@ export async function initPostDetailList() {
 
     listEl.innerHTML =
       pagePosts.length === 0
-        ? `<div class="empty">다른 게시물이 없어.</div>`
-        : pagePosts.map(renderRow).join('');
+        ? `<div class="empty">게시물이 없어.</div>`
+        : pagePosts.map((post) => renderRow(post, currentId)).join('');
 
-    pageInfo.textContent = `${page} / ${totalPages}`;
+    pageInfo.textContent = `${page} / ${safeTotalPages}`;
     prevBtn.disabled = page <= 1;
-    nextBtn.disabled = page >= totalPages;
+    nextBtn.disabled = page >= safeTotalPages;
   }
 
   prevBtn.addEventListener('click', () => {
@@ -78,8 +98,8 @@ export async function initPostDetailList() {
   });
 
   nextBtn.addEventListener('click', () => {
-    const totalPages = Math.max(1, Math.ceil(source.length / PER_PAGE));
-    if (page >= totalPages) return;
+    const safeTotalPages = Math.max(1, Math.ceil(source.length / PER_PAGE));
+    if (page >= safeTotalPages) return;
     page += 1;
     render();
   });
