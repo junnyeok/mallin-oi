@@ -82,7 +82,135 @@ async function getMyRole() {
   };
 }
 
-function renderCommentItem(comment, currentUserId = '', isAdmin = false) {
+function groupRepliesByParent(comments = []) {
+  const map = new Map();
+
+  comments.forEach((comment) => {
+    const parentId = Number(comment?.parent_comment_id || 0);
+    if (!Number.isFinite(parentId) || parentId <= 0) return;
+
+    if (!map.has(parentId)) {
+      map.set(parentId, []);
+    }
+
+    map.get(parentId).push(comment);
+  });
+
+  return map;
+}
+
+function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
+  const isMine =
+    currentUserId &&
+    reply.author_id &&
+    String(currentUserId) === String(reply.author_id);
+
+  const canEdit = !!isMine;
+  const canDelete = !!isMine || !!isAdmin;
+
+  return `
+    <article class="comment-reply-item" data-comment-id="${reply.id}">
+      <div class="comment-reply-item__head">
+        <div class="comment-reply-item__meta">
+          <strong class="comment-reply-item__author">${escapeHtml(
+            reply.author_nickname || '익명',
+          )}</strong>
+          <span class="comment-reply-item__badge">답글</span>
+          <span class="comment-reply-item__date">${formatDateTime(
+            reply.created_at,
+          )}</span>
+        </div>
+
+        ${
+          canDelete || canEdit
+            ? `
+          <div class="comment-item__actions">
+            ${
+              canEdit
+                ? `
+              <button
+                type="button"
+                class="comment-action-btn"
+                data-action="edit"
+                data-comment-id="${reply.id}"
+              >
+                수정
+              </button>
+            `
+                : ''
+            }
+
+            ${
+              canDelete
+                ? `
+              <button
+                type="button"
+                class="comment-action-btn is-danger"
+                data-action="delete"
+                data-comment-id="${reply.id}"
+                data-is-mine="${isMine ? 'true' : 'false'}"
+              >
+                삭제
+              </button>
+            `
+                : ''
+            }
+          </div>
+        `
+            : ''
+        }
+      </div>
+
+      <div class="comment-item__view" data-role="comment-view">
+        <div class="comment-item__body">${nl2brSafe(reply.body || '')}</div>
+      </div>
+
+      ${
+        canEdit
+          ? `
+        <form class="comment-edit-form" data-role="comment-edit-form" hidden>
+          <textarea
+            class="comment-edit-form__textarea"
+            maxlength="500"
+            rows="3"
+            data-role="comment-edit-textarea"
+          >${escapeHtml(reply.body || '')}</textarea>
+
+          <div class="comment-edit-form__bottom">
+            <p class="comment-edit-form__msg" data-role="comment-edit-msg"></p>
+
+            <div class="comment-edit-form__actions">
+              <button
+                type="button"
+                class="comment-action-btn"
+                data-action="cancel-edit"
+                data-comment-id="${reply.id}"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                class="comment-action-btn is-primary"
+                data-comment-id="${reply.id}"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </form>
+      `
+          : ''
+      }
+    </article>
+  `;
+}
+
+function renderCommentItem(
+  comment,
+  replies = [],
+  currentUserId = '',
+  isAdmin = false,
+) {
   const isMine =
     currentUserId &&
     comment.author_id &&
@@ -90,6 +218,7 @@ function renderCommentItem(comment, currentUserId = '', isAdmin = false) {
 
   const canEdit = !!isMine;
   const canDelete = !!isMine || !!isAdmin;
+  const canReply = true;
 
   return `
     <article class="comment-item" data-comment-id="${comment.id}">
@@ -104,9 +233,24 @@ function renderCommentItem(comment, currentUserId = '', isAdmin = false) {
         </div>
 
         ${
-          canDelete || canEdit
+          canDelete || canEdit || canReply
             ? `
           <div class="comment-item__actions">
+            ${
+              canReply
+                ? `
+              <button
+                type="button"
+                class="comment-action-btn"
+                data-action="reply"
+                data-comment-id="${comment.id}"
+              >
+                답글
+              </button>
+            `
+                : ''
+            }
+
             ${
               canEdit
                 ? `
@@ -183,6 +327,55 @@ function renderCommentItem(comment, currentUserId = '', isAdmin = false) {
       `
           : ''
       }
+
+      <form
+        class="comment-reply-form"
+        data-role="reply-form"
+        data-parent-id="${comment.id}"
+        hidden
+      >
+        <label class="comment-reply-form__field">
+          <span class="comment-reply-form__label">답글</span>
+          <textarea
+            class="comment-reply-form__textarea"
+            data-role="reply-textarea"
+            rows="3"
+            maxlength="500"
+            placeholder="답글을 입력해줘. (최대 500자)"
+          ></textarea>
+        </label>
+
+        <div class="comment-reply-form__bottom">
+          <p class="comment-reply-form__msg" data-role="reply-msg"></p>
+          <div class="comment-reply-form__actions">
+            <button
+              type="button"
+              class="comment-action-btn"
+              data-action="cancel-reply"
+              data-comment-id="${comment.id}"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              class="comment-action-btn is-primary"
+              data-role="reply-submit"
+            >
+              등록
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div class="comment-replies">
+        ${
+          replies.length
+            ? replies
+                .map((reply) => renderReplyItem(reply, currentUserId, isAdmin))
+                .join('')
+            : ''
+        }
+      </div>
     </article>
   `;
 }
@@ -190,7 +383,9 @@ function renderCommentItem(comment, currentUserId = '', isAdmin = false) {
 async function loadComments(postId) {
   const { data, error } = await supabase
     .from('post_comments')
-    .select('id, post_id, body, author_id, author_nickname, created_at')
+    .select(
+      'id, post_id, parent_comment_id, body, author_id, author_nickname, created_at',
+    )
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
     .order('id', { ascending: true });
@@ -226,8 +421,20 @@ async function renderComments(postId) {
       return;
     }
 
-    listEl.innerHTML = comments
-      .map((comment) => renderCommentItem(comment, currentUserId, isAdmin))
+    const repliesMap = groupRepliesByParent(comments);
+    const rootComments = comments.filter(
+      (comment) => !Number(comment.parent_comment_id || 0),
+    );
+
+    listEl.innerHTML = rootComments
+      .map((comment) =>
+        renderCommentItem(
+          comment,
+          repliesMap.get(Number(comment.id)) || [],
+          currentUserId,
+          isAdmin,
+        ),
+      )
       .join('');
   } catch (error) {
     console.error('[post-comments] render failed:', error);
@@ -249,7 +456,7 @@ async function syncCommentFormUser() {
 
   if (user) {
     userBox.textContent = `작성자: ${getDisplayName(user)}`;
-    hint.textContent = '로그인 상태야. 댓글을 남길 수 있어.';
+    hint.textContent = '로그인 상태야. 댓글과 답글을 남길 수 있어.';
     textarea.disabled = false;
     submitBtn.disabled = false;
     return;
@@ -262,9 +469,7 @@ async function syncCommentFormUser() {
 }
 
 function findCommentItemById(commentId) {
-  return document.querySelector(
-    `.comment-item[data-comment-id="${commentId}"]`,
-  );
+  return document.querySelector(`[data-comment-id="${commentId}"]`);
 }
 
 function setEditMode(commentId, isEditing) {
@@ -310,6 +515,66 @@ function setEditMessage(commentId, text, type = '') {
     : 'comment-edit-form__msg';
 }
 
+function closeAllReplyForms() {
+  const forms = document.querySelectorAll('[data-role="reply-form"]');
+  forms.forEach((form) => {
+    form.hidden = true;
+
+    const textarea = form.querySelector('[data-role="reply-textarea"]');
+    const msg = form.querySelector('[data-role="reply-msg"]');
+
+    if (textarea) textarea.value = '';
+    if (msg) {
+      msg.textContent = '';
+      msg.className = 'comment-reply-form__msg';
+    }
+  });
+}
+
+function toggleReplyForm(commentId, shouldOpen = true) {
+  const item = document.querySelector(
+    `.comment-item[data-comment-id="${commentId}"]`,
+  );
+  if (!item) return;
+
+  const form = item.querySelector('[data-role="reply-form"]');
+  if (!form) return;
+
+  if (!shouldOpen) {
+    form.hidden = true;
+
+    const textarea = form.querySelector('[data-role="reply-textarea"]');
+    const msg = form.querySelector('[data-role="reply-msg"]');
+
+    if (textarea) textarea.value = '';
+    if (msg) {
+      msg.textContent = '';
+      msg.className = 'comment-reply-form__msg';
+    }
+    return;
+  }
+
+  const wasHidden = form.hidden;
+  closeAllReplyForms();
+  form.hidden = !wasHidden ? true : false;
+
+  if (!form.hidden) {
+    const textarea = form.querySelector('[data-role="reply-textarea"]');
+    if (textarea) textarea.focus();
+  }
+}
+
+function setReplyFormMessage(formEl, text, type = '') {
+  if (!formEl) return;
+  const msg = formEl.querySelector('[data-role="reply-msg"]');
+  if (!msg) return;
+
+  msg.textContent = text;
+  msg.className = type
+    ? `comment-reply-form__msg ${type}`
+    : 'comment-reply-form__msg';
+}
+
 async function handleCreateComment(postId) {
   const form = $('commentForm');
   const textarea = $('commentBody');
@@ -347,6 +612,7 @@ async function handleCreateComment(postId) {
 
     const payload = {
       post_id: postId,
+      parent_comment_id: null,
       body,
       author_id: user.id,
       author_nickname: getDisplayName(user),
@@ -373,9 +639,68 @@ async function handleCreateComment(postId) {
   });
 }
 
+async function handleCreateReply(replyForm, postId, parentCommentId) {
+  const textarea = replyForm.querySelector('[data-role="reply-textarea"]');
+  const submitBtn = replyForm.querySelector('[data-role="reply-submit"]');
+
+  if (!textarea || !submitBtn) return;
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    saveRedirect();
+    window.location.href = loginHref();
+    return;
+  }
+
+  const body = textarea.value.trim();
+
+  if (!body) {
+    setReplyFormMessage(replyForm, '답글 내용을 입력해줘.', 'is-error');
+    textarea.focus();
+    return;
+  }
+
+  if (body.length > 500) {
+    setReplyFormMessage(replyForm, '답글은 500자 이하로 입력해줘.', 'is-error');
+    textarea.focus();
+    return;
+  }
+
+  setReplyFormMessage(replyForm, '답글 등록 중...');
+  submitBtn.disabled = true;
+
+  const payload = {
+    post_id: postId,
+    parent_comment_id: parentCommentId,
+    body,
+    author_id: user.id,
+    author_nickname: getDisplayName(user),
+  };
+
+  const { error } = await supabase.from('post_comments').insert(payload);
+
+  submitBtn.disabled = false;
+
+  if (error) {
+    console.error('[post-comments] reply insert failed:', error);
+    setReplyFormMessage(
+      replyForm,
+      '답글 등록에 실패했어. 잠시 후 다시 시도해줘.',
+      'is-error',
+    );
+    return;
+  }
+
+  setReplyFormMessage(replyForm, '답글이 등록됐어.', 'is-success');
+  await renderComments(postId);
+}
+
 async function handleDeleteComment(commentId, postId, isMine = true) {
   const ok = window.confirm(
-    isMine ? '이 댓글을 삭제할까?' : '관리자 권한으로 이 댓글을 삭제할까?',
+    isMine
+      ? '이 댓글을 삭제할까? 답글도 함께 삭제될 수 있어.'
+      : '관리자 권한으로 이 댓글을 삭제할까? 답글도 함께 삭제될 수 있어.',
   );
   if (!ok) return;
 
@@ -442,6 +767,23 @@ function bindCommentListEvents(postId) {
     const commentId = Number(btn.dataset.commentId || 0);
     if (!Number.isFinite(commentId) || commentId <= 0) return;
 
+    if (action === 'reply') {
+      const user = await getCurrentUser();
+      if (!user) {
+        saveRedirect();
+        window.location.href = loginHref();
+        return;
+      }
+
+      toggleReplyForm(commentId, true);
+      return;
+    }
+
+    if (action === 'cancel-reply') {
+      toggleReplyForm(commentId, false);
+      return;
+    }
+
     if (action === 'edit') {
       setEditMode(commentId, true);
       return;
@@ -459,6 +801,17 @@ function bindCommentListEvents(postId) {
   });
 
   listEl.addEventListener('submit', async (e) => {
+    const replyForm = e.target.closest('[data-role="reply-form"]');
+    if (replyForm) {
+      e.preventDefault();
+
+      const parentCommentId = Number(replyForm.dataset.parentId || 0);
+      if (!Number.isFinite(parentCommentId) || parentCommentId <= 0) return;
+
+      await handleCreateReply(replyForm, postId, parentCommentId);
+      return;
+    }
+
     const form = e.target.closest('[data-role="comment-edit-form"]');
     if (!form) return;
 
