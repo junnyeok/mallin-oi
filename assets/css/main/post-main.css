@@ -617,8 +617,11 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-12);
-  margin-bottom: var(--space-8);
   flex-wrap: wrap;
+}
+
+.comment-reply-item__head {
+  margin: var(--space-8);
 }
 
 .comment-item__meta,
@@ -654,6 +657,10 @@
   line-height: 1.7;
   color: var(--color-text);
   word-break: break-word;
+}
+
+.comment-item__body {
+  margin: var(--space-8);
 }
 
 .comment-item__actions,
@@ -738,6 +745,7 @@
   border-radius: 14px;
   padding: var(--space-14);
   background: #fcfcfc;
+  margin: var(--space-14);
 }
 
 .comment-reply-item__mention {

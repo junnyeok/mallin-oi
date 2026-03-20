@@ -132,7 +132,7 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
     reply.author_id &&
     String(currentUserId) === String(reply.author_id);
 
-  const canEdit = !!isMine;
+  const canEdit = false;
   const canDelete = !!isMine || !!isAdmin;
 
   return `
@@ -148,39 +148,18 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
         </div>
 
         ${
-          canDelete || canEdit
+          canDelete
             ? `
           <div class="comment-item__actions">
-            ${
-              canEdit
-                ? `
-              <button
-                type="button"
-                class="comment-action-btn"
-                data-action="edit"
-                data-comment-id="${reply.id}"
-              >
-                수정
-              </button>
-            `
-                : ''
-            }
-
-            ${
-              canDelete
-                ? `
-              <button
-                type="button"
-                class="comment-action-btn is-danger"
-                data-action="delete"
-                data-comment-id="${reply.id}"
-                data-is-mine="${isMine ? 'true' : 'false'}"
-              >
-                삭제
-              </button>
-            `
-                : ''
-            }
+            <button
+              type="button"
+              class="comment-action-btn is-danger"
+              data-action="delete"
+              data-comment-id="${reply.id}"
+              data-is-mine="${isMine ? 'true' : 'false'}"
+            >
+              삭제
+            </button>
           </div>
         `
             : ''
@@ -190,43 +169,6 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
       <div class="comment-item__view" data-role="comment-view">
         <div class="comment-item__body">${nl2brSafe(reply.body || '')}</div>
       </div>
-
-      ${
-        canEdit
-          ? `
-        <form class="comment-edit-form" data-role="comment-edit-form" hidden>
-          <textarea
-            class="comment-edit-form__textarea"
-            maxlength="500"
-            rows="3"
-            data-role="comment-edit-textarea"
-          >${escapeHtml(reply.body || '')}</textarea>
-
-          <div class="comment-edit-form__bottom">
-            <p class="comment-edit-form__msg" data-role="comment-edit-msg"></p>
-
-            <div class="comment-edit-form__actions">
-              <button
-                type="button"
-                class="comment-action-btn"
-                data-action="cancel-edit"
-                data-comment-id="${reply.id}"
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                class="comment-action-btn is-primary"
-                data-comment-id="${reply.id}"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </form>
-      `
-          : ''
-      }
     </article>
   `;
 }
