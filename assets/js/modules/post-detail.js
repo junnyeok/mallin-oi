@@ -37,6 +37,61 @@ function renderAuthor(post) {
   authorEl.textContent = `작성자 : ${post.authorNickname || '익명'}`;
 }
 
+function formatDateTime(value) {
+  if (!value) return '';
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+
+  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+}
+
+function isEdited(createdAt, updatedAt) {
+  if (!createdAt || !updatedAt) return false;
+
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+
+  if (Number.isNaN(created) || Number.isNaN(updated)) return false;
+
+  return updated - created >= 1000;
+}
+
+function renderPostDateTime(post) {
+  const el = $('postDateTime');
+  if (!el) return;
+
+  const createdText = formatDateTime(post.createdAt);
+  const updatedText = formatDateTime(post.updatedAt);
+  const edited = isEdited(post.createdAt, post.updatedAt);
+
+  if (!createdText) {
+    el.textContent = '작성일 : -';
+    return;
+  }
+
+  if (edited && updatedText) {
+    el.innerHTML = `
+      <span class="post-datetime__label">작성일 :</span>
+      <span class="post-datetime__value">${escapeHtml(createdText)}</span>
+      <span class="post-edited-badge">수정됨</span>
+      <span class="post-datetime__updated">(${escapeHtml(updatedText)})</span>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <span class="post-datetime__label">작성일 :</span>
+    <span class="post-datetime__value">${escapeHtml(createdText)}</span>
+  `;
+}
+
 function renderBodyText(text) {
   const raw = String(text || '').trim();
 
@@ -552,6 +607,7 @@ export async function initPostDetail() {
   if (viewsEl) viewsEl.textContent = `👀 ${getDisplayViews(post)}`;
 
   renderAuthor(post);
+  renderPostDateTime(post);
   renderTags(post.tags);
 
   const bodyHtml = renderBodyText(post.body);

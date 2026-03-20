@@ -33,6 +33,33 @@ function formatDateTime(value) {
   return `${yy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
+function isEdited(createdAt, updatedAt) {
+  if (!createdAt || !updatedAt) return false;
+
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+
+  if (Number.isNaN(created) || Number.isNaN(updated)) return false;
+
+  return updated - created >= 1000;
+}
+
+function renderDateMeta(createdAt, updatedAt) {
+  const createdText = formatDateTime(createdAt);
+  const updatedText = formatDateTime(updatedAt);
+  const edited = isEdited(createdAt, updatedAt);
+
+  if (edited) {
+    return `
+      <span class="comment-item__date">${escapeHtml(createdText)}</span>
+      <span class="comment-edited-badge">수정됨</span>
+      <span class="comment-item__date">${escapeHtml(updatedText)}</span>
+    `;
+  }
+
+  return `<span class="comment-item__date">${escapeHtml(createdText)}</span>`;
+}
+
 function setFormMessage(text, type = '') {
   const el = $('commentFormMsg');
   if (!el) return;
@@ -116,9 +143,9 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
             reply.author_nickname || '익명',
           )}</strong>
           <span class="comment-reply-item__badge">답글</span>
-          <span class="comment-reply-item__date">${formatDateTime(
-            reply.created_at,
-          )}</span>
+          <div class="comment-meta-inline">
+            ${renderDateMeta(reply.created_at, reply.updated_at)}
+          </div>
         </div>
 
         ${
@@ -227,9 +254,9 @@ function renderCommentItem(
           <strong class="comment-item__author">${escapeHtml(
             comment.author_nickname || '익명',
           )}</strong>
-          <span class="comment-item__date">${formatDateTime(
-            comment.created_at,
-          )}</span>
+          <div class="comment-meta-inline">
+            ${renderDateMeta(comment.created_at, comment.updated_at)}
+          </div>
         </div>
 
         ${
@@ -384,7 +411,7 @@ async function loadComments(postId) {
   const { data, error } = await supabase
     .from('post_comments')
     .select(
-      'id, post_id, parent_comment_id, body, author_id, author_nickname, created_at',
+      'id, post_id, parent_comment_id, body, author_id, author_nickname, created_at, updated_at',
     )
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
