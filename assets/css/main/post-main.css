@@ -759,22 +759,6 @@
   color: var(--color-text-sub);
 }
 
-.comment-reply-item__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 22px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-sub);
-  white-space: nowrap;
-  word-break: keep-all;
-}
-
 .comment-reply-form {
   margin-top: var(--space-12);
   padding: var(--space-12);
@@ -919,4 +903,10 @@
   .post-datetime__updated {
     font-size: 11px;
   }
+}
+
+/* 수정시간 (괄호) 작게 */
+.comment-item__date--edited {
+  font-size: 12px;
+  color: var(--color-text-sub);
 }

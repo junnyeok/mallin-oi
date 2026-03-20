@@ -53,7 +53,7 @@ function renderDateMeta(createdAt, updatedAt) {
     return `
       <span class="comment-item__date">${escapeHtml(createdText)}</span>
       <span class="comment-edited-badge">수정됨</span>
-      <span class="comment-item__date">${escapeHtml(updatedText)}</span>
+      <span class="comment-item__date comment-item__date--edited">(${escapeHtml(updatedText)})</span>
     `;
   }
 
@@ -142,7 +142,6 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
           <strong class="comment-reply-item__author">${escapeHtml(
             reply.author_nickname || '익명',
           )}</strong>
-          <span class="comment-reply-item__badge">답글</span>
           <div class="comment-meta-inline">
             ${renderDateMeta(reply.created_at, reply.updated_at)}
           </div>
