@@ -126,13 +126,19 @@ function groupRepliesByParent(comments = []) {
   return map;
 }
 
+function getThreadToggleLabel(count, isOpen = false) {
+  const safeCount = Number(count || 0);
+
+  if (isOpen) return '답글 접기';
+  return `답글 ${safeCount}개 보기`;
+}
+
 function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
   const isMine =
     currentUserId &&
     reply.author_id &&
     String(currentUserId) === String(reply.author_id);
 
-  const canEdit = false;
   const canDelete = !!isMine || !!isAdmin;
 
   return `
@@ -187,6 +193,7 @@ function renderCommentItem(
   const canEdit = !!isMine;
   const canDelete = !!isMine || !!isAdmin;
   const canReply = true;
+  const replyCount = replies.length;
 
   return `
     <article class="comment-item" data-comment-id="${comment.id}">
@@ -335,15 +342,35 @@ function renderCommentItem(
         </div>
       </form>
 
-      <div class="comment-replies">
-        ${
-          replies.length
-            ? replies
-                .map((reply) => renderReplyItem(reply, currentUserId, isAdmin))
-                .join('')
-            : ''
-        }
-      </div>
+      ${
+        replyCount > 0
+          ? `
+        <div class="comment-replies-wrap">
+          <button
+            type="button"
+            class="comment-thread-toggle"
+            data-action="toggle-thread"
+            data-comment-id="${comment.id}"
+            data-open="false"
+            aria-expanded="false"
+          >
+            ${getThreadToggleLabel(replyCount, false)}
+          </button>
+
+          <div
+            class="comment-replies"
+            data-role="reply-thread-wrap"
+            data-comment-id="${comment.id}"
+            hidden
+          >
+            ${replies
+              .map((reply) => renderReplyItem(reply, currentUserId, isAdmin))
+              .join('')}
+          </div>
+        </div>
+      `
+          : ''
+      }
     </article>
   `;
 }
@@ -543,6 +570,30 @@ function setReplyFormMessage(formEl, text, type = '') {
     : 'comment-reply-form__msg';
 }
 
+function toggleReplyThread(commentId) {
+  const item = document.querySelector(
+    `.comment-item[data-comment-id="${commentId}"]`,
+  );
+  if (!item) return;
+
+  const toggleBtn = item.querySelector(
+    `[data-action="toggle-thread"][data-comment-id="${commentId}"]`,
+  );
+  const threadWrap = item.querySelector(
+    `[data-role="reply-thread-wrap"][data-comment-id="${commentId}"]`,
+  );
+
+  if (!toggleBtn || !threadWrap) return;
+
+  const replyCount = threadWrap.querySelectorAll('.comment-reply-item').length;
+  const nextOpen = threadWrap.hidden;
+
+  threadWrap.hidden = !nextOpen;
+  toggleBtn.dataset.open = nextOpen ? 'true' : 'false';
+  toggleBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  toggleBtn.textContent = getThreadToggleLabel(replyCount, nextOpen);
+}
+
 async function handleCreateComment(postId) {
   const form = $('commentForm');
   const textarea = $('commentBody');
@@ -734,6 +785,11 @@ function bindCommentListEvents(postId) {
     const action = btn.dataset.action;
     const commentId = Number(btn.dataset.commentId || 0);
     if (!Number.isFinite(commentId) || commentId <= 0) return;
+
+    if (action === 'toggle-thread') {
+      toggleReplyThread(commentId);
+      return;
+    }
 
     if (action === 'reply') {
       const user = await getCurrentUser();
