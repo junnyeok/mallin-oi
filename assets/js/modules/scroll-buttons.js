@@ -8,6 +8,7 @@
   - TOP: 맨 위
   - COMMENT: 이전글/목록/다음글(.post-pager) 위치
   - END: 다른 게시물(#postOtherPostsSection) 위치
+  - 댓글 버튼 비활성 판단은 #postCommentsSection 기준
 
   [index / study / work / event / career]
   - PC: TOP / END만 표시
@@ -75,6 +76,7 @@ function getHomeLikeTargets() {
   return {
     commentSection: suggestionSection,
     commentScrollEl: suggestionSection,
+    commentStateEl: suggestionSection,
     bottomScrollEl: latestPanel,
   };
 }
@@ -83,12 +85,14 @@ function getPostTargets() {
   const commentSection = document.querySelector('#postCommentsSection');
   const commentScrollEl =
     document.querySelector('.post-pager') || commentSection;
+  const commentStateEl = commentSection || commentScrollEl;
   const bottomScrollEl =
     document.querySelector('#postOtherPostsSection') || null;
 
   return {
     commentSection,
     commentScrollEl,
+    commentStateEl,
     bottomScrollEl,
   };
 }
@@ -113,6 +117,7 @@ function getWriteTargets() {
 
   const submitBtn = document.getElementById('writeSubmitBtn');
   const submitArea =
+    submitBtn?.closest('.write-actions') ||
     submitBtn?.closest('.write-form__bottom') ||
     submitBtn?.closest('.write-row') ||
     submitBtn?.parentElement ||
@@ -122,6 +127,7 @@ function getWriteTargets() {
   return {
     commentSection: bodyRow,
     commentScrollEl: bodyRow,
+    commentStateEl: bodyRow,
     bottomScrollEl: submitArea,
   };
 }
@@ -176,12 +182,14 @@ export function initScrollButtons(options = {}) {
   let btnComment = null;
   let commentSection = null;
   let commentScrollEl = null;
+  let commentStateEl = null;
   let bottomScrollEl = null;
 
   if (pageType === 'post') {
     const postTargets = getPostTargets();
     commentSection = postTargets.commentSection;
     commentScrollEl = postTargets.commentScrollEl;
+    commentStateEl = postTargets.commentStateEl;
     bottomScrollEl = postTargets.bottomScrollEl;
 
     if (commentSection && commentScrollEl) {
@@ -204,6 +212,7 @@ export function initScrollButtons(options = {}) {
 
     commentSection = homeTargets.commentSection;
     commentScrollEl = homeTargets.commentScrollEl;
+    commentStateEl = homeTargets.commentStateEl;
     bottomScrollEl = homeTargets.bottomScrollEl;
 
     if (mobile && commentSection && commentScrollEl) {
@@ -237,6 +246,7 @@ export function initScrollButtons(options = {}) {
     const writeTargets = getWriteTargets();
     commentSection = writeTargets.commentSection;
     commentScrollEl = writeTargets.commentScrollEl;
+    commentStateEl = writeTargets.commentStateEl;
     bottomScrollEl = writeTargets.bottomScrollEl;
 
     if (commentSection && commentScrollEl) {
@@ -338,6 +348,34 @@ export function initScrollButtons(options = {}) {
     btnComment.addEventListener('click', scrollToCommentTarget);
   }
 
+  function updateCommentButtonState() {
+    if (!btnComment || !commentStateEl) return;
+
+    const rect = commentStateEl.getBoundingClientRect();
+    const pageTypeNow = getPageType();
+
+    // post 페이지는 "조금만 내려도" 사라지지 않게 더 느슨하게 판단
+    if (pageTypeNow === 'post') {
+      const isNearComment =
+        rect.top <= 80 &&
+        rect.bottom > Math.min(window.innerHeight * 0.25, 180);
+
+      const isInsideCommentArea =
+        rect.top < window.innerHeight * 0.35 &&
+        rect.bottom > Math.max(window.innerHeight * 0.2, 120);
+
+      btnComment.disabled = isNearComment || isInsideCommentArea;
+      return;
+    }
+
+    const isNearComment =
+      rect.top <= commentActiveOffset && rect.bottom > commentActiveOffset;
+
+    const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
+
+    btnComment.disabled = isNearComment || isVisible;
+  }
+
   function updateState() {
     const doc = document.documentElement;
 
@@ -356,15 +394,8 @@ export function initScrollButtons(options = {}) {
       return;
     }
 
-    if (btnComment && commentScrollEl) {
-      const rect = commentScrollEl.getBoundingClientRect();
-
-      const isNearComment =
-        rect.top <= commentActiveOffset && rect.bottom > commentActiveOffset;
-
-      const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
-
-      btnComment.disabled = isNearComment || isVisible;
+    if (btnComment) {
+      updateCommentButtonState();
     }
 
     const pageTypeNow = getPageType();
