@@ -26,7 +26,7 @@
     <!-- main -->
     <link
       rel="stylesheet"
-      href="./assets/css/main/post-main.css?v=20260320-2305"
+      href="./assets/css/main/post-main.css?v=20260322-2300"
     />
     <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
   </head>
@@ -94,6 +94,8 @@
               <section class="post-body" id="postBody">
                 <p class="post-body__hint">본문을 불러오는 중이야.</p>
               </section>
+
+              <div id="postAttachments"></div>
             </article>
 
             <nav class="post-pager" aria-label="이전글 다음글">
@@ -134,7 +136,7 @@
                   댓글 <span id="commentCount">0</span>
                 </h2>
                 <p class="post-comments__desc" id="commentLoginHint">
-                  로그인하면 댓글을 남길 수 있어.
+                  로그인 상태야. 댓글과 답글을 남길 수 있어.
                 </p>
               </div>
 
@@ -176,6 +178,7 @@
 
             <section
               class="post-detail-list posts-all__list"
+              id="postOtherPostsSection"
               aria-label="다른 게시물 목록"
             >
               <div class="post-detail-list__head">
@@ -225,6 +228,6 @@
       class="cursor-buddy"
     />
 
-    <script type="module" src="./assets/js/main.js?v=20260320-2305"></script>
+    <script type="module" src="./assets/js/main.js?v=20260322-2300"></script>
   </body>
 </html>
