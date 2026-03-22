@@ -103,7 +103,8 @@ export async function initPostsUI() {
 
   const scoped = scopePosts(allPosts, pageCategory);
 
-  const featured = sortForFeatured(scoped).slice(0, 4);
+  // ✅ 주요 업데이트 4개 -> 8개
+  const featured = sortForFeatured(scoped).slice(0, 8);
   const latest = sortByDateDesc(scoped).slice(0, 12);
 
   if (gridEl) {
