@@ -34,6 +34,14 @@ function isMobileViewport() {
 }
 
 function getPageType() {
+  const path = window.location.pathname.toLowerCase();
+
+  // ✅ 상세/전체보기/글쓰기 페이지는 pathname 우선 판별
+  // body.dataset.page가 카테고리(study/work 등)로 바뀌어도 흔들리지 않게
+  if (path.includes('post.html')) return 'post';
+  if (path.includes('posts-all.html')) return 'posts-all';
+  if (path.includes('write.html')) return 'write';
+
   const page = String(document.body?.dataset?.page || '')
     .trim()
     .toLowerCase();
@@ -54,11 +62,6 @@ function getPageType() {
   ) {
     return 'home-like';
   }
-
-  const path = window.location.pathname.toLowerCase();
-  if (path.includes('post.html')) return 'post';
-  if (path.includes('write.html')) return 'write';
-  if (path.includes('posts-all.html')) return 'posts-all';
 
   return 'other';
 }
@@ -354,7 +357,6 @@ export function initScrollButtons(options = {}) {
     const rect = commentStateEl.getBoundingClientRect();
     const pageTypeNow = getPageType();
 
-    // post 페이지는 "조금만 내려도" 사라지지 않게 더 느슨하게 판단
     if (pageTypeNow === 'post') {
       const isNearComment =
         rect.top <= 80 &&
