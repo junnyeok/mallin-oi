@@ -20,7 +20,12 @@
 
   [posts-all.html]
   - TOP: 맨 위
-  - END: 카테고리 목록 버튼 영역 위치
+  - END: 카테고리 목록 버튼(.posts-all__tabs) 위치
+
+  [write.html]
+  - TOP: 맨 위
+  - COMMENT: 본문 입력칸(#body) 위치
+  - END: 등록 버튼(#writeSubmitBtn) 위치
 ================================================= */
 
 function isMobileViewport() {
@@ -33,6 +38,7 @@ function getPageType() {
     .toLowerCase();
 
   if (page === 'post') return 'post';
+  if (page === 'write') return 'write';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }
@@ -48,9 +54,9 @@ function getPageType() {
     return 'home-like';
   }
 
-  // data-page가 비어있거나 다를 경우 파일명으로 한 번 더 보정
   const path = window.location.pathname.toLowerCase();
   if (path.includes('post.html')) return 'post';
+  if (path.includes('write.html')) return 'write';
   if (path.includes('posts-all.html')) return 'posts-all';
 
   return 'other';
@@ -59,7 +65,6 @@ function getPageType() {
 function findLatestPanel() {
   const latestList = document.getElementById('latestList');
   if (!latestList) return null;
-
   return latestList.closest('.panel') || latestList;
 }
 
@@ -89,15 +94,35 @@ function getPostTargets() {
 }
 
 function getPostsAllTargets() {
-  const tabsEl =
+  const bottomScrollEl =
     document.querySelector('.posts-all__tabs') ||
     document.querySelector('.posts-all-tabs') ||
     document.querySelector('[data-posts-all-tabs]') ||
     document.querySelector('.posts-tabs') ||
-    document.querySelector('.category-tabs');
+    document.querySelector('.category-tabs') ||
+    null;
 
   return {
-    bottomScrollEl: tabsEl,
+    bottomScrollEl,
+  };
+}
+
+function getWriteTargets() {
+  const bodyField = document.getElementById('body');
+  const bodyRow = bodyField?.closest('.write-row') || bodyField || null;
+
+  const submitBtn = document.getElementById('writeSubmitBtn');
+  const submitArea =
+    submitBtn?.closest('.write-form__bottom') ||
+    submitBtn?.closest('.write-row') ||
+    submitBtn?.parentElement ||
+    submitBtn ||
+    null;
+
+  return {
+    commentSection: bodyRow,
+    commentScrollEl: bodyRow,
+    bottomScrollEl: submitArea,
   };
 }
 
@@ -208,6 +233,28 @@ export function initScrollButtons(options = {}) {
     }
   }
 
+  if (pageType === 'write') {
+    const writeTargets = getWriteTargets();
+    commentSection = writeTargets.commentSection;
+    commentScrollEl = writeTargets.commentScrollEl;
+    bottomScrollEl = writeTargets.bottomScrollEl;
+
+    if (commentSection && commentScrollEl) {
+      btnComment = createFabButton(
+        'comment',
+        '본문',
+        '💬',
+        '본문 입력칸으로 이동',
+      );
+    }
+
+    if (bottomScrollEl) {
+      btnBottom.setAttribute('aria-label', '등록 버튼으로 이동');
+    } else {
+      btnBottom.setAttribute('aria-label', '하단으로 이동');
+    }
+  }
+
   if (btnComment) {
     wrap.append(btnTop, btnComment, btnBottom);
   } else {
@@ -256,6 +303,15 @@ export function initScrollButtons(options = {}) {
     }
 
     if (pageTypeNow === 'posts-all' && bottomScrollEl) {
+      const targetTop = getAbsoluteTop(bottomScrollEl, 16);
+      window.scrollTo({
+        top: targetTop,
+        behavior,
+      });
+      return;
+    }
+
+    if (pageTypeNow === 'write' && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
       window.scrollTo({
         top: targetTop,
@@ -317,7 +373,8 @@ export function initScrollButtons(options = {}) {
     if (
       (pageTypeNow === 'post' && bottomScrollEl) ||
       (pageTypeNow === 'home-like' && mobile && bottomScrollEl) ||
-      (pageTypeNow === 'posts-all' && bottomScrollEl)
+      (pageTypeNow === 'posts-all' && bottomScrollEl) ||
+      (pageTypeNow === 'write' && bottomScrollEl)
     ) {
       const bottomRect = bottomScrollEl.getBoundingClientRect();
 
