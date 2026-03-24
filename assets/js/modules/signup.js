@@ -40,6 +40,36 @@ function isValidNickname(v) {
   return String(v || '').trim().length >= 2;
 }
 
+function isValidRealName(v) {
+  return String(v || '').trim().length >= 2;
+}
+
+function normalizeBirthKey(v) {
+  return String(v || '').replace(/[^0-9]/g, '');
+}
+
+function isValidBirthKey(v) {
+  return /^\d{7}$/.test(normalizeBirthKey(v));
+}
+
+function normalizeRecoveryAnswer(v) {
+  return String(v || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function isValidRecoveryAnswer(v) {
+  return normalizeRecoveryAnswer(v).length >= 2;
+}
+
+async function sha256Hex(value) {
+  const src = new TextEncoder().encode(String(value || ''));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', src);
+  const bytes = Array.from(new Uint8Array(hashBuffer));
+  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function getEmailRedirectTo() {
   return new URL(loginHref(), window.location.origin).toString();
 }
@@ -146,82 +176,45 @@ export function initSignup() {
 
   const emailInput = $('signupEmail');
   const nickInput = $('signupNickname');
+  const realNameInput = $('signupRealName');
+  const birthKeyInput = $('signupBirthKey');
+  const questionInput = $('signupRecoveryQuestion');
+  const answerInput = $('signupRecoveryAnswer');
   const pwInput = $('signupPw');
   const pw2Input = $('signupPw2');
+
+  const agreeTerms = $('agreeTerms');
+  const agreePrivacy = $('agreePrivacy');
+
+  const submitBtn = $('signupSubmitBtn');
   const signupMsg = $('signupMsg');
 
   const msgEmail = ensureMsgEl('signupEmail');
   const msgNick = ensureMsgEl('signupNickname');
-
-  const agreeTerms = $('agreeTerms');
-  const agreePrivacy = $('agreePrivacy');
-  const submitBtn = form.querySelector('button[type="submit"]');
-
-  emailInput?.addEventListener('blur', async () => {
-    const val = emailInput.value.trim();
-
-    if (!val) {
-      clearMsg(msgEmail);
-      return;
-    }
-
-    if (!isValidEmail(val)) {
-      setMsg(msgEmail, '이메일 형식이 올바르지 않아.');
-      return;
-    }
-
-    try {
-      const { emailExists } = await checkAccountAvailability({ email: val });
-      if (emailExists) {
-        setMsg(msgEmail, '이미 가입된 이메일이야.');
-        return;
-      }
-      clearMsg(msgEmail);
-    } catch (err) {
-      console.error('[signup] email blur check failed:', err);
-      clearMsg(msgEmail);
-    }
-  });
-
-  nickInput?.addEventListener('blur', async () => {
-    const val = nickInput.value.trim();
-
-    if (!val) {
-      clearMsg(msgNick);
-      return;
-    }
-
-    if (!isValidNickname(val)) {
-      setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
-      return;
-    }
-
-    try {
-      const { nicknameExists } = await checkAccountAvailability({
-        nickname: val,
-      });
-      if (nicknameExists) {
-        setMsg(msgNick, '이미 사용 중인 닉네임이야.');
-        return;
-      }
-      clearMsg(msgNick);
-    } catch (err) {
-      console.error('[signup] nickname blur check failed:', err);
-      clearMsg(msgNick);
-    }
-  });
+  const msgRealName = ensureMsgEl('signupRealName');
+  const msgBirthKey = ensureMsgEl('signupBirthKey');
+  const msgQuestion = ensureMsgEl('signupRecoveryQuestion');
+  const msgAnswer = ensureMsgEl('signupRecoveryAnswer');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = emailInput?.value.trim() || '';
     const nickname = nickInput?.value.trim() || '';
+    const realName = realNameInput?.value.trim() || '';
+    const birthKey = birthKeyInput?.value.trim() || '';
+    const recoveryQuestion = questionInput?.value || '';
+    const recoveryAnswer = answerInput?.value || '';
     const pw = pwInput?.value || '';
     const pw2 = pw2Input?.value || '';
     const emailRedirectTo = getEmailRedirectTo();
 
     clearMsg(msgEmail);
     clearMsg(msgNick);
+    clearMsg(msgRealName);
+    clearMsg(msgBirthKey);
+    clearMsg(msgQuestion);
+    clearMsg(msgAnswer);
 
     if (signupMsg) {
       signupMsg.textContent = '';
@@ -237,6 +230,30 @@ export function initSignup() {
     if (!isValidNickname(nickname)) {
       setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
       nickInput?.focus();
+      return;
+    }
+
+    if (!isValidRealName(realName)) {
+      setMsg(msgRealName, '이름을 2글자 이상 입력해줘.');
+      realNameInput?.focus();
+      return;
+    }
+
+    if (!isValidBirthKey(birthKey)) {
+      setMsg(msgBirthKey, '생년월일은 960829-1 형식으로 입력해줘.');
+      birthKeyInput?.focus();
+      return;
+    }
+
+    if (!recoveryQuestion) {
+      setMsg(msgQuestion, '아이디 찾기 질문을 선택해줘.');
+      questionInput?.focus();
+      return;
+    }
+
+    if (!isValidRecoveryAnswer(recoveryAnswer)) {
+      setMsg(msgAnswer, '아이디 찾기 답변을 2글자 이상 입력해줘.');
+      answerInput?.focus();
       return;
     }
 
@@ -279,8 +296,9 @@ export function initSignup() {
         signupMsg.style.color = 'var(--color-text-sub)';
       }
 
-      console.log('[signup] emailRedirectTo:', emailRedirectTo);
-      console.log('[signup] signup email:', email);
+      const recoveryAnswerHash = await sha256Hex(
+        normalizeRecoveryAnswer(recoveryAnswer),
+      );
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -289,11 +307,13 @@ export function initSignup() {
           emailRedirectTo,
           data: {
             nickname,
+            real_name: realName,
+            birth_key: normalizeBirthKey(birthKey),
+            recovery_question: recoveryQuestion,
+            recovery_answer_hash: recoveryAnswerHash,
           },
         },
       });
-
-      console.log('[signup] signUp result:', data);
 
       if (error) {
         console.error('[signup] signUp error:', error);

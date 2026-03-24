@@ -32,7 +32,7 @@ export function loginHref() {
 }
 
 export function signupHref() {
-  return resolveSitePath('signup.html');
+  return resolveSitePath('account/signup.html');
 }
 
 export function mypageHref() {

@@ -10,7 +10,7 @@
 
 .account-auth-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 460px;
   background: var(--color-surface);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -38,6 +38,12 @@
   gap: var(--space-16);
 }
 
+.account-auth-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
 .account-auth-field {
   display: flex;
   flex-direction: column;
@@ -49,7 +55,8 @@
   color: var(--color-text);
 }
 
-.account-auth-field input {
+.account-auth-field input,
+.account-auth-field select {
   width: 100%;
   padding: var(--space-12);
   border-radius: var(--radius-btn);
@@ -59,7 +66,8 @@
   color: var(--color-text);
 }
 
-.account-auth-field input:focus {
+.account-auth-field input:focus,
+.account-auth-field select:focus {
   outline: none;
   border-color: var(--color-primary);
 }
@@ -77,6 +85,47 @@
 
 .account-auth-btn:hover {
   opacity: 0.92;
+}
+
+.account-auth-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.account-auth-btn--sub {
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.account-auth-actions {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.account-auth-actions > * {
+  flex: 1;
+}
+
+.account-auth-result {
+  padding: var(--space-16);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-primary-sub);
+}
+
+.account-auth-result__label {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+}
+
+.account-auth-result__value {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: var(--color-text);
+  word-break: break-all;
 }
 
 .account-auth-msg {
@@ -137,10 +186,15 @@
 @media (max-width: 700px) {
   .account-auth-main {
     padding: var(--space-20);
+    align-items: flex-start;
   }
 
   .account-auth-card {
     padding: var(--space-24);
+  }
+
+  .account-auth-actions {
+    flex-direction: column;
   }
 
   .account-auth-links {

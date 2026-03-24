@@ -2,6 +2,10 @@
 import { supabase } from './supabase-client.js';
 import { resetPasswordHref } from './auth-store.js';
 
+function $(id) {
+  return document.getElementById(id);
+}
+
 function setMessage(el, text, type = '') {
   if (!el) return;
   el.textContent = text;
@@ -12,18 +16,240 @@ function isValidEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
 }
 
+function normalizeBirthKey(v) {
+  return String(v || '').replace(/[^0-9]/g, '');
+}
+
+function isValidBirthKey(v) {
+  return /^\d{7}$/.test(normalizeBirthKey(v));
+}
+
+function normalizeRecoveryAnswer(v) {
+  return String(v || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+async function sha256Hex(value) {
+  const src = new TextEncoder().encode(String(value || ''));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', src);
+  const bytes = Array.from(new Uint8Array(hashBuffer));
+  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function getResetRedirectUrl() {
   return new URL(resetPasswordHref(), window.location.origin).toString();
 }
 
 function initFindIdPage() {
-  const form = document.getElementById('findIdForm');
-  const emailInput = document.getElementById('findIdEmail');
-  const msg = document.getElementById('findIdMsg');
+  const form = $('findIdForm');
+  const step1 = $('findIdStep1');
+  const step2 = $('findIdStep2');
+
+  const nameInput = $('findIdName');
+  const birthInput = $('findIdBirthKey');
+  const answerInput = $('findIdAnswer');
+
+  const questionKeyInput = $('findIdQuestionKey');
+  const maskedEmailEl = $('findIdMaskedEmail');
+  const questionLabelEl = $('findIdQuestionLabel');
+
+  const nextBtn = $('findIdNextBtn');
+  const backBtn = $('findIdBackBtn');
+  const verifyBtn = $('findIdVerifyBtn');
+  const msg = $('findIdMsg');
+
+  if (
+    !form ||
+    !step1 ||
+    !step2 ||
+    !nameInput ||
+    !birthInput ||
+    !answerInput ||
+    !questionKeyInput ||
+    !maskedEmailEl ||
+    !questionLabelEl ||
+    !msg
+  ) {
+    return;
+  }
+
+  function goStep1() {
+    step1.hidden = false;
+    step2.hidden = true;
+    answerInput.value = '';
+    questionKeyInput.value = '';
+    maskedEmailEl.textContent = '-';
+    questionLabelEl.textContent = '질문';
+    setMessage(msg, '');
+  }
+
+  function goStep2({ maskedEmail, questionKey, questionLabel }) {
+    step1.hidden = true;
+    step2.hidden = false;
+    maskedEmailEl.textContent = maskedEmail || '-';
+    questionKeyInput.value = questionKey || '';
+    questionLabelEl.textContent = questionLabel || '질문';
+    answerInput.focus();
+    setMessage(msg, '');
+  }
+
+  backBtn?.addEventListener('click', () => {
+    goStep1();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const isStep2 = !step2.hidden;
+    const realName = nameInput.value.trim();
+    const birthKey = birthInput.value.trim();
+
+    if (!realName || realName.length < 2) {
+      setMessage(msg, '이름을 2글자 이상 입력해줘.', 'is-error');
+      nameInput.focus();
+      return;
+    }
+
+    if (!isValidBirthKey(birthKey)) {
+      setMessage(msg, '생년월일은 960829-1 형식으로 입력해줘.', 'is-error');
+      birthInput.focus();
+      return;
+    }
+
+    if (!isStep2) {
+      try {
+        if (nextBtn) nextBtn.disabled = true;
+        setMessage(msg, '확인 중...');
+
+        const { data, error } = await supabase.rpc('find_id_recovery_start', {
+          p_real_name: realName,
+          p_birth_key: normalizeBirthKey(birthKey),
+        });
+
+        if (error) {
+          console.error(
+            '[account-recovery] find_id_recovery_start error:',
+            error,
+          );
+          setMessage(msg, '아이디 확인 중 오류가 발생했어.', 'is-error');
+          return;
+        }
+
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (!row?.found) {
+          setMessage(
+            msg,
+            '입력한 이름과 생년월일로 가입된 계정을 찾지 못했어.',
+            'is-error',
+          );
+          return;
+        }
+
+        if (row?.ambiguous) {
+          setMessage(
+            msg,
+            '같은 이름과 생년월일 정보가 여러 개 있어. 관리자에게 문의해줘.',
+            'is-error',
+          );
+          return;
+        }
+
+        goStep2({
+          maskedEmail: row?.masked_email || '',
+          questionKey: row?.recovery_question || '',
+          questionLabel: row?.recovery_question_label || '질문',
+        });
+      } catch (err) {
+        console.error('[account-recovery] find id step1 failed:', err);
+        setMessage(msg, '아이디 확인 중 오류가 발생했어.', 'is-error');
+      } finally {
+        if (nextBtn) nextBtn.disabled = false;
+      }
+
+      return;
+    }
+
+    const answer = answerInput.value.trim();
+    const questionKey = questionKeyInput.value;
+
+    if (!questionKey) {
+      setMessage(msg, '질문 정보를 찾지 못했어. 다시 시도해줘.', 'is-error');
+      goStep1();
+      return;
+    }
+
+    if (!answer || normalizeRecoveryAnswer(answer).length < 2) {
+      setMessage(msg, '질문의 답을 입력해줘.', 'is-error');
+      answerInput.focus();
+      return;
+    }
+
+    try {
+      if (verifyBtn) verifyBtn.disabled = true;
+      setMessage(msg, '답변 확인 중...');
+
+      const answerHash = await sha256Hex(normalizeRecoveryAnswer(answer));
+
+      const { data, error } = await supabase.rpc('verify_id_recovery', {
+        p_real_name: realName,
+        p_birth_key: normalizeBirthKey(birthKey),
+        p_recovery_question: questionKey,
+        p_recovery_answer_hash: answerHash,
+      });
+
+      if (error) {
+        console.error('[account-recovery] verify_id_recovery error:', error);
+        setMessage(msg, '아이디 검증 중 오류가 발생했어.', 'is-error');
+        return;
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+
+      if (!row?.found) {
+        setMessage(
+          msg,
+          '입력한 이름과 생년월일로 가입된 계정을 찾지 못했어.',
+          'is-error',
+        );
+        return;
+      }
+
+      if (row?.ambiguous) {
+        setMessage(
+          msg,
+          '같은 이름과 생년월일 정보가 여러 개 있어. 관리자에게 문의해줘.',
+          'is-error',
+        );
+        return;
+      }
+
+      if (!row?.success || !row?.email) {
+        setMessage(msg, '답변이 일치하지 않아.', 'is-error');
+        answerInput.focus();
+        return;
+      }
+
+      setMessage(msg, `가입 아이디는 ${row.email} 이야.`, 'is-success');
+    } catch (err) {
+      console.error('[account-recovery] find id step2 failed:', err);
+      setMessage(msg, '아이디 검증 중 오류가 발생했어.', 'is-error');
+    } finally {
+      if (verifyBtn) verifyBtn.disabled = false;
+    }
+  });
+}
+
+function initFindPasswordPage() {
+  const form = $('findPasswordForm');
+  const emailInput = $('findPasswordEmail');
+  const msg = $('findPasswordMsg');
 
   if (!form || !emailInput || !msg) return;
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = emailInput.value.trim();
@@ -38,53 +264,7 @@ function initFindIdPage() {
       return;
     }
 
-    setMessage(
-      msg,
-      '지금 Supabase 로그인 기준에서는 가입한 이메일 자체가 로그인 아이디야.',
-      'is-success',
-    );
-  });
-}
-
-function initFindPasswordPage() {
-  const form = document.getElementById('findPasswordForm');
-  const idInput = document.getElementById('findPasswordId');
-  const emailInput = document.getElementById('findPasswordEmail');
-  const msg = document.getElementById('findPasswordMsg');
-
-  if (!form || !idInput || !emailInput || !msg) return;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const idValue = idInput.value.trim();
-    const email = emailInput.value.trim();
-
-    if (!idValue) {
-      setMessage(msg, '이메일(아이디)을 입력해줘.', 'is-error');
-      return;
-    }
-
-    if (!email) {
-      setMessage(msg, '이메일을 입력해줘.', 'is-error');
-      return;
-    }
-
-    if (!isValidEmail(idValue) || !isValidEmail(email)) {
-      setMessage(msg, '이메일 형식을 확인해줘.', 'is-error');
-      return;
-    }
-
-    if (idValue !== email) {
-      setMessage(
-        msg,
-        '현재 로그인 아이디는 이메일이야. 두 칸 모두 같은 이메일로 입력해줘.',
-        'is-error',
-      );
-      return;
-    }
-
-    setMessage(msg, '비밀번호 재설정 메일 보내는 중...', '');
+    setMessage(msg, '비밀번호 재설정 메일 보내는 중...');
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: getResetRedirectUrl(),
@@ -102,17 +282,17 @@ function initFindPasswordPage() {
 
     setMessage(
       msg,
-      '이메일이 맞다면 비밀번호 재설정 링크가 전송됐어. 메일함을 확인해줘.',
+      '이메일이 맞다면 비밀번호 재설정 링크가 전송됐어. 메일함과 스팸함을 확인해줘.',
       'is-success',
     );
   });
 }
 
 async function initResetPasswordPage() {
-  const form = document.getElementById('resetPasswordForm');
-  const pw1Input = document.getElementById('newPassword');
-  const pw2Input = document.getElementById('confirmPassword');
-  const msg = document.getElementById('resetPasswordMsg');
+  const form = $('resetPasswordForm');
+  const pw1Input = $('newPassword');
+  const pw2Input = $('confirmPassword');
+  const msg = $('resetPasswordMsg');
 
   if (!form || !pw1Input || !pw2Input || !msg) return;
 

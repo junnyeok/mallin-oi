@@ -1,7 +1,4 @@
-/* signup-main.css
-   - login-main.css 톤/구조 그대로 확장
-   - token.css 값만 사용
-*/
+/* signup-main.css */
 
 .signup-main {
   display: flex;
@@ -13,7 +10,7 @@
 
 .signup-card {
   width: 100%;
-  max-width: 460px;
+  max-width: 520px;
   background: var(--color-surface);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -30,7 +27,24 @@
 .signup-form {
   display: flex;
   flex-direction: column;
+  gap: var(--space-20);
+}
+
+.signup-section {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-16);
+  padding: var(--space-16);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.signup-section__title {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: 800;
+  color: var(--color-text);
 }
 
 .signup-field {
@@ -39,7 +53,14 @@
   gap: var(--space-8);
 }
 
-.signup-field input {
+.signup-field label {
+  font-size: var(--text-body);
+  color: var(--color-text);
+}
+
+.signup-field input,
+.signup-field select {
+  width: 100%;
   padding: var(--space-12);
   border-radius: var(--radius-btn);
   border: 2px solid var(--color-border);
@@ -48,19 +69,20 @@
   color: var(--color-text);
 }
 
-.signup-field input:focus {
+.signup-field input:focus,
+.signup-field select:focus {
   outline: none;
   border-color: var(--color-primary);
 }
 
-.help-text {
-  margin-top: 2px;
+.help-text,
+.field-msg {
+  margin: 0;
   font-size: var(--text-small);
   color: var(--color-text-sub);
   line-height: var(--line-body);
 }
 
-/* 약관 동의 */
 .signup-agree {
   display: flex;
   flex-direction: column;
@@ -85,7 +107,6 @@
   accent-color: var(--color-primary);
 }
 
-/* 버튼 */
 .signup-btn {
   padding: var(--space-12);
   border-radius: var(--radius-btn);
@@ -99,14 +120,30 @@
   opacity: 0.9;
 }
 
-/* 메시지 */
-.signup-msg {
-  text-align: center;
-  font-size: var(--text-small);
-  color: red;
+.signup-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-/* 하단 링크(로그인/찾기) */
+.signup-rate-info {
+  margin: 0;
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  color: var(--color-text-sub);
+  text-align: center;
+}
+
+.signup-msg {
+  min-height: 24px;
+  text-align: center;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--color-text-sub);
+}
+
 .signup-links {
   display: flex;
   justify-content: center;
@@ -121,12 +158,12 @@
   line-height: 1;
 }
 
-/* auth-link 모양은 유지하되 카드 안 톤 조정 */
 .signup-links .auth-link {
   height: 28px;
   padding: 0 var(--space-8);
   font-size: var(--text-body);
   color: var(--color-text-sub);
+  white-space: nowrap;
 }
 
 .signup-links .auth-link:hover {
@@ -135,20 +172,29 @@
 
 @media (max-width: 700px) {
   .signup-main {
-    padding: var(--space-24);
+    padding: var(--space-20);
+    align-items: flex-start;
   }
 
   .signup-card {
     padding: var(--space-24);
   }
 
+  .signup-section {
+    padding: var(--space-12);
+  }
+
   .signup-links {
-    gap: var(--space-4);
-    flex-wrap: wrap;
+    gap: 4px;
   }
 
   .signup-links .auth-link {
     height: 26px;
-    padding: 0 var(--space-8);
+    padding: 0 4px;
+    font-size: var(--text-small);
+  }
+
+  .signup-links__sep {
+    font-size: 12px;
   }
 }

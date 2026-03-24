@@ -20,10 +20,7 @@
     <link rel="stylesheet" href="../assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="../assets/css/components/auth-links.css" />
 
-    <!-- page -->
     <link rel="stylesheet" href="../assets/css/pages/index.css" />
-
-    <!-- account 전용 -->
     <link rel="stylesheet" href="../assets/css/main/account-auth-main.css" />
   </head>
 
@@ -35,24 +32,83 @@
         <div class="account-auth-card">
           <h1 class="account-auth-title">아이디 찾기</h1>
           <p class="account-auth-desc">
-            가입할 때 사용한 이메일을 입력하면<br />
-            아이디를 이메일로 안내받을 수 있어.
+            이름과 생년월일을 먼저 확인한 뒤<br />
+            가입할 때 등록한 질문의 답을 입력해줘.
           </p>
 
           <form id="findIdForm" class="account-auth-form">
-            <div class="account-auth-field">
-              <label for="findIdEmail">이메일</label>
-              <input
-                type="email"
-                id="findIdEmail"
-                name="email"
-                placeholder="example@email.com"
-                autocomplete="email"
-                required
-              />
-            </div>
+            <section id="findIdStep1" class="account-auth-step">
+              <div class="account-auth-field">
+                <label for="findIdName">이름</label>
+                <input
+                  type="text"
+                  id="findIdName"
+                  name="findIdName"
+                  placeholder="예: 홍길동"
+                  autocomplete="name"
+                  required
+                />
+              </div>
 
-            <button type="submit" class="account-auth-btn">아이디 찾기</button>
+              <div class="account-auth-field">
+                <label for="findIdBirthKey">생년월일</label>
+                <input
+                  type="text"
+                  id="findIdBirthKey"
+                  name="findIdBirthKey"
+                  inputmode="numeric"
+                  maxlength="8"
+                  placeholder="예: 990101-1"
+                  autocomplete="off"
+                  required
+                />
+              </div>
+
+              <button type="submit" class="account-auth-btn" id="findIdNextBtn">
+                다음
+              </button>
+            </section>
+
+            <section id="findIdStep2" class="account-auth-step" hidden>
+              <div class="account-auth-result">
+                <p class="account-auth-result__label">아이디 힌트</p>
+                <p class="account-auth-result__value" id="findIdMaskedEmail">
+                  -
+                </p>
+              </div>
+
+              <div class="account-auth-field">
+                <label id="findIdQuestionLabel" for="findIdAnswer">
+                  질문
+                </label>
+                <input
+                  type="text"
+                  id="findIdAnswer"
+                  name="findIdAnswer"
+                  placeholder="질문의 답을 입력해줘"
+                  autocomplete="off"
+                />
+              </div>
+
+              <input type="hidden" id="findIdQuestionKey" />
+
+              <div class="account-auth-actions">
+                <button
+                  type="button"
+                  class="account-auth-btn account-auth-btn--sub"
+                  id="findIdBackBtn"
+                >
+                  이전
+                </button>
+                <button
+                  type="submit"
+                  class="account-auth-btn"
+                  id="findIdVerifyBtn"
+                >
+                  아이디 확인
+                </button>
+              </div>
+            </section>
 
             <p class="account-auth-msg" id="findIdMsg"></p>
 
@@ -66,8 +122,7 @@
           </form>
 
           <div class="account-auth-note">
-            현재는 프론트 초안이야. 나중에 Supabase 연결 후 실제 이메일 발송
-            기능으로 바꾸면 된다.
+            이름과 생년월일이 일치해야 다음 단계로 넘어갈 수 있어.
           </div>
         </div>
       </main>
