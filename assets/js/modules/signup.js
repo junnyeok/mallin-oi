@@ -121,50 +121,22 @@ function getFriendlySignupError(error) {
     return '사용할 수 없는 이메일 주소야. 다른 이메일로 시도해줘.';
   }
 
-  if (code === 'email_address_not_authorized') {
-    return '현재 메일 발송 설정으로는 이 이메일 주소에 인증 메일을 보낼 수 없어. SMTP 설정을 확인해줘.';
-  }
-
   if (code === 'signup_disabled') {
-    return '현재 회원가입이 비활성화되어 있어. Supabase 설정을 확인해줘.';
-  }
-
-  if (code === 'email_provider_disabled') {
-    return '이메일 회원가입이 비활성화되어 있어. Supabase Auth 설정을 확인해줘.';
-  }
-
-  if (lowerMessage.includes('email rate limit exceeded')) {
-    return '인증 메일 발송 제한에 걸렸어. 잠시 후 다시 시도해줘.';
+    return '현재 회원가입이 비활성화되어 있어.';
   }
 
   if (
-    lowerMessage.includes('error sending confirmation email') ||
-    lowerMessage.includes('error sending email')
+    lowerMessage.includes('duplicate key value') &&
+    lowerMessage.includes('nickname')
   ) {
-    return '인증 메일 발송에 실패했어. SMTP 설정이나 도메인 인증 상태를 확인해줘.';
+    return '이미 사용 중인 닉네임이야.';
   }
 
   if (
-    lowerMessage.includes('redirect') ||
-    lowerMessage.includes('confirmationurl')
+    lowerMessage.includes('duplicate key value') &&
+    lowerMessage.includes('email')
   ) {
-    return '인증 링크 주소 설정이 올바르지 않아. URL Configuration과 redirect 경로를 확인해줘.';
-  }
-
-  if (
-    lowerMessage.includes('profiles_nickname_unique_idx') ||
-    (lowerMessage.includes('duplicate key value') &&
-      lowerMessage.includes('nickname'))
-  ) {
-    return '이미 사용 중인 닉네임이야. 다른 닉네임으로 시도해줘.';
-  }
-
-  if (
-    lowerMessage.includes('profiles_email_unique_idx') ||
-    (lowerMessage.includes('duplicate key value') &&
-      lowerMessage.includes('email'))
-  ) {
-    return '이미 가입된 이메일이야. 로그인하거나 비밀번호 찾기를 이용해줘.';
+    return '이미 가입된 이메일이야.';
   }
 
   return `회원가입 실패: ${message}`;

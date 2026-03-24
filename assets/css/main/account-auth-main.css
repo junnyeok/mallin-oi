@@ -8,6 +8,16 @@
   min-height: 60vh;
 }
 
+/* ✅ hidden 우선 적용 */
+.account-auth-step[hidden],
+.account-auth-result[hidden],
+.account-auth-field[hidden],
+.account-auth-actions[hidden],
+.account-auth-note[hidden],
+.account-auth-msg[hidden] {
+  display: none !important;
+}
+
 .account-auth-card {
   width: 100%;
   max-width: 460px;
@@ -133,6 +143,7 @@
   text-align: center;
   font-size: var(--text-small);
   line-height: 1.4;
+  color: var(--color-text-sub);
 }
 
 .account-auth-msg.is-error {

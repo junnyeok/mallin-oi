@@ -1,4 +1,3 @@
-// assets/js/modules/account-recovery.js
 import { supabase } from './supabase-client.js';
 import { resetPasswordHref } from './auth-store.js';
 
@@ -42,6 +41,20 @@ function getResetRedirectUrl() {
   return new URL(resetPasswordHref(), window.location.origin).toString();
 }
 
+function getFriendlyRpcError(error) {
+  const message = String(error?.message || '').trim();
+
+  if (!message) return '알 수 없는 오류가 발생했어.';
+  if (message.includes('find_id_recovery_start')) {
+    return '아이디 찾기 함수 호출 중 오류가 발생했어.';
+  }
+  if (message.includes('verify_id_recovery')) {
+    return '아이디 검증 함수 호출 중 오류가 발생했어.';
+  }
+
+  return message;
+}
+
 function initFindIdPage() {
   const form = $('findIdForm');
   const step1 = $('findIdStep1');
@@ -75,13 +88,17 @@ function initFindIdPage() {
     return;
   }
 
-  function goStep1() {
-    step1.hidden = false;
-    step2.hidden = true;
+  function resetStep2Content() {
     answerInput.value = '';
     questionKeyInput.value = '';
     maskedEmailEl.textContent = '-';
     questionLabelEl.textContent = '질문';
+  }
+
+  function goStep1() {
+    step1.hidden = false;
+    step2.hidden = true;
+    resetStep2Content();
     setMessage(msg, '');
   }
 
@@ -91,9 +108,11 @@ function initFindIdPage() {
     maskedEmailEl.textContent = maskedEmail || '-';
     questionKeyInput.value = questionKey || '';
     questionLabelEl.textContent = questionLabel || '질문';
-    answerInput.focus();
     setMessage(msg, '');
+    answerInput.focus();
   }
+
+  goStep1();
 
   backBtn?.addEventListener('click', () => {
     goStep1();
@@ -133,13 +152,19 @@ function initFindIdPage() {
             '[account-recovery] find_id_recovery_start error:',
             error,
           );
-          setMessage(msg, '아이디 확인 중 오류가 발생했어.', 'is-error');
+          goStep1();
+          setMessage(
+            msg,
+            `아이디 확인 중 오류가 발생했어. (${getFriendlyRpcError(error)})`,
+            'is-error',
+          );
           return;
         }
 
         const row = Array.isArray(data) ? data[0] : data;
 
         if (!row?.found) {
+          goStep1();
           setMessage(
             msg,
             '입력한 이름과 생년월일로 가입된 계정을 찾지 못했어.',
@@ -149,9 +174,20 @@ function initFindIdPage() {
         }
 
         if (row?.ambiguous) {
+          goStep1();
           setMessage(
             msg,
             '같은 이름과 생년월일 정보가 여러 개 있어. 관리자에게 문의해줘.',
+            'is-error',
+          );
+          return;
+        }
+
+        if (!row?.recovery_question) {
+          goStep1();
+          setMessage(
+            msg,
+            '이 계정에는 아이디 찾기 질문 정보가 없어. 기존 가입 계정이면 관리자 보정이 필요해.',
             'is-error',
           );
           return;
@@ -164,6 +200,7 @@ function initFindIdPage() {
         });
       } catch (err) {
         console.error('[account-recovery] find id step1 failed:', err);
+        goStep1();
         setMessage(msg, '아이디 확인 중 오류가 발생했어.', 'is-error');
       } finally {
         if (nextBtn) nextBtn.disabled = false;
@@ -176,8 +213,8 @@ function initFindIdPage() {
     const questionKey = questionKeyInput.value;
 
     if (!questionKey) {
-      setMessage(msg, '질문 정보를 찾지 못했어. 다시 시도해줘.', 'is-error');
       goStep1();
+      setMessage(msg, '질문 정보를 찾지 못했어. 다시 시도해줘.', 'is-error');
       return;
     }
 
@@ -202,7 +239,11 @@ function initFindIdPage() {
 
       if (error) {
         console.error('[account-recovery] verify_id_recovery error:', error);
-        setMessage(msg, '아이디 검증 중 오류가 발생했어.', 'is-error');
+        setMessage(
+          msg,
+          `아이디 검증 중 오류가 발생했어. (${getFriendlyRpcError(error)})`,
+          'is-error',
+        );
         return;
       }
 

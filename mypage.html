@@ -33,38 +33,48 @@
 
       <main class="mypage-main">
         <div class="mypage-card">
-          <div class="mypage-title-row">
-            <h1 class="mypage-title">마이페이지</h1>
-            <span
-              id="mypageRoleBadge"
-              class="mypage-role-badge is-member"
-              aria-label="회원 등급"
-            >
-              일반회원
-            </span>
+          <div class="mypage-summary">
+            <div class="mypage-summary-item">
+              <span class="mypage-summary-label">이메일</span>
+              <span class="mypage-summary-value" id="mypageCreatedAtLabel"
+                >가입일</span
+              >
+            </div>
+
+            <div class="mypage-summary-grid">
+              <div class="mypage-summary-box">
+                <div class="mypage-summary-box__label">이메일</div>
+                <div class="mypage-summary-box__value" id="mypageEmailText">
+                  -
+                </div>
+              </div>
+
+              <div class="mypage-summary-box">
+                <div class="mypage-summary-box__label">가입일</div>
+                <div class="mypage-summary-box__value" id="mypageCreatedAt">
+                  -
+                </div>
+              </div>
+
+              <div class="mypage-summary-box">
+                <div class="mypage-summary-box__label">내 글 수</div>
+                <div class="mypage-summary-box__value" id="mypagePostCount">
+                  0
+                </div>
+              </div>
+
+              <div class="mypage-summary-box">
+                <div class="mypage-summary-box__label">회원 구분</div>
+                <div class="mypage-summary-box__value" id="mypageRoleBadge">
+                  일반회원
+                </div>
+              </div>
+            </div>
           </div>
 
-          <p class="mypage-desc">회원정보를 확인하고 수정할 수 있어.</p>
-
-          <section class="mypage-summary" aria-label="회원 요약 정보">
-            <div class="mypage-summary-item">
-              <span class="mypage-summary-label">가입일</span>
-              <strong class="mypage-summary-value" id="mypageCreatedAt"
-                >-</strong
-              >
-            </div>
-
-            <div class="mypage-summary-item">
-              <span class="mypage-summary-label">작성글 수</span>
-              <strong class="mypage-summary-value" id="mypagePostCount"
-                >0</strong
-              >
-            </div>
-          </section>
-
-          <form id="mypageForm" class="mypage-form" autocomplete="on">
-            <section class="mypage-section">
-              <h2 class="mypage-section-title">계정 정보</h2>
+          <form id="mypageForm" class="mypage-form">
+            <section class="mypage-section" aria-label="기본 회원정보">
+              <h2 class="mypage-section-title">기본 회원정보</h2>
 
               <div class="mypage-field">
                 <label for="mypageEmail">이메일</label>
@@ -72,11 +82,9 @@
                   type="email"
                   id="mypageEmail"
                   name="mypageEmail"
-                  placeholder="example@email.com"
-                  autocomplete="email"
                   readonly
                 />
-                <p class="help-text">이메일은 현재 변경할 수 없어.</p>
+                <p class="help-text">로그인 아이디로 쓰는 이메일이야.</p>
               </div>
 
               <div class="mypage-field">
@@ -85,13 +93,104 @@
                   type="text"
                   id="mypageNickname"
                   name="mypageNickname"
-                  placeholder="최소 2글자 이상"
-                  autocomplete="nickname"
+                  minlength="2"
+                  maxlength="20"
+                  placeholder="닉네임 입력"
                 />
+              </div>
+
+              <div class="mypage-field">
+                <label for="mypageRealName">이름</label>
+                <input
+                  type="text"
+                  id="mypageRealName"
+                  name="mypageRealName"
+                  minlength="2"
+                  maxlength="20"
+                  placeholder="예: 홍길동"
+                />
+                <p class="help-text" id="mypageRealNameHelp">
+                  이름은 최초 1회만 저장 가능해.
+                </p>
+              </div>
+
+              <div class="mypage-field">
+                <label for="mypageBirthKey">생년월일</label>
+                <input
+                  type="text"
+                  id="mypageBirthKey"
+                  name="mypageBirthKey"
+                  inputmode="numeric"
+                  maxlength="8"
+                  placeholder="예: 990101-1"
+                />
+                <p class="help-text" id="mypageBirthKeyHelp">
+                  생년월일도 최초 1회만 저장 가능해.
+                </p>
+              </div>
+
+              <div class="mypage-field">
+                <label for="mypageRecoveryQuestion">아이디 힌트 질문</label>
+                <select
+                  id="mypageRecoveryQuestion"
+                  name="mypageRecoveryQuestion"
+                >
+                  <option value="">질문 선택</option>
+                  <option value="childhood_nickname">어릴 적 별명</option>
+                  <option value="first_pet_name">
+                    처음 키운 반려동물 이름
+                  </option>
+                  <option value="first_travel_place">
+                    처음으로 여행 간 곳
+                  </option>
+                  <option value="special_treasure">
+                    소중하게 간직했던 물건
+                  </option>
+                  <option value="childhood_dream">어릴 적 꿈</option>
+                  <option value="treasure_no1">내 보물 1호</option>
+                  <option value="favorite_item">좋아하는 물건</option>
+                  <option value="favorite_food">가장 좋아하는 음식</option>
+                  <option value="favorite_animal">가장 좋아하는 동물</option>
+                  <option value="favorite_color">가장 좋아하는 색깔</option>
+                  <option value="favorite_movie">가장 좋아하는 영화</option>
+                  <option value="favorite_season">가장 좋아하는 계절</option>
+                  <option value="best_subject">
+                    학창 시절 가장 좋아했던 과목
+                  </option>
+                  <option value="memorable_place">기억에 남는 장소</option>
+                  <option value="respect_person">가장 존경하는 사람</option>
+                  <option value="father_name">아버지의 성함</option>
+                  <option value="mother_name">어머니의 성함</option>
+                  <option value="elementary_school">초등학교 이름</option>
+                  <option value="hometown">나의 고향</option>
+                  <option value="birthplace">태어난 곳</option>
+                </select>
+                <p class="help-text">
+                  아이디 힌트 질문은 나중에도 계속 바꿀 수 있어.
+                </p>
+              </div>
+
+              <div class="mypage-field">
+                <label for="mypageRecoveryAnswer">아이디 힌트 답변</label>
+                <input
+                  type="text"
+                  id="mypageRecoveryAnswer"
+                  name="mypageRecoveryAnswer"
+                  maxlength="60"
+                  placeholder="변경할 때 답변 입력"
+                  autocomplete="off"
+                />
+                <p class="help-text" id="mypageRecoveryAnswerHelp">
+                  기존 힌트가 있더라도, 바꿀 때는 새 답변을 다시 입력해야 해.
+                </p>
+              </div>
+
+              <div class="mypage-recovery-state" id="mypageRecoveryState">
+                복구정보 불러오는 중...
               </div>
             </section>
 
-            <section class="mypage-section">
+            <section class="mypage-section" aria-label="비밀번호 변경">
               <h2 class="mypage-section-title">비밀번호 변경</h2>
 
               <div class="mypage-field">
@@ -100,9 +199,12 @@
                   type="password"
                   id="mypageCurrentPw"
                   name="mypageCurrentPw"
-                  placeholder="현재 비밀번호 입력"
                   autocomplete="current-password"
+                  placeholder="현재 비밀번호"
                 />
+                <p class="help-text">
+                  비밀번호를 바꾸려면 현재 비밀번호를 먼저 입력해줘.
+                </p>
               </div>
 
               <div class="mypage-field">
@@ -190,7 +292,10 @@
             </div>
           </section>
 
-          <section class="mypage-section mypage-section--account">
+          <section
+            class="mypage-section mypage-section--account"
+            aria-label="계정 관리"
+          >
             <h2 class="mypage-section-title">계정 관리</h2>
 
             <div class="mypage-action-row">
@@ -200,13 +305,11 @@
             </div>
           </section>
 
-          <section class="mypage-section mypage-section--danger">
+          <section
+            class="mypage-section mypage-section--danger"
+            aria-label="회원탈퇴"
+          >
             <h2 class="mypage-section-title">회원탈퇴</h2>
-            <p class="mypage-danger-text">
-              회원탈퇴 기능은 아직 준비 중이야. 나중에 안전하게 백엔드까지
-              붙여서 지원할 예정이야.
-            </p>
-
             <div class="mypage-action-row">
               <button
                 type="button"
@@ -216,7 +319,6 @@
                 회원탈퇴
               </button>
             </div>
-
             <p class="mypage-withdraw-msg" id="mypageWithdrawMsg"></p>
           </section>
         </div>
@@ -232,6 +334,6 @@
       class="cursor-buddy"
     />
 
-    <script type="module" src="./assets/js/main.js?v=20260313-0105"></script>
+    <script type="module" src="./assets/js/main.js"></script>
   </body>
 </html>
