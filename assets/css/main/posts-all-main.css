@@ -121,11 +121,6 @@
   white-space: nowrap;
 }
 
-/* 고정글은 살짝 강조 */
-.post-row--pinned {
-  background: var(--color-primary-sub);
-}
-
 /* 고정 배지(옵션) */
 .post-row__badge {
   display: inline-flex;

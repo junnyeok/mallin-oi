@@ -1,12 +1,19 @@
-import { loadPosts, formatMMDD, sortByDateDesc } from './posts-repo.js';
+import { loadPosts, sortByDateDesc, formatMMDD } from './posts-repo.js';
 import { getDisplayViews } from './post-views.js';
 
-/* ================= 유틸 ================= */
+const PER_PAGE = 10;
 
-function normalize(s) {
-  return String(s || '')
-    .toLowerCase()
-    .trim();
+function $(id) {
+  return document.getElementById(id);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function getViews(post) {
@@ -17,239 +24,183 @@ function getCommentCount(post) {
   return Number(post?.commentCount || 0);
 }
 
-/* ================= URL 상태 ================= */
-
-const ALLOWED_TABS = new Set(['all', 'study', 'work', 'event', 'career']);
-const ALLOWED_TYPES = new Set(['title', 'tag']);
-
-function normalizeTab(tab) {
-  if (!tab) return 'all';
-  const t = normalize(tab);
-  return ALLOWED_TABS.has(t) ? t : 'all';
-}
-
-function normalizeType(type) {
-  if (!type) return 'title';
-  const t = normalize(type);
-  return ALLOWED_TYPES.has(t) ? t : 'title';
-}
-
-function normalizePage(page) {
-  const n = Number(page);
-  if (!Number.isFinite(n)) return 1;
-  return Math.max(1, Math.floor(n));
-}
-
 function getState() {
-  const sp = new URLSearchParams(location.search);
-  return {
-    tab: normalizeTab(sp.get('tab')),
-    page: normalizePage(sp.get('page') || 1),
-    q: (sp.get('q') || '').trim(),
-    type: normalizeType(sp.get('type')),
-  };
+  const sp = new URLSearchParams(window.location.search);
+  const tab = (sp.get('tab') || 'all').toLowerCase();
+  const q = (sp.get('q') || '').trim();
+  const type =
+    (sp.get('type') || 'title').toLowerCase() === 'tag' ? 'tag' : 'title';
+  const page = Math.max(1, Number(sp.get('page') || 1));
+
+  return { tab, q, type, page };
 }
 
-function setState({ tab, page, q, type }) {
-  const safeTab = normalizeTab(tab);
-  const safeType = normalizeType(type);
-  const safePage = normalizePage(page);
-  const safeQ = (q || '').trim();
+function setState(nextState) {
+  const sp = new URLSearchParams(window.location.search);
 
-  const sp = new URLSearchParams();
-  sp.set('tab', safeTab);
+  if (nextState.tab && nextState.tab !== 'all') sp.set('tab', nextState.tab);
+  else sp.delete('tab');
 
-  if (safeType !== 'title') sp.set('type', safeType);
-  if (safeQ) sp.set('q', safeQ);
-  if (safePage > 1) sp.set('page', String(safePage));
+  if (nextState.q) sp.set('q', nextState.q);
+  else sp.delete('q');
 
-  history.pushState(null, '', `${location.pathname}?${sp.toString()}`);
+  if (nextState.type === 'tag') sp.set('type', 'tag');
+  else sp.delete('type');
+
+  if (nextState.page > 1) sp.set('page', String(nextState.page));
+  else sp.delete('page');
+
+  const nextUrl = `${window.location.pathname}?${sp.toString()}${window.location.hash || ''}`;
+  window.history.replaceState({}, '', nextUrl);
 }
 
-/* ================= 검색 ================= */
+function filterPosts(posts, { tab, q, type }) {
+  let scoped = posts;
 
-function matchTitle(post, q) {
-  if (!q) return true;
-  return normalize(post.title).includes(normalize(q));
+  if (tab && tab !== 'all') {
+    scoped = scoped.filter((post) => post.category === tab);
+  }
+
+  if (!q) return scoped;
+
+  const query = q.toLowerCase();
+
+  if (type === 'tag') {
+    return scoped.filter((post) =>
+      (post.tags || []).some((tag) =>
+        String(tag || '')
+          .toLowerCase()
+          .includes(query),
+      ),
+    );
+  }
+
+  return scoped.filter((post) => {
+    const title = String(post.title || '').toLowerCase();
+    const excerpt = String(post.excerpt || '').toLowerCase();
+    return title.includes(query) || excerpt.includes(query);
+  });
 }
 
-function matchTag(post, q) {
-  if (!q) return true;
-  const needle = normalize(q);
-  const tags = Array.isArray(post.tags) ? post.tags : [];
-  return tags.some((t) => normalize(t).includes(needle));
-}
-
-function filterByTab(posts, tab) {
-  if (tab === 'all') return posts;
-  return posts.filter((p) => (p.category || '') === tab);
-}
-
-/* ================= 렌더 ================= */
-
-function renderRow(p) {
+function renderNoticeRow(post) {
   return `
-    <a
-      class="post-row"
-      href="${p.url}"
-      data-id="${p.id}"
-      data-views="${getViews(p)}"
-    >
-      <span class="post-row__title">${p.title}</span>
+    <a class="post-row post-row--pinned" href="${post.url}" data-id="${post.id}">
+      <span class="post-row__title">
+        <span class="post-row__badge">📌 고정</span>
+        ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
+      </span>
       <span class="post-row__meta">
-        ${formatMMDD(p.date)} · 👀 ${getViews(p)} · 💬 ${getCommentCount(p)} · ${p.category}
+        ${formatMMDD(post.date)} · 👀 ${getViews(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
 }
 
-/* ================= 초기화 ================= */
+function renderRow(post) {
+  return `
+    <a class="post-row" href="${post.url}" data-id="${post.id}">
+      <span class="post-row__title">
+        ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
+      </span>
+      <span class="post-row__meta">
+        ${formatMMDD(post.date)} · 👀 ${getViews(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+      </span>
+    </a>
+  `;
+}
+
+function syncTabs(activeTab) {
+  document.querySelectorAll('[data-tab]').forEach((btn) => {
+    const tab = (btn.dataset.tab || 'all').toLowerCase();
+    const active = tab === activeTab;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+}
 
 export async function initPostsAll() {
-  const pinnedEl = document.getElementById('pinnedList');
-  const listEl = document.getElementById('postsAllList');
+  const rowsEl = $('postsAllRows');
+  const noticeListEl = $('postsAllNoticeList');
+  const prevBtn = $('postsAllPrevBtn');
+  const nextBtn = $('postsAllNextBtn');
+  const pageInfoEl = $('postsAllPageInfo');
 
-  const tabBtns = document.querySelectorAll('[data-tab]');
-  const btnPrev = document.getElementById('pagerPrev');
-  const btnNext = document.getElementById('pagerNext');
-  const pagerInfo = document.getElementById('pagerInfo');
-
-  const searchForm =
-    document.getElementById('searchForm') ||
-    document.querySelector('form.search');
-  const searchInput =
-    document.getElementById('q') || document.querySelector('input[name="q"]');
-
-  const typeBtns = document.querySelectorAll('[data-type]');
-
-  if (!pinnedEl || !listEl) return;
-
-  const PER_PAGE = 10;
+  if (!rowsEl || !noticeListEl || !prevBtn || !nextBtn || !pageInfoEl) return;
 
   let allPosts = [];
   try {
     allPosts = await loadPosts();
-  } catch (e) {
-    console.error(e);
-    pinnedEl.innerHTML = `<div class="empty">게시글을 불러오지 못했어.</div>`;
-    listEl.innerHTML = `<div class="empty">Supabase 연결값과 RLS를 확인해줘.</div>`;
+  } catch (error) {
+    console.error('[posts-all] loadPosts failed:', error);
+    rowsEl.innerHTML = `<div class="empty">게시물을 불러오지 못했어.</div>`;
+    noticeListEl.innerHTML = `<div class="empty">고정 게시물을 불러오지 못했어.</div>`;
     return;
   }
 
-  function applyFilters(posts, { tab, q, type }) {
-    let list = filterByTab(posts, tab);
+  const pinnedPosts = sortByDateDesc(allPosts.filter((post) => post.pinned));
+  noticeListEl.innerHTML = pinnedPosts.length
+    ? pinnedPosts.map(renderNoticeRow).join('')
+    : `<div class="empty">고정 게시물이 없어.</div>`;
 
-    if (type === 'tag') list = list.filter((p) => matchTag(p, q));
-    else list = list.filter((p) => matchTitle(p, q));
-
-    return list;
-  }
+  let state = getState();
 
   function render() {
-    const state = getState();
-    const { tab, page, q, type } = state;
+    syncTabs(state.tab);
 
-    tabBtns.forEach((btn) => {
-      const active = btn.dataset.tab === tab;
-      btn.classList.toggle('is-active', active);
-      btn.setAttribute('aria-selected', String(active));
-    });
-
-    if (searchInput) searchInput.value = q || '';
-
-    if (typeBtns && typeBtns.length) {
-      typeBtns.forEach((b) => {
-        const active = b.dataset.type === type;
-        b.classList.toggle('is-active', active);
-        b.setAttribute('aria-pressed', String(active));
-      });
-    }
-
-    const pinnedBase = allPosts.filter((p) => p.pinned);
-    const pinnedFiltered = sortByDateDesc(applyFilters(pinnedBase, state));
-
-    pinnedEl.innerHTML =
-      pinnedFiltered.length === 0
-        ? `<div class="empty">고정된 글이 없어.</div>`
-        : pinnedFiltered.map(renderRow).join('');
-
-    const normalBase = allPosts.filter((p) => !p.pinned);
-    const filtered = sortByDateDesc(applyFilters(normalBase, state));
+    const filtered = sortByDateDesc(
+      filterPosts(
+        allPosts.filter((post) => !post.pinned),
+        state,
+      ),
+    );
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-    const safePage = Math.min(page, totalPages);
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
 
-    const start = (safePage - 1) * PER_PAGE;
+    const start = (state.page - 1) * PER_PAGE;
     const pagePosts = filtered.slice(start, start + PER_PAGE);
 
-    listEl.innerHTML =
-      pagePosts.length === 0
-        ? `<div class="empty">검색 결과가 없어.</div>`
-        : pagePosts.map(renderRow).join('');
+    rowsEl.innerHTML = pagePosts.length
+      ? pagePosts.map(renderRow).join('')
+      : `<div class="empty">조건에 맞는 게시물이 없어.</div>`;
 
-    pagerInfo.textContent = `${safePage} / ${totalPages}`;
-    if (btnPrev) btnPrev.disabled = safePage <= 1;
-    if (btnNext) btnNext.disabled = safePage >= totalPages;
+    pageInfoEl.textContent = `${state.page} / ${totalPages}`;
+    prevBtn.disabled = state.page <= 1;
+    nextBtn.disabled = state.page >= totalPages;
 
-    if (safePage !== page) {
-      setState({ tab, page: safePage, q, type });
-    }
+    setState(state);
   }
 
-  tabBtns.forEach((btn) => {
+  document.querySelectorAll('[data-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const s = getState();
-      setState({ tab: btn.dataset.tab, page: 1, q: s.q, type: s.type });
+      state.tab = (btn.dataset.tab || 'all').toLowerCase();
+      state.page = 1;
       render();
     });
   });
 
-  if (btnPrev) {
-    btnPrev.addEventListener('click', () => {
-      const s = getState();
-      if (s.page > 1) {
-        setState({ tab: s.tab, page: s.page - 1, q: s.q, type: s.type });
-        render();
-      }
-    });
-  }
+  prevBtn.addEventListener('click', () => {
+    if (state.page <= 1) return;
+    state.page -= 1;
+    render();
+  });
 
-  if (btnNext) {
-    btnNext.addEventListener('click', () => {
-      const s = getState();
-      setState({ tab: s.tab, page: s.page + 1, q: s.q, type: s.type });
-      render();
-    });
-  }
+  nextBtn.addEventListener('click', () => {
+    const filtered = filterPosts(
+      allPosts.filter((post) => !post.pinned),
+      state,
+    );
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    if (state.page >= totalPages) return;
+    state.page += 1;
+    render();
+  });
 
-  if (typeBtns && typeBtns.length) {
-    typeBtns.forEach((b) => {
-      b.addEventListener('click', () => {
-        const s = getState();
-        setState({ tab: s.tab, page: 1, q: s.q, type: b.dataset.type });
-        render();
-      });
-    });
-  }
-
-  if (searchForm && searchInput) {
-    searchForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const s = getState();
-      setState({
-        tab: s.tab,
-        page: 1,
-        q: (searchInput.value || '').trim(),
-        type: s.type,
-      });
-      render();
-    });
-  }
-
-  window.addEventListener('popstate', render);
-
-  const init = getState();
-  setState(init);
+  window.addEventListener('popstate', () => {
+    state = getState();
+    render();
+  });
 
   render();
 }

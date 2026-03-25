@@ -1,5 +1,5 @@
-// assets/js/modules/post-comments.js
 import { supabase } from './supabase-client.js';
+import { loadPostById } from './posts-repo.js';
 import {
   getCurrentUser,
   getDisplayName,
@@ -88,10 +88,10 @@ function toBoolean(value) {
   return text === 'true' || text === 't' || text === '1';
 }
 
-function syncTopCommentMeta(count) {
+function syncTopCommentMeta(count, isLocked = false) {
   const topMetaEl = $('postCommentMeta');
   if (!topMetaEl) return;
-  topMetaEl.textContent = `💬 ${Number(count || 0)}`;
+  topMetaEl.textContent = isLocked ? '💬 비공개' : `💬 ${Number(count || 0)}`;
 }
 
 async function getMyRole() {
@@ -375,21 +375,61 @@ function renderCommentItem(
   `;
 }
 
-async function loadComments(postId) {
-  const { data, error } = await supabase
-    .from('post_comments')
-    .select(
-      'id, post_id, parent_comment_id, body, author_id, author_nickname, created_at, updated_at',
-    )
-    .eq('post_id', postId)
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true });
+let currentSecretPassword = '';
+let isPrivatePostLocked = false;
+
+function setCommentFormDisabled(disabled, hintText = '') {
+  const hint = $('commentLoginHint');
+  const textarea = $('commentBody');
+  const submitBtn = $('commentSubmitBtn');
+  const userBox = $('commentUserBox');
+
+  if (userBox && disabled) {
+    userBox.textContent = '작성자: 잠금 상태';
+  }
+
+  if (hint && hintText) {
+    hint.textContent = hintText;
+  }
+
+  if (textarea) {
+    textarea.disabled = !!disabled;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = !!disabled;
+  }
+}
+
+function renderLockedCommentState() {
+  const listEl = $('commentList');
+  const countEl = $('commentCount');
+
+  if (countEl) countEl.textContent = '0';
+  syncTopCommentMeta(0, true);
+
+  if (listEl) {
+    listEl.innerHTML = `<div class="comment-empty">비밀번호를 입력해야 댓글과 답글을 볼 수 있어.</div>`;
+  }
+
+  setFormMessage('');
+  setCommentFormDisabled(
+    true,
+    '비밀글 비밀번호를 먼저 입력해야 댓글을 볼 수 있어.',
+  );
+}
+
+async function loadComments(postId, secretPassword = null) {
+  const { data, error } = await supabase.rpc('get_post_comments', {
+    p_post_id: postId,
+    p_secret_password: secretPassword || null,
+  });
 
   if (error) throw error;
   return data || [];
 }
 
-async function renderComments(postId) {
+async function renderComments(postId, secretPassword = null) {
   const listEl = $('commentList');
   const countEl = $('commentCount');
 
@@ -399,7 +439,7 @@ async function renderComments(postId) {
 
   try {
     const [comments, user, role] = await Promise.all([
-      loadComments(postId),
+      loadComments(postId, secretPassword),
       getCurrentUser(),
       getMyRole(),
     ]);
@@ -409,7 +449,7 @@ async function renderComments(postId) {
     const nextCount = comments.length;
 
     countEl.textContent = String(nextCount);
-    syncTopCommentMeta(nextCount);
+    syncTopCommentMeta(nextCount, false);
 
     if (!comments.length) {
       listEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어. 첫 댓글을 남겨봐.</div>`;
@@ -434,18 +474,26 @@ async function renderComments(postId) {
   } catch (error) {
     console.error('[post-comments] render failed:', error);
     countEl.textContent = '0';
-    syncTopCommentMeta(0);
+    syncTopCommentMeta(0, false);
     listEl.innerHTML = `<div class="comment-empty">댓글을 불러오지 못했어.</div>`;
   }
 }
 
-async function syncCommentFormUser() {
+async function syncCommentFormUser(forceLocked = false) {
   const userBox = $('commentUserBox');
   const hint = $('commentLoginHint');
   const textarea = $('commentBody');
   const submitBtn = $('commentSubmitBtn');
 
   if (!userBox || !hint || !textarea || !submitBtn) return;
+
+  if (forceLocked || isPrivatePostLocked) {
+    userBox.textContent = '작성자: 잠금 상태';
+    hint.textContent = '비밀글 비밀번호를 먼저 입력해야 댓글을 볼 수 있어.';
+    textarea.disabled = true;
+    submitBtn.disabled = true;
+    return;
+  }
 
   const user = await getCurrentUser();
 
@@ -604,6 +652,11 @@ async function handleCreateComment(postId) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    if (isPrivatePostLocked) {
+      setFormMessage('비밀번호를 먼저 입력해줘.', 'is-error');
+      return;
+    }
+
     const user = await getCurrentUser();
 
     if (!user) {
@@ -653,12 +706,17 @@ async function handleCreateComment(postId) {
     textarea.value = '';
     setFormMessage('댓글이 등록됐어.', 'is-success');
 
-    await syncCommentFormUser();
-    await renderComments(postId);
+    await syncCommentFormUser(false);
+    await renderComments(postId, currentSecretPassword);
   });
 }
 
 async function handleCreateReply(replyForm, postId, parentCommentId) {
+  if (isPrivatePostLocked) {
+    setReplyFormMessage(replyForm, '비밀번호를 먼저 입력해줘.', 'is-error');
+    return;
+  }
+
   const textarea = replyForm.querySelector('[data-role="reply-textarea"]');
   const submitBtn = replyForm.querySelector('[data-role="reply-submit"]');
 
@@ -712,7 +770,7 @@ async function handleCreateReply(replyForm, postId, parentCommentId) {
   }
 
   setReplyFormMessage(replyForm, '답글이 등록됐어.', 'is-success');
-  await renderComments(postId);
+  await renderComments(postId, currentSecretPassword);
 }
 
 async function handleDeleteComment(commentId, postId, isMine = true) {
@@ -734,7 +792,7 @@ async function handleDeleteComment(commentId, postId, isMine = true) {
     return;
   }
 
-  await renderComments(postId);
+  await renderComments(postId, currentSecretPassword);
 }
 
 async function handleSaveEdit(commentId, postId) {
@@ -771,7 +829,7 @@ async function handleSaveEdit(commentId, postId) {
     return;
   }
 
-  await renderComments(postId);
+  await renderComments(postId, currentSecretPassword);
 }
 
 function bindCommentListEvents(postId) {
@@ -785,6 +843,11 @@ function bindCommentListEvents(postId) {
     const action = btn.dataset.action;
     const commentId = Number(btn.dataset.commentId || 0);
     if (!Number.isFinite(commentId) || commentId <= 0) return;
+
+    if (isPrivatePostLocked && action !== 'toggle-thread') {
+      alert('비밀번호를 먼저 입력해줘.');
+      return;
+    }
 
     if (action === 'toggle-thread') {
       toggleReplyThread(commentId);
@@ -854,6 +917,32 @@ function bindCommentListEvents(postId) {
   listEl.dataset.bound = '1';
 }
 
+async function syncCommentAccess(postId, secretPassword = '') {
+  try {
+    const post = await loadPostById(postId, secretPassword || null);
+
+    if (!post) {
+      renderLockedCommentState();
+      return;
+    }
+
+    if (post.isPrivate && !post.isUnlocked) {
+      currentSecretPassword = '';
+      isPrivatePostLocked = true;
+      renderLockedCommentState();
+      return;
+    }
+
+    currentSecretPassword = secretPassword || '';
+    isPrivatePostLocked = false;
+    await syncCommentFormUser(false);
+    await renderComments(postId, currentSecretPassword);
+  } catch (error) {
+    console.error('[post-comments] sync access failed:', error);
+    renderLockedCommentState();
+  }
+}
+
 export async function initPostComments() {
   const form = $('commentForm');
   const textarea = $('commentBody');
@@ -862,8 +951,16 @@ export async function initPostComments() {
 
   if (!form || !textarea || !submitBtn || !postId) return;
 
-  await syncCommentFormUser();
-  await renderComments(postId);
   bindCommentListEvents(postId);
   await handleCreateComment(postId);
+  await syncCommentAccess(postId, '');
+
+  window.addEventListener('mallin:post-access', async (e) => {
+    const detail = e?.detail || {};
+    const eventPostId = Number(detail.postId || 0);
+
+    if (eventPostId !== postId) return;
+
+    await syncCommentAccess(postId, String(detail.secretPassword || ''));
+  });
 }

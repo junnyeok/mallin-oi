@@ -20,16 +20,16 @@
     <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
-    <!-- 필요 페이지 -->
     <link rel="stylesheet" href="./assets/css/pages/index.css" />
-    <!-- main -->
     <link rel="stylesheet" href="./assets/css/main/main.css" />
-    <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/main/posts-all-main.css?v=20260325-fix2"
+    />
   </head>
 
   <body data-page="posts-all">
     <div class="page">
-      <!-- ✅ Header 유지 -->
       <div data-include="header"></div>
 
       <main class="site-main">
@@ -39,13 +39,13 @@
               <h2 class="home-section__title">📚 전체보기</h2>
             </div>
 
-            <!-- 1) 고정(공지) 영역 -->
+            <!-- 고정 -->
             <section class="posts-all__notice" aria-label="고정 게시물">
               <h3 class="posts-all__notice-title">📌 고정</h3>
-              <div class="posts-all__notice-list" id="pinnedList"></div>
+              <div class="posts-all__notice-list" id="postsAllNoticeList"></div>
             </section>
 
-            <!-- 2) 탭 영역 -->
+            <!-- 탭 -->
             <nav class="posts-all__tabs" aria-label="게시물 분류 탭">
               <button
                 type="button"
@@ -55,31 +55,51 @@
               >
                 전체
               </button>
-              <button type="button" class="tab-btn" data-tab="study">
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="study"
+                aria-selected="false"
+              >
                 공부
               </button>
-              <button type="button" class="tab-btn" data-tab="work">
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="work"
+                aria-selected="false"
+              >
                 업무
               </button>
-              <button type="button" class="tab-btn" data-tab="event">
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="event"
+                aria-selected="false"
+              >
                 이벤트
               </button>
-              <button type="button" class="tab-btn" data-tab="career">
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="career"
+                aria-selected="false"
+              >
                 이력
               </button>
             </nav>
 
-            <!-- 3) 전체 게시물 리스트 -->
+            <!-- 게시물 목록 -->
             <section class="posts-all__list" aria-label="전체 게시물 목록">
-              <div class="posts-all__rows" id="postsAllList"></div>
+              <div class="posts-all__rows" id="postsAllRows"></div>
             </section>
 
-            <!-- 4) 페이지네이션 -->
+            <!-- 페이지네이션 -->
             <nav class="posts-all__pager" aria-label="페이지 이동">
               <button
                 type="button"
                 class="weekly-nav__btn"
-                id="pagerPrev"
+                id="postsAllPrevBtn"
                 aria-label="이전 페이지"
               >
                 ←
@@ -87,7 +107,7 @@
 
               <span
                 class="pager-info weekly-nav__label"
-                id="pagerInfo"
+                id="postsAllPageInfo"
                 aria-live="polite"
               >
                 1 / 1
@@ -96,7 +116,7 @@
               <button
                 type="button"
                 class="weekly-nav__btn"
-                id="pagerNext"
+                id="postsAllNextBtn"
                 aria-label="다음 페이지"
               >
                 →
@@ -106,7 +126,6 @@
         </section>
       </main>
 
-      <!-- ✅ Footer 유지 -->
       <div data-include="footer"></div>
     </div>
 

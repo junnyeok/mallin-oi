@@ -1,8 +1,6 @@
 import { loadPosts, formatMMDD, sortByDateDesc } from './posts-repo.js';
 import { getDisplayViews } from './post-views.js';
 
-/* ================= 데이터/필터 ================= */
-
 function getPageCategory() {
   return document.body.dataset.page || 'home';
 }
@@ -15,6 +13,10 @@ function scopePosts(posts, pageCategory) {
 
 function getViews(post) {
   return getDisplayViews(post);
+}
+
+function getTitle(post) {
+  return `${post.isPrivate ? '🔒 ' : ''}${post.title}`;
 }
 
 function sortForFeatured(posts) {
@@ -35,8 +37,6 @@ function sortForFeatured(posts) {
   });
 }
 
-/* ================= 렌더 ================= */
-
 function renderCardGrid(posts, gridEl) {
   gridEl.innerHTML = posts
     .map(
@@ -45,7 +45,7 @@ function renderCardGrid(posts, gridEl) {
         <article class="card__body">
           ${p.pinned ? `<span class="badge">📌</span>` : ''}
 
-          <h3 class="card__title">${p.title}</h3>
+          <h3 class="card__title">${getTitle(p)}</h3>
 
           <p class="card__desc">${p.excerpt ?? ''}</p>
 
@@ -66,15 +66,13 @@ function renderLatestList(posts, listEl) {
     .map(
       (p) => `
       <a class="mini__row" href="${p.url}" data-id="${p.id}" data-views="${getViews(p)}">
-        <span class="mini__title">${p.title}</span>
+        <span class="mini__title">${getTitle(p)}</span>
         <span class="mini__date">${formatMMDD(p.date)}</span>
       </a>
     `,
     )
     .join('');
 }
-
-/* ================= 초기화 ================= */
 
 export async function initPostsUI() {
   const gridEl = document.querySelector('#cardGrid');
@@ -102,24 +100,14 @@ export async function initPostsUI() {
   }
 
   const scoped = scopePosts(allPosts, pageCategory);
-
-  // ✅ 주요 업데이트 4개 -> 8개
   const featured = sortForFeatured(scoped).slice(0, 8);
-  const latest = sortByDateDesc(scoped).slice(0, 12);
+  const latest = sortByDateDesc(scoped).slice(0, 8);
 
   if (gridEl) {
-    if (featured.length === 0) {
-      gridEl.innerHTML = `<div class="empty">표시할 주요 업데이트가 없어.</div>`;
-    } else {
-      renderCardGrid(featured, gridEl);
-    }
+    renderCardGrid(featured, gridEl);
   }
 
   if (latestEl) {
-    if (latest.length === 0) {
-      latestEl.innerHTML = `<div class="empty">최신 업로드가 없어.</div>`;
-    } else {
-      renderLatestList(latest, latestEl);
-    }
+    renderLatestList(latest, latestEl);
   }
 }

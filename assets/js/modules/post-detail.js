@@ -14,13 +14,126 @@ function $(id) {
 }
 
 function escapeHtml(str) {
-  return String(str)
+  return String(str || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
+function emitPostAccessState(post, secretPassword = '') {
+  window.dispatchEvent(
+    new CustomEvent('mallin:post-access', {
+      detail: {
+        postId: Number(post?.id || 0),
+        isPrivate: !!post?.isPrivate,
+        isUnlocked: !!post?.isUnlocked,
+        secretPassword: String(secretPassword || ''),
+      },
+    }),
+  );
+}
+
+/* =========================
+   THEME SYNC
+========================= */
+
+function normalizeCategory(category) {
+  const value = String(category || '')
+    .trim()
+    .toLowerCase();
+
+  if (value === 'study') return 'study';
+  if (value === 'work') return 'work';
+  if (value === 'event') return 'event';
+  if (value === 'career') return 'career';
+  return 'home';
+}
+
+function getThemeLogoSrc(category, base = './') {
+  const safeBase = String(base || './');
+
+  const map = {
+    home: `${safeBase}images/logo-home.png`,
+    study: `${safeBase}images/logo-study.png`,
+    work: `${safeBase}images/logo-work.png`,
+    event: `${safeBase}images/logo-event.png`,
+    career: `${safeBase}images/logo-career.png`,
+  };
+
+  return map[normalizeCategory(category)] || map.home;
+}
+
+function getPageHrefByCategory(category, base = './') {
+  const safeBase = String(base || './');
+  const normalized = normalizeCategory(category);
+
+  const map = {
+    home: `${safeBase}index.html`,
+    study: `${safeBase}study.html`,
+    work: `${safeBase}work.html`,
+    event: `${safeBase}event.html`,
+    career: `${safeBase}career.html`,
+  };
+
+  return map[normalized] || map.home;
+}
+
+function syncThemeByCategory(category) {
+  const normalized = normalizeCategory(category);
+  const body = document.body;
+  if (!body) return;
+
+  body.classList.remove(
+    'theme-home',
+    'theme-study',
+    'theme-work',
+    'theme-event',
+    'theme-career',
+  );
+  body.classList.add(`theme-${normalized}`);
+
+  const base = body.dataset.base || './';
+
+  const logoSrc = getThemeLogoSrc(normalized, base);
+  const currentHref = getPageHrefByCategory(normalized, base);
+
+  const headerLogo = document.getElementById('siteLogoImg');
+  if (headerLogo) {
+    headerLogo.src = logoSrc;
+  }
+
+  const footerLogo = document.getElementById('footerLogoImg');
+  if (footerLogo) {
+    footerLogo.src = logoSrc;
+  }
+
+  const navLinks = document.querySelectorAll('.site-nav__link');
+  navLinks.forEach((link) => {
+    link.removeAttribute('aria-current');
+    link.classList.remove('is-active');
+
+    const href = link.getAttribute('href') || '';
+    if (href === currentHref) {
+      link.setAttribute('aria-current', 'page');
+      link.classList.add('is-active');
+    }
+  });
+
+  const listBtn = document.getElementById('postListBtn');
+  if (listBtn) {
+    if (normalized === 'home') {
+      listBtn.href = `${base}posts-all.html`;
+    } else {
+      listBtn.href = `${base}posts-all.html?tab=${encodeURIComponent(normalized)}`;
+    }
+  }
+}
+
+/* =========================
+   RENDER
+========================= */
 
 function renderTags(tags = []) {
   const wrap = $('postTags');
@@ -34,7 +147,9 @@ function renderTags(tags = []) {
 function renderAuthor(post) {
   const authorEl = $('postAuthor');
   if (!authorEl) return;
-  authorEl.textContent = `작성자 : ${post.authorNickname || '익명'}`;
+
+  const privateMark = post.isPrivate ? ' 🔒' : '';
+  authorEl.textContent = `작성자 : ${post.authorNickname || '익명'}${privateMark}`;
 }
 
 function formatDateTime(value) {
@@ -76,384 +191,147 @@ function renderPostDateTime(post) {
     return;
   }
 
-  if (edited && updatedText) {
-    el.innerHTML = `
-      <span class="post-datetime__label">작성일 :</span>
-      <span class="post-datetime__value">${escapeHtml(createdText)}</span>
-      <span class="post-edited-badge">수정됨</span>
-      <span class="post-datetime__updated">(${escapeHtml(updatedText)})</span>
-    `;
+  if (!edited) {
+    el.textContent = `작성일 : ${createdText}`;
     return;
   }
 
-  el.innerHTML = `
-    <span class="post-datetime__label">작성일 :</span>
-    <span class="post-datetime__value">${escapeHtml(createdText)}</span>
-  `;
+  el.textContent = `작성일 : ${createdText} · 수정됨 (${updatedText})`;
 }
 
-function renderBodyText(text) {
-  const raw = String(text || '').trim();
-
-  if (!raw) {
-    return `<p class="post-body__hint">본문이 아직 없어.</p>`;
-  }
-
-  return raw
-    .split(/\n{2,}/g)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => `<p>${escapeHtml(p).replaceAll('\n', '<br />')}</p>`)
-    .join('');
+function renderBodyText(text = '') {
+  const safe = escapeHtml(text).replaceAll('\n', '<br />');
+  return `<div class="post-body__text">${safe}</div>`;
 }
 
-/* ================= 첨부 렌더 ================= */
-
-function normalizeMediaItems(items) {
-  if (!Array.isArray(items)) return [];
-
-  return items
-    .map((item) => ({
-      id: String(item?.id || ''),
-      type: String(item?.type || '').trim(),
-      title: String(item?.title || '').trim(),
-      url: String(item?.url || '').trim(),
-      path: String(item?.path || '').trim(),
-      fileName: String(item?.fileName || '').trim(),
-      mimeType: String(item?.mimeType || '').trim(),
-      size: Number(item?.size || 0),
-    }))
-    .filter((item) => item.type && item.url);
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll('`', '&#96;');
 }
 
-function formatBytes(bytes) {
-  const n = Number(bytes || 0);
-  if (!Number.isFinite(n) || n <= 0) return '';
-  if (n < 1024) return `${n}B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)}MB`;
-  return `${(n / (1024 * 1024 * 1024)).toFixed(1)}GB`;
+function shortenUrl(url, max = 72) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}...`;
 }
 
-function getAttachmentLabel(type) {
-  switch (type) {
-    case 'image':
-      return '사진';
-    case 'video':
-      return '영상';
-    case 'file':
-      return '파일';
-    case 'link':
-      return '링크';
-    case 'map':
-      return '지도';
-    default:
-      return '첨부';
-  }
-}
-
-function getAttachmentIcon(type) {
-  switch (type) {
-    case 'image':
-      return '🖼️';
-    case 'video':
-      return '🎬';
-    case 'file':
-      return '📎';
-    case 'link':
-      return '🔗';
-    case 'map':
-      return '🗺️';
-    default:
-      return '📄';
-  }
-}
-
-function renderImageItem(item) {
-  const title = item.title || item.fileName || '이미지';
+function renderAttachmentCaption(title, url) {
+  const safeTitle = escapeHtml(title || '첨부');
+  const safeUrl = escapeAttr(url || '');
+  const shortUrl = escapeHtml(shortenUrl(url || ''));
 
   return `
-    <figure class="post-attach-card post-attach-card--image">
+    <figcaption class="post-attach__caption">
+      <strong class="post-attach__name">${safeTitle}</strong>
       <a
-        class="post-attach-media-link"
-        href="${escapeHtml(item.url)}"
+        class="post-attach__url"
+        href="${safeUrl}"
         target="_blank"
         rel="noopener noreferrer"
+        title="${safeUrl}"
       >
-        <img
-          class="post-attach-image"
-          src="${escapeHtml(item.url)}"
-          alt="${escapeHtml(title)}"
-          loading="lazy"
-        />
+        ${shortUrl}
       </a>
-      <figcaption class="post-attach-caption">
-        <span class="post-attach-badge">🖼️ 사진</span>
-        <span class="post-attach-title">${escapeHtml(title)}</span>
-      </figcaption>
-    </figure>
+    </figcaption>
   `;
 }
 
-function renderVideoItem(item) {
-  const title = item.title || item.fileName || '영상';
-  const meta = [getAttachmentLabel(item.type), formatBytes(item.size)]
-    .filter(Boolean)
-    .join(' · ');
+function renderFileAttachment(title, url) {
+  const safeTitle = escapeHtml(title || '첨부');
+  const safeUrl = escapeAttr(url || '');
+  const shortUrl = escapeHtml(shortenUrl(url || ''));
 
   return `
-    <article class="post-attach-card">
-      <video
-        class="post-attach-video"
-        controls
-        preload="metadata"
-        playsinline
-        src="${escapeHtml(item.url)}"
-      ></video>
-      <div class="post-attach-info">
-        <p class="post-attach-title">${escapeHtml(title)}</p>
-        <p class="post-attach-meta">${escapeHtml(meta)}</p>
-      </div>
-    </article>
-  `;
-}
-
-function renderFileItem(item) {
-  const title = item.title || item.fileName || '파일';
-  const meta = [
-    getAttachmentLabel(item.type),
-    item.fileName || '',
-    formatBytes(item.size),
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  return `
-    <article class="post-attach-card post-attach-card--file">
-      <div class="post-attach-file">
-        <div class="post-attach-file__icon">📎</div>
-        <div class="post-attach-file__body">
-          <p class="post-attach-title">${escapeHtml(title)}</p>
-          <p class="post-attach-meta">${escapeHtml(meta)}</p>
+    <div class="post-attach post-attach--file">
+      <div class="post-attach__file-card">
+        <div class="post-attach__file-head">
+          <span class="post-attach__file-badge">링크</span>
+          <strong class="post-attach__name">${safeTitle}</strong>
         </div>
+
         <a
-          class="post-attach-file__btn"
-          href="${escapeHtml(item.url)}"
+          class="post-attach__url"
+          href="${safeUrl}"
           target="_blank"
           rel="noopener noreferrer"
-          download
+          title="${safeUrl}"
         >
-          다운로드
+          ${shortUrl}
         </a>
-      </div>
-    </article>
-  `;
-}
 
-function renderLinkLikeItem(item) {
-  const title =
-    item.title ||
-    item.fileName ||
-    item.url ||
-    (item.type === 'map' ? '지도 링크' : '링크');
-
-  const badge =
-    item.type === 'map'
-      ? `${getAttachmentIcon(item.type)} 지도`
-      : `${getAttachmentIcon(item.type)} 링크`;
-
-  return `
-    <article class="post-attach-card post-attach-card--link">
-      <div class="post-attach-link">
-        <div class="post-attach-link__body">
-          <p class="post-attach-badge">${escapeHtml(badge)}</p>
-          <p class="post-attach-title">${escapeHtml(title)}</p>
-          <p class="post-attach-url">${escapeHtml(item.url)}</p>
+        <div class="post-attach__file-actions">
+          <a
+            class="post-attach__open-btn"
+            href="${safeUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            열기
+          </a>
         </div>
-        <a
-          class="post-attach-link__btn"
-          href="${escapeHtml(item.url)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          열기
-        </a>
       </div>
-    </article>
+    </div>
   `;
-}
-
-function renderAttachmentItem(item) {
-  switch (item.type) {
-    case 'image':
-      return renderImageItem(item);
-    case 'video':
-      return renderVideoItem(item);
-    case 'file':
-      return renderFileItem(item);
-    case 'link':
-    case 'map':
-      return renderLinkLikeItem(item);
-    default:
-      return '';
-  }
 }
 
 function renderAttachments(items = []) {
-  const mediaItems = normalizeMediaItems(items);
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return '';
 
-  if (!mediaItems.length) return '';
+  const rows = list
+    .map((item) => {
+      const type = String(item?.type || '').trim();
+      const title = item?.title || item?.fileName || '첨부';
+      const url = String(item?.url || '').trim();
 
-  const imageItems = mediaItems.filter((item) => item.type === 'image');
-  const otherItems = mediaItems.filter((item) => item.type !== 'image');
+      if (!url) return '';
 
-  const imageSection = imageItems.length
-    ? `
-      <section class="post-attachments__section">
-        <h3 class="post-attachments__sub">사진</h3>
-        <div class="post-attach-gallery">
-          ${imageItems.map(renderAttachmentItem).join('')}
-        </div>
-      </section>
-    `
-    : '';
+      const safeUrl = escapeAttr(url);
+      const safeTitle = escapeAttr(title);
 
-  const otherSection = otherItems.length
-    ? `
-      <section class="post-attachments__section">
-        <h3 class="post-attachments__sub">첨부</h3>
-        <div class="post-attach-stack">
-          ${otherItems.map(renderAttachmentItem).join('')}
-        </div>
-      </section>
-    `
-    : '';
+      if (type === 'image') {
+        return `
+          <figure class="post-attach post-attach--image">
+            <a
+              class="post-attach__media-link"
+              href="${safeUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src="${safeUrl}"
+                alt="${safeTitle}"
+                loading="lazy"
+                decoding="async"
+              />
+            </a>
+            ${renderAttachmentCaption(title, url)}
+          </figure>
+        `;
+      }
 
-  return `
-    <section class="post-attachments">
-      <h2 class="post-attachments__title">첨부 자료</h2>
-      ${imageSection}
-      ${otherSection}
-    </section>
-  `;
+      if (type === 'video') {
+        return `
+          <figure class="post-attach post-attach--video">
+            <video
+              src="${safeUrl}"
+              controls
+              playsinline
+              preload="metadata"
+            ></video>
+            ${renderAttachmentCaption(title, url)}
+          </figure>
+        `;
+      }
+
+      return renderFileAttachment(title, url);
+    })
+    .filter(Boolean)
+    .join('');
+
+  if (!rows) return '';
+  return `<div class="post-attachments">${rows}</div>`;
 }
-
-/* ================= 테마 유틸 ================= */
-
-function getBasePath() {
-  return document.body?.dataset?.base || './';
-}
-
-function getThemeInfo(category) {
-  const base = getBasePath();
-
-  const map = {
-    home: {
-      bodyClass: 'theme-home',
-      pageCss: `${base}assets/css/pages/index.css`,
-      logo: `${base}images/logo-home.png`,
-      navHref: `${base}index.html`,
-    },
-    study: {
-      bodyClass: 'theme-study',
-      pageCss: `${base}assets/css/pages/study.css`,
-      logo: `${base}images/logo-study.png`,
-      navHref: `${base}study.html`,
-    },
-    work: {
-      bodyClass: 'theme-work',
-      pageCss: `${base}assets/css/pages/work.css`,
-      logo: `${base}images/logo-work.png`,
-      navHref: `${base}work.html`,
-    },
-    event: {
-      bodyClass: 'theme-event',
-      pageCss: `${base}assets/css/pages/event.css`,
-      logo: `${base}images/logo-event.png`,
-      navHref: `${base}event.html`,
-    },
-    career: {
-      bodyClass: 'theme-career',
-      pageCss: `${base}assets/css/pages/career.css`,
-      logo: `${base}images/logo-career.png`,
-      navHref: `${base}career.html`,
-    },
-  };
-
-  return map[category] || map.home;
-}
-
-function ensureCategoryPageCss(category) {
-  const info = getThemeInfo(category);
-  const head = document.head;
-  if (!head) return;
-
-  const EXISTING_ID = 'dynamic-category-theme-css';
-  let link = document.getElementById(EXISTING_ID);
-
-  if (!link) {
-    link = document.createElement('link');
-    link.id = EXISTING_ID;
-    link.rel = 'stylesheet';
-    head.appendChild(link);
-  }
-
-  if (link.getAttribute('href') !== info.pageCss) {
-    link.setAttribute('href', info.pageCss);
-  }
-}
-
-function syncBodyTheme(category) {
-  const info = getThemeInfo(category);
-  const body = document.body;
-
-  body.classList.remove(
-    'theme-home',
-    'theme-study',
-    'theme-work',
-    'theme-event',
-    'theme-career',
-  );
-
-  body.classList.add(info.bodyClass);
-  body.dataset.page = category;
-}
-
-function syncHeaderFooterLogos(category) {
-  const info = getThemeInfo(category);
-  const base = getBasePath();
-
-  const headerLogo = document.getElementById('siteLogoImg');
-  if (headerLogo) headerLogo.src = info.logo;
-
-  const footerLogo = document.getElementById('footerLogoImg');
-  if (footerLogo) footerLogo.src = info.logo;
-
-  const buddy = document.getElementById('cukeBuddy');
-  if (buddy) buddy.src = `${base}images/logo-home.png`;
-}
-
-function syncNavCurrent(category) {
-  const info = getThemeInfo(category);
-
-  document.querySelectorAll('.site-nav__link').forEach((link) => {
-    link.removeAttribute('aria-current');
-
-    const href = link.getAttribute('href') || '';
-    if (href === info.navHref) {
-      link.setAttribute('aria-current', 'page');
-    }
-  });
-}
-
-function syncThemeByCategory(category) {
-  ensureCategoryPageCss(category);
-  syncBodyTheme(category);
-  syncHeaderFooterLogos(category);
-  syncNavCurrent(category);
-}
-
-/* ================= 권한 유틸 ================= */
 
 function toBoolean(value) {
   if (value === true) return true;
@@ -480,8 +358,6 @@ async function getMyRole() {
     isAdmin: toBoolean(row?.is_admin),
   };
 }
-
-/* ================= 게시물 관리 ================= */
 
 async function bindOwnerActions(post) {
   const actionWrap = $('postOwnerActions');
@@ -522,9 +398,8 @@ async function bindOwnerActions(post) {
       deleteBtn.disabled = false;
 
       deleteBtn.onclick = async () => {
-        const isMyPost = isOwner;
         const ok = window.confirm(
-          isMyPost
+          canEdit
             ? '이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.'
             : '관리자 권한으로 이 게시물을 삭제할까? 삭제하면 댓글도 함께 삭제돼.',
         );
@@ -547,7 +422,13 @@ async function bindOwnerActions(post) {
         }
 
         alert('게시물이 삭제됐어.');
-        window.location.href = './posts-all.html';
+
+        const category = normalizeCategory(post.category);
+        if (category === 'home') {
+          window.location.href = './posts-all.html';
+        } else {
+          window.location.href = `./posts-all.html?tab=${encodeURIComponent(category)}`;
+        }
       };
     }
   } catch (err) {
@@ -555,7 +436,91 @@ async function bindOwnerActions(post) {
   }
 }
 
-/* ================= 상세 초기화 ================= */
+function showSecretBox(show) {
+  const box = $('postSecretBox');
+  if (!box) return;
+  box.hidden = !show;
+}
+
+function setSecretMessage(text, isError = false) {
+  const msg = $('postSecretMsg');
+  if (!msg) return;
+  msg.textContent = text;
+  msg.style.color = isError ? '#d93025' : 'var(--color-text-sub)';
+}
+
+function renderLockedState() {
+  const bodyEl = $('postBody');
+  const attachWrap = $('postAttachments');
+
+  showSecretBox(true);
+
+  if (bodyEl) {
+    bodyEl.innerHTML = `<p class="post-body__hint">비밀번호를 입력해야 본문을 볼 수 있어.</p>`;
+  }
+
+  if (attachWrap) {
+    attachWrap.innerHTML = '';
+  }
+}
+
+function renderUnlockedState(post) {
+  const bodyEl = $('postBody');
+  const attachWrap = $('postAttachments');
+
+  showSecretBox(false);
+
+  if (bodyEl) {
+    bodyEl.innerHTML = renderBodyText(post.body || '');
+  }
+
+  if (attachWrap) {
+    attachWrap.innerHTML = renderAttachments(post.mediaItems || []);
+  }
+}
+
+async function applyPost(post) {
+  syncThemeByCategory(post.category || 'home');
+
+  const titleEl = $('postTitle');
+  const excerptEl = $('postExcerpt');
+  const categoryEl = $('postCategory');
+  const viewsEl = $('postViews');
+  const commentMetaEl = $('postCommentMeta');
+
+  if (titleEl) titleEl.textContent = post.title || '';
+  if (excerptEl) excerptEl.textContent = post.excerpt || '';
+
+  if (categoryEl) {
+    categoryEl.textContent = post.isPrivate
+      ? `${post.category || ''} · 비밀글`
+      : post.category || '';
+  }
+
+  if (viewsEl) {
+    viewsEl.textContent = `👀 ${getDisplayViews(post)}`;
+  }
+
+  if (commentMetaEl) {
+    commentMetaEl.textContent =
+      post.isPrivate && !post.isUnlocked
+        ? '💬 비공개'
+        : `💬 ${Number(post.commentCount || 0)}`;
+  }
+
+  renderAuthor(post);
+  renderPostDateTime(post);
+  renderTags(post.tags);
+
+  if (post.isPrivate && !post.isUnlocked) {
+    renderLockedState();
+  } else {
+    renderUnlockedState(post);
+  }
+
+  await bindOwnerActions(post);
+  document.title = `${post.title} | 말린오이닷컴`;
+}
 
 export async function initPostDetail() {
   const bodyEl = document.getElementById('postBody');
@@ -594,31 +559,51 @@ export async function initPostDetail() {
     }
   }
 
-  syncThemeByCategory(post.category);
+  await applyPost(post);
+  emitPostAccessState(post, '');
 
-  const titleEl = $('postTitle');
-  const excerptEl = $('postExcerpt');
-  const categoryEl = $('postCategory');
-  const viewsEl = $('postViews');
+  const secretForm = $('postSecretForm');
+  const secretInput = $('postSecretPassword');
 
-  if (titleEl) titleEl.textContent = post.title || '';
-  if (excerptEl) excerptEl.textContent = post.excerpt || '';
-  if (categoryEl) categoryEl.textContent = post.category || '';
-  if (viewsEl) viewsEl.textContent = `👀 ${getDisplayViews(post)}`;
+  if (secretForm && secretInput) {
+    secretInput.value = '';
 
-  renderAuthor(post);
-  renderPostDateTime(post);
-  renderTags(post.tags);
+    secretForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-  const bodyHtml = renderBodyText(post.body);
-  const attachHtml = renderAttachments(
-    post.mediaItems || post.media_items || [],
-  );
-  bodyEl.innerHTML = `${bodyHtml}${attachHtml}`;
+      const pw = secretInput.value.trim();
+      if (!pw) {
+        setSecretMessage('비밀번호를 입력해줘.', true);
+        secretInput.focus();
+        return;
+      }
 
-  await bindOwnerActions(post);
+      setSecretMessage('확인 중...');
 
-  document.title = `${post.title} | 말린오이닷컴`;
+      try {
+        const unlockedPost = await loadPostById(postId, pw);
+
+        if (!unlockedPost) {
+          setSecretMessage('게시물을 찾지 못했어.', true);
+          return;
+        }
+
+        if (unlockedPost.isPrivate && !unlockedPost.isUnlocked) {
+          setSecretMessage('비밀번호가 일치하지 않아.', true);
+          secretInput.focus();
+          return;
+        }
+
+        secretInput.value = '';
+        setSecretMessage('');
+        await applyPost(unlockedPost);
+        emitPostAccessState(unlockedPost, pw);
+      } catch (error) {
+        console.error('[post-detail] unlock failed:', error);
+        setSecretMessage('비밀번호 확인 중 오류가 발생했어.', true);
+      }
+    });
+  }
 }
 
 export function initBackLink() {

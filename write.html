@@ -27,7 +27,10 @@
     <link rel="stylesheet" href="./assets/css/pages/index.css" />
 
     <!-- write page main -->
-    <link rel="stylesheet" href="./assets/css/main/write-main.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/main/write-main.css?v=20260325-fix2"
+    />
   </head>
 
   <body class="theme-home" data-page="write">
@@ -106,12 +109,13 @@
                     </p>
                   </div>
 
+                  <!-- 첨부 -->
                   <div class="write-row">
                     <p class="write-label">첨부</p>
 
                     <div class="write-attach-box">
                       <div class="write-upload-grid">
-                        <label class="write-upload-tile" for="imageFiles">
+                        <label class="write-upload-tile" for="writeImage">
                           <span class="write-upload-tile__icon">🖼️</span>
                           <span class="write-upload-tile__title"
                             >사진 업로드</span
@@ -121,14 +125,14 @@
                           >
                         </label>
                         <input
-                          id="imageFiles"
+                          id="writeImage"
                           class="write-hidden-file"
                           type="file"
                           accept="image/*"
                           multiple
                         />
 
-                        <label class="write-upload-tile" for="videoFiles">
+                        <label class="write-upload-tile" for="writeVideo">
                           <span class="write-upload-tile__icon">🎬</span>
                           <span class="write-upload-tile__title"
                             >영상 업로드</span
@@ -138,14 +142,14 @@
                           >
                         </label>
                         <input
-                          id="videoFiles"
+                          id="writeVideo"
                           class="write-hidden-file"
                           type="file"
                           accept="video/*"
                           multiple
                         />
 
-                        <label class="write-upload-tile" for="docFiles">
+                        <label class="write-upload-tile" for="writeFile">
                           <span class="write-upload-tile__icon">📎</span>
                           <span class="write-upload-tile__title"
                             >파일 업로드</span
@@ -155,76 +159,20 @@
                           >
                         </label>
                         <input
-                          id="docFiles"
+                          id="writeFile"
                           class="write-hidden-file"
                           type="file"
-                          accept=".pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.7z"
                           multiple
                         />
                       </div>
 
-                      <div class="write-inline-grid">
-                        <div class="write-inline-card">
-                          <p class="write-inline-card__title">
-                            인터넷 링크 추가
-                          </p>
-                          <div class="write-inline-fields">
-                            <input
-                              class="write-control"
-                              id="linkTitle"
-                              type="text"
-                              placeholder="링크 제목(선택)"
-                            />
-                            <input
-                              class="write-control"
-                              id="linkUrl"
-                              type="url"
-                              placeholder="https://example.com"
-                            />
-                            <button
-                              class="write-mini-action"
-                              id="addLinkBtn"
-                              type="button"
-                            >
-                              링크 추가
-                            </button>
-                          </div>
-                        </div>
-
-                        <div class="write-inline-card">
-                          <p class="write-inline-card__title">지도 추가</p>
-                          <div class="write-inline-fields">
-                            <input
-                              class="write-control"
-                              id="mapTitle"
-                              type="text"
-                              placeholder="지도 제목(예: 성수 카페)"
-                            />
-                            <input
-                              class="write-control"
-                              id="mapUrl"
-                              type="url"
-                              placeholder="카카오맵 / 네이버지도 / 구글지도 공유 링크"
-                            />
-                            <button
-                              class="write-mini-action"
-                              id="addMapBtn"
-                              type="button"
-                            >
-                              지도 추가
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="write-attach-list" id="attachmentList">
+                      <div class="write-attach-list" id="writeAttachmentList">
                         <p class="write-empty">아직 추가한 첨부가 없어.</p>
                       </div>
 
                       <p class="write-help">
-                        사진/영상/파일은 Supabase Storage에 업로드되고,
-                        링크/지도는 주소만 저장돼. 수정 모드에서는 기존 첨부도
-                        삭제할 수 있어.
+                        사진/영상/파일은 Supabase Storage에 업로드돼. 수정
+                        모드에서는 기존 첨부도 삭제할 수 있어.
                       </p>
                     </div>
                   </div>
@@ -240,6 +188,38 @@
                       <input id="pinned" type="checkbox" />
                       고정글(pinned)
                     </label>
+                  </div>
+
+                  <!-- 비밀글 -->
+                  <div class="write-row">
+                    <label class="write-label" for="isPrivate">비밀글</label>
+
+                    <div class="write-private">
+                      <label class="write-check">
+                        <input id="isPrivate" type="checkbox" />
+                        비밀글로 등록
+                      </label>
+
+                      <div
+                        class="write-private__pw"
+                        id="privatePasswordRow"
+                        hidden
+                      >
+                        <input
+                          class="write-control"
+                          id="privatePassword"
+                          type="password"
+                          minlength="4"
+                          maxlength="30"
+                          placeholder="비밀글 비밀번호 입력 (4~30자)"
+                          autocomplete="new-password"
+                        />
+                        <p class="write-help">
+                          비밀글 체크 시 비밀번호를 꼭 입력해야 해. 수정
+                          모드에서는 비워두면 기존 비밀번호를 유지해.
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="write-actions">

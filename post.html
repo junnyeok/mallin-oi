@@ -26,7 +26,7 @@
     <!-- main -->
     <link
       rel="stylesheet"
-      href="./assets/css/main/post-main.css?v=20260322-2300"
+      href="./assets/css/main/post-main.css?v=20260325-fix2"
     />
     <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
   </head>
@@ -90,6 +90,29 @@
               </header>
 
               <hr class="post-divider" />
+
+              <!-- 비밀글 잠금 박스 -->
+              <div class="post-secret" id="postSecretBox" hidden>
+                <div class="post-secret__card">
+                  <p class="post-secret__title">🔒 비밀글이야</p>
+                  <p class="post-secret__desc">
+                    이 글은 비밀번호를 입력한 사람만 볼 수 있어.
+                  </p>
+
+                  <form id="postSecretForm" class="post-secret__form">
+                    <input
+                      type="password"
+                      id="postSecretPassword"
+                      maxlength="30"
+                      placeholder="비밀번호 입력"
+                      autocomplete="current-password"
+                    />
+                    <button type="submit" class="post-owner-btn">확인</button>
+                  </form>
+
+                  <p class="post-secret__msg" id="postSecretMsg"></p>
+                </div>
+              </div>
 
               <section class="post-body" id="postBody">
                 <p class="post-body__hint">본문을 불러오는 중이야.</p>
@@ -228,6 +251,6 @@
       class="cursor-buddy"
     />
 
-    <script type="module" src="./assets/js/main.js?v=20260322-2300"></script>
+    <script type="module" src="./assets/js/main.js"></script>
   </body>
 </html>

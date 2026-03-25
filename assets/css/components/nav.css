@@ -1,23 +1,3 @@
-/* <nav class="site-nav" aria-label="주요 메뉴">
-          <ul class="site-nav__list">
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="/" aria-current="page">홈</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="/market.html">마켓</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="/category.html">카테고리</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="/event.html">이벤트</a>
-            </li>
-            <li class="site-nav__item">
-              <a class="site-nav__link" href="/contact.html">문의</a>
-            </li>
-          </ul>
-        </nav> */
-
 /* nav */
 .site-nav {
   background: var(--color-primary);
@@ -50,4 +30,54 @@
 .site-nav__link[aria-current='page'] {
   background: var(--color-primary-sub);
   color: #111;
+}
+
+/* =========================
+   HEADER LOGO (공통 관리)
+   - 예전엔 pages/*.css 에 흩어져 있었던 로고 간격을
+     공통 컴포넌트에서 테마별로 통일
+========================= */
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* 기본: 홈 */
+.logo #siteLogoImg {
+  margin-right: -25px;
+}
+
+/* 테마별 로고 간격 */
+body.theme-study .logo #siteLogoImg {
+  margin-right: -20px;
+}
+
+body.theme-work .logo #siteLogoImg {
+  margin-right: -20px;
+  z-index: 1;
+}
+
+body.theme-event .logo #siteLogoImg {
+  margin-right: -15px;
+  margin-top: -10px;
+  z-index: 1;
+}
+
+body.theme-career .logo #siteLogoImg {
+  margin-right: -25px;
+  z-index: 1;
+}
+
+/* 홈/기본 */
+body.theme-home .logo #siteLogoImg,
+body[data-page='home'] .logo #siteLogoImg {
+  margin-right: -25px;
+}
+
+/* 상세페이지가 아직 class 갱신 전 잠깐 홈으로 보일 수 있으니
+   최소한 기본 배치는 홈 기준으로 유지 */
+body[data-page='post'] .logo #siteLogoImg {
+  margin-right: -25px;
 }

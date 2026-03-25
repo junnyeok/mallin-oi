@@ -125,6 +125,24 @@
 }
 
 /* =========================
+  Secret Post
+========================= */
+
+.write-private {
+  display: grid;
+  gap: 10px;
+}
+
+.write-private__pw {
+  display: grid;
+  gap: 8px;
+}
+
+.write-private__pw .write-control {
+  height: 44px;
+}
+
+/* =========================
   Attachments
 ========================= */
 
@@ -182,50 +200,6 @@
   color: var(--color-text-sub);
 }
 
-.write-inline-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-12);
-}
-
-.write-inline-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  padding: var(--space-16);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  background: var(--color-bg);
-}
-
-.write-inline-card__title {
-  margin: 0;
-  font-size: var(--text-small);
-  font-weight: 800;
-  color: var(--color-text);
-}
-
-.write-inline-fields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.write-mini-action {
-  height: 40px;
-  padding: 0 var(--space-16);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.write-mini-action:hover {
-  border-color: var(--color-primary);
-}
-
 .write-attach-list {
   display: flex;
   flex-direction: column;
@@ -243,26 +217,33 @@
   background: var(--color-bg);
 }
 
-.write-attach-item__main {
+.write-attach-item__body {
   display: flex;
   align-items: flex-start;
   gap: var(--space-12);
   min-width: 0;
+  flex: 1;
 }
 
-.write-attach-item__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
+.write-attach-item__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 30px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text-sub);
   flex-shrink: 0;
 }
 
-.write-attach-item__body {
+.write-attach-item__meta {
   min-width: 0;
+  flex: 1;
 }
 
 .write-attach-item__title {
@@ -273,23 +254,14 @@
   word-break: break-word;
 }
 
-.write-attach-item__meta {
+.write-attach-item__sub {
   margin: 0;
   font-size: 12px;
   color: var(--color-text-sub);
   word-break: break-word;
 }
 
-.write-attach-item__link {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--color-text);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.write-attach-remove {
+.write-attach-item__remove {
   height: 36px;
   padding: 0 var(--space-12);
   border: 1px solid var(--color-border);
@@ -302,10 +274,11 @@
   flex-shrink: 0;
 }
 
-.write-attach-remove:hover {
+.write-attach-item__remove:hover {
   border-color: var(--color-primary);
 }
 
+.write-attach-empty,
 .write-empty {
   margin: 0;
   padding: var(--space-16);
@@ -314,65 +287,6 @@
   background: var(--color-bg);
   font-size: 12px;
   color: var(--color-text-sub);
-}
-
-/* output */
-.write-out-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  margin-bottom: var(--space-12);
-}
-
-.write-out-title {
-  font-size: var(--text-h2);
-  margin: 0;
-}
-
-.write-out-actions {
-  display: flex;
-  gap: var(--space-8);
-}
-
-.write-mini-btn {
-  height: 32px;
-  padding: 0 var(--space-12);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.write-mini-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.write-out {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
-
-.write-out-label {
-  font-size: 12px;
-  color: var(--color-text-sub);
-  margin: 0;
-}
-
-.write-pre {
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-card);
-  background: var(--color-bg);
-  padding: var(--space-16);
-  overflow: auto;
-  max-height: 320px;
-  font-size: 12px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 /* responsive */
@@ -389,10 +303,6 @@
     grid-template-columns: 1fr;
   }
 
-  .write-inline-grid {
-    grid-template-columns: 1fr;
-  }
-
   .write-attach-item {
     flex-direction: column;
     align-items: stretch;
@@ -406,8 +316,7 @@
     width: 100%;
   }
 
-  .write-mini-action,
-  .write-attach-remove {
+  .write-attach-item__remove {
     width: 100%;
   }
 }
