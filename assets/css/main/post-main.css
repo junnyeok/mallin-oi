@@ -663,15 +663,42 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .comment-action-btn:hover {
   opacity: 0.88;
+  transform: translateY(-1px);
 }
 
-.comment-action-btn--danger {
+.comment-action-btn:active {
+  transform: translateY(0);
+}
+
+/* 기존 danger 클래스 + 작업 중 섞였을 수 있는 is-danger 둘 다 대응 */
+.comment-action-btn--danger,
+.comment-action-btn.is-danger {
   border-color: #e59a9a;
   color: #c62828;
+}
+
+/* 작업 중 섞였을 수 있는 primary 클래스 대응 */
+.comment-action-btn.is-primary {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #fff;
+}
+
+.comment-action-btn.is-primary:hover {
+  opacity: 1;
+  background: var(--color-primary-sub);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .comment-item__body,
@@ -708,7 +735,9 @@
   background: #fcfcfc;
 }
 
-.comment-replies-toggle {
+/* 기존 토글 클래스 + 작업 중 섞였을 수 있는 thread-toggle 둘 다 대응 */
+.comment-replies-toggle,
+.comment-thread-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -722,10 +751,26 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.comment-replies-toggle:hover {
-  opacity: 0.88;
+.comment-replies-toggle:hover,
+.comment-thread-toggle:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+  background: var(--color-primary-sub);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.comment-replies-toggle:active,
+.comment-thread-toggle:active {
+  transform: translateY(0);
 }
 
 .comment-empty {

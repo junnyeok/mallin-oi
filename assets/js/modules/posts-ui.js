@@ -101,7 +101,7 @@ export async function initPostsUI() {
 
   const scoped = scopePosts(allPosts, pageCategory);
   const featured = sortForFeatured(scoped).slice(0, 8);
-  const latest = sortByDateDesc(scoped).slice(0, 8);
+  const latest = sortByDateDesc(scoped).slice(0, 12);
 
   if (gridEl) {
     renderCardGrid(featured, gridEl);

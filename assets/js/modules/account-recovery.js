@@ -132,7 +132,7 @@ function initFindIdPage() {
     }
 
     if (!isValidBirthKey(birthKey)) {
-      setMessage(msg, '생년월일은 960829-1 형식으로 입력해줘.', 'is-error');
+      setMessage(msg, '생년월일은 990101-1 형식으로 입력해줘.', 'is-error');
       birthInput.focus();
       return;
     }
