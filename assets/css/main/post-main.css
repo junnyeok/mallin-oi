@@ -16,7 +16,7 @@
   gap: 6px;
   color: var(--color-text);
   text-decoration: none;
-  font-size: var(--text-small);
+  font-size: var(--text-body);
 }
 
 .post__back:hover {
@@ -276,18 +276,19 @@
 }
 
 .post-attach--image,
-.post-attach--video,
-.post-attach--file {
-  width: 100%;
+.post-attach--video {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .post-attach--image img,
 .post-attach--video video {
   display: block;
-  width: auto;
+  width: 100%;
   max-width: min(100%, 760px);
   max-height: 680px;
-  margin: 0 auto;
+  margin: 0;
   border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
   background: #fff;
@@ -295,7 +296,9 @@
 }
 
 .post-attach__media-link {
-  display: block;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .post-attach__caption {
@@ -402,8 +405,9 @@
 .post-pager__btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 112px;
+  justify-content: flex-start;
+  gap: 0;
+  min-width: 0;
   min-height: 48px;
   padding: 0 18px;
   border: 1px solid var(--color-border);
@@ -417,11 +421,24 @@
   line-height: 1;
   white-space: nowrap;
   word-break: keep-all;
+  overflow: hidden;
   transition:
     transform 0.15s ease,
     opacity 0.15s ease,
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+.post-pager__btn .pager-label,
+.post-pager__btn .pager-sep {
+  flex-shrink: 0;
+}
+
+.post-pager__btn .pager-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .post-pager__btn:hover {
@@ -435,6 +452,7 @@
 
 .post-pager__btn--center {
   min-width: 88px;
+  justify-content: center;
 }
 
 /* =========================
@@ -799,16 +817,38 @@
   }
 
   .post-pager__btn {
-    min-width: 92px;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
-    padding: 0 14px;
-    font-size: 14px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .post-pager__btn--center {
+    flex: 0 0 74px;
+    padding: 0 10px;
+  }
+
+  .post-pager__btn .pager-title {
+    font-size: 12px;
+  }
+
+  .post-attach--image,
+  .post-attach--video {
+    align-items: stretch;
+  }
+
+  .post-attach__media-link {
+    width: 100%;
+    justify-content: center;
   }
 
   .post-attach--image img,
   .post-attach--video video {
+    width: 100%;
     max-width: 100%;
     max-height: 420px;
+    margin: 0;
   }
 
   .post-attach__file-card {

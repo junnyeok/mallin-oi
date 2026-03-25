@@ -644,10 +644,6 @@
     word-break: keep-all;
   }
 
-  .home-section__more {
-    font-size: 14px;
-  }
-
   .grid--cards {
     grid-template-columns: 1fr;
     gap: var(--space-12);

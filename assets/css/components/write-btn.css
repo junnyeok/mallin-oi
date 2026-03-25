@@ -36,7 +36,10 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 
-  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
 }
 
 .write-btn:hover {
@@ -72,6 +75,7 @@
 
   .write-btn--corner {
     position: static;
-    margin-top: var(--space-12);
+    margin-top: 6px;
+    margin-bottom: var(--space-8);
   }
 }

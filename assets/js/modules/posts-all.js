@@ -86,7 +86,6 @@ function renderNoticeRow(post) {
   return `
     <a class="post-row post-row--pinned" href="${post.url}" data-id="${post.id}">
       <span class="post-row__title">
-        <span class="post-row__badge">📌 고정</span>
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">

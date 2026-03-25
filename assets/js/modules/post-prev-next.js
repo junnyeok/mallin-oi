@@ -1,9 +1,5 @@
 import { loadPosts, sortByDateDesc } from './posts-repo.js';
 
-function isMobile() {
-  return window.innerWidth <= 768;
-}
-
 function truncateText(text, maxLength) {
   const value = String(text || '').trim();
   if (!value) return '';
@@ -11,45 +7,38 @@ function truncateText(text, maxLength) {
   return `${value.slice(0, maxLength)}…`;
 }
 
+function getTitleLimit() {
+  return window.innerWidth <= 768 ? 10 : 26;
+}
+
 function setDisabledLink(el, label) {
   if (!el) return;
 
   el.href = '#';
   el.setAttribute('aria-disabled', 'true');
+  el.removeAttribute('title');
 
   el.innerHTML = `
     <span class="pager-label">${label}</span>
   `;
-
-  el.removeAttribute('title');
 }
 
 function setEnabledLink(el, href, label, post) {
   if (!el) return;
 
-  const mobile = isMobile();
-
-  const title = mobile
-    ? truncateText(post?.title, 18)
-    : truncateText(post?.title, 26);
+  const title = truncateText(post?.title, getTitleLimit());
 
   el.href = href;
   el.setAttribute('aria-disabled', 'false');
   el.title = post?.title || '';
 
-  // ✅ 모바일: 2줄 / PC: 1줄
-  if (mobile) {
-    el.innerHTML = `
-      <span class="pager-label">${label}</span>
-      <span class="pager-title">${title}</span>
-    `;
-  } else {
-    el.innerHTML = `
-      <span class="pager-label">${label}</span>
-      <span class="pager-title-inline"> | ${title}</span>
-    `;
-  }
+  el.innerHTML = `
+    <span class="pager-label">${label}</span>
+    <span class="pager-sep" aria-hidden="true"> | </span>
+    <span class="pager-title">${title}</span>
+  `;
 
+  el.onclick = null;
   el.addEventListener(
     'click',
     () => {
@@ -101,7 +90,5 @@ export async function initPostPrevNext() {
   }
 
   render();
-
-  // 🔥 리사이즈 대응
   window.addEventListener('resize', render);
 }
