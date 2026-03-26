@@ -63,6 +63,16 @@ function isValidRecoveryAnswer(v) {
   return normalizeRecoveryAnswer(v).length >= 2;
 }
 
+function isStrongPassword(v) {
+  const value = String(v || '');
+  return (
+    value.length >= 10 &&
+    /[A-Za-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value)
+  );
+}
+
 async function sha256Hex(value) {
   const src = new TextEncoder().encode(String(value || ''));
   const hashBuffer = await crypto.subtle.digest('SHA-256', src);
@@ -234,8 +244,8 @@ export function initSignup() {
       return;
     }
 
-    if (!pw || pw.length < 6) {
-      alert('비밀번호는 최소 6자 이상으로 입력해줘.');
+    if (!isStrongPassword(pw)) {
+      alert('비밀번호는 영문자+숫자+특수기호를 포함한 10자 이상이어야 해.');
       pwInput?.focus();
       return;
     }

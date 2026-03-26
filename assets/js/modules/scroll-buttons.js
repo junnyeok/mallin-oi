@@ -358,7 +358,18 @@ export function initScrollButtons(options = {}) {
     }
 
     if (pageTypeNow === 'write' && bottomScrollEl) {
-      const targetTop = getAbsoluteTop(bottomScrollEl, 16);
+      const submitBtn = document.getElementById('writeSubmitBtn');
+      const targetEl = submitBtn || bottomScrollEl;
+
+      const rect = targetEl.getBoundingClientRect();
+      const absoluteTop = window.pageYOffset + rect.top;
+
+      // 등록 버튼이 화면 아래쪽 여백(약 24px) 근처에 오도록 계산
+      const targetTop = Math.max(
+        0,
+        absoluteTop - (window.innerHeight - rect.height - 24),
+      );
+
       window.scrollTo({
         top: targetTop,
         behavior,

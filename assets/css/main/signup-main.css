@@ -38,6 +38,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
+  margin-bottom: var(--space-8);
 }
 
 .signup-section__title {
@@ -91,6 +92,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
+  margin-bottom: var(--space-8);
 }
 
 .agree-item {

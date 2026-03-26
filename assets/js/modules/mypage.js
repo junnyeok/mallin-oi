@@ -86,6 +86,16 @@ function isValidBirthKey(v) {
   return /^\d{7}$/.test(normalizeBirthKey(v));
 }
 
+function isStrongPassword(v) {
+  const value = String(v || '');
+  return (
+    value.length >= 10 &&
+    /[A-Za-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value)
+  );
+}
+
 async function sha256Hex(value) {
   const src = new TextEncoder().encode(String(value || ''));
   const hashBuffer = await crypto.subtle.digest('SHA-256', src);
@@ -541,8 +551,11 @@ export async function initMypage() {
         return;
       }
 
-      if (newPw.length < 6) {
-        if (msgEl) msgEl.textContent = '새 비밀번호는 6자 이상이어야 해.';
+      if (!isStrongPassword(newPw)) {
+        if (msgEl) {
+          msgEl.textContent =
+            '새 비밀번호는 영문자+숫자+특수기호를 포함한 10자 이상이어야 해.';
+        }
         return;
       }
 
