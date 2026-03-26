@@ -717,11 +717,9 @@
 .comment-form__bottom,
 .comment-edit-form__bottom,
 .comment-reply-form__bottom {
-  margin-top: var(--space-12);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
+  justify-content: center;
 }
 
 .comment-form__msg,
