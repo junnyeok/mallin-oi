@@ -84,7 +84,12 @@ function filterPosts(posts, { tab, q, type }) {
 
 function renderNoticeRow(post) {
   return `
-    <a class="post-row post-row--pinned" href="${post.url}" data-id="${post.id}">
+    <a
+      class="post-row post-row--pinned"
+      href="${post.url}"
+      data-id="${post.id}"
+      data-views="${getViews(post)}"
+    >
       <span class="post-row__title">
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
@@ -97,7 +102,12 @@ function renderNoticeRow(post) {
 
 function renderRow(post) {
   return `
-    <a class="post-row" href="${post.url}" data-id="${post.id}">
+    <a
+      class="post-row"
+      href="${post.url}"
+      data-id="${post.id}"
+      data-views="${getViews(post)}"
+    >
       <span class="post-row__title">
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
