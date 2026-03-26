@@ -605,6 +605,11 @@
   -webkit-text-fill-color: var(--color-text);
 }
 
+.comment-form__submit:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
 .comment-list {
   margin-top: var(--space-16);
   display: flex;
@@ -681,12 +686,6 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition:
-    opacity 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
 }
 
 .comment-action-btn:hover {
@@ -781,9 +780,6 @@
 .comment-thread-toggle:hover {
   opacity: 1;
   transform: translateY(-1px);
-  background: var(--color-primary-sub);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .comment-replies-toggle:active,
@@ -865,15 +861,11 @@
   .comment-item__head,
   .comment-reply-item__head {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
   }
 
   .comment-item__actions,
   .comment-reply-item__actions {
-    width: 100%;
-  }
-
-  .comment-action-btn {
-    flex: 1;
+    justify-content: flex-end;
   }
 }

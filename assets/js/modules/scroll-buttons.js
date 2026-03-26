@@ -41,6 +41,7 @@ function getPageType() {
   if (path.includes('post.html')) return 'post';
   if (path.includes('posts-all.html')) return 'posts-all';
   if (path.includes('write.html')) return 'write';
+  if (path.includes('mypage.html')) return 'mypage';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
@@ -48,6 +49,7 @@ function getPageType() {
 
   if (page === 'post') return 'post';
   if (page === 'write') return 'write';
+  if (page === 'mypage') return 'mypage';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }
@@ -132,6 +134,19 @@ function getWriteTargets() {
     commentScrollEl: bodyRow,
     commentStateEl: bodyRow,
     bottomScrollEl: submitArea,
+  };
+}
+
+function getMypageTargets() {
+  const myPostsSection =
+    document.getElementById('mypageMyPostsSection') ||
+    document.querySelector('[data-mypage-my-posts]') ||
+    null;
+
+  return {
+    commentSection: myPostsSection,
+    commentScrollEl: myPostsSection,
+    commentStateEl: myPostsSection,
   };
 }
 
@@ -266,6 +281,24 @@ export function initScrollButtons(options = {}) {
     } else {
       btnBottom.setAttribute('aria-label', '하단으로 이동');
     }
+  }
+
+  if (pageType === 'mypage') {
+    const mypageTargets = getMypageTargets();
+    commentSection = mypageTargets.commentSection;
+    commentScrollEl = mypageTargets.commentScrollEl;
+    commentStateEl = mypageTargets.commentStateEl;
+
+    if (commentSection && commentScrollEl) {
+      btnComment = createFabButton(
+        'comment',
+        'POST',
+        '📝',
+        '내가 쓴 글 영역으로 이동',
+      );
+    }
+
+    btnBottom.setAttribute('aria-label', '하단으로 이동');
   }
 
   if (btnComment) {

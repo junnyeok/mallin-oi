@@ -75,7 +75,6 @@
 
   .write-btn--corner {
     position: static;
-    margin-top: 6px;
-    margin-bottom: var(--space-8);
+    margin-top: var(--space-8);
   }
 }

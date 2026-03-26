@@ -250,6 +250,10 @@ function setupPagedList({
   });
 
   render();
+
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
 }
 
 function setRecoveryState(text) {
@@ -404,7 +408,7 @@ export async function initMypage() {
     ) {
       setupPagedList({
         items: myPosts,
-        perPage: 10,
+        perPage: 3,
         listEl: myPostListEl,
         prevBtn: mypagePostPrevBtn,
         nextBtn: mypagePostNextBtn,
@@ -435,7 +439,7 @@ export async function initMypage() {
     ) {
       setupPagedList({
         items: comments,
-        perPage: 10,
+        perPage: 3,
         listEl: myCommentListEl,
         prevBtn: mypageCommentPrevBtn,
         nextBtn: mypageCommentNextBtn,
@@ -702,5 +706,9 @@ export async function initMypage() {
     if (withdrawMsgEl) {
       withdrawMsgEl.textContent = '회원탈퇴는 아직 연결 전이야.';
     }
+  });
+
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
   });
 }

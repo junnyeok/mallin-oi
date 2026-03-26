@@ -32,7 +32,7 @@ function renderRow(post, currentId) {
       <span class="post-detail-row__left">
         <span class="post-row__title post-detail-row__title">
           ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
-          ${isCurrent ? '<span class="post-detail-row__badge">현재글</span>' : ''}
+          ${isCurrent ? '<span class="post-detail-row__badge">📍현재글</span>' : ''}
         </span>
       </span>
 

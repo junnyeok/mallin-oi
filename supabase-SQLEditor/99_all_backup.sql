@@ -4220,3 +4220,288 @@ as $$
 $$;
 
 grant execute on function public.get_post_comment_counts(bigint[]) to anon, authenticated;
+
+-- =========================================================
+-- 마이페이지 닉네임 변경 시
+-- 기존 real_name / birth_key / recovery_question / recovery_answer_hash
+-- 값이 날아가지 않도록 auth -> profiles 동기화 수정
+-- + 복구정보 변경이 없을 때 update_my_recovery_profile() no-op 처리
+-- =========================================================
+
+create extension if not exists pgcrypto;
+
+-- -----------------------------------------
+-- 1) auth.users -> profiles 동기화 함수 수정
+--    메타데이터에 값이 비어 있으면 기존 profiles 값 유지
+-- -----------------------------------------
+create or replace function public.sync_profile_from_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_nickname text;
+  v_real_name text;
+  v_birth_key text;
+  v_recovery_question text;
+  v_recovery_answer_hash text;
+begin
+  v_nickname := nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), '');
+  if v_nickname is null then
+    v_nickname := split_part(coalesce(new.email, ''), '@', 1);
+  end if;
+
+  v_real_name := nullif(trim(coalesce(new.raw_user_meta_data->>'real_name', '')), '');
+  v_birth_key := nullif(public.normalize_birth_key(new.raw_user_meta_data->>'birth_key'), '');
+  v_recovery_question := nullif(trim(coalesce(new.raw_user_meta_data->>'recovery_question', '')), '');
+  v_recovery_answer_hash := nullif(trim(coalesce(new.raw_user_meta_data->>'recovery_answer_hash', '')), '');
+
+  insert into public.profiles (
+    id,
+    email,
+    nickname,
+    real_name,
+    birth_key,
+    recovery_question,
+    recovery_answer_hash,
+    created_at,
+    updated_at
+  )
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    v_nickname,
+    v_real_name,
+    v_birth_key,
+    v_recovery_question,
+    v_recovery_answer_hash,
+    now(),
+    now()
+  )
+  on conflict (id)
+  do update set
+    email = excluded.email,
+    nickname = excluded.nickname,
+    real_name = coalesce(excluded.real_name, public.profiles.real_name),
+    birth_key = coalesce(excluded.birth_key, public.profiles.birth_key),
+    recovery_question = coalesce(excluded.recovery_question, public.profiles.recovery_question),
+    recovery_answer_hash = coalesce(excluded.recovery_answer_hash, public.profiles.recovery_answer_hash),
+    updated_at = now();
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_sync_profile on auth.users;
+create trigger on_auth_user_created_sync_profile
+after insert on auth.users
+for each row
+execute function public.sync_profile_from_auth_user();
+
+drop trigger if exists on_auth_user_updated_sync_profile on auth.users;
+create trigger on_auth_user_updated_sync_profile
+after update of email, raw_user_meta_data on auth.users
+for each row
+execute function public.sync_profile_from_auth_user();
+
+-- -----------------------------------------
+-- 2) 복구정보 저장 RPC 수정
+--    아무 복구정보 변경이 없으면 에러 없이 기존값 반환
+-- -----------------------------------------
+create or replace function public.update_my_recovery_profile(
+  p_real_name text default null,
+  p_birth_key text default null,
+  p_recovery_question text default null,
+  p_recovery_answer_hash text default null
+)
+returns table (
+  success boolean,
+  message text,
+  real_name text,
+  birth_key text,
+  recovery_question text,
+  can_set_identity boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_profile public.profiles%rowtype;
+  v_real_name text := nullif(trim(coalesce(p_real_name, '')), '');
+  v_birth_key text := nullif(public.normalize_birth_key(p_birth_key), '');
+  v_recovery_question text := nullif(trim(coalesce(p_recovery_question, '')), '');
+  v_recovery_answer_hash text := nullif(trim(coalesce(p_recovery_answer_hash, '')), '');
+  v_can_set_identity boolean := false;
+begin
+  if v_uid is null then
+    return query
+    select
+      false,
+      '로그인이 필요해.',
+      null::text,
+      null::text,
+      null::text,
+      false;
+    return;
+  end if;
+
+  select *
+    into v_profile
+  from public.profiles
+  where id = v_uid
+  for update;
+
+  if not found then
+    return query
+    select
+      false,
+      '프로필 정보를 찾지 못했어.',
+      null::text,
+      null::text,
+      null::text,
+      false;
+    return;
+  end if;
+
+  v_can_set_identity :=
+    coalesce(trim(v_profile.real_name), '') = ''
+    and coalesce(trim(v_profile.birth_key), '') = '';
+
+  -- 복구정보 관련 값이 하나도 안 들어오면 no-op
+  if
+    v_real_name is null
+    and v_birth_key is null
+    and v_recovery_question is null
+    and v_recovery_answer_hash is null
+  then
+    return query
+    select
+      true,
+      '변경할 복구정보가 없어 기존값을 유지했어.',
+      v_profile.real_name,
+      v_profile.birth_key,
+      v_profile.recovery_question,
+      v_can_set_identity;
+    return;
+  end if;
+
+  -- 이름 / 생년월일 최초 1회 저장
+  if v_can_set_identity then
+    if v_real_name is null or char_length(v_real_name) < 2 then
+      return query
+      select
+        false,
+        '이름은 2글자 이상 입력해줘.',
+        v_profile.real_name,
+        v_profile.birth_key,
+        v_profile.recovery_question,
+        true;
+      return;
+    end if;
+
+    if v_birth_key is null or v_birth_key !~ '^\d{7}$' then
+      return query
+      select
+        false,
+        '생년월일은 960829-1 형식으로 입력해줘.',
+        v_profile.real_name,
+        v_profile.birth_key,
+        v_profile.recovery_question,
+        true;
+      return;
+    end if;
+
+    update public.profiles
+    set
+      real_name = v_real_name,
+      birth_key = v_birth_key,
+      updated_at = now()
+    where id = v_uid;
+
+    v_profile.real_name := v_real_name;
+    v_profile.birth_key := v_birth_key;
+    v_can_set_identity := false;
+  else
+    if v_real_name is not null and v_real_name <> coalesce(v_profile.real_name, '') then
+      return query
+      select
+        false,
+        '이름은 한 번 저장하면 수정할 수 없어.',
+        v_profile.real_name,
+        v_profile.birth_key,
+        v_profile.recovery_question,
+        false;
+      return;
+    end if;
+
+    if v_birth_key is not null and v_birth_key <> coalesce(v_profile.birth_key, '') then
+      return query
+      select
+        false,
+        '생년월일은 한 번 저장하면 수정할 수 없어.',
+        v_profile.real_name,
+        v_profile.birth_key,
+        v_profile.recovery_question,
+        false;
+      return;
+    end if;
+  end if;
+
+  -- 아이디 힌트는 계속 수정 가능
+  if v_recovery_question is not null or v_recovery_answer_hash is not null then
+    if v_recovery_question is null then
+      return query
+      select
+        false,
+        '아이디 힌트 질문을 선택해줘.',
+        v_profile.real_name,
+        v_profile.birth_key,
+        v_profile.recovery_question,
+        v_can_set_identity;
+      return;
+    end if;
+
+    if v_recovery_answer_hash is null or v_recovery_answer_hash = '' then
+      return query
+      select
+        false,
+        '아이디 힌트 답변을 입력해줘.',
+        v_profile.real_name,
+        v_profile.birth_key,
+        v_profile.recovery_question,
+        v_can_set_identity;
+      return;
+    end if;
+
+    update public.profiles
+    set
+      recovery_question = v_recovery_question,
+      recovery_answer_hash = v_recovery_answer_hash,
+      updated_at = now()
+    where id = v_uid;
+
+    v_profile.recovery_question := v_recovery_question;
+  end if;
+
+  return query
+  select
+    true,
+    '복구정보 저장이 완료됐어.',
+    (select p.real_name from public.profiles p where p.id = v_uid),
+    (select p.birth_key from public.profiles p where p.id = v_uid),
+    (select p.recovery_question from public.profiles p where p.id = v_uid),
+    (
+      select
+        coalesce(trim(p.real_name), '') = ''
+        and coalesce(trim(p.birth_key), '') = ''
+      from public.profiles p
+      where p.id = v_uid
+    );
+end;
+$$;
+
+grant execute on function public.update_my_recovery_profile(text, text, text, text)
+to authenticated;

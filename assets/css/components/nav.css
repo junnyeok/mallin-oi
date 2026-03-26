@@ -79,5 +79,5 @@ body[data-page='home'] .logo #siteLogoImg {
 /* 상세페이지가 아직 class 갱신 전 잠깐 홈으로 보일 수 있으니
    최소한 기본 배치는 홈 기준으로 유지 */
 body[data-page='post'] .logo #siteLogoImg {
-  margin-right: -25px;
+  margin-right: -15px;
 }
