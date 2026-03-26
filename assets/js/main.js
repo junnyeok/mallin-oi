@@ -17,6 +17,7 @@ import { initAuthUI } from './modules/auth-store.js';
 import { initPostViews } from './modules/post-views.js?v=20260311-1325';
 import { initPostComments } from './modules/post-comments.js';
 import { initSuggestionsBoard } from './modules/suggestions-board.js';
+import { initPostReactions } from './modules/post-reactions.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -134,6 +135,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error(err);
     const titleEl = document.getElementById('postTitle');
     if (titleEl) titleEl.textContent = '로딩 실패';
+  }
+
+  try {
+    await initPostReactions();
+  } catch (e) {
+    console.error('[main] post reactions failed:', e);
   }
 
   try {

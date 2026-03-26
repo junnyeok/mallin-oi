@@ -118,6 +118,50 @@
               <div id="postAttachments"></div>
             </article>
 
+            <section
+              class="post-reactions"
+              id="postReactionsSection"
+              aria-label="좋아요 싫어요"
+            >
+              <div class="post-reactions__inner">
+                <button
+                  type="button"
+                  class="post-reaction-btn"
+                  id="postLikeBtn"
+                  data-reaction="like"
+                  aria-pressed="false"
+                >
+                  <span class="post-reaction-btn__icon" aria-hidden="true">
+                    <img src="./images/good.png" alt="" />
+                  </span>
+                  <span class="post-reaction-btn__label">
+                    좋아요
+                    <span class="post-reaction-btn__count" id="postLikeCount"
+                      >0</span
+                    >
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  class="post-reaction-btn post-reaction-btn--bad"
+                  id="postDislikeBtn"
+                  data-reaction="dislike"
+                  aria-pressed="false"
+                >
+                  <span class="post-reaction-btn__icon" aria-hidden="true">
+                    <img src="./images/bad.png" alt="" />
+                  </span>
+                  <span class="post-reaction-btn__label">
+                    싫어요
+                    <span class="post-reaction-btn__count" id="postDislikeCount"
+                      >0</span
+                    >
+                  </span>
+                </button>
+              </div>
+            </section>
+
             <nav class="post-pager" aria-label="이전글 다음글">
               <a
                 href="#"

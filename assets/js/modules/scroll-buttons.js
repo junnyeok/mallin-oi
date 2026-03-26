@@ -87,10 +87,13 @@ function getHomeLikeTargets() {
 }
 
 function getPostTargets() {
+  const reactionSection = document.querySelector('#postReactionsSection');
   const commentSection = document.querySelector('#postCommentsSection');
-  const commentScrollEl =
-    document.querySelector('.post-pager') || commentSection;
-  const commentStateEl = commentSection || commentScrollEl;
+  const pagerSection = document.querySelector('.post-pager');
+
+  const commentScrollEl = reactionSection || pagerSection || commentSection;
+  const commentStateEl = reactionSection || commentSection || commentScrollEl;
+
   const bottomScrollEl =
     document.querySelector('#postOtherPostsSection') || null;
 

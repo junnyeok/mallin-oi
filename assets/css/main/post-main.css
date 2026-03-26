@@ -386,6 +386,166 @@
 }
 
 /* =========================
+  POST REACTIONS
+========================= */
+
+.post-reactions {
+  margin: var(--space-16) 0 var(--space-16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.post-reactions__inner {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.post-reaction-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  min-width: auto;
+  min-height: auto;
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 800;
+
+  cursor: pointer;
+  box-shadow: none;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.post-reaction-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.96;
+}
+
+.post-reaction-btn:active {
+  transform: translateY(0);
+}
+
+.post-reaction-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.post-reaction-btn__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100px;
+  height: 100px;
+
+  border: 2px solid #d9d9d9;
+  border-radius: 50%;
+  background: #fff;
+
+  box-shadow: var(--shadow-card);
+
+  transition: all 0.2s ease;
+}
+
+.post-reaction-btn__icon img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.post-reaction-btn__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.post-reaction-btn__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* 좋아요 활성 */
+.post-reaction-btn:not(.post-reaction-btn--bad).is-active
+  .post-reaction-btn__icon {
+  border-color: #9fd86d;
+  background: #effadf;
+}
+
+/* 싫어요 활성 */
+.post-reaction-btn--bad.is-active .post-reaction-btn__icon {
+  border-color: #f2b36a;
+  background: #fff2e3;
+}
+
+@media (max-width: 700px) {
+  .post-reactions__inner {
+    gap: 10px;
+  }
+
+  .post-reaction-btn {
+    min-width: 50px;
+    min-height: 120px;
+    padding: 12px 14px 12px;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .post-reaction-btn__icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .post-reaction-btn__icon img {
+    width: 55px;
+    height: 55px;
+  }
+
+  .post-reaction-btn__label {
+    gap: 6px;
+    font-size: 15px;
+  }
+
+  .post-reaction-btn__count {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
+/* =========================
   POST PAGER
 ========================= */
 
