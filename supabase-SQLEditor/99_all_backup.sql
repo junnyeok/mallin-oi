@@ -4691,3 +4691,103 @@ $$;
 
 grant execute on function public.toggle_post_reaction(bigint, text) to authenticated;
 
+drop function if exists public.get_post_author_rankings(integer, text);
+
+create or replace function public.get_post_author_rankings(
+  p_limit integer default 5,
+  p_category text default null
+)
+returns table (
+  rank_no integer,
+  author_id uuid,
+  author_nickname text,
+  post_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with ranked as (
+    select
+      p.author_id,
+      coalesce(pr.nickname, max(nullif(btrim(p.author_nickname), '')), '익명') as author_nickname,
+      count(*)::bigint as post_count
+    from public.posts p
+    left join public.profiles pr
+      on pr.id = p.author_id
+    where p_category is null or p.category = p_category
+    group by p.author_id, pr.nickname
+  ),
+  ordered as (
+    select
+      row_number() over (
+        order by post_count desc, author_nickname asc, author_id asc
+      )::integer as rank_no,
+      author_id,
+      author_nickname,
+      post_count
+    from ranked
+  )
+  select
+    rank_no,
+    author_id,
+    author_nickname,
+    post_count
+  from ordered
+  where rank_no <= greatest(coalesce(p_limit, 5), 1)
+  order by rank_no asc;
+$$;
+
+grant execute on function public.get_post_author_rankings(integer, text) to anon, authenticated;
+
+
+drop function if exists public.get_comment_author_rankings(integer, text);
+
+create or replace function public.get_comment_author_rankings(
+  p_limit integer default 5,
+  p_category text default null
+)
+returns table (
+  rank_no integer,
+  author_id uuid,
+  author_nickname text,
+  comment_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with ranked as (
+    select
+      c.author_id,
+      coalesce(pr.nickname, max(nullif(btrim(c.author_nickname), '')), '익명') as author_nickname,
+      count(*)::bigint as comment_count
+    from public.post_comments c
+    join public.posts p
+      on p.id = c.post_id
+    left join public.profiles pr
+      on pr.id = c.author_id
+    where p_category is null or p.category = p_category
+    group by c.author_id, pr.nickname
+  ),
+  ordered as (
+    select
+      row_number() over (
+        order by comment_count desc, author_nickname asc, author_id asc
+      )::integer as rank_no,
+      author_id,
+      author_nickname,
+      comment_count
+    from ranked
+  )
+  select
+    rank_no,
+    author_id,
+    author_nickname,
+    comment_count
+  from ordered
+  where rank_no <= greatest(coalesce(p_limit, 5), 1)
+  order by rank_no asc;
+$$;
+
+grant execute on function public.get_comment_author_rankings(integer, text) to anon, authenticated;

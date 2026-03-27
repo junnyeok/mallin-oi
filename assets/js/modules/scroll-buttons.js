@@ -2,31 +2,26 @@
 /* =================================================
   scroll-buttons.js
 
-  공통 플로팅 스크롤 버튼
-  -----------------------------------------------
-  [상세페이지 post.html]
+  [post.html]
   - TOP: 맨 위
-  - COMMENT: 이전글/목록/다음글(.post-pager) 위치
-  - END: 다른 게시물(#postOtherPostsSection) 위치
-  - 댓글 버튼 비활성 판단은 #postCommentsSection 기준
+  - 댓글: 좋아요/댓글 영역
+  - END: 다른 게시물 영역
 
   [index / study / work / event / career]
-  - PC: TOP / END만 표시
-    - TOP: 맨 위
-    - END: 맨 아래
-  - 모바일: TOP / COMMENT / END 표시
-    - TOP: 맨 위
-    - COMMENT: 건의사항(.suggestion-panel) 위치
-    - END: 최신 업로드(#latestList가 들어있는 패널) 위치
+  - PC: TOP / END
+  - 모바일: TOP / 주요 / 건의 / END
+    - 주요: 주요업데이트 섹션
+    - 건의: 건의사항 패널
+    - END: 최신 업로드 패널
 
   [posts-all.html]
-  - TOP: 맨 위
-  - END: 카테고리 목록 버튼(.posts-all__tabs) 위치
+  - TOP / END(카테고리 탭)
 
   [write.html]
-  - TOP: 맨 위
-  - COMMENT: 본문 입력칸(#body) 위치
-  - END: 등록 버튼(#writeSubmitBtn) 위치
+  - TOP / 본문 / END(등록 버튼)
+
+  [mypage.html]
+  - TOP / POST / END
 ================================================= */
 
 function isMobileViewport() {
@@ -36,8 +31,6 @@ function isMobileViewport() {
 function getPageType() {
   const path = window.location.pathname.toLowerCase();
 
-  // ✅ 상세/전체보기/글쓰기 페이지는 pathname 우선 판별
-  // body.dataset.page가 카테고리(study/work 등)로 바뀌어도 흔들리지 않게
   if (path.includes('post.html')) return 'post';
   if (path.includes('posts-all.html')) return 'posts-all';
   if (path.includes('write.html')) return 'write';
@@ -75,13 +68,26 @@ function findLatestPanel() {
 }
 
 function getHomeLikeTargets() {
-  const suggestionSection = document.querySelector('.suggestion-panel');
-  const latestPanel = findLatestPanel();
+  const featuredSection =
+    document.getElementById('featuredPostsSection') ||
+    document.querySelector('.home-section');
+
+  const suggestionSection =
+    document.getElementById('suggestionSection') ||
+    document.querySelector('.suggestion-panel');
+
+  const latestPanel =
+    document.getElementById('latestUploadSection') || findLatestPanel();
 
   return {
+    majorSection: featuredSection,
+    majorScrollEl: featuredSection,
+    majorStateEl: featuredSection,
+
     commentSection: suggestionSection,
     commentScrollEl: suggestionSection,
     commentStateEl: suggestionSection,
+
     bottomScrollEl: latestPanel,
   };
 }
@@ -172,11 +178,23 @@ function getAbsoluteTop(el, extraOffset = 16) {
   return Math.max(0, window.pageYOffset + rect.top - extraOffset);
 }
 
+function updateSectionButtonState(btn, stateEl, activeOffset) {
+  if (!btn || !stateEl) return;
+
+  const rect = stateEl.getBoundingClientRect();
+
+  const isNear = rect.top <= activeOffset && rect.bottom > activeOffset;
+
+  const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
+
+  btn.disabled = isNear || isVisible;
+}
+
 export function initScrollButtons(options = {}) {
   const {
     topOffset = 60,
     bottomOffset = 240,
-    commentActiveOffset = 120,
+    sectionActiveOffset = 120,
     bottomActiveOffset = 160,
     scrollBehavior = 'smooth',
   } = options;
@@ -200,10 +218,16 @@ export function initScrollButtons(options = {}) {
   const btnTop = createFabButton('top', 'TOP', '↑', '상단으로 이동');
   const btnBottom = createFabButton('bottom', 'END', '↓', '하단으로 이동');
 
+  let btnMajor = null;
   let btnComment = null;
+
+  let majorScrollEl = null;
+  let majorStateEl = null;
+
   let commentSection = null;
   let commentScrollEl = null;
   let commentStateEl = null;
+
   let bottomScrollEl = null;
 
   if (pageType === 'post') {
@@ -231,10 +255,18 @@ export function initScrollButtons(options = {}) {
     const mobile = isMobileViewport();
     const homeTargets = getHomeLikeTargets();
 
+    majorScrollEl = homeTargets.majorScrollEl;
+    majorStateEl = homeTargets.majorStateEl;
+
     commentSection = homeTargets.commentSection;
     commentScrollEl = homeTargets.commentScrollEl;
     commentStateEl = homeTargets.commentStateEl;
+
     bottomScrollEl = homeTargets.bottomScrollEl;
+
+    if (mobile && majorScrollEl) {
+      btnMajor = createFabButton('major', '주요', '🔥', '주요업데이트로 이동');
+    }
 
     if (mobile && commentSection && commentScrollEl) {
       btnComment = createFabButton(
@@ -304,17 +336,26 @@ export function initScrollButtons(options = {}) {
     btnBottom.setAttribute('aria-label', '하단으로 이동');
   }
 
-  if (btnComment) {
-    wrap.append(btnTop, btnComment, btnBottom);
-  } else {
-    wrap.append(btnTop, btnBottom);
-  }
+  wrap.appendChild(btnTop);
+  if (btnMajor) wrap.appendChild(btnMajor);
+  if (btnComment) wrap.appendChild(btnComment);
+  wrap.appendChild(btnBottom);
 
   document.body.appendChild(wrap);
 
   function scrollToTop() {
     if (btnTop.disabled) return;
     window.scrollTo({ top: 0, behavior });
+  }
+
+  function scrollToMajorTarget() {
+    if (!btnMajor || btnMajor.disabled || !majorScrollEl) return;
+
+    const targetTop = getAbsoluteTop(majorScrollEl, 16);
+    window.scrollTo({
+      top: targetTop,
+      behavior,
+    });
   }
 
   function scrollToCommentTarget() {
@@ -335,28 +376,19 @@ export function initScrollButtons(options = {}) {
 
     if (pageTypeNow === 'post' && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
-      window.scrollTo({
-        top: targetTop,
-        behavior,
-      });
+      window.scrollTo({ top: targetTop, behavior });
       return;
     }
 
     if (pageTypeNow === 'home-like' && mobile && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
-      window.scrollTo({
-        top: targetTop,
-        behavior,
-      });
+      window.scrollTo({ top: targetTop, behavior });
       return;
     }
 
     if (pageTypeNow === 'posts-all' && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
-      window.scrollTo({
-        top: targetTop,
-        behavior,
-      });
+      window.scrollTo({ top: targetTop, behavior });
       return;
     }
 
@@ -367,7 +399,6 @@ export function initScrollButtons(options = {}) {
       const rect = targetEl.getBoundingClientRect();
       const absoluteTop = window.pageYOffset + rect.top;
 
-      // 등록 버튼이 화면 아래쪽 여백(약 24px) 근처에 오도록 계산
       const targetTop = Math.max(
         0,
         absoluteTop - (window.innerHeight - rect.height - 24),
@@ -392,11 +423,9 @@ export function initScrollButtons(options = {}) {
   }
 
   btnTop.addEventListener('click', scrollToTop);
+  if (btnMajor) btnMajor.addEventListener('click', scrollToMajorTarget);
+  if (btnComment) btnComment.addEventListener('click', scrollToCommentTarget);
   btnBottom.addEventListener('click', scrollToBottomTarget);
-
-  if (btnComment) {
-    btnComment.addEventListener('click', scrollToCommentTarget);
-  }
 
   function updateCommentButtonState() {
     if (!btnComment || !commentStateEl) return;
@@ -417,12 +446,7 @@ export function initScrollButtons(options = {}) {
       return;
     }
 
-    const isNearComment =
-      rect.top <= commentActiveOffset && rect.bottom > commentActiveOffset;
-
-    const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
-
-    btnComment.disabled = isNearComment || isVisible;
+    updateSectionButtonState(btnComment, commentStateEl, sectionActiveOffset);
   }
 
   function updateState() {
@@ -438,9 +462,14 @@ export function initScrollButtons(options = {}) {
     btnTop.disabled = !canScroll || nearTop;
 
     if (!canScroll) {
+      if (btnMajor) btnMajor.disabled = true;
       if (btnComment) btnComment.disabled = true;
       btnBottom.disabled = true;
       return;
+    }
+
+    if (btnMajor) {
+      updateSectionButtonState(btnMajor, majorStateEl, sectionActiveOffset);
     }
 
     if (btnComment) {

@@ -29,7 +29,52 @@
       <div data-include="header"></div>
 
       <main class="site-main">
-        <section class="home-section">
+        <section
+          class="home-section home-section--ranking"
+          id="homeRankingSection"
+        >
+          <div class="container">
+            <div class="rankings-grid">
+              <section class="ranking-panel" aria-labelledby="postRankingTitle">
+                <div class="ranking-panel__head">
+                  <div>
+                    <h2 class="ranking-panel__title" id="postRankingTitle">
+                      🏆 게시물 랭킹
+                    </h2>
+                    <p class="ranking-panel__desc" id="postRankingScope">
+                      불러오는 중...
+                    </p>
+                  </div>
+                </div>
+
+                <ol class="ranking-list" id="postRankingList">
+                  <li class="ranking-list__empty">불러오는 중...</li>
+                </ol>
+              </section>
+
+              <section
+                class="ranking-panel"
+                aria-labelledby="commentRankingTitle"
+              >
+                <div class="ranking-panel__head">
+                  <div>
+                    <h2 class="ranking-panel__title" id="commentRankingTitle">
+                      💬 댓글 랭킹
+                    </h2>
+                    <p class="ranking-panel__desc" id="commentRankingScope">
+                      불러오는 중...
+                    </p>
+                  </div>
+                </div>
+
+                <ol class="ranking-list" id="commentRankingList">
+                  <li class="ranking-list__empty">불러오는 중...</li>
+                </ol>
+              </section>
+            </div>
+          </div>
+        </section>
+        <section class="home-section" id="featuredPostsSection">
           <div class="container">
             <div class="home-section__head">
               <h2 class="home-section__title">🔥 주요 업데이트</h2>
@@ -46,7 +91,7 @@
           <div class="container">
             <div class="split">
               <!-- 건의사항 -->
-              <div class="panel suggestion-panel">
+              <div class="panel suggestion-panel" id="suggestionSection">
                 <div class="panel__head">
                   <div>
                     <h2 class="panel__title">💬 건의사항</h2>
@@ -111,7 +156,7 @@
                 </div>
               </div>
 
-              <div class="panel">
+              <div class="panel" id="latestUploadSection">
                 <h2 class="panel__title">🆕 최신 업로드</h2>
                 <div class="mini" id="latestList"></div>
               </div>
