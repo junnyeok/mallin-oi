@@ -1,12 +1,23 @@
 /* =========================
-  Write Button (Header)
-  - tokens 기반
-  - header 오른쪽 아래(초록 영역 하단) 배치용
+  Header Action Buttons
+  - 전체보기 / 새글쓰기 공통
 ========================= */
 
-/* header-inner를 기준으로 absolute 배치 */
 .site-header .header-inner {
   position: relative;
+}
+
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.header-actions--corner {
+  position: absolute;
+  right: var(--space-16);
+  top: calc(100% + var(--space-8));
+  z-index: 3;
 }
 
 /* 기본 버튼 스타일 */
@@ -29,6 +40,7 @@
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
+  white-space: nowrap;
 
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 
@@ -39,7 +51,8 @@
   transition:
     transform 140ms ease,
     box-shadow 140ms ease,
-    opacity 140ms ease;
+    opacity 140ms ease,
+    background-color 140ms ease;
 }
 
 .write-btn:hover {
@@ -57,24 +70,23 @@
   outline-offset: 2px;
 }
 
-/* ✅ 오른쪽 아래 배치 (네가 원하는 위치) */
-.write-btn--corner {
-  position: absolute;
-  right: var(--space-16);
-  top: calc(100% + var(--space-8)); /* 헤더 아래로 8px 내려서 여유 */
-  z-index: 3;
+/* 전체보기 버튼은 살짝 구분감 */
+.write-btn--all {
+  background: #f7fbe9;
 }
 
-/* 모바일: 헤더 폭이 줄어드니 자연스럽게 흐름에 합류 */
+/* 모바일 */
 @media (max-width: 700px) {
+  .header-actions--corner {
+    position: static;
+    margin-top: var(--space-8);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
   .write-btn {
     height: 36px;
     padding: 0 var(--space-12);
     font-size: 13px;
-  }
-
-  .write-btn--corner {
-    position: static;
-    margin-top: var(--space-8);
   }
 }

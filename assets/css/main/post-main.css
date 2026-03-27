@@ -792,7 +792,7 @@
 }
 
 .comment-reply-item__head {
-  margin: var(--space-8);
+  margin: var(--space-8) 0;
 }
 
 .comment-item__meta,
@@ -1015,11 +1015,16 @@
 
   .comment-form__bottom,
   .comment-edit-form__bottom,
-  .comment-reply-form__bottom,
-  .comment-item__head,
-  .comment-reply-item__head {
+  .comment-reply-form__bottom {
     flex-direction: column;
     align-items: flex-end;
+  }
+
+  .comment-item__head,
+  .comment-reply-item__head {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
   }
 
   .comment-item__actions,
