@@ -1,12 +1,4 @@
 import { loadPostById } from './posts-repo.js';
-import {
-  consumeViewFromList,
-  countPostViewOnce,
-  getDisplayViews,
-  getOptimisticViews,
-  wasViewFromList,
-} from './post-views.js';
-import { loadPostById } from './posts-repo.js';
 import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
 import { getCurrentUser } from './auth-store.js';
