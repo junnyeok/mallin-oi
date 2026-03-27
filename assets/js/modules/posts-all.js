@@ -24,6 +24,14 @@ function getCommentCount(post) {
   return Number(post?.commentCount || 0);
 }
 
+function getLikeCount(post) {
+  return Number(post?.likesCount || 0);
+}
+
+function getAuthorNickname(post) {
+  return String(post?.authorNickname || '익명').trim() || '익명';
+}
+
 function getState() {
   const sp = new URLSearchParams(window.location.search);
   const tab = (sp.get('tab') || 'all').toLowerCase();
@@ -94,7 +102,7 @@ function renderNoticeRow(post) {
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">
-        ${formatMMDD(post.date)} · 👀 ${getViews(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getLikeCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
@@ -112,7 +120,7 @@ function renderRow(post) {
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">
-        ${formatMMDD(post.date)} · 👀 ${getViews(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getLikeCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;

@@ -70,11 +70,6 @@
   outline-offset: 2px;
 }
 
-/* 전체보기 버튼은 살짝 구분감 */
-.write-btn--all {
-  background: #f7fbe9;
-}
-
 /* 모바일 */
 @media (max-width: 700px) {
   .header-actions--corner {

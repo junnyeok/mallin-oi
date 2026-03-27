@@ -4791,3 +4791,32 @@ as $$
 $$;
 
 grant execute on function public.get_comment_author_rankings(integer, text) to anon, authenticated;
+
+drop view if exists public.posts_public_list;
+
+create view public.posts_public_list
+as
+select
+  p.id,
+  p.title,
+  p.excerpt,
+  p.category,
+  p.tags,
+  p.pinned,
+  p.views,
+  p.media_items,
+  p.author_id,
+  p.author_nickname,
+  p.created_at,
+  p.updated_at,
+  p.is_private,
+  (
+    select count(*)::bigint
+    from public.post_reactions pr
+    where pr.post_id = p.id
+      and pr.reaction_type = 'like'
+  ) as likes_count
+from public.posts p
+order by p.pinned desc, p.created_at desc, p.id desc;
+
+grant select on public.posts_public_list to anon, authenticated;

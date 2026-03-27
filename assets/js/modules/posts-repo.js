@@ -105,6 +105,7 @@ export function mapPostRow(row, commentCount = 0) {
     createdAt: row?.created_at,
     updatedAt: row?.updated_at,
     views: Number(row?.views || 0),
+    likesCount: Number(row?.likes_count || 0),
     commentCount: Number(commentCount || 0),
     pinned: !!row?.pinned,
     tags: normalizeTags(row?.tags),
@@ -147,7 +148,7 @@ export async function loadPosts() {
   const { data, error } = await supabase
     .from('posts_public_list')
     .select(
-      'id, title, excerpt, category, tags, pinned, views, media_items, author_id, author_nickname, created_at, updated_at, is_private',
+      'id, title, excerpt, category, tags, pinned, views, likes_count, media_items, author_id, author_nickname, created_at, updated_at, is_private',
     )
     .order('pinned', { ascending: false })
     .order('created_at', { ascending: false })
@@ -215,7 +216,7 @@ export async function loadPostsByAuthorId(authorId) {
   const { data, error } = await supabase
     .from('posts_public_list')
     .select(
-      'id, title, excerpt, category, tags, pinned, views, media_items, author_id, author_nickname, created_at, updated_at, is_private',
+      'id, title, excerpt, category, tags, pinned, views, likes_count, media_items, author_id, author_nickname, created_at, updated_at, is_private',
     )
     .eq('author_id', authorId)
     .order('created_at', { ascending: false })
