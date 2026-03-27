@@ -6,6 +6,8 @@ import {
   getOptimisticViews,
   wasViewFromList,
 } from './post-views.js';
+import { loadPostById } from './posts-repo.js';
+import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
 import { getCurrentUser } from './auth-store.js';
 
@@ -545,18 +547,9 @@ export async function initPostDetail() {
     return;
   }
 
-  const optimisticViews = getOptimisticViews(post.id);
-  if (Number.isFinite(optimisticViews)) {
-    post = { ...post, views: optimisticViews };
-  }
-
-  if (wasViewFromList(post.id)) {
-    consumeViewFromList(post.id);
-  } else {
-    const newViews = await countPostViewOnce(post.id, post.views);
-    if (Number.isFinite(newViews)) {
-      post = { ...post, views: newViews };
-    }
+  const newViews = await incrementPostView(post.id);
+  if (Number.isFinite(newViews)) {
+    post = { ...post, views: newViews };
   }
 
   await applyPost(post);

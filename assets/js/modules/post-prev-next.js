@@ -39,15 +39,6 @@ function setEnabledLink(el, href, label, post) {
   `;
 
   el.onclick = null;
-  el.addEventListener(
-    'click',
-    () => {
-      try {
-        sessionStorage.setItem(`viewFromList:${post.id}`, '1');
-      } catch {}
-    },
-    { once: true },
-  );
 }
 
 export async function initPostPrevNext() {
