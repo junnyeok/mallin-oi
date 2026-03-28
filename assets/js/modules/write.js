@@ -10,6 +10,9 @@ const FILE_MAX_BYTES = 30 * 1024 * 1024;
 
 let attachmentState = [];
 let removedStoragePaths = new Set();
+let savedSelectionRange = null;
+let activeEmbedId = '';
+let draggingEmbedId = '';
 
 function $(selector) {
   return document.querySelector(selector);
@@ -29,6 +32,10 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll('`', '&#96;');
 }
 
 function normalizeCategory(value) {
@@ -175,6 +182,396 @@ function getAttachmentLabel(type) {
   return '파일';
 }
 
+function getBodyEditor() {
+  return $('#bodyEditor');
+}
+
+function getBodyField() {
+  return $('#body');
+}
+
+function saveCurrentSelectionRange() {
+  const editor = getBodyEditor();
+  const sel = window.getSelection();
+
+  if (!editor || !sel || !sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return;
+
+  savedSelectionRange = range.cloneRange();
+}
+
+function restoreSavedSelectionRange() {
+  if (!savedSelectionRange) return false;
+
+  const sel = window.getSelection();
+  if (!sel) return false;
+
+  sel.removeAllRanges();
+  sel.addRange(savedSelectionRange);
+  return true;
+}
+
+function clearActiveEmbed() {
+  activeEmbedId = '';
+  document
+    .querySelectorAll('.write-embed.is-active')
+    .forEach((el) => el.classList.remove('is-active'));
+}
+
+function setActiveEmbed(id) {
+  clearActiveEmbed();
+  if (!id) return;
+
+  activeEmbedId = id;
+  const target = document.querySelector(
+    `.write-embed[data-media-id="${CSS.escape(id)}"]`,
+  );
+  if (target) target.classList.add('is-active');
+}
+
+function getActiveEmbedElement() {
+  if (!activeEmbedId) return null;
+  return document.querySelector(
+    `.write-embed[data-media-id="${CSS.escape(activeEmbedId)}"]`,
+  );
+}
+
+function findClosestEditableBlock(node) {
+  const editor = getBodyEditor();
+  if (!editor || !node) return null;
+
+  let current = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+
+  while (current && current !== editor) {
+    if (
+      current.matches?.(
+        'p, div, blockquote, li, ul, ol, h1, h2, h3, h4, h5, h6',
+      ) &&
+      !current.classList.contains('write-embed') &&
+      !current.closest('.write-embed')
+    ) {
+      return current;
+    }
+    current = current.parentNode;
+  }
+
+  return null;
+}
+
+function applyAlignment(align) {
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  const activeEmbed = getActiveEmbedElement();
+  if (activeEmbed) {
+    activeEmbed.setAttribute('data-align', align);
+    syncBodyFromEditor();
+    return;
+  }
+
+  restoreSavedSelectionRange();
+
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  const block = findClosestEditableBlock(sel.anchorNode);
+
+  if (block) {
+    block.setAttribute('data-align', align);
+    syncBodyFromEditor();
+    return;
+  }
+
+  const p = document.createElement('p');
+  p.setAttribute('data-align', align);
+  p.innerHTML = '<br>';
+  insertNodeAtCaret(p);
+}
+
+function findDropTargetEmbed(editor, y, draggingEl) {
+  const embeds = [...editor.querySelectorAll('.write-embed')].filter(
+    (el) => el !== draggingEl,
+  );
+
+  for (const embed of embeds) {
+    const rect = embed.getBoundingClientRect();
+    const middle = rect.top + rect.height / 2;
+    if (y < middle) {
+      return embed;
+    }
+  }
+
+  return null;
+}
+
+function buildPersistedBodyHtml(mediaItems = []) {
+  const editor = getBodyEditor();
+  if (!editor) return '';
+
+  const clone = editor.cloneNode(true);
+  const mediaMap = new Map(
+    (Array.isArray(mediaItems) ? mediaItems : []).map((item) => [
+      String(item.id),
+      item,
+    ]),
+  );
+
+  clone.querySelectorAll('.write-embed').forEach((node) => {
+    node.classList.remove('is-active');
+
+    const mediaId = String(node.getAttribute('data-media-id') || '');
+    const item = mediaMap.get(mediaId);
+
+    if (!item) return;
+
+    const url = String(item.url || '').trim();
+    if (!url) return;
+
+    const type = String(item.type || '').trim();
+
+    if (type === 'image') {
+      const img = node.querySelector('img');
+      if (img) img.setAttribute('src', url);
+    } else if (type === 'video') {
+      const video = node.querySelector('video');
+      if (video) video.setAttribute('src', url);
+    } else {
+      const link = node.querySelector('.write-embed__file-link');
+      if (link) link.setAttribute('href', url);
+    }
+  });
+
+  return clone.innerHTML.trim();
+}
+
+function focusEditor() {
+  const editor = getBodyEditor();
+  if (!editor) return;
+  editor.focus();
+}
+
+function ensureEditorHasParagraph() {
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  const text = editor.textContent?.trim() || '';
+  if (!text && !editor.querySelector('*')) {
+    editor.innerHTML = '<p><br></p>';
+  }
+}
+
+function syncBodyFromEditor() {
+  const editor = getBodyEditor();
+  const bodyField = getBodyField();
+  if (!editor || !bodyField) return '';
+
+  const html = editor.innerHTML.trim();
+  bodyField.value = html;
+  return bodyField.value;
+}
+
+function plainTextToEditorHtml(text = '') {
+  const lines = String(text || '').split('\n');
+  if (!lines.length) return '<p><br></p>';
+
+  return lines
+    .map((line) => {
+      const safe = escapeHtml(line);
+      return safe ? `<p>${safe}</p>` : '<p><br></p>';
+    })
+    .join('');
+}
+
+function bodyToEditorHtml(body = '') {
+  const value = String(body || '').trim();
+  if (!value) return '<p><br></p>';
+
+  const looksLikeHtml = /<([a-z][a-z0-9]*)\b[^>]*>/i.test(value);
+  if (looksLikeHtml) return value;
+
+  return plainTextToEditorHtml(value);
+}
+
+function placeCaretAtEnd(el) {
+  if (!el) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+
+  const sel = window.getSelection();
+  if (!sel) return;
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function insertNodeAtCaret(node) {
+  const editor = getBodyEditor();
+  if (!editor || !node) return;
+
+  editor.focus();
+
+  if (!restoreSavedSelectionRange()) {
+    placeCaretAtEnd(editor);
+  }
+
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+
+  if (!editor.contains(range.commonAncestorContainer)) {
+    placeCaretAtEnd(editor);
+  }
+
+  const sel2 = window.getSelection();
+  if (!sel2 || !sel2.rangeCount) return;
+
+  const safeRange = sel2.getRangeAt(0);
+  safeRange.deleteContents();
+  safeRange.insertNode(node);
+
+  const br = document.createElement('br');
+  node.after(br);
+
+  const afterRange = document.createRange();
+  afterRange.setStartAfter(br);
+  afterRange.collapse(true);
+
+  sel2.removeAllRanges();
+  sel2.addRange(afterRange);
+
+  saveCurrentSelectionRange();
+  syncBodyFromEditor();
+}
+
+function createEmbedNodeFromHtml(html) {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html.trim();
+  return wrap.firstElementChild;
+}
+
+function createPreviewUrl(file) {
+  try {
+    if (!file) return '';
+    return URL.createObjectURL(file);
+  } catch {
+    return '';
+  }
+}
+
+function revokePreviewUrl(item) {
+  try {
+    if (item?.previewUrl?.startsWith?.('blob:')) {
+      URL.revokeObjectURL(item.previewUrl);
+    }
+  } catch {}
+}
+
+function buildInlineEmbedHtml(item, urlOverride = '') {
+  const type = String(item?.type || '').trim();
+  const mediaId = escapeAttr(item?.id || '');
+  const title = escapeHtml(item?.title || item?.fileName || '첨부');
+  const url = escapeAttr(urlOverride || item?.url || item?.previewUrl || '');
+  const label = getAttachmentLabel(type);
+
+  if (type === 'image') {
+    return `
+      <figure
+        class="write-embed write-embed--media"
+        data-media-id="${mediaId}"
+        data-media-type="image"
+        data-align="left"
+        contenteditable="false"
+      >
+        <div
+          class="write-embed__drag"
+          draggable="true"
+          data-drag-handle="${mediaId}"
+        >
+          <span>${label} · 이동바 잡고 위치 변경</span>
+          <button type="button" class="write-embed__remove" data-embed-remove="${mediaId}">삭제</button>
+        </div>
+        <div class="write-embed__media">
+          <img src="${url}" alt="${title}" loading="lazy" />
+        </div>
+      </figure>
+    `;
+  }
+
+  if (type === 'video') {
+    return `
+      <figure
+        class="write-embed write-embed--media"
+        data-media-id="${mediaId}"
+        data-media-type="video"
+        data-align="left"
+        contenteditable="false"
+      >
+        <div
+          class="write-embed__drag"
+          draggable="true"
+          data-drag-handle="${mediaId}"
+        >
+          <span>${label} · 이동바 잡고 위치 변경</span>
+          <button type="button" class="write-embed__remove" data-embed-remove="${mediaId}">삭제</button>
+        </div>
+        <div class="write-embed__media">
+          <video src="${url}" controls playsinline preload="metadata"></video>
+        </div>
+      </figure>
+    `;
+  }
+
+  return `
+    <div
+      class="write-embed"
+      data-media-id="${mediaId}"
+      data-media-type="file"
+      data-align="left"
+      contenteditable="false"
+    >
+      <div
+        class="write-embed__drag"
+        draggable="true"
+        data-drag-handle="${mediaId}"
+      >
+        <span>${label} · 이동바 잡고 위치 변경</span>
+        <button type="button" class="write-embed__remove" data-embed-remove="${mediaId}">삭제</button>
+      </div>
+      <div class="write-embed__file">
+        <strong class="write-embed__file-name">${title}</strong>
+        <span class="write-embed__file-desc">업로드 후 파일 링크가 자동 연결돼.</span>
+        <a
+          class="write-embed__file-link"
+          href="${url || '#'}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          파일 열기
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function removeEmbedById(id) {
+  if (!id) return;
+
+  document
+    .querySelectorAll(`[data-media-id="${CSS.escape(id)}"]`)
+    .forEach((node) => node.remove());
+
+  syncBodyFromEditor();
+}
+
+function insertAttachmentIntoEditor(item) {
+  const node = createEmbedNodeFromHtml(buildInlineEmbedHtml(item));
+  if (!node) return;
+  insertNodeAtCaret(node);
+}
+
 function renderAttachmentList() {
   const listEl = $('#writeAttachmentList');
   if (!listEl) return;
@@ -197,7 +594,7 @@ function renderAttachmentList() {
             <span class="write-attach-item__badge">${label}</span>
             <div class="write-attach-item__meta">
               <p class="write-attach-item__title">${name}</p>
-              <p class="write-attach-item__sub">${size}</p>
+              <p class="write-attach-item__sub">${size} · 본문 삽입됨</p>
             </div>
           </div>
           ${
@@ -212,7 +609,7 @@ function renderAttachmentList() {
 }
 
 function pushAttachment(file, type) {
-  attachmentState.push({
+  const item = {
     id: createLocalId(),
     type,
     title: file.name,
@@ -220,10 +617,13 @@ function pushAttachment(file, type) {
     mimeType: file.type || '',
     size: Number(file.size || 0),
     file,
+    previewUrl: createPreviewUrl(file),
     removable: true,
-  });
+  };
 
+  attachmentState.push(item);
   renderAttachmentList();
+  insertAttachmentIntoEditor(item);
 }
 
 function validateAttachment(file, type) {
@@ -251,10 +651,21 @@ function bindAttachmentInputs(note) {
   const videoInput = $('#writeVideo');
   const fileInput = $('#writeFile');
   const listEl = $('#writeAttachmentList');
+  const editor = getBodyEditor();
+  const uploadTiles = document.querySelectorAll('.write-upload-tile');
+
+  uploadTiles.forEach((tile) => {
+    tile.addEventListener('mousedown', () => {
+      saveCurrentSelectionRange();
+    });
+  });
 
   if (imageInput) {
     imageInput.addEventListener('change', () => {
       const files = Array.from(imageInput.files || []);
+      ensureEditorHasParagraph();
+      restoreSavedSelectionRange();
+
       for (const file of files) {
         const errorMsg = validateAttachment(file, 'image');
         if (errorMsg) {
@@ -263,13 +674,18 @@ function bindAttachmentInputs(note) {
         }
         pushAttachment(file, 'image');
       }
+
       imageInput.value = '';
+      saveCurrentSelectionRange();
     });
   }
 
   if (videoInput) {
     videoInput.addEventListener('change', () => {
       const files = Array.from(videoInput.files || []);
+      ensureEditorHasParagraph();
+      restoreSavedSelectionRange();
+
       for (const file of files) {
         const errorMsg = validateAttachment(file, 'video');
         if (errorMsg) {
@@ -278,13 +694,18 @@ function bindAttachmentInputs(note) {
         }
         pushAttachment(file, 'video');
       }
+
       videoInput.value = '';
+      saveCurrentSelectionRange();
     });
   }
 
   if (fileInput) {
     fileInput.addEventListener('change', () => {
       const files = Array.from(fileInput.files || []);
+      ensureEditorHasParagraph();
+      restoreSavedSelectionRange();
+
       for (const file of files) {
         const errorMsg = validateAttachment(file, 'file');
         if (errorMsg) {
@@ -293,7 +714,9 @@ function bindAttachmentInputs(note) {
         }
         pushAttachment(file, 'file');
       }
+
       fileInput.value = '';
+      saveCurrentSelectionRange();
     });
   }
 
@@ -310,10 +733,116 @@ function bindAttachmentInputs(note) {
         removedStoragePaths.add(found.path);
       }
 
+      revokePreviewUrl(found);
+      removeEmbedById(id);
       attachmentState = attachmentState.filter((item) => item.id !== id);
       renderAttachmentList();
+      clearActiveEmbed();
     });
   }
+
+  if (!editor) return;
+
+  editor.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('[data-embed-remove]');
+    if (removeBtn) {
+      const id = removeBtn.getAttribute('data-embed-remove');
+      const found = attachmentState.find((item) => item.id === id);
+
+      if (found?.path) {
+        removedStoragePaths.add(found.path);
+      }
+
+      if (found) revokePreviewUrl(found);
+      removeEmbedById(id);
+      attachmentState = attachmentState.filter((item) => item.id !== id);
+      renderAttachmentList();
+      clearActiveEmbed();
+      return;
+    }
+
+    const embed = e.target.closest('.write-embed');
+    if (embed) {
+      setActiveEmbed(embed.getAttribute('data-media-id'));
+      return;
+    }
+
+    clearActiveEmbed();
+    saveCurrentSelectionRange();
+  });
+
+  editor.addEventListener('mouseup', () => {
+    saveCurrentSelectionRange();
+  });
+
+  editor.addEventListener('keyup', () => {
+    saveCurrentSelectionRange();
+    syncBodyFromEditor();
+  });
+
+  editor.addEventListener('focusin', () => {
+    saveCurrentSelectionRange();
+  });
+
+  editor.addEventListener('input', () => {
+    saveCurrentSelectionRange();
+    syncBodyFromEditor();
+  });
+
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.execCommand('insertLineBreak');
+      saveCurrentSelectionRange();
+      syncBodyFromEditor();
+    }
+  });
+
+  editor.addEventListener('dragstart', (e) => {
+    const handle = e.target.closest('[data-drag-handle]');
+    if (!handle) return;
+
+    const id = handle.getAttribute('data-drag-handle');
+    draggingEmbedId = id || '';
+
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggingEmbedId);
+    }
+
+    setActiveEmbed(draggingEmbedId);
+  });
+
+  editor.addEventListener('dragover', (e) => {
+    if (!draggingEmbedId) return;
+    e.preventDefault();
+
+    const draggingEl = editor.querySelector(
+      `.write-embed[data-media-id="${CSS.escape(draggingEmbedId)}"]`,
+    );
+    if (!draggingEl) return;
+
+    const target = findDropTargetEmbed(editor, e.clientY, draggingEl);
+
+    if (target) {
+      editor.insertBefore(draggingEl, target);
+    } else {
+      editor.appendChild(draggingEl);
+    }
+  });
+
+  editor.addEventListener('drop', (e) => {
+    if (!draggingEmbedId) return;
+    e.preventDefault();
+    saveCurrentSelectionRange();
+    syncBodyFromEditor();
+  });
+
+  editor.addEventListener('dragend', () => {
+    draggingEmbedId = '';
+    saveCurrentSelectionRange();
+    syncBodyFromEditor();
+  });
 }
 
 async function uploadSingleAttachment(user, item) {
@@ -378,6 +907,49 @@ async function uploadAllAttachments(user, note) {
   return result;
 }
 
+function applyUploadedMediaToEditor(mediaItems = []) {
+  mediaItems.forEach((item) => {
+    const node = document.querySelector(
+      `[data-media-id="${CSS.escape(item.id)}"]`,
+    );
+    if (!node) return;
+
+    const type = String(item.type || '').trim();
+    const url = String(item.url || '').trim();
+    const title = String(item.title || item.fileName || '첨부').trim();
+
+    if (type === 'image') {
+      const img = node.querySelector('img');
+      if (img && url) {
+        img.src = url;
+        img.alt = title;
+      }
+      return;
+    }
+
+    if (type === 'video') {
+      const video = node.querySelector('video');
+      if (video && url) {
+        video.src = url;
+      }
+      return;
+    }
+
+    const link = node.querySelector('.write-embed__file-link');
+    const nameEl = node.querySelector('.write-embed__file-name');
+    const descEl = node.querySelector('.write-embed__file-desc');
+
+    if (nameEl) nameEl.textContent = title;
+    if (descEl) descEl.textContent = item.fileName || title;
+    if (link) {
+      link.href = url || '#';
+      link.textContent = '파일 열기';
+    }
+  });
+
+  syncBodyFromEditor();
+}
+
 async function deleteRemovedStorageObjects() {
   const paths = [...removedStoragePaths].filter(Boolean);
   if (!paths.length) return;
@@ -433,10 +1005,39 @@ async function loadEditablePost(postId, userId) {
   return data;
 }
 
+function getEditorMediaIds() {
+  return new Set(
+    [...document.querySelectorAll('[data-media-id]')]
+      .map((el) => el.getAttribute('data-media-id'))
+      .filter(Boolean),
+  );
+}
+
+function appendMissingExistingAttachmentsToEditor(items = []) {
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  const currentIds = getEditorMediaIds();
+
+  items.forEach((item) => {
+    if (!item?.id || currentIds.has(item.id)) return;
+
+    const node = createEmbedNodeFromHtml(buildInlineEmbedHtml(item, item.url));
+    if (!node) return;
+
+    editor.insertAdjacentHTML('beforeend', '<p><br></p>');
+    editor.appendChild(node);
+    editor.insertAdjacentHTML('beforeend', '<p><br></p>');
+  });
+
+  syncBodyFromEditor();
+}
+
 function fillWriteForm(post, isAdmin) {
   const titleEl = $('#title');
   const excerptEl = $('#excerpt');
   const bodyEl = $('#body');
+  const editorEl = $('#bodyEditor');
   const categoryEl = $('#category');
   const tagsEl = $('#tags');
   const pinnedEl = $('#pinned');
@@ -446,6 +1047,7 @@ function fillWriteForm(post, isAdmin) {
   if (titleEl) titleEl.value = post.title || '';
   if (excerptEl) excerptEl.value = post.excerpt || '';
   if (bodyEl) bodyEl.value = post.body || '';
+  if (editorEl) editorEl.innerHTML = bodyToEditorHtml(post.body || '');
   if (categoryEl) categoryEl.value = normalizeCategory(post.category);
   if (tagsEl)
     tagsEl.value = Array.isArray(post.tags) ? post.tags.join(', ') : '';
@@ -459,6 +1061,7 @@ function fillWriteForm(post, isAdmin) {
         type: item.type,
         title: item.title || item.fileName || '첨부',
         url: item.url || '',
+        previewUrl: item.url || '',
         path: item.path || '',
         fileName: item.fileName || '',
         mimeType: item.mimeType || '',
@@ -469,7 +1072,40 @@ function fillWriteForm(post, isAdmin) {
 
   removedStoragePaths = new Set();
   renderAttachmentList();
+  appendMissingExistingAttachmentsToEditor(attachmentState);
+  syncBodyFromEditor();
   syncPrivatePasswordUi(true);
+}
+
+function bindEditorToolbar() {
+  const toolbarButtons = document.querySelectorAll(
+    '.write-editor-toolbar__btn',
+  );
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  toolbarButtons.forEach((btn) => {
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+    });
+
+    btn.addEventListener('click', () => {
+      const align = btn.getAttribute('data-editor-align');
+      if (align) {
+        applyAlignment(align);
+        return;
+      }
+
+      const cmd = btn.getAttribute('data-editor-cmd');
+      const value = btn.getAttribute('data-editor-value') || null;
+
+      restoreSavedSelectionRange();
+      editor.focus();
+      document.execCommand(cmd, false, value);
+      saveCurrentSelectionRange();
+      syncBodyFromEditor();
+    });
+  });
 }
 
 export async function initWrite() {
@@ -479,10 +1115,17 @@ export async function initWrite() {
   const note = $('#writeNote');
   const submitBtn = $('#writeSubmitBtn');
   const editPostId = getEditPostId();
+  const editor = getBodyEditor();
 
   setWriteModeUi(!!editPostId);
+  if (editor) {
+    editor.innerHTML = '<p><br></p>';
+  }
+  syncBodyFromEditor();
+
   renderAttachmentList();
   bindAttachmentInputs(note);
+  bindEditorToolbar();
 
   const isPrivateEl = $('#isPrivate');
   if (isPrivateEl) {
@@ -533,7 +1176,7 @@ export async function initWrite() {
 
     const title = $('#title')?.value?.trim() || '';
     const excerpt = $('#excerpt')?.value?.trim() || '';
-    const body = $('#body')?.value?.trim() || '';
+    const body = syncBodyFromEditor().trim();
     const category = normalizeCategory($('#category')?.value || 'study');
     const tags = parseTags($('#tags')?.value || '');
     const pinned = isAdmin ? !!$('#pinned')?.checked : false;
@@ -566,12 +1209,18 @@ export async function initWrite() {
 
     try {
       const mediaItems = await uploadAllAttachments(user, note);
+      const finalBody = buildPersistedBodyHtml(mediaItems);
+
+      if (!finalBody) {
+        if (note) note.textContent = '본문 내용을 다시 확인해줘.';
+        return;
+      }
 
       if (editPostId) {
         const payload = {
           title,
           excerpt,
-          body,
+          body: finalBody,
           category,
           tags,
           pinned,
@@ -609,7 +1258,7 @@ export async function initWrite() {
       const payload = {
         title,
         excerpt,
-        body,
+        body: finalBody,
         category,
         tags,
         pinned,
@@ -633,11 +1282,19 @@ export async function initWrite() {
       if (note) note.textContent = '등록 완료! 상세 페이지로 이동할게.';
       form.reset();
       resetAttachmentInputs();
+
+      attachmentState.forEach((item) => revokePreviewUrl(item));
       attachmentState = [];
       removedStoragePaths = new Set();
+
+      if (editor) {
+        editor.innerHTML = '<p><br></p>';
+      }
+
       renderAttachmentList();
       setPinnedUiVisible(isAdmin);
       syncPrivatePasswordUi(false);
+      syncBodyFromEditor();
 
       setTimeout(() => {
         window.location.href = `./post.html?id=${data.id}`;

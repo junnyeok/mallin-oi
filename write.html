@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="./assets/css/01-tokens.css" />
     <link rel="stylesheet" href="./assets/css/02-base.css" />
     <link rel="stylesheet" href="./assets/css/03-layout.css" />
-    <link rel="stylesheet" href="./assets/css/components/buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/forms.css" />
     <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
     <link rel="stylesheet" href="./assets/css/components/nav.css" />
@@ -22,9 +21,6 @@
     <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
     <link rel="stylesheet" href="./assets/css/utilities.css" />
-
-    <!-- 페이지 -->
-    <link rel="stylesheet" href="./assets/css/pages/index.css" />
 
     <!-- write page main -->
     <link
@@ -73,17 +69,7 @@
                     ></textarea>
                   </div>
 
-                  <div class="write-row">
-                    <label class="write-label" for="body">글내용(본문) *</label>
-                    <textarea
-                      class="write-control write-control--area write-control--body"
-                      id="body"
-                      rows="12"
-                      placeholder="여기에 본문을 입력해."
-                    ></textarea>
-                    <p class="write-help">줄바꿈과 문단은 자동으로 처리돼.</p>
-                  </div>
-
+                  <!-- 카테고리 / 태그를 본문 위로 이동 -->
                   <div class="write-row">
                     <label class="write-label" for="category">카테고리</label>
                     <select class="write-control" id="category">
@@ -106,6 +92,89 @@
                     />
                     <p class="write-help">
                       #은 붙여도 자동으로 제거돼. 중복 태그는 알아서 정리함.
+                    </p>
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="bodyEditor"
+                      >글내용(본문) *</label
+                    >
+
+                    <div class="write-editor-wrap">
+                      <div class="write-editor-toolbar">
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-cmd="bold"
+                        >
+                          글씨 굵게
+                        </button>
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-cmd="italic"
+                        >
+                          글씨 기울임
+                        </button>
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-cmd="insertUnorderedList"
+                        >
+                          목록 설정
+                        </button>
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-cmd="formatBlock"
+                          data-editor-value="blockquote"
+                        >
+                          부가설명
+                        </button>
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-align="left"
+                        >
+                          왼쪽 정렬
+                        </button>
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-align="center"
+                        >
+                          중앙 정렬
+                        </button>
+                        <button
+                          type="button"
+                          class="write-editor-toolbar__btn"
+                          data-editor-align="right"
+                        >
+                          오른쪽 정렬
+                        </button>
+                      </div>
+
+                      <div
+                        class="write-editor"
+                        id="bodyEditor"
+                        contenteditable="true"
+                        spellcheck="false"
+                        data-placeholder="여기에 본문을 입력해. 사진/영상/파일을 업로드하면 현재 커서 위치에 바로 들어가."
+                      ></div>
+
+                      <!-- 실제 저장용 -->
+                      <textarea
+                        class="write-control write-control--area write-control--body write-hidden-textarea"
+                        id="body"
+                        rows="12"
+                        aria-hidden="true"
+                        tabindex="-1"
+                      ></textarea>
+                    </div>
+
+                    <p class="write-help">
+                      글을 쓰다가 필요한 위치에서 바로 첨부를 넣을 수 있어. 첨부
+                      블록은 마우스로 드래그해서 위치를 옮길 수 있어.
                     </p>
                   </div>
 
@@ -171,7 +240,7 @@
                       </div>
 
                       <p class="write-help">
-                        사진/영상/파일은 Supabase Storage에 업로드돼. 수정
+                        업로드한 첨부는 현재 커서 위치에 바로 삽입돼. 수정
                         모드에서는 기존 첨부도 삭제할 수 있어.
                       </p>
                     </div>
