@@ -18,7 +18,6 @@ import { initPostViews } from './modules/post-views.js?v=20260311-1325';
 import { initPostComments } from './modules/post-comments.js';
 import { initSuggestionsBoard } from './modules/suggestions-board.js';
 import { initPostReactions } from './modules/post-reactions.js';
-import { initRankings } from './modules/rankings.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -62,12 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initPostsUI();
   } catch (e) {
     console.error('[main] posts ui failed:', e);
-  }
-
-  try {
-    await initRankings();
-  } catch (e) {
-    console.error('[main] rankings failed:', e);
   }
 
   try {

@@ -8,11 +8,30 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const VIDEO_MAX_BYTES = 100 * 1024 * 1024;
 const FILE_MAX_BYTES = 30 * 1024 * 1024;
 
+const FONT_SIZE_TO_LEGACY = {
+  '12px': '1',
+  '14px': '2',
+  '16px': '3',
+  '18px': '4',
+  '24px': '5',
+  '32px': '6',
+  '48px': '7',
+};
+
+const LEGACY_FONT_SIZE_TO_PX = {
+  1: '12px',
+  2: '14px',
+  3: '16px',
+  4: '18px',
+  5: '24px',
+  6: '32px',
+  7: '48px',
+};
+
 let attachmentState = [];
 let removedStoragePaths = new Set();
 let savedSelectionRange = null;
 let activeEmbedId = '';
-let draggingEmbedId = '';
 
 function $(selector) {
   return document.querySelector(selector);
@@ -213,6 +232,77 @@ function restoreSavedSelectionRange() {
   return true;
 }
 
+function getSelectionContainerElement() {
+  const editor = getBodyEditor();
+  const sel = window.getSelection();
+
+  if (!editor || !sel || !sel.rangeCount) return null;
+
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return null;
+
+  const node = sel.anchorNode || range.startContainer;
+  if (!node) return null;
+
+  return node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+}
+
+function setToolbarButtonActive(command, active) {
+  document
+    .querySelectorAll(
+      `.write-editor-toolbar__btn[data-editor-cmd="${command}"]`,
+    )
+    .forEach((btn) => btn.classList.toggle('is-active', !!active));
+}
+
+function refreshEditorToolbarState() {
+  const target = getSelectionContainerElement();
+
+  if (!target) {
+    setToolbarButtonActive('bold', false);
+    setToolbarButtonActive('italic', false);
+    setToolbarButtonActive('underline', false);
+    return;
+  }
+
+  const style = window.getComputedStyle(target);
+
+  let isBold = false;
+  let isItalic = false;
+  let isUnderline = false;
+
+  try {
+    isBold = document.queryCommandState('bold');
+  } catch {}
+
+  try {
+    isItalic = document.queryCommandState('italic');
+  } catch {}
+
+  try {
+    isUnderline = document.queryCommandState('underline');
+  } catch {}
+
+  if (!isBold) {
+    const fontWeight = String(style.fontWeight || '').trim();
+    isBold = fontWeight === 'bold' || Number(fontWeight) >= 600;
+  }
+
+  if (!isItalic) {
+    isItalic = String(style.fontStyle || '').includes('italic');
+  }
+
+  if (!isUnderline) {
+    const textDecoration =
+      `${style.textDecoration || ''} ${style.textDecorationLine || ''}`.toLowerCase();
+    isUnderline = textDecoration.includes('underline');
+  }
+
+  setToolbarButtonActive('bold', isBold);
+  setToolbarButtonActive('italic', isItalic);
+  setToolbarButtonActive('underline', isUnderline);
+}
+
 function clearActiveEmbed() {
   activeEmbedId = '';
   document
@@ -290,20 +380,106 @@ function applyAlignment(align) {
   insertNodeAtCaret(p);
 }
 
-function findDropTargetEmbed(editor, y, draggingEl) {
-  const embeds = [...editor.querySelectorAll('.write-embed')].filter(
-    (el) => el !== draggingEl,
-  );
+function normalizeEditorFontTags(root) {
+  if (!root) return;
 
-  for (const embed of embeds) {
-    const rect = embed.getBoundingClientRect();
-    const middle = rect.top + rect.height / 2;
-    if (y < middle) {
-      return embed;
+  root.querySelectorAll('font').forEach((fontEl) => {
+    const size = String(fontEl.getAttribute('size') || '').trim();
+    const color = String(fontEl.getAttribute('color') || '').trim();
+
+    const span = document.createElement('span');
+
+    if (size && LEGACY_FONT_SIZE_TO_PX[size]) {
+      span.style.fontSize = LEGACY_FONT_SIZE_TO_PX[size];
     }
+
+    if (color) {
+      span.style.color = color;
+    }
+
+    while (fontEl.firstChild) {
+      span.appendChild(fontEl.firstChild);
+    }
+
+    if (span.getAttribute('style')) {
+      fontEl.replaceWith(span);
+    } else {
+      fontEl.replaceWith(...span.childNodes);
+    }
+  });
+}
+
+function applyEditorCommand(cmd, value = null) {
+  const editor = getBodyEditor();
+  if (!editor || !cmd) return;
+
+  restoreSavedSelectionRange();
+  editor.focus();
+
+  const beforeState =
+    cmd === 'bold' || cmd === 'italic' || cmd === 'underline'
+      ? document.queryCommandState(cmd)
+      : false;
+
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand(cmd, false, value);
+
+  normalizeEditorFontTags(editor);
+  saveCurrentSelectionRange();
+  syncBodyFromEditor();
+
+  if (cmd === 'bold' || cmd === 'italic' || cmd === 'underline') {
+    let afterState = false;
+
+    try {
+      afterState = document.queryCommandState(cmd);
+    } catch {
+      afterState = !beforeState;
+    }
+
+    setToolbarButtonActive(cmd, afterState);
   }
 
-  return null;
+  refreshEditorToolbarState();
+}
+
+function applyTextColor(color) {
+  const editor = getBodyEditor();
+  if (!editor || !color) return;
+
+  restoreSavedSelectionRange();
+  editor.focus();
+
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand('foreColor', false, color);
+
+  normalizeEditorFontTags(editor);
+  saveCurrentSelectionRange();
+  syncBodyFromEditor();
+}
+
+function applyFontSize(fontSize) {
+  const editor = getBodyEditor();
+  if (!editor || !fontSize) return;
+
+  const legacySize = FONT_SIZE_TO_LEGACY[String(fontSize).trim()];
+  if (!legacySize) return;
+
+  restoreSavedSelectionRange();
+  editor.focus();
+
+  document.execCommand('styleWithCSS', false, false);
+  document.execCommand('fontSize', false, legacySize);
+
+  normalizeEditorFontTags(editor);
+  saveCurrentSelectionRange();
+  syncBodyFromEditor();
+}
+
+function setToolbarColorSwatch(color) {
+  const swatch = $('#editorColorSwatch');
+  if (!swatch) return;
+  swatch.style.background = color || '#222222';
 }
 
 function buildPersistedBodyHtml(mediaItems = []) {
@@ -320,6 +496,9 @@ function buildPersistedBodyHtml(mediaItems = []) {
 
   clone.querySelectorAll('.write-embed').forEach((node) => {
     node.classList.remove('is-active');
+    node
+      .querySelectorAll('.write-embed__remove')
+      .forEach((btn) => btn.remove());
 
     const mediaId = String(node.getAttribute('data-media-id') || '');
     const item = mediaMap.get(mediaId);
@@ -394,6 +573,52 @@ function bodyToEditorHtml(body = '') {
   return plainTextToEditorHtml(value);
 }
 
+function normalizeEditorParagraphs(root) {
+  if (!root) return;
+
+  const blockSelector =
+    'p, div, blockquote, li, ul, ol, h1, h2, h3, h4, h5, h6';
+
+  root.querySelectorAll('p').forEach((p) => {
+    if (!p || p.closest('.write-embed')) return;
+    if (p.querySelector('.write-embed')) return;
+
+    const hasNestedBlock = [...p.children].some((child) =>
+      child.matches?.(blockSelector),
+    );
+    if (hasNestedBlock) return;
+
+    const html = p.innerHTML;
+    if (!/<br\s*\/?>/i.test(html)) return;
+
+    const align = p.getAttribute('data-align') || 'left';
+    const parts = html.split(/<br\s*\/?>/gi);
+
+    if (parts.length <= 1) return;
+
+    const frag = document.createDocumentFragment();
+
+    parts.forEach((part) => {
+      const nextP = document.createElement('p');
+      nextP.setAttribute('data-align', align);
+
+      if (part.trim()) {
+        nextP.innerHTML = part;
+      } else {
+        nextP.innerHTML = '<br>';
+      }
+
+      frag.appendChild(nextP);
+    });
+
+    p.replaceWith(frag);
+  });
+
+  if (!root.innerHTML.trim()) {
+    root.innerHTML = '<p><br></p>';
+  }
+}
+
 function placeCaretAtEnd(el) {
   if (!el) return;
   const range = document.createRange();
@@ -404,6 +629,82 @@ function placeCaretAtEnd(el) {
   if (!sel) return;
   sel.removeAllRanges();
   sel.addRange(range);
+}
+
+function insertSingleParagraphAtCaret() {
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  editor.focus();
+
+  const sel = window.getSelection();
+  if (!sel) return;
+
+  if (!sel.rangeCount) {
+    ensureEditorHasParagraph();
+    placeCaretAtEnd(editor);
+  }
+
+  const safeSel = window.getSelection();
+  if (!safeSel || !safeSel.rangeCount) return;
+
+  let range = safeSel.getRangeAt(0);
+
+  if (!editor.contains(range.commonAncestorContainer)) {
+    ensureEditorHasParagraph();
+    placeCaretAtEnd(editor);
+
+    const fallbackSel = window.getSelection();
+    if (!fallbackSel || !fallbackSel.rangeCount) return;
+    range = fallbackSel.getRangeAt(0);
+  }
+
+  if (!range.collapsed) {
+    range.deleteContents();
+    safeSel.removeAllRanges();
+    safeSel.addRange(range);
+  }
+
+  let block = findClosestEditableBlock(range.startContainer);
+
+  if (!block) {
+    const p = document.createElement('p');
+    p.setAttribute('data-align', 'left');
+    p.innerHTML = '<br>';
+    editor.appendChild(p);
+    block = p;
+  }
+
+  const align = block.getAttribute('data-align') || 'left';
+  const newBlock = document.createElement(block.tagName.toLowerCase());
+  newBlock.setAttribute('data-align', align);
+
+  const splitRange = range.cloneRange();
+  splitRange.setEndAfter(block.lastChild || block);
+  const moved = splitRange.extractContents();
+
+  if (moved.childNodes.length) {
+    newBlock.appendChild(moved);
+  } else {
+    newBlock.innerHTML = '<br>';
+  }
+
+  if (!block.innerHTML.trim()) {
+    block.innerHTML = '<br>';
+  }
+
+  block.insertAdjacentElement('afterend', newBlock);
+
+  const caretRange = document.createRange();
+  caretRange.selectNodeContents(newBlock);
+  caretRange.collapse(true);
+
+  safeSel.removeAllRanges();
+  safeSel.addRange(caretRange);
+
+  saveCurrentSelectionRange();
+  syncBodyFromEditor();
+  refreshEditorToolbarState();
 }
 
 function insertNodeAtCaret(node) {
@@ -485,17 +786,20 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
         data-align="left"
         contenteditable="false"
       >
-        <div
-          class="write-embed__drag"
-          draggable="true"
-          data-drag-handle="${mediaId}"
+        <button
+          type="button"
+          class="write-embed__remove write-embed__remove--floating"
+          data-embed-remove="${mediaId}"
+          aria-label="이미지 삭제"
         >
-          <span>${label} · 이동바 잡고 위치 변경</span>
-          <button type="button" class="write-embed__remove" data-embed-remove="${mediaId}">삭제</button>
-        </div>
-        <div class="write-embed__media">
-          <img src="${url}" alt="${title}" loading="lazy" />
-        </div>
+          삭제
+        </button>
+        <img
+          class="write-embed__media-el"
+          src="${url}"
+          alt="${title}"
+          loading="lazy"
+        />
       </figure>
     `;
   }
@@ -509,40 +813,45 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
         data-align="left"
         contenteditable="false"
       >
-        <div
-          class="write-embed__drag"
-          draggable="true"
-          data-drag-handle="${mediaId}"
+        <button
+          type="button"
+          class="write-embed__remove write-embed__remove--floating"
+          data-embed-remove="${mediaId}"
+          aria-label="동영상 삭제"
         >
-          <span>${label} · 이동바 잡고 위치 변경</span>
-          <button type="button" class="write-embed__remove" data-embed-remove="${mediaId}">삭제</button>
-        </div>
-        <div class="write-embed__media">
-          <video src="${url}" controls playsinline preload="metadata"></video>
-        </div>
+          삭제
+        </button>
+        <video
+          class="write-embed__media-el"
+          src="${url}"
+          controls
+          playsinline
+          preload="metadata"
+        ></video>
       </figure>
     `;
   }
 
   return `
     <div
-      class="write-embed"
+      class="write-embed write-embed--file"
       data-media-id="${mediaId}"
       data-media-type="file"
       data-align="left"
       contenteditable="false"
     >
-      <div
-        class="write-embed__drag"
-        draggable="true"
-        data-drag-handle="${mediaId}"
+      <button
+        type="button"
+        class="write-embed__remove write-embed__remove--floating"
+        data-embed-remove="${mediaId}"
+        aria-label="파일 삭제"
       >
-        <span>${label} · 이동바 잡고 위치 변경</span>
-        <button type="button" class="write-embed__remove" data-embed-remove="${mediaId}">삭제</button>
-      </div>
+        삭제
+      </button>
+
       <div class="write-embed__file">
         <strong class="write-embed__file-name">${title}</strong>
-        <span class="write-embed__file-desc">업로드 후 파일 링크가 자동 연결돼.</span>
+        <span class="write-embed__file-desc">${label} 첨부파일</span>
         <a
           class="write-embed__file-link"
           href="${url || '#'}"
@@ -569,43 +878,12 @@ function removeEmbedById(id) {
 function insertAttachmentIntoEditor(item) {
   const node = createEmbedNodeFromHtml(buildInlineEmbedHtml(item));
   if (!node) return;
+
   insertNodeAtCaret(node);
 }
 
 function renderAttachmentList() {
-  const listEl = $('#writeAttachmentList');
-  if (!listEl) return;
-
-  if (!attachmentState.length) {
-    listEl.innerHTML = `<div class="write-attach-empty">첨부한 파일이 없어.</div>`;
-    return;
-  }
-
-  listEl.innerHTML = attachmentState
-    .map((item) => {
-      const label = getAttachmentLabel(item.type);
-      const name = escapeHtml(item.title || item.fileName || '첨부파일');
-      const size = formatBytes(item.size);
-      const removable = item.removable !== false;
-
-      return `
-        <div class="write-attach-item" data-id="${escapeHtml(item.id)}">
-          <div class="write-attach-item__body">
-            <span class="write-attach-item__badge">${label}</span>
-            <div class="write-attach-item__meta">
-              <p class="write-attach-item__title">${name}</p>
-              <p class="write-attach-item__sub">${size} · 본문 삽입됨</p>
-            </div>
-          </div>
-          ${
-            removable
-              ? `<button type="button" class="write-attach-item__remove" data-remove-id="${escapeHtml(item.id)}">삭제</button>`
-              : ''
-          }
-        </div>
-      `;
-    })
-    .join('');
+  return;
 }
 
 function pushAttachment(file, type) {
@@ -650,7 +928,6 @@ function bindAttachmentInputs(note) {
   const imageInput = $('#writeImage');
   const videoInput = $('#writeVideo');
   const fileInput = $('#writeFile');
-  const listEl = $('#writeAttachmentList');
   const editor = getBodyEditor();
   const uploadTiles = document.querySelectorAll('.write-upload-tile');
 
@@ -720,27 +997,6 @@ function bindAttachmentInputs(note) {
     });
   }
 
-  if (listEl) {
-    listEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-remove-id]');
-      if (!btn) return;
-
-      const id = btn.getAttribute('data-remove-id');
-      const found = attachmentState.find((item) => item.id === id);
-      if (!found) return;
-
-      if (found.path) {
-        removedStoragePaths.add(found.path);
-      }
-
-      revokePreviewUrl(found);
-      removeEmbedById(id);
-      attachmentState = attachmentState.filter((item) => item.id !== id);
-      renderAttachmentList();
-      clearActiveEmbed();
-    });
-  }
-
   if (!editor) return;
 
   editor.addEventListener('click', (e) => {
@@ -758,90 +1014,50 @@ function bindAttachmentInputs(note) {
       attachmentState = attachmentState.filter((item) => item.id !== id);
       renderAttachmentList();
       clearActiveEmbed();
+      refreshEditorToolbarState();
       return;
     }
 
     const embed = e.target.closest('.write-embed');
     if (embed) {
       setActiveEmbed(embed.getAttribute('data-media-id'));
+      refreshEditorToolbarState();
       return;
     }
 
     clearActiveEmbed();
     saveCurrentSelectionRange();
+    refreshEditorToolbarState();
   });
 
   editor.addEventListener('mouseup', () => {
     saveCurrentSelectionRange();
+    refreshEditorToolbarState();
   });
 
   editor.addEventListener('keyup', () => {
     saveCurrentSelectionRange();
     syncBodyFromEditor();
+    refreshEditorToolbarState();
   });
 
   editor.addEventListener('focusin', () => {
     saveCurrentSelectionRange();
+    refreshEditorToolbarState();
   });
 
   editor.addEventListener('input', () => {
     saveCurrentSelectionRange();
     syncBodyFromEditor();
+    refreshEditorToolbarState();
   });
 
   editor.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.isComposing) return;
       e.preventDefault();
-      document.execCommand('insertLineBreak');
-      saveCurrentSelectionRange();
-      syncBodyFromEditor();
+      insertSingleParagraphAtCaret();
     }
-  });
-
-  editor.addEventListener('dragstart', (e) => {
-    const handle = e.target.closest('[data-drag-handle]');
-    if (!handle) return;
-
-    const id = handle.getAttribute('data-drag-handle');
-    draggingEmbedId = id || '';
-
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', draggingEmbedId);
-    }
-
-    setActiveEmbed(draggingEmbedId);
-  });
-
-  editor.addEventListener('dragover', (e) => {
-    if (!draggingEmbedId) return;
-    e.preventDefault();
-
-    const draggingEl = editor.querySelector(
-      `.write-embed[data-media-id="${CSS.escape(draggingEmbedId)}"]`,
-    );
-    if (!draggingEl) return;
-
-    const target = findDropTargetEmbed(editor, e.clientY, draggingEl);
-
-    if (target) {
-      editor.insertBefore(draggingEl, target);
-    } else {
-      editor.appendChild(draggingEl);
-    }
-  });
-
-  editor.addEventListener('drop', (e) => {
-    if (!draggingEmbedId) return;
-    e.preventDefault();
-    saveCurrentSelectionRange();
-    syncBodyFromEditor();
-  });
-
-  editor.addEventListener('dragend', () => {
-    draggingEmbedId = '';
-    saveCurrentSelectionRange();
-    syncBodyFromEditor();
   });
 }
 
@@ -1037,7 +1253,7 @@ function fillWriteForm(post, isAdmin) {
   const titleEl = $('#title');
   const excerptEl = $('#excerpt');
   const bodyEl = $('#body');
-  const editorEl = $('#bodyEditor');
+  const editorEl = getBodyEditor();
   const categoryEl = $('#category');
   const tagsEl = $('#tags');
   const pinnedEl = $('#pinned');
@@ -1047,10 +1263,17 @@ function fillWriteForm(post, isAdmin) {
   if (titleEl) titleEl.value = post.title || '';
   if (excerptEl) excerptEl.value = post.excerpt || '';
   if (bodyEl) bodyEl.value = post.body || '';
-  if (editorEl) editorEl.innerHTML = bodyToEditorHtml(post.body || '');
+
+  if (editorEl) {
+    editorEl.innerHTML = bodyToEditorHtml(post.body || '');
+    normalizeEditorParagraphs(editorEl);
+  }
+
   if (categoryEl) categoryEl.value = normalizeCategory(post.category);
-  if (tagsEl)
+  if (tagsEl) {
     tagsEl.value = Array.isArray(post.tags) ? post.tags.join(', ') : '';
+  }
+
   if (pinnedEl) pinnedEl.checked = isAdmin ? !!post.pinned : false;
   if (isPrivateEl) isPrivateEl.checked = !!post.is_private;
   if (privatePasswordEl) privatePasswordEl.value = '';
@@ -1082,6 +1305,10 @@ function bindEditorToolbar() {
     '.write-editor-toolbar__btn',
   );
   const editor = getBodyEditor();
+  const colorBtn = $('#editorColorBtn');
+  const colorPicker = $('#editorColorPicker');
+  const fontSizeSelect = $('#editorFontSize');
+
   if (!editor) return;
 
   toolbarButtons.forEach((btn) => {
@@ -1090,22 +1317,60 @@ function bindEditorToolbar() {
     });
 
     btn.addEventListener('click', () => {
+      if (btn === colorBtn) {
+        saveCurrentSelectionRange();
+        colorPicker?.click();
+        return;
+      }
+
       const align = btn.getAttribute('data-editor-align');
       if (align) {
         applyAlignment(align);
+        refreshEditorToolbarState();
         return;
       }
 
       const cmd = btn.getAttribute('data-editor-cmd');
       const value = btn.getAttribute('data-editor-value') || null;
 
-      restoreSavedSelectionRange();
-      editor.focus();
-      document.execCommand(cmd, false, value);
-      saveCurrentSelectionRange();
-      syncBodyFromEditor();
+      if (!cmd) return;
+
+      applyEditorCommand(cmd, value);
+
+      if (cmd === 'bold' || cmd === 'italic' || cmd === 'underline') {
+        refreshEditorToolbarState();
+      }
     });
   });
+
+  if (colorPicker) {
+    colorPicker.addEventListener('input', () => {
+      applyTextColor(colorPicker.value);
+      setToolbarColorSwatch(colorPicker.value);
+    });
+
+    colorPicker.addEventListener('change', () => {
+      applyTextColor(colorPicker.value);
+      setToolbarColorSwatch(colorPicker.value);
+    });
+
+    setToolbarColorSwatch(colorPicker.value);
+  }
+
+  if (fontSizeSelect) {
+    fontSizeSelect.addEventListener('mousedown', () => {
+      saveCurrentSelectionRange();
+    });
+
+    fontSizeSelect.addEventListener('change', () => {
+      applyFontSize(fontSizeSelect.value);
+    });
+  }
+  document.addEventListener('selectionchange', () => {
+    refreshEditorToolbarState();
+  });
+
+  refreshEditorToolbarState();
 }
 
 export async function initWrite() {
@@ -1120,6 +1385,7 @@ export async function initWrite() {
   setWriteModeUi(!!editPostId);
   if (editor) {
     editor.innerHTML = '<p><br></p>';
+    normalizeEditorParagraphs(editor);
   }
   syncBodyFromEditor();
 

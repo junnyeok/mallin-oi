@@ -107,50 +107,94 @@
                           class="write-editor-toolbar__btn"
                           data-editor-cmd="bold"
                         >
-                          글씨 굵게
+                          굵게
                         </button>
+
                         <button
                           type="button"
                           class="write-editor-toolbar__btn"
                           data-editor-cmd="italic"
                         >
-                          글씨 기울임
+                          기울임
                         </button>
+
                         <button
                           type="button"
                           class="write-editor-toolbar__btn"
-                          data-editor-cmd="insertUnorderedList"
+                          data-editor-cmd="underline"
                         >
-                          목록 설정
+                          밑줄
                         </button>
+
+                        <span
+                          class="write-editor-toolbar__divider"
+                          aria-hidden="true"
+                          >ㅣ</span
+                        >
+
                         <button
                           type="button"
-                          class="write-editor-toolbar__btn"
-                          data-editor-cmd="formatBlock"
-                          data-editor-value="blockquote"
+                          class="write-editor-toolbar__btn write-editor-toolbar__btn--color"
+                          id="editorColorBtn"
+                          aria-label="글자 색상 변경"
                         >
-                          부가설명
+                          <span
+                            class="write-editor-toolbar__color-swatch"
+                            id="editorColorSwatch"
+                          ></span>
+                          <span>색상</span>
                         </button>
+
+                        <input
+                          type="color"
+                          id="editorColorPicker"
+                          class="write-editor-toolbar__color-input"
+                          value="#222222"
+                          aria-label="글자 색상 선택"
+                        />
+
+                        <select
+                          id="editorFontSize"
+                          class="write-editor-toolbar__control"
+                          aria-label="글씨 크기 변경"
+                        >
+                          <option value="12px">크기 12</option>
+                          <option value="14px">크기 14</option>
+                          <option value="16px" selected>크기 16</option>
+                          <option value="18px">크기 18</option>
+                          <option value="24px">크기 24</option>
+                          <option value="32px">크기 32</option>
+                          <option value="48px">크기 48</option>
+                        </select>
+
+                        <span
+                          class="write-editor-toolbar__divider"
+                          aria-hidden="true"
+                          >ㅣ</span
+                        >
+
                         <button
                           type="button"
                           class="write-editor-toolbar__btn"
                           data-editor-align="left"
                         >
-                          왼쪽 정렬
+                          ⬅️정렬
                         </button>
+
                         <button
                           type="button"
                           class="write-editor-toolbar__btn"
                           data-editor-align="center"
                         >
-                          중앙 정렬
+                          ↔️정렬
                         </button>
+
                         <button
                           type="button"
                           class="write-editor-toolbar__btn"
                           data-editor-align="right"
                         >
-                          오른쪽 정렬
+                          ➡️정렬
                         </button>
                       </div>
 
@@ -173,8 +217,10 @@
                     </div>
 
                     <p class="write-help">
-                      글을 쓰다가 필요한 위치에서 바로 첨부를 넣을 수 있어. 첨부
-                      블록은 마우스로 드래그해서 위치를 옮길 수 있어.
+                      글을 쓰다가 필요한 위치에서 바로 첨부를 넣을 수 있어.
+                      사진, 영상, 파일은 현재 커서 위치에 순서대로 들어가고,
+                      첨부 후에는 삭제만 가능해. 본문 박스 오른쪽 아래를
+                      드래그하면 높이도 조절할 수 있어.
                     </p>
                   </div>
 
@@ -234,15 +280,6 @@
                           multiple
                         />
                       </div>
-
-                      <div class="write-attach-list" id="writeAttachmentList">
-                        <p class="write-empty">아직 추가한 첨부가 없어.</p>
-                      </div>
-
-                      <p class="write-help">
-                        업로드한 첨부는 현재 커서 위치에 바로 삽입돼. 수정
-                        모드에서는 기존 첨부도 삭제할 수 있어.
-                      </p>
                     </div>
                   </div>
 
