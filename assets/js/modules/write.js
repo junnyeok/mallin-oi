@@ -1053,11 +1053,11 @@ function bindAttachmentInputs(note) {
   });
 
   editor.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      if (e.isComposing) return;
-      e.preventDefault();
-      insertSingleParagraphAtCaret();
-    }
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (e.nativeEvent?.isComposing || e.isComposing) return;
+
+    e.preventDefault();
+    insertSingleParagraphAtCaret();
   });
 }
 
@@ -1310,6 +1310,7 @@ function bindEditorToolbar() {
   const fontSizeSelect = $('#editorFontSize');
 
   if (!editor) return;
+  if (!toolbarButtons.length && !colorPicker && !fontSizeSelect) return;
 
   toolbarButtons.forEach((btn) => {
     btn.addEventListener('mousedown', (e) => {
@@ -1366,6 +1367,7 @@ function bindEditorToolbar() {
       applyFontSize(fontSizeSelect.value);
     });
   }
+
   document.addEventListener('selectionchange', () => {
     refreshEditorToolbarState();
   });
