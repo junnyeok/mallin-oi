@@ -65,6 +65,9 @@
                 여기서는 프로필 사진, 닉네임, 내가 쓴 글/댓글을 한 번에 볼 수
                 있어.
               </p>
+              <p class="profile-hero__pickle" id="profileHeroPickle" hidden>
+                보유 피클 0 피클
+              </p>
             </div>
           </section>
 
@@ -113,6 +116,42 @@
               <p class="profile-msg" id="profileMsg"></p>
             </section>
           </form>
+
+          <section
+            class="profile-section"
+            id="profilePickleSection"
+            aria-label="피클 내역"
+            hidden
+          >
+            <div class="profile-section-head">
+              <h2 class="profile-section-title">🥒 피클 내역</h2>
+              <div class="profile-pickle-balance">
+                보유 피클 <strong id="profilePickleBalance">0 피클</strong>
+              </div>
+            </div>
+
+            <div id="profilePickleList" class="profile-list"></div>
+
+            <div class="profile-pager" aria-label="피클 내역 페이지네이션">
+              <button
+                type="button"
+                class="profile-sub-btn"
+                id="profilePicklePrevBtn"
+              >
+                이전
+              </button>
+              <span class="profile-pager__info" id="profilePicklePageInfo"
+                >1 / 1</span
+              >
+              <button
+                type="button"
+                class="profile-sub-btn"
+                id="profilePickleNextBtn"
+              >
+                다음
+              </button>
+            </div>
+          </section>
 
           <section
             class="profile-section"

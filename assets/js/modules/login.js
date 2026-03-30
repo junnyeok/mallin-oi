@@ -16,6 +16,25 @@ function isValidEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
 }
 
+async function claimDailyAttendance() {
+  const { data, error } = await supabase.rpc('claim_daily_attendance');
+
+  if (error) {
+    console.error('[login] claim_daily_attendance error:', error);
+    return {
+      ok: false,
+      message: '',
+    };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+
+  return {
+    ok: !!row?.ok,
+    message: String(row?.message || '').trim(),
+  };
+}
+
 export function initLogin() {
   const form = $('loginForm');
   if (!form) return;
@@ -57,7 +76,12 @@ export function initLogin() {
       return;
     }
 
-    setMsg(msg, '로그인 성공! 이동할게.', 'green');
+    const attendance = await claimDailyAttendance();
+    const successText = attendance.message
+      ? `로그인 성공! ${attendance.message} 이동할게.`
+      : '로그인 성공! 이동할게.';
+
+    setMsg(msg, successText, 'green');
 
     const redirectTo = consumeRedirect(homeHref());
 

@@ -64,6 +64,67 @@ function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
 }
 
+function formatPickleAmount(value) {
+  return `${Number(value || 0)} 피클`;
+}
+
+function updatePickleSummary(balance = 0, isVisible = false) {
+  const heroPickleEl = $('profileHeroPickle');
+  const sectionEl = $('profilePickleSection');
+  const balanceEl = $('profilePickleBalance');
+
+  if (balanceEl) {
+    balanceEl.textContent = formatPickleAmount(balance);
+  }
+
+  if (heroPickleEl) {
+    heroPickleEl.hidden = !isVisible;
+    heroPickleEl.textContent = `보유 피클 ${formatPickleAmount(balance)}`;
+  }
+
+  if (sectionEl) {
+    sectionEl.hidden = !isVisible;
+  }
+}
+
+function renderPickleRow(entry) {
+  const amount = Number(entry?.amount || 0);
+  const amountText = amount > 0 ? `+${amount} 피클` : `${amount} 피클`;
+  const reasonLabel = entry?.reason_label || '피클 획득';
+  const description = entry?.description || '';
+
+  return `
+    <div class="profile-row profile-row--pickle">
+      <div class="profile-row__main">
+        <div class="profile-row__title">${escapeHtml(reasonLabel)}</div>
+        <div class="profile-row__body">${escapeHtml(
+          description || '피클 내역이야.',
+        )}</div>
+      </div>
+      <div class="profile-row__side">
+        <span class="profile-row__amount">${escapeHtml(amountText)}</span>
+        <span class="profile-row__meta">${formatDateTime(
+          entry?.created_at,
+        )}</span>
+      </div>
+    </div>
+  `;
+}
+
+async function loadPickleLedger(userId) {
+  const { data, error } = await supabase
+    .from('pickle_ledger')
+    .select(
+      'id, amount, reason_code, reason_label, description, source_post_id, source_comment_id, created_at',
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 function renderMyPostRow(post) {
   return `
     <a class="profile-row" href="${post.url}">
@@ -155,7 +216,7 @@ function setupPagedList({
 async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nickname, email, profile_image_url')
+    .select('id, nickname, email, profile_image_url, pickles')
     .eq('id', userId)
     .maybeSingle();
 
@@ -251,7 +312,8 @@ function applyProfileModeUI({
   const postsTitle = $('profilePostsTitle');
   const commentsTitle = $('profileCommentsTitle');
   const avatar = $('profileAvatar');
-
+  const heroPickleEl = $('profileHeroPickle');
+  const pickleSection = $('profilePickleSection');
   if (eyebrowEl) {
     eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
   }
@@ -308,6 +370,8 @@ function renderProfileNotFound() {
     descEl.textContent = '존재하지 않거나 볼 수 없는 이용자 프로필이야.';
   if (form) form.hidden = true;
   if (avatar) avatar.src = DEFAULT_PROFILE_IMAGE;
+  if (heroPickleEl) heroPickleEl.hidden = true;
+  if (pickleSection) pickleSection.hidden = true;
   if (postList) {
     postList.innerHTML = `<div class="empty">작성한 글을 불러올 수 없어.</div>`;
   }
@@ -370,6 +434,7 @@ export async function initProfile() {
   if (isOwnProfile && nicknameInput) {
     nicknameInput.value = currentNickname;
   }
+  updatePickleSummary(profileRow?.pickles || 0, isOwnProfile);
 
   if (isOwnProfile) {
     resetImageBtn?.addEventListener('click', () => {
@@ -486,6 +551,35 @@ export async function initProfile() {
   const profileCommentPrevBtn = $('profileCommentPrevBtn');
   const profileCommentNextBtn = $('profileCommentNextBtn');
   const profileCommentPageInfo = $('profileCommentPageInfo');
+
+  const profilePickleListEl = $('profilePickleList');
+  const profilePicklePrevBtn = $('profilePicklePrevBtn');
+  const profilePickleNextBtn = $('profilePickleNextBtn');
+  const profilePicklePageInfo = $('profilePicklePageInfo');
+
+  if (isOwnProfile) {
+    try {
+      const pickleEntries = await loadPickleLedger(targetUserId);
+
+      setupPagedList({
+        items: pickleEntries,
+        perPage: 5,
+        listEl: profilePickleListEl,
+        prevBtn: profilePicklePrevBtn,
+        nextBtn: profilePickleNextBtn,
+        pageInfoEl: profilePicklePageInfo,
+        emptyHtml: `<div class="empty">아직 받은 피클 내역이 없어.</div>`,
+        renderItem: renderPickleRow,
+      });
+    } catch (error) {
+      console.error('[profile] load pickle ledger failed:', error);
+
+      if (profilePickleListEl) {
+        profilePickleListEl.innerHTML =
+          '<div class="empty">피클 내역을 불러오지 못했어.</div>';
+      }
+    }
+  }
 
   try {
     const posts = await loadPostsByAuthorId(targetUserId);
