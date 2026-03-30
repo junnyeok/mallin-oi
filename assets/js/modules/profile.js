@@ -65,7 +65,7 @@ function getProfileImageSrc(url) {
 }
 
 function formatPickleAmount(value) {
-  return `${Number(value || 0)} 피클`;
+  return `${Number(value || 0)} 🥒`;
 }
 
 function updatePickleSummary(balance = 0, isVisible = false) {
