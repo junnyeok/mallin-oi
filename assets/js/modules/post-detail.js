@@ -1,7 +1,7 @@
 import { loadPostById } from './posts-repo.js';
 import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
-import { getCurrentUser } from './auth-store.js';
+import { getCurrentUser, publicProfileHref } from './auth-store.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -126,7 +126,7 @@ function syncThemeByCategory(category) {
 }
 
 /* =========================
-   RENDER
+  RENDER
 ========================= */
 
 function renderTags(tags = []) {
@@ -142,8 +142,23 @@ function renderAuthor(post) {
   const authorEl = $('postAuthor');
   if (!authorEl) return;
 
-  const privateMark = post.isPrivate ? ' 🔒' : '';
-  authorEl.textContent = `작성자 : ${post.authorNickname || '익명'}${privateMark}`;
+  const nickname = escapeHtml(post.authorNickname || '익명');
+  const privateMark = post.isPrivate
+    ? ' <span class="post-author__lock">🔒</span>'
+    : '';
+
+  if (post.authorId) {
+    authorEl.innerHTML = `
+      작성자 :
+      <a
+        class="post-author__link"
+        href="${publicProfileHref(post.authorId)}"
+      >${nickname}</a>${privateMark}
+    `;
+    return;
+  }
+
+  authorEl.innerHTML = `작성자 : ${nickname}${privateMark}`;
 }
 
 function formatDateTime(value) {

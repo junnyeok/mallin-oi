@@ -4931,3 +4931,14 @@ using (
   bucket_id = 'profile-images'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
+
+create or replace view public.public_profiles as
+select
+  id,
+  nickname,
+  profile_image_url,
+  created_at,
+  updated_at
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;

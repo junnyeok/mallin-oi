@@ -4,6 +4,7 @@ import {
   getCurrentUser,
   getDisplayName,
   loginHref,
+  publicProfileHref,
   saveRedirect,
 } from './auth-store.js';
 
@@ -31,6 +32,22 @@ function formatDateTime(value) {
   const mi = String(d.getMinutes()).padStart(2, '0');
 
   return `${yy}.${mm}.${dd} ${hh}:${mi}`;
+}
+
+function renderAuthorProfileLink(authorId, authorNickname, className = '') {
+  const nickname = escapeHtml(authorNickname || '익명');
+  const safeAuthorId = String(authorId || '').trim();
+
+  if (!safeAuthorId) {
+    return `<strong class="${className}">${nickname}</strong>`;
+  }
+
+  return `
+    <a
+      class="${className} comment-author-link"
+      href="${publicProfileHref(safeAuthorId)}"
+    >${nickname}</a>
+  `;
 }
 
 function isEdited(createdAt, updatedAt) {
@@ -145,9 +162,11 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
     <article class="comment-reply-item" data-comment-id="${reply.id}">
       <div class="comment-reply-item__head">
         <div class="comment-reply-item__meta">
-          <strong class="comment-reply-item__author">${escapeHtml(
-            reply.author_nickname || '익명',
-          )}</strong>
+          ${renderAuthorProfileLink(
+            reply.author_id,
+            reply.author_nickname,
+            'comment-reply-item__author',
+          )}
           <div class="comment-meta-inline">
             ${renderDateMeta(reply.created_at, reply.updated_at)}
           </div>
@@ -199,9 +218,11 @@ function renderCommentItem(
     <article class="comment-item" data-comment-id="${comment.id}">
       <div class="comment-item__head">
         <div class="comment-item__meta">
-          <strong class="comment-item__author">${escapeHtml(
-            comment.author_nickname || '익명',
-          )}</strong>
+          ${renderAuthorProfileLink(
+            comment.author_id,
+            comment.author_nickname,
+            'comment-item__author',
+          )}
           <div class="comment-meta-inline">
             ${renderDateMeta(comment.created_at, comment.updated_at)}
           </div>

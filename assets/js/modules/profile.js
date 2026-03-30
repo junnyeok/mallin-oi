@@ -19,10 +19,16 @@ function escapeHtml(str) {
     .replaceAll("'", '&#39;');
 }
 
+function getTargetUserIdFromUrl() {
+  const sp = new URLSearchParams(window.location.search);
+  return String(sp.get('user') || '').trim();
+}
+
 function trimCommentPreview(text, max = 70) {
   const clean = String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
+
   if (!clean) return '(내용 없음)';
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max)}...`;
@@ -30,8 +36,10 @@ function trimCommentPreview(text, max = 70) {
 
 function formatDateTime(dateStr) {
   if (!dateStr) return '-';
+
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return '-';
+
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
     2,
     '0',
@@ -77,7 +85,11 @@ function renderMyCommentRow(comment, postMap) {
   const postTitle = post?.title || `게시물 #${comment.post_id}`;
   const postCategory = post?.category || '-';
   const postUrl = `./post.html?id=${encodeURIComponent(comment.post_id)}`;
-  const preview = trimCommentPreview(comment.body);
+  const isPrivatePost = !!post?.is_private;
+
+  const preview = isPrivatePost
+    ? '비밀 게시글의 댓글은 프로필에서 내용이 표시되지 않아.'
+    : trimCommentPreview(comment.body);
 
   return `
     <a class="profile-row" href="${postUrl}">
@@ -102,6 +114,8 @@ function setupPagedList({
   emptyHtml = '',
   renderItem,
 }) {
+  if (!listEl || !prevBtn || !nextBtn || !pageInfoEl) return;
+
   let currentPage = 1;
   const totalPages = Math.max(1, Math.ceil(items.length / perPage));
 
@@ -123,17 +137,17 @@ function setupPagedList({
     nextBtn.disabled = currentPage >= totalPages;
   }
 
-  prevBtn.addEventListener('click', () => {
+  prevBtn.onclick = () => {
     if (currentPage <= 1) return;
     currentPage -= 1;
     render();
-  });
+  };
 
-  nextBtn.addEventListener('click', () => {
+  nextBtn.onclick = () => {
     if (currentPage >= totalPages) return;
     currentPage += 1;
     render();
-  });
+  };
 
   render();
 }
@@ -141,7 +155,7 @@ function setupPagedList({
 async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('nickname, email, profile_image_url')
+    .select('id, nickname, email, profile_image_url')
     .eq('id', userId)
     .maybeSingle();
 
@@ -149,7 +163,18 @@ async function loadProfileRow(userId) {
   return data || null;
 }
 
-async function loadMyCommentsWithPosts(userId) {
+async function loadPublicProfileRow(userId) {
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('id, nickname, profile_image_url, created_at, updated_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function loadCommentsWithPostsByAuthorId(userId) {
   const { data: comments, error } = await supabase
     .from('post_comments')
     .select('id, post_id, body, created_at')
@@ -169,7 +194,7 @@ async function loadMyCommentsWithPosts(userId) {
   if (postIds.length) {
     const { data, error: postError } = await supabase
       .from('posts')
-      .select('id, title, category')
+      .select('id, title, category, is_private')
       .in('id', postIds);
 
     if (postError) throw postError;
@@ -211,18 +236,104 @@ async function updateProfileRow(userId, patch) {
   if (error) throw error;
 }
 
+function applyProfileModeUI({
+  isOwnProfile,
+  nickname,
+  currentUser,
+  profileRow,
+}) {
+  const eyebrowEl = $('profileEyebrow');
+  const nicknameText = $('profileNicknameText');
+  const emailText = $('profileEmailText');
+  const descEl = $('profileDesc');
+  const form = $('profileForm');
+  const formTitle = $('profileFormTitle');
+  const postsTitle = $('profilePostsTitle');
+  const commentsTitle = $('profileCommentsTitle');
+  const avatar = $('profileAvatar');
+
+  if (eyebrowEl) {
+    eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
+  }
+
+  if (nicknameText) {
+    nicknameText.textContent = nickname || '회원';
+  }
+
+  if (emailText) {
+    emailText.textContent = isOwnProfile
+      ? currentUser?.email || profileRow?.email || '-'
+      : '다른 이용자의 공개 프로필이야.';
+  }
+
+  if (descEl) {
+    descEl.textContent = isOwnProfile
+      ? '여기서는 프로필 사진, 닉네임, 내가 쓴 글/댓글을 한 번에 볼 수 있어.'
+      : '여기서는 이 이용자가 작성한 글과 댓글을 볼 수 있어.';
+  }
+
+  if (form) {
+    form.hidden = !isOwnProfile;
+  }
+
+  if (formTitle) {
+    formTitle.textContent = '프로필 설정';
+  }
+
+  if (postsTitle) {
+    postsTitle.textContent = isOwnProfile ? '내가 쓴 글' : '작성한 글';
+  }
+
+  if (commentsTitle) {
+    commentsTitle.textContent = isOwnProfile ? '내가 쓴 댓글' : '작성한 댓글';
+  }
+
+  if (avatar) {
+    avatar.src = getProfileImageSrc(profileRow?.profile_image_url);
+  }
+}
+
+function renderProfileNotFound() {
+  const nicknameText = $('profileNicknameText');
+  const emailText = $('profileEmailText');
+  const descEl = $('profileDesc');
+  const form = $('profileForm');
+  const postList = $('profilePostList');
+  const commentList = $('profileCommentList');
+  const avatar = $('profileAvatar');
+
+  if (nicknameText) nicknameText.textContent = '프로필을 찾을 수 없어';
+  if (emailText) emailText.textContent = '-';
+  if (descEl)
+    descEl.textContent = '존재하지 않거나 볼 수 없는 이용자 프로필이야.';
+  if (form) form.hidden = true;
+  if (avatar) avatar.src = DEFAULT_PROFILE_IMAGE;
+  if (postList) {
+    postList.innerHTML = `<div class="empty">작성한 글을 불러올 수 없어.</div>`;
+  }
+  if (commentList) {
+    commentList.innerHTML = `<div class="empty">작성한 댓글을 불러올 수 없어.</div>`;
+  }
+}
+
 export async function initProfile() {
   if (document.body?.dataset?.page !== 'profile') return;
 
-  const user = await getCurrentUser();
-  if (!user) {
+  const currentUser = await getCurrentUser();
+  const targetUserIdFromUrl = getTargetUserIdFromUrl();
+
+  if (!targetUserIdFromUrl && !currentUser) {
     window.location.href = loginHref();
     return;
   }
 
+  const targetUserId = targetUserIdFromUrl || currentUser?.id || '';
+  const isOwnProfile =
+    !!currentUser &&
+    !!targetUserId &&
+    String(currentUser.id) === String(targetUserId);
+
   const nicknameInput = $('profileNickname');
-  const nicknameText = $('profileNicknameText');
-  const emailText = $('profileEmailText');
   const avatar = $('profileAvatar');
   const imageFileInput = $('profileImageFile');
   const resetImageBtn = $('profileResetImageBtn');
@@ -231,118 +342,140 @@ export async function initProfile() {
   let pendingDefaultImage = false;
 
   try {
-    profileRow = await loadProfileRow(user.id);
+    profileRow = isOwnProfile
+      ? await loadProfileRow(targetUserId)
+      : await loadPublicProfileRow(targetUserId);
   } catch (error) {
     console.error('[profile] load profile failed:', error);
   }
 
+  if (!profileRow) {
+    renderProfileNotFound();
+    return;
+  }
+
   const currentNickname =
     profileRow?.nickname ||
-    user.user_metadata?.nickname ||
-    user.user_metadata?.display_name ||
-    (user.email ? user.email.split('@')[0] : '회원');
+    currentUser?.user_metadata?.nickname ||
+    currentUser?.user_metadata?.display_name ||
+    (currentUser?.email ? currentUser.email.split('@')[0] : '회원');
 
-  if (nicknameInput) nicknameInput.value = currentNickname;
-  if (nicknameText) nicknameText.textContent = currentNickname;
-  if (emailText) emailText.textContent = user.email || profileRow?.email || '-';
-  if (avatar) avatar.src = getProfileImageSrc(profileRow?.profile_image_url);
-
-  resetImageBtn?.addEventListener('click', () => {
-    pendingDefaultImage = true;
-    if (imageFileInput) imageFileInput.value = '';
-    if (avatar) avatar.src = DEFAULT_PROFILE_IMAGE;
-    setMsg('기본 이미지로 변경할 준비가 됐어. 저장 버튼을 눌러줘.');
+  applyProfileModeUI({
+    isOwnProfile,
+    nickname: currentNickname,
+    currentUser,
+    profileRow,
   });
 
-  imageFileInput?.addEventListener('change', () => {
-    pendingDefaultImage = false;
+  if (isOwnProfile && nicknameInput) {
+    nicknameInput.value = currentNickname;
+  }
 
-    const file = imageFileInput.files?.[0];
-    if (!file) return;
-
-    if (file.size > PROFILE_IMAGE_MAX_BYTES) {
-      setMsg('프로필 사진은 5MB 이하만 올릴 수 있어.', 'red');
-      imageFileInput.value = '';
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      setMsg('이미지 파일만 올릴 수 있어.', 'red');
-      imageFileInput.value = '';
-      return;
-    }
-
-    if (avatar) {
-      avatar.src = URL.createObjectURL(file);
-    }
-  });
-
-  const form = $('profileForm');
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const nickname = nicknameInput?.value?.trim() || '';
-    const file = imageFileInput?.files?.[0] || null;
-
-    if (!isValidNickname(nickname)) {
-      setMsg('닉네임은 2글자 이상 입력해줘.', 'red');
-      nicknameInput?.focus();
-      return;
-    }
-
-    if (file && file.size > PROFILE_IMAGE_MAX_BYTES) {
-      setMsg('프로필 사진은 5MB 이하만 올릴 수 있어.', 'red');
-      return;
-    }
-
-    setMsg('프로필 저장 중...');
-
-    try {
-      const currentMetaNickname =
-        user.user_metadata?.nickname || user.user_metadata?.display_name || '';
-
-      if (nickname !== currentMetaNickname) {
-        const { error: metaError } = await supabase.auth.updateUser({
-          data: {
-            ...(user.user_metadata || {}),
-            nickname,
-          },
-        });
-
-        if (metaError) throw metaError;
-      }
-
-      const patch = {
-        nickname,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (pendingDefaultImage) {
-        patch.profile_image_url = null;
-      } else if (file) {
-        const uploadedUrl = await uploadProfileImage(user, file);
-        patch.profile_image_url = uploadedUrl;
-      }
-
-      await updateProfileRow(user.id, patch);
-      profileRow = {
-        ...profileRow,
-        ...patch,
-      };
-
-      if (nicknameText) nicknameText.textContent = nickname;
-      if (avatar)
-        avatar.src = getProfileImageSrc(profileRow?.profile_image_url);
+  if (isOwnProfile) {
+    resetImageBtn?.addEventListener('click', () => {
+      pendingDefaultImage = true;
       if (imageFileInput) imageFileInput.value = '';
+      if (avatar) avatar.src = DEFAULT_PROFILE_IMAGE;
+      setMsg('기본 이미지로 변경할 준비가 됐어. 저장 버튼을 눌러줘.');
+    });
+
+    imageFileInput?.addEventListener('change', () => {
       pendingDefaultImage = false;
 
-      setMsg('프로필 저장 완료!', 'green');
-      window.dispatchEvent(new Event('auth-changed'));
-    } catch (error) {
-      console.error('[profile] save failed:', error);
-      setMsg('프로필 저장 중 오류가 발생했어.', 'red');
-    }
-  });
+      const file = imageFileInput.files?.[0];
+      if (!file) return;
+
+      if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+        setMsg('프로필 사진은 5MB 이하만 올릴 수 있어.', 'red');
+        imageFileInput.value = '';
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        setMsg('이미지 파일만 올릴 수 있어.', 'red');
+        imageFileInput.value = '';
+        return;
+      }
+
+      if (avatar) {
+        avatar.src = URL.createObjectURL(file);
+      }
+    });
+
+    const form = $('profileForm');
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nickname = nicknameInput?.value?.trim() || '';
+      const file = imageFileInput?.files?.[0] || null;
+
+      if (!isValidNickname(nickname)) {
+        setMsg('닉네임은 2글자 이상 입력해줘.', 'red');
+        nicknameInput?.focus();
+        return;
+      }
+
+      if (file && file.size > PROFILE_IMAGE_MAX_BYTES) {
+        setMsg('프로필 사진은 5MB 이하만 올릴 수 있어.', 'red');
+        return;
+      }
+
+      setMsg('프로필 저장 중...');
+
+      try {
+        const currentMetaNickname =
+          currentUser?.user_metadata?.nickname ||
+          currentUser?.user_metadata?.display_name ||
+          '';
+
+        if (nickname !== currentMetaNickname) {
+          const { error: metaError } = await supabase.auth.updateUser({
+            data: {
+              ...(currentUser?.user_metadata || {}),
+              nickname,
+            },
+          });
+
+          if (metaError) throw metaError;
+        }
+
+        const patch = {
+          nickname,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (pendingDefaultImage) {
+          patch.profile_image_url = null;
+        } else if (file) {
+          const uploadedUrl = await uploadProfileImage(currentUser, file);
+          patch.profile_image_url = uploadedUrl;
+        }
+
+        await updateProfileRow(currentUser.id, patch);
+
+        profileRow = {
+          ...profileRow,
+          ...patch,
+        };
+
+        applyProfileModeUI({
+          isOwnProfile: true,
+          nickname,
+          currentUser,
+          profileRow,
+        });
+
+        if (imageFileInput) imageFileInput.value = '';
+        pendingDefaultImage = false;
+
+        setMsg('프로필 저장 완료!', 'green');
+        window.dispatchEvent(new Event('auth-changed'));
+      } catch (error) {
+        console.error('[profile] save failed:', error);
+        setMsg('프로필 저장 중 오류가 발생했어.', 'red');
+      }
+    });
+  }
 
   const profilePostListEl = $('profilePostList');
   const profilePostPrevBtn = $('profilePostPrevBtn');
@@ -355,28 +488,35 @@ export async function initProfile() {
   const profileCommentPageInfo = $('profileCommentPageInfo');
 
   try {
-    const myPosts = await loadPostsByAuthorId(user.id);
+    const posts = await loadPostsByAuthorId(targetUserId);
 
     setupPagedList({
-      items: myPosts,
+      items: posts,
       perPage: 3,
       listEl: profilePostListEl,
       prevBtn: profilePostPrevBtn,
       nextBtn: profilePostNextBtn,
       pageInfoEl: profilePostPageInfo,
-      emptyHtml: `<div class="empty">아직 작성한 글이 없어.</div>`,
+      emptyHtml: `<div class="empty">${
+        isOwnProfile ? '아직 작성한 글이 없어.' : '아직 작성한 글이 없어.'
+      }</div>`,
       renderItem: renderMyPostRow,
     });
   } catch (error) {
     console.error('[profile] load posts failed:', error);
 
     if (profilePostListEl) {
-      profilePostListEl.innerHTML = `<div class="empty">내 글 목록을 불러오지 못했어.</div>`;
+      profilePostListEl.innerHTML = `<div class="empty">${
+        isOwnProfile
+          ? '내 글 목록을 불러오지 못했어.'
+          : '작성한 글 목록을 불러오지 못했어.'
+      }</div>`;
     }
   }
 
   try {
-    const { comments, postMap } = await loadMyCommentsWithPosts(user.id);
+    const { comments, postMap } =
+      await loadCommentsWithPostsByAuthorId(targetUserId);
 
     setupPagedList({
       items: comments,
@@ -385,14 +525,20 @@ export async function initProfile() {
       prevBtn: profileCommentPrevBtn,
       nextBtn: profileCommentNextBtn,
       pageInfoEl: profileCommentPageInfo,
-      emptyHtml: `<div class="empty">아직 작성한 댓글이 없어.</div>`,
+      emptyHtml: `<div class="empty">${
+        isOwnProfile ? '아직 작성한 댓글이 없어.' : '아직 작성한 댓글이 없어.'
+      }</div>`,
       renderItem: (comment) => renderMyCommentRow(comment, postMap),
     });
   } catch (error) {
     console.error('[profile] load comments failed:', error);
 
     if (profileCommentListEl) {
-      profileCommentListEl.innerHTML = `<div class="empty">내 댓글 목록을 불러오지 못했어.</div>`;
+      profileCommentListEl.innerHTML = `<div class="empty">${
+        isOwnProfile
+          ? '내 댓글 목록을 불러오지 못했어.'
+          : '작성한 댓글 목록을 불러오지 못했어.'
+      }</div>`;
     }
   }
 

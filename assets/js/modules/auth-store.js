@@ -47,6 +47,14 @@ export function profileHref() {
   return resolveSitePath('profile.html');
 }
 
+export function publicProfileHref(userId = '') {
+  const base = profileHref();
+  const safeUserId = String(userId || '').trim();
+
+  if (!safeUserId) return base;
+  return `${base}?user=${encodeURIComponent(safeUserId)}`;
+}
+
 export function writeHref() {
   return resolveSitePath('write.html');
 }

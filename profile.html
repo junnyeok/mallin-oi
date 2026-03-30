@@ -58,10 +58,10 @@
             </div>
 
             <div class="profile-hero__content">
-              <p class="profile-hero__eyebrow">내프로필</p>
+              <p class="profile-hero__eyebrow" id="profileEyebrow">내프로필</p>
               <h1 class="profile-hero__nickname" id="profileNicknameText">-</h1>
               <p class="profile-hero__meta" id="profileEmailText">-</p>
-              <p class="profile-hero__desc">
+              <p class="profile-hero__desc" id="profileDesc">
                 여기서는 프로필 사진, 닉네임, 내가 쓴 글/댓글을 한 번에 볼 수
                 있어.
               </p>
@@ -70,8 +70,9 @@
 
           <form id="profileForm" class="profile-form">
             <section class="profile-section" aria-label="프로필 설정">
-              <h2 class="profile-section-title">프로필 설정</h2>
-
+              <h2 class="profile-section-title" id="profileFormTitle">
+                프로필 설정
+              </h2>
               <div class="profile-field">
                 <label for="profileNickname">닉네임</label>
                 <input
@@ -118,7 +119,9 @@
             id="profileMyPostsSection"
             aria-label="내가 쓴 글"
           >
-            <h2 class="profile-section-title">내가 쓴 글</h2>
+            <h2 class="profile-section-title" id="profilePostsTitle">
+              내가 쓴 글
+            </h2>
             <div id="profilePostList" class="profile-list"></div>
 
             <div class="profile-pager" aria-label="내가 쓴 글 페이지네이션">
@@ -143,7 +146,9 @@
           </section>
 
           <section class="profile-section" aria-label="내가 쓴 댓글">
-            <h2 class="profile-section-title">내가 쓴 댓글</h2>
+            <h2 class="profile-section-title" id="profileCommentsTitle">
+              내가 쓴 댓글
+            </h2>
             <div id="profileCommentList" class="profile-list"></div>
 
             <div class="profile-pager" aria-label="내가 쓴 댓글 페이지네이션">

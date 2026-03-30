@@ -135,6 +135,29 @@
   margin: 0;
 }
 
+.post-author__link,
+.comment-author-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.post-author__link:hover,
+.comment-author-link:hover {
+  text-decoration: underline;
+}
+
+.post-author__link:focus-visible,
+.comment-author-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.post-author__lock {
+  display: inline-block;
+  margin-left: 4px;
+}
+
 .post-datetime {
   display: flex;
   align-items: center;
@@ -757,10 +780,12 @@
   font-size: var(--text-small);
   font-weight: 700;
   line-height: 1;
-  color: var(--color-text);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #fff;
   -webkit-appearance: none;
   appearance: none;
-  -webkit-text-fill-color: var(--color-text);
+  -webkit-text-fill-color: var(--color-primary);
 }
 
 .comment-form__submit:hover {
