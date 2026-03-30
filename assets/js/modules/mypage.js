@@ -1,7 +1,6 @@
 // assets/js/modules/mypage.js
 import { supabase } from './supabase-client.js';
-import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
-
+import { loadPostsByAuthorId } from './posts-repo.js';
 function $(id) {
   return document.getElementById(id);
 }
@@ -409,64 +408,9 @@ export async function initMypage() {
     const myPosts = await loadPostsByAuthorId(user.id);
 
     if (postCountEl) postCountEl.textContent = String(myPosts.length);
-
-    if (
-      myPostListEl &&
-      mypagePostPrevBtn &&
-      mypagePostNextBtn &&
-      mypagePostPageInfo
-    ) {
-      setupPagedList({
-        items: myPosts,
-        perPage: 3,
-        listEl: myPostListEl,
-        prevBtn: mypagePostPrevBtn,
-        nextBtn: mypagePostNextBtn,
-        pageInfoEl: mypagePostPageInfo,
-        emptyHtml: `<div class="empty">아직 작성한 글이 없어.</div>`,
-        renderItem: renderMyPostRow,
-      });
-    }
   } catch (e) {
     console.error('[mypage] load my posts failed:', e);
-
-    if (myPostListEl) {
-      myPostListEl.innerHTML = `<div class="empty">내 글 목록을 불러오지 못했어.</div>`;
-    }
-    if (mypagePostPageInfo) mypagePostPageInfo.textContent = '1 / 1';
-    if (mypagePostPrevBtn) mypagePostPrevBtn.disabled = true;
-    if (mypagePostNextBtn) mypagePostNextBtn.disabled = true;
-  }
-
-  try {
-    const { comments, postMap } = await loadMyCommentsWithPosts(user.id);
-
-    if (
-      myCommentListEl &&
-      mypageCommentPrevBtn &&
-      mypageCommentNextBtn &&
-      mypageCommentPageInfo
-    ) {
-      setupPagedList({
-        items: comments,
-        perPage: 3,
-        listEl: myCommentListEl,
-        prevBtn: mypageCommentPrevBtn,
-        nextBtn: mypageCommentNextBtn,
-        pageInfoEl: mypageCommentPageInfo,
-        emptyHtml: `<div class="empty">아직 작성한 댓글이 없어.</div>`,
-        renderItem: (comment) => renderMyCommentRow(comment, postMap),
-      });
-    }
-  } catch (e) {
-    console.error('[mypage] load my comments failed:', e);
-
-    if (myCommentListEl) {
-      myCommentListEl.innerHTML = `<div class="empty">내 댓글 목록을 불러오지 못했어.</div>`;
-    }
-    if (mypageCommentPageInfo) mypageCommentPageInfo.textContent = '1 / 1';
-    if (mypageCommentPrevBtn) mypageCommentPrevBtn.disabled = true;
-    if (mypageCommentNextBtn) mypageCommentNextBtn.disabled = true;
+    if (postCountEl) postCountEl.textContent = '0';
   }
 
   form.addEventListener('submit', async (e) => {

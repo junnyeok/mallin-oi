@@ -52,6 +52,7 @@ function getLogoSrcByPage(page, base) {
     career: `${base}images/logo-career.png`,
     login: `${base}images/logo-home.png`,
     signup: `${base}images/logo-home.png`,
+    profile: `${base}images/logo-home.png`,
     mypage: `${base}images/logo-home.png`,
     write: `${base}images/logo-home.png`,
     post: `${base}images/logo-home.png`,

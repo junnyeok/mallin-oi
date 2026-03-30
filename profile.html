@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>내프로필 | 말린오이닷컴</title>
+
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/main/profile-main.css" />
+  </head>
+  <body data-page="profile">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="profile-main">
+        <div class="profile-card">
+          <section class="profile-hero">
+            <div class="profile-avatar-wrap">
+              <img
+                id="profileAvatar"
+                class="profile-avatar"
+                src="./images/logo-home.png"
+                alt="프로필 사진"
+              />
+            </div>
+
+            <div class="profile-hero__content">
+              <p class="profile-hero__eyebrow">내프로필</p>
+              <h1 class="profile-hero__nickname" id="profileNicknameText">-</h1>
+              <p class="profile-hero__meta" id="profileEmailText">-</p>
+              <p class="profile-hero__desc">
+                여기서는 프로필 사진, 닉네임, 내가 쓴 글/댓글을 한 번에 볼 수
+                있어.
+              </p>
+            </div>
+          </section>
+
+          <form id="profileForm" class="profile-form">
+            <section class="profile-section" aria-label="프로필 설정">
+              <h2 class="profile-section-title">프로필 설정</h2>
+
+              <div class="profile-field">
+                <label for="profileNickname">닉네임</label>
+                <input
+                  type="text"
+                  id="profileNickname"
+                  name="profileNickname"
+                  minlength="2"
+                  maxlength="20"
+                  placeholder="닉네임 입력"
+                />
+              </div>
+
+              <div class="profile-field">
+                <label for="profileImageFile">프로필 사진</label>
+                <input
+                  type="file"
+                  id="profileImageFile"
+                  name="profileImageFile"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                />
+                <p class="help-text">
+                  JPG, PNG, WEBP, GIF 파일만 가능하고, 5MB 이하만 업로드할 수
+                  있어.
+                </p>
+              </div>
+
+              <div class="profile-actions">
+                <button type="submit" class="profile-btn">프로필 저장</button>
+                <button
+                  type="button"
+                  class="profile-sub-btn"
+                  id="profileResetImageBtn"
+                >
+                  기본 이미지로 변경
+                </button>
+              </div>
+
+              <p class="profile-msg" id="profileMsg"></p>
+            </section>
+          </form>
+
+          <section
+            class="profile-section"
+            id="profileMyPostsSection"
+            aria-label="내가 쓴 글"
+          >
+            <h2 class="profile-section-title">내가 쓴 글</h2>
+            <div id="profilePostList" class="profile-list"></div>
+
+            <div class="profile-pager" aria-label="내가 쓴 글 페이지네이션">
+              <button
+                type="button"
+                class="profile-sub-btn"
+                id="profilePostPrevBtn"
+              >
+                이전
+              </button>
+              <span class="profile-pager__info" id="profilePostPageInfo"
+                >1 / 1</span
+              >
+              <button
+                type="button"
+                class="profile-sub-btn"
+                id="profilePostNextBtn"
+              >
+                다음
+              </button>
+            </div>
+          </section>
+
+          <section class="profile-section" aria-label="내가 쓴 댓글">
+            <h2 class="profile-section-title">내가 쓴 댓글</h2>
+            <div id="profileCommentList" class="profile-list"></div>
+
+            <div class="profile-pager" aria-label="내가 쓴 댓글 페이지네이션">
+              <button
+                type="button"
+                class="profile-sub-btn"
+                id="profileCommentPrevBtn"
+              >
+                이전
+              </button>
+              <span class="profile-pager__info" id="profileCommentPageInfo"
+                >1 / 1</span
+              >
+              <button
+                type="button"
+                class="profile-sub-btn"
+                id="profileCommentNextBtn"
+              >
+                다음
+              </button>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/main.js"></script>
+  </body>
+</html>

@@ -24,8 +24,8 @@ function getCommentCount(post) {
   return Number(post?.commentCount || 0);
 }
 
-function getLikeCount(post) {
-  return Number(post?.likesCount || 0);
+function getReactionCount(post) {
+  return Number(post?.totalReactionsCount || 0);
 }
 
 function getAuthorNickname(post) {
@@ -58,7 +58,8 @@ function setState(nextState) {
   if (nextState.page > 1) sp.set('page', String(nextState.page));
   else sp.delete('page');
 
-  const nextUrl = `${window.location.pathname}?${sp.toString()}${window.location.hash || ''}`;
+  const query = sp.toString();
+  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
   window.history.replaceState({}, '', nextUrl);
 }
 
@@ -102,7 +103,7 @@ function renderNoticeRow(post) {
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">
-        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getLikeCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
@@ -120,7 +121,7 @@ function renderRow(post) {
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">
-        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getLikeCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;

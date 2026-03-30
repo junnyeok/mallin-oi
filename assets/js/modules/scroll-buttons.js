@@ -35,6 +35,7 @@ function getPageType() {
   if (path.includes('posts-all.html')) return 'posts-all';
   if (path.includes('write.html')) return 'write';
   if (path.includes('mypage.html')) return 'mypage';
+  if (path.includes('profile.html')) return 'profile';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
@@ -43,6 +44,7 @@ function getPageType() {
   if (page === 'post') return 'post';
   if (page === 'write') return 'write';
   if (page === 'mypage') return 'mypage';
+  if (page === 'profile') return 'profile';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }
@@ -147,10 +149,16 @@ function getWriteTargets() {
 }
 
 function getMypageTargets() {
+  return {
+    commentSection: null,
+    commentScrollEl: null,
+    commentStateEl: null,
+  };
+}
+
+function getProfileTargets() {
   const myPostsSection =
-    document.getElementById('mypageMyPostsSection') ||
-    document.querySelector('[data-mypage-my-posts]') ||
-    null;
+    document.getElementById('profileMyPostsSection') || null;
 
   return {
     commentSection: myPostsSection,
@@ -323,6 +331,15 @@ export function initScrollButtons(options = {}) {
     commentSection = mypageTargets.commentSection;
     commentScrollEl = mypageTargets.commentScrollEl;
     commentStateEl = mypageTargets.commentStateEl;
+
+    btnBottom.setAttribute('aria-label', '하단으로 이동');
+  }
+
+  if (pageType === 'profile') {
+    const profileTargets = getProfileTargets();
+    commentSection = profileTargets.commentSection;
+    commentScrollEl = profileTargets.commentScrollEl;
+    commentStateEl = profileTargets.commentStateEl;
 
     if (commentSection && commentScrollEl) {
       btnComment = createFabButton(

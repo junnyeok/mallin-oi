@@ -9,6 +9,14 @@ function getCommentCount(post) {
   return Number(post?.commentCount || 0);
 }
 
+function getReactionCount(post) {
+  return Number(post?.totalReactionsCount || 0);
+}
+
+function getAuthorNickname(post) {
+  return String(post?.authorNickname || '익명').trim() || '익명';
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -37,7 +45,7 @@ function renderRow(post, currentId) {
       </span>
 
       <span class="post-row__meta post-detail-row__meta">
-        ${formatMMDD(post.date)} · 👀 ${getViews(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;

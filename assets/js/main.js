@@ -18,6 +18,7 @@ import { initPostViews } from './modules/post-views.js?v=20260311-1325';
 import { initPostComments } from './modules/post-comments.js';
 import { initSuggestionsBoard } from './modules/suggestions-board.js';
 import { initPostReactions } from './modules/post-reactions.js';
+import { initProfile } from './modules/profile.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -159,6 +160,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initSuggestionsBoard();
   } catch (e) {
     console.error('[main] suggestions board failed:', e);
+  }
+
+  try {
+    await initProfile();
+  } catch (e) {
+    console.error('[main] profile module failed:', e);
   }
 
   const y = document.querySelector('#year');

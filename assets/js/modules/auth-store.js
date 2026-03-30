@@ -43,6 +43,10 @@ export function prevMypageHref() {
   return resolveSitePath('prev-mypage.html');
 }
 
+export function profileHref() {
+  return resolveSitePath('profile.html');
+}
+
 export function writeHref() {
   return resolveSitePath('write.html');
 }
@@ -246,9 +250,10 @@ export async function updateAuthUI() {
         }
       };
 
-      const nickEl = document.createElement('span');
-      nickEl.className = 'auth-nickname';
+      const nickEl = document.createElement('a');
+      nickEl.className = 'auth-link auth-nickname';
       nickEl.dataset.authNickname = 'true';
+      nickEl.href = profileHref();
       nickEl.textContent = `${displayName}님`;
 
       if (!loginLink.previousElementSibling?.matches('.auth-nickname')) {
@@ -296,3 +301,9 @@ export async function initAuthUI() {
     });
   });
 }
+
+window.addEventListener('auth-changed', () => {
+  updateAuthUI().catch((err) => {
+    console.error('[auth-store] auth-changed update failed:', err);
+  });
+});

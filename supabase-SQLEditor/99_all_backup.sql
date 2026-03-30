@@ -4820,3 +4820,114 @@ from public.posts p
 order by p.pinned desc, p.created_at desc, p.id desc;
 
 grant select on public.posts_public_list to anon, authenticated;
+
+drop view if exists public.posts_public_list;
+
+create view public.posts_public_list
+as
+select
+  p.id,
+  p.title,
+  p.excerpt,
+  p.category,
+  p.tags,
+  p.pinned,
+  p.views,
+  p.media_items,
+  p.author_id,
+  p.author_nickname,
+  p.created_at,
+  p.updated_at,
+  p.is_private,
+  (
+    select count(*)::bigint
+    from public.post_reactions pr
+    where pr.post_id = p.id
+      and pr.reaction_type = 'like'
+  ) as likes_count,
+  (
+    select count(*)::bigint
+    from public.post_reactions pr
+    where pr.post_id = p.id
+      and pr.reaction_type = 'dislike'
+  ) as dislikes_count,
+  (
+    select count(*)::bigint
+    from public.post_reactions pr
+    where pr.post_id = p.id
+  ) as total_reactions_count
+from public.posts p
+order by p.pinned desc, p.created_at desc, p.id desc;
+
+grant select on public.posts_public_list to anon, authenticated;
+
+alter table public.profiles
+add column if not exists profile_image_url text;
+
+comment on column public.profiles.profile_image_url is '내프로필용 프로필 이미지 공개 URL';
+
+insert into storage.buckets (
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types
+)
+values (
+  'profile-images',
+  'profile-images',
+  true,
+  5242880,
+  array[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif'
+  ]
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "profile_images_public_read" on storage.objects;
+create policy "profile_images_public_read"
+on storage.objects
+for select
+to anon, authenticated
+using (bucket_id = 'profile-images');
+
+drop policy if exists "profile_images_auth_insert_own_folder" on storage.objects;
+create policy "profile_images_auth_insert_own_folder"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'profile-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "profile_images_auth_update_own_folder" on storage.objects;
+create policy "profile_images_auth_update_own_folder"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'profile-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+)
+with check (
+  bucket_id = 'profile-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "profile_images_auth_delete_own_folder" on storage.objects;
+create policy "profile_images_auth_delete_own_folder"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'profile-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
