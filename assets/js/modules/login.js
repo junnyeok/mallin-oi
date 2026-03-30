@@ -1,7 +1,6 @@
 // assets/js/modules/login.js
 import { supabase } from './supabase-client.js';
-import { consumeRedirect, homeHref } from './auth-store.js';
-
+import { consumeRedirect, homeHref, saveLoginPolicy } from './auth-store.js';
 function $(id) {
   return document.getElementById(id);
 }
@@ -42,6 +41,7 @@ export function initLogin() {
   const msg = $('loginMsg');
   const idInput = $('loginId');
   const pwInput = $('loginPw');
+  const rememberInput = $('rememberLogin');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -75,6 +75,10 @@ export function initLogin() {
       );
       return;
     }
+
+    saveLoginPolicy({
+      rememberMe: !!rememberInput?.checked,
+    });
 
     const attendance = await claimDailyAttendance();
     const successText = attendance.message
