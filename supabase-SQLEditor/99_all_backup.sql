@@ -5217,3 +5217,240 @@ create trigger trg_pickle_on_comment_insert
 after insert on public.post_comments
 for each row
 execute function public.handle_pickle_on_comment_insert();
+
+drop function if exists public.get_post_detail(bigint, text);
+
+create or replace function public.get_post_detail(
+  p_post_id bigint,
+  p_secret_password text default null
+)
+returns table (
+  id bigint,
+  title text,
+  excerpt text,
+  body text,
+  category text,
+  tags text[],
+  pinned boolean,
+  views integer,
+  likes_count bigint,
+  dislikes_count bigint,
+  total_reactions_count bigint,
+  media_items jsonb,
+  author_id uuid,
+  author_nickname text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  is_private boolean,
+  is_unlocked boolean
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_post public.posts%rowtype;
+  v_password_ok boolean := false;
+  v_is_unlocked boolean := false;
+begin
+  select *
+    into v_post
+  from public.posts
+  where posts.id = p_post_id;
+
+  if not found then
+    return;
+  end if;
+
+  if coalesce(v_post.is_private, false) = false then
+    v_is_unlocked := true;
+  else
+    v_password_ok :=
+      p_secret_password is not null
+      and v_post.secret_password_hash is not null
+      and encode(
+            extensions.digest(p_secret_password, 'sha256'),
+            'hex'
+          ) = v_post.secret_password_hash;
+
+    v_is_unlocked := v_password_ok;
+  end if;
+
+  return query
+  select
+    v_post.id,
+    v_post.title,
+    v_post.excerpt,
+    case
+      when v_is_unlocked then v_post.body
+      else ''
+    end as body,
+    v_post.category,
+    v_post.tags,
+    v_post.pinned,
+    v_post.views,
+    (
+      select count(*)::bigint
+      from public.post_reactions pr
+      where pr.post_id = v_post.id
+        and pr.reaction_type = 'like'
+    ) as likes_count,
+    (
+      select count(*)::bigint
+      from public.post_reactions pr
+      where pr.post_id = v_post.id
+        and pr.reaction_type = 'dislike'
+    ) as dislikes_count,
+    (
+      select count(*)::bigint
+      from public.post_reactions pr
+      where pr.post_id = v_post.id
+    ) as total_reactions_count,
+    case
+      when v_is_unlocked then v_post.media_items
+      else '[]'::jsonb
+    end as media_items,
+    v_post.author_id,
+    v_post.author_nickname,
+    v_post.created_at,
+    v_post.updated_at,
+    coalesce(v_post.is_private, false) as is_private,
+    v_is_unlocked as is_unlocked;
+end;
+$$;
+
+grant execute on function public.get_post_detail(bigint, text) to anon, authenticated;
+
+create or replace function public.grant_pickle_reward(
+  p_user_id uuid,
+  p_amount integer,
+  p_reason_code text,
+  p_reason_label text,
+  p_description text default '',
+  p_source_post_id bigint default null,
+  p_source_comment_id bigint default null,
+  p_awarded_on date default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_exists boolean := false;
+  v_awarded_on date := coalesce(p_awarded_on, public.seoul_today());
+  v_daily_count integer := 0;
+begin
+  if p_user_id is null then
+    return false;
+  end if;
+
+  if coalesce(p_amount, 0) = 0 then
+    return false;
+  end if;
+
+  if coalesce(trim(p_reason_code), '') = '' then
+    return false;
+  end if;
+
+  if p_reason_code = 'attendance' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'attendance'
+        and awarded_on = v_awarded_on
+    )
+    into v_exists;
+
+  elsif p_reason_code = 'post_create' then
+    -- 같은 게시글에 대한 중복 지급 방지
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_create'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    -- 하루 최대 5개 게시글까지만 지급
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'post_create'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 5 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'comment_post' then
+    -- 같은 댓글/답글에 대한 중복 지급 방지
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'comment_post'
+        and source_comment_id = p_source_comment_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    -- 하루 최대 10개 댓글/답글까지만 지급
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'comment_post'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 10 then
+      return false;
+    end if;
+
+  else
+    return false;
+  end if;
+
+  if v_exists then
+    return false;
+  end if;
+
+  insert into public.pickle_ledger (
+    user_id,
+    amount,
+    reason_code,
+    reason_label,
+    description,
+    source_post_id,
+    source_comment_id,
+    awarded_on
+  )
+  values (
+    p_user_id,
+    p_amount,
+    p_reason_code,
+    coalesce(nullif(trim(p_reason_label), ''), '피클 획득'),
+    coalesce(p_description, ''),
+    p_source_post_id,
+    p_source_comment_id,
+    v_awarded_on
+  );
+
+  update public.profiles
+  set pickles = coalesce(pickles, 0) + p_amount,
+      updated_at = now()
+  where id = p_user_id;
+
+  return true;
+end;
+$$;

@@ -68,6 +68,43 @@ function formatPickleAmount(value) {
   return `${Number(value || 0)} 🥒`;
 }
 
+function getSeoulDateKey() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(new Date());
+}
+
+function updateTodayPickleStatus(entries = []) {
+  const postEl = $('profileTodayPostPickle');
+  const commentEl = $('profileTodayCommentPickle');
+
+  if (!postEl || !commentEl) return;
+
+  const todayKey = getSeoulDateKey();
+
+  const todayEntries = (entries || []).filter(
+    (entry) => String(entry?.awarded_on || '') === todayKey,
+  );
+
+  const todayPostCount = todayEntries.filter(
+    (entry) =>
+      entry?.reason_code === 'post_create' && Number(entry?.amount || 0) > 0,
+  ).length;
+
+  const todayCommentCount = todayEntries.filter(
+    (entry) =>
+      entry?.reason_code === 'comment_post' && Number(entry?.amount || 0) > 0,
+  ).length;
+
+  postEl.textContent = `${todayPostCount} / 5`;
+  commentEl.textContent = `${todayCommentCount} / 10`;
+}
+
 function updatePickleSummary(balance = 0, isVisible = false) {
   const heroPickleEl = $('profileHeroPickle');
   const sectionEl = $('profilePickleSection');
@@ -115,7 +152,7 @@ async function loadPickleLedger(userId) {
   const { data, error } = await supabase
     .from('pickle_ledger')
     .select(
-      'id, amount, reason_code, reason_label, description, source_post_id, source_comment_id, created_at',
+      'id, amount, reason_code, reason_label, description, source_post_id, source_comment_id, awarded_on, created_at',
     )
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -314,6 +351,13 @@ function applyProfileModeUI({
   const avatar = $('profileAvatar');
   const heroPickleEl = $('profileHeroPickle');
   const pickleSection = $('profilePickleSection');
+  if (heroPickleEl) {
+    heroPickleEl.hidden = !isOwnProfile;
+  }
+
+  if (pickleSection) {
+    pickleSection.hidden = !isOwnProfile;
+  }
   if (eyebrowEl) {
     eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
   }
@@ -561,6 +605,8 @@ export async function initProfile() {
     try {
       const pickleEntries = await loadPickleLedger(targetUserId);
 
+      updateTodayPickleStatus(pickleEntries);
+
       setupPagedList({
         items: pickleEntries,
         perPage: 5,
@@ -573,6 +619,8 @@ export async function initProfile() {
       });
     } catch (error) {
       console.error('[profile] load pickle ledger failed:', error);
+
+      updateTodayPickleStatus([]);
 
       if (profilePickleListEl) {
         profilePickleListEl.innerHTML =

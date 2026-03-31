@@ -219,7 +219,7 @@
 }
 
 .post-body p + p {
-  margin-top: var(--space-16);
+  margin-top: 0;
 }
 
 .post-body__hint {
@@ -1095,7 +1095,7 @@
 }
 
 .post-body__text p + p {
-  margin-top: var(--space-16);
+  margin-top: 0;
 }
 
 .post-body__text ul,

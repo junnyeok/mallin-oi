@@ -123,10 +123,27 @@
             aria-label="피클 내역"
             hidden
           >
-            <div class="profile-section-head">
-              <h2 class="profile-section-title">피클 내역</h2>
-              <div class="profile-pickle-balance">
-                보유 피클 <strong id="profilePickleBalance">0 🥒</strong>
+            <div class="profile-pickle-status" id="profilePickleStatus">
+              <div class="profile-pickle-status__item">
+                <span class="profile-pickle-status__label"
+                  >오늘 게시글 피클</span
+                >
+                <strong
+                  class="profile-pickle-status__value"
+                  id="profileTodayPostPickle"
+                >
+                  0 / 5
+                </strong>
+              </div>
+
+              <div class="profile-pickle-status__item">
+                <span class="profile-pickle-status__label">오늘 댓글 피클</span>
+                <strong
+                  class="profile-pickle-status__value"
+                  id="profileTodayCommentPickle"
+                >
+                  0 / 10
+                </strong>
               </div>
             </div>
 

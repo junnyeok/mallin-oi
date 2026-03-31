@@ -62,3 +62,8 @@ ol {
   padding: 0;
   list-style: none;
 }
+
+/* hidden 속성 강제 적용 */
+[hidden] {
+  display: none !important;
+}

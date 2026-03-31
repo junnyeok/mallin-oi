@@ -669,6 +669,7 @@ async function applyPost(post) {
   const excerptEl = $('postExcerpt');
   const categoryEl = $('postCategory');
   const viewsEl = $('postViews');
+  const reactionMetaEl = $('postReactionMeta');
   const commentMetaEl = $('postCommentMeta');
 
   if (titleEl) titleEl.textContent = post.title || '';
@@ -682,6 +683,10 @@ async function applyPost(post) {
 
   if (viewsEl) {
     viewsEl.textContent = `👀 ${getDisplayViews(post)}`;
+  }
+
+  if (reactionMetaEl) {
+    reactionMetaEl.textContent = `👍 ${Number(post.totalReactionsCount || 0)}`;
   }
 
   if (commentMetaEl) {
