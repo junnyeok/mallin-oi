@@ -5454,3 +5454,128 @@ begin
   return true;
 end;
 $$;
+
+-- =========================================================
+-- 조회수 중복 상승 방지용 로그 테이블
+-- 같은 게시물 + 같은 viewer_key 조합의 마지막 조회 시각을 저장
+-- =========================================================
+
+create table if not exists public.post_view_logs (
+  post_id bigint not null references public.posts(id) on delete cascade,
+  viewer_key text not null,
+  last_viewed_at timestamptz not null default now(),
+  view_count integer not null default 1,
+  created_at timestamptz not null default now(),
+  primary key (post_id, viewer_key)
+);
+
+create index if not exists idx_post_view_logs_last_viewed_at
+  on public.post_view_logs(last_viewed_at);
+
+alter table public.post_view_logs enable row level security;
+
+revoke all on public.post_view_logs from anon, authenticated;
+
+-- =========================================================
+-- 기존 함수 교체
+-- 이전: 게시물 들어올 때마다 무조건 +1
+-- 변경: 같은 viewer_key는 cooldown 시간 내 재조회 시 증가 안 함
+-- =========================================================
+
+drop function if exists public.increment_post_views(bigint);
+
+create or replace function public.increment_post_views(
+  p_post_id bigint,
+  p_viewer_key text,
+  p_cooldown_seconds integer default 1800
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_now timestamptz := now();
+  v_last_viewed_at timestamptz;
+  v_views bigint := 0;
+  v_counted boolean := false;
+  v_cooldown integer := greatest(coalesce(p_cooldown_seconds, 1800), 0);
+begin
+  if p_post_id is null then
+    return jsonb_build_object(
+      'views', 0,
+      'counted', false
+    );
+  end if;
+
+  if coalesce(btrim(p_viewer_key), '') = '' then
+    select coalesce(views, 0)
+      into v_views
+    from public.posts
+    where id = p_post_id;
+
+    return jsonb_build_object(
+      'views', coalesce(v_views, 0),
+      'counted', false
+    );
+  end if;
+
+  -- 같은 게시물 + 같은 viewer_key 동시 요청 경쟁 방지
+  perform pg_advisory_xact_lock(hashtext('post-view:' || p_post_id::text || ':' || p_viewer_key));
+
+  select last_viewed_at
+    into v_last_viewed_at
+  from public.post_view_logs
+  where post_id = p_post_id
+    and viewer_key = p_viewer_key;
+
+  if v_last_viewed_at is null then
+    insert into public.post_view_logs (
+      post_id,
+      viewer_key,
+      last_viewed_at,
+      view_count,
+      created_at
+    )
+    values (
+      p_post_id,
+      p_viewer_key,
+      v_now,
+      1,
+      v_now
+    );
+
+    update public.posts
+    set views = coalesce(views, 0) + 1
+    where id = p_post_id
+    returning views into v_views;
+
+    v_counted := true;
+  elsif v_last_viewed_at <= (v_now - make_interval(secs => v_cooldown)) then
+    update public.post_view_logs
+    set last_viewed_at = v_now,
+        view_count = coalesce(view_count, 0) + 1
+    where post_id = p_post_id
+      and viewer_key = p_viewer_key;
+
+    update public.posts
+    set views = coalesce(views, 0) + 1
+    where id = p_post_id
+    returning views into v_views;
+
+    v_counted := true;
+  else
+    select coalesce(views, 0)
+      into v_views
+    from public.posts
+    where id = p_post_id;
+  end if;
+
+  return jsonb_build_object(
+    'views', coalesce(v_views, 0),
+    'counted', v_counted
+  );
+end;
+$$;
+
+grant execute on function public.increment_post_views(bigint, text, integer) to anon, authenticated;
