@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>상점 | 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/store-main.css" />
+  </head>
+
+  <body data-page="store" class="theme-home">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="site-main">
+        <section class="store-hero">
+          <div class="container">
+            <div class="store-hero__card">
+              <div class="store-hero__content">
+                <p class="store-hero__eyebrow">🥒 STORE</p>
+                <h1 class="store-hero__title">말린오이 상점</h1>
+                <p class="store-hero__desc">
+                  피클로 이모티콘, 장식 아이템, 프로필 꾸미기 요소를 살 수 있는
+                  공간이야. 지금은 초안 단계라 주요 품목 먼저 보여주고, 구매
+                  기능은 다음 단계에서 붙이면 돼.
+                </p>
+
+                <div class="store-hero__chips">
+                  <span class="store-chip">이모티콘</span>
+                  <span class="store-chip">오이 꾸미기</span>
+                  <span class="store-chip">프로필 배경</span>
+                </div>
+              </div>
+
+              <aside class="store-balance" aria-label="보유 피클">
+                <p class="store-balance__label">내 보유 피클</p>
+                <p class="store-balance__value" id="storeBalanceValue">
+                  로그인 필요
+                </p>
+                <p class="store-balance__hint" id="storeBalanceHint">
+                  로그인하면 보유 피클을 확인할 수 있어.
+                </p>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section">
+          <div class="container">
+            <div class="store-section__head">
+              <div>
+                <h2 class="store-section__title">🛍️ 전체 품목</h2>
+                <p class="store-section__desc">
+                  지금은 판매 초안이야. 추후 상세페이지와 실제 구매 기능을 붙일
+                  예정이야.
+                </p>
+              </div>
+            </div>
+
+            <nav class="store-filter" aria-label="상점 품목 필터">
+              <button
+                type="button"
+                class="store-filter__btn is-active"
+                data-store-filter="all"
+                aria-pressed="true"
+              >
+                전체
+              </button>
+              <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="emoticon"
+                aria-pressed="false"
+              >
+                이모티콘
+              </button>
+              <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="fashion"
+                aria-pressed="false"
+              >
+                꾸미기
+              </button>
+              <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="profile"
+                aria-pressed="false"
+              >
+                프로필
+              </button>
+            </nav>
+
+            <div class="store-grid" id="storeGrid"></div>
+            <div class="store-empty" id="storeEmpty" hidden>
+              해당 분류에 표시할 품목이 아직 없어.
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section store-section--sub">
+          <div class="container">
+            <div class="store-roadmap">
+              <h2 class="store-roadmap__title">📦 다음 단계 추천</h2>
+              <ol class="store-roadmap__list">
+                <li>세부품목페이지 만들기</li>
+                <li>구매 확인 모달 만들기</li>
+                <li>피클 차감 + 구매내역 저장</li>
+                <li>내 인벤토리 / 장착 기능 연결</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/main.js"></script>
+  </body>
+</html>

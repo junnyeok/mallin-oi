@@ -19,6 +19,7 @@ import { initPostComments } from './modules/post-comments.js';
 import { initSuggestionsBoard } from './modules/suggestions-board.js';
 import { initPostReactions } from './modules/post-reactions.js';
 import { initProfile } from './modules/profile.js';
+import { initStore } from './modules/store.js';
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -166,6 +167,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initProfile();
   } catch (e) {
     console.error('[main] profile module failed:', e);
+  }
+
+  try {
+    await initStore();
+  } catch (e) {
+    console.error('[main] store module failed:', e);
   }
 
   const y = document.querySelector('#year');

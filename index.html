@@ -43,6 +43,7 @@
 
     <!-- main -->
     <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/store-main.css" />
   </head>
 
   <body data-page="home">
@@ -50,6 +51,51 @@
       <div data-include="header"></div>
 
       <main class="site-main">
+        <section class="home-section" id="featuredStoreSection">
+          <div class="container">
+            <div class="home-section__head">
+              <h2 class="home-section__title">🛍️ 주요 상점 품목</h2>
+              <a
+                class="home-section__more home-section__more--store"
+                href="./store.html"
+                >상점 가기</a
+              >
+            </div>
+
+            <div class="store-showcase" aria-label="주요 상점 품목 슬라이더">
+              <button
+                type="button"
+                class="store-showcase__nav store-showcase__nav--prev"
+                id="storePrevBtn"
+                aria-label="이전 품목 보기"
+              >
+                ‹
+              </button>
+
+              <div class="store-showcase__viewport" id="storeFeaturedViewport">
+                <div class="store-showcase__track" id="storeFeaturedGrid"></div>
+              </div>
+
+              <button
+                type="button"
+                class="store-showcase__nav store-showcase__nav--next"
+                id="storeNextBtn"
+                aria-label="다음 품목 보기"
+              >
+                ›
+              </button>
+            </div>
+
+            <div class="store-showcase__footer">
+              <p
+                class="store-showcase__status"
+                id="storeFeaturedStatus"
+                aria-live="polite"
+              ></p>
+            </div>
+          </div>
+        </section>
+
         <section class="home-section" id="featuredPostsSection">
           <div class="container">
             <div class="home-section__head">

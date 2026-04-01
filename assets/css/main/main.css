@@ -22,33 +22,40 @@
 }
 
 .home-section__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--text-body);
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   text-decoration: none;
-  text-decoration: underline;
-
-  /* 기본 색상 */
   color: #2e7d32;
-
-  position: relative;
-  display: inline-block;
-
-  /* 반짝 효과 */
-  animation: sparkleGlow 1.8s infinite alternate;
 }
 
-/* ✨ 반짝 애니메이션 */
-@keyframes sparkleGlow {
-  0% {
-    color: #2e7d32;
-  }
-  50% {
-    color: #000;
-  }
-  100% {
-    color: #2e7d32;
-  }
+.home-section__more:hover {
+  text-decoration: underline;
+}
+
+.home-section__more--store {
+  padding: 10px 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  background: #b6d86a;
+  color: #22310a;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.home-section__more--store::after {
+  content: '→';
+  font-weight: 900;
+}
+
+.home-section__more--store:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+  filter: brightness(1.02);
 }
 
 /* ===== GRID VARIANTS ===== */
