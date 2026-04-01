@@ -8,26 +8,6 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const VIDEO_MAX_BYTES = 100 * 1024 * 1024;
 const FILE_MAX_BYTES = 30 * 1024 * 1024;
 
-const FONT_SIZE_TO_LEGACY = {
-  '12px': '1',
-  '14px': '2',
-  '16px': '3',
-  '18px': '4',
-  '24px': '5',
-  '32px': '6',
-  '48px': '7',
-};
-
-const LEGACY_FONT_SIZE_TO_PX = {
-  1: '12px',
-  2: '14px',
-  3: '16px',
-  4: '18px',
-  5: '24px',
-  6: '32px',
-  7: '48px',
-};
-
 let attachmentState = [];
 let removedStoragePaths = new Set();
 let savedSelectionRange = null;
@@ -256,53 +236,8 @@ function setToolbarButtonActive(command, active) {
 }
 
 function refreshEditorToolbarState() {
-  const target = getSelectionContainerElement();
-
-  if (!target) {
-    setToolbarButtonActive('bold', false);
-    setToolbarButtonActive('italic', false);
-    setToolbarButtonActive('underline', false);
-    return;
-  }
-
-  const style = window.getComputedStyle(target);
-
-  let isBold = false;
-  let isItalic = false;
-  let isUnderline = false;
-
-  try {
-    isBold = document.queryCommandState('bold');
-  } catch {}
-
-  try {
-    isItalic = document.queryCommandState('italic');
-  } catch {}
-
-  try {
-    isUnderline = document.queryCommandState('underline');
-  } catch {}
-
-  if (!isBold) {
-    const fontWeight = String(style.fontWeight || '').trim();
-    isBold = fontWeight === 'bold' || Number(fontWeight) >= 600;
-  }
-
-  if (!isItalic) {
-    isItalic = String(style.fontStyle || '').includes('italic');
-  }
-
-  if (!isUnderline) {
-    const textDecoration =
-      `${style.textDecoration || ''} ${style.textDecorationLine || ''}`.toLowerCase();
-    isUnderline = textDecoration.includes('underline');
-  }
-
-  setToolbarButtonActive('bold', isBold);
-  setToolbarButtonActive('italic', isItalic);
-  setToolbarButtonActive('underline', isUnderline);
+  return;
 }
-
 function clearActiveEmbed() {
   activeEmbedId = '';
   document
@@ -1300,81 +1235,6 @@ function fillWriteForm(post, isAdmin) {
   syncPrivatePasswordUi(true);
 }
 
-function bindEditorToolbar() {
-  const toolbarButtons = document.querySelectorAll(
-    '.write-editor-toolbar__btn',
-  );
-  const editor = getBodyEditor();
-  const colorBtn = $('#editorColorBtn');
-  const colorPicker = $('#editorColorPicker');
-  const fontSizeSelect = $('#editorFontSize');
-
-  if (!editor) return;
-  if (!toolbarButtons.length && !colorPicker && !fontSizeSelect) return;
-
-  toolbarButtons.forEach((btn) => {
-    btn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-    });
-
-    btn.addEventListener('click', () => {
-      if (btn === colorBtn) {
-        saveCurrentSelectionRange();
-        colorPicker?.click();
-        return;
-      }
-
-      const align = btn.getAttribute('data-editor-align');
-      if (align) {
-        applyAlignment(align);
-        refreshEditorToolbarState();
-        return;
-      }
-
-      const cmd = btn.getAttribute('data-editor-cmd');
-      const value = btn.getAttribute('data-editor-value') || null;
-
-      if (!cmd) return;
-
-      applyEditorCommand(cmd, value);
-
-      if (cmd === 'bold' || cmd === 'italic' || cmd === 'underline') {
-        refreshEditorToolbarState();
-      }
-    });
-  });
-
-  if (colorPicker) {
-    colorPicker.addEventListener('input', () => {
-      applyTextColor(colorPicker.value);
-      setToolbarColorSwatch(colorPicker.value);
-    });
-
-    colorPicker.addEventListener('change', () => {
-      applyTextColor(colorPicker.value);
-      setToolbarColorSwatch(colorPicker.value);
-    });
-
-    setToolbarColorSwatch(colorPicker.value);
-  }
-
-  if (fontSizeSelect) {
-    fontSizeSelect.addEventListener('mousedown', () => {
-      saveCurrentSelectionRange();
-    });
-
-    fontSizeSelect.addEventListener('change', () => {
-      applyFontSize(fontSizeSelect.value);
-    });
-  }
-
-  document.addEventListener('selectionchange', () => {
-    refreshEditorToolbarState();
-  });
-
-  refreshEditorToolbarState();
-}
-
 export async function initWrite() {
   const form = $('#writeForm');
   if (!form) return;
@@ -1393,7 +1253,6 @@ export async function initWrite() {
 
   renderAttachmentList();
   bindAttachmentInputs(note);
-  bindEditorToolbar();
 
   const isPrivateEl = $('#isPrivate');
   if (isPrivateEl) {

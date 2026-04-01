@@ -289,18 +289,6 @@
   color: var(--color-text-sub);
 }
 
-.write-editor [data-align='left'] {
-  text-align: left;
-}
-
-.write-editor [data-align='center'] {
-  text-align: center;
-}
-
-.write-editor [data-align='right'] {
-  text-align: right;
-}
-
 /* =========================
   Inline Media Block
 ========================= */
@@ -317,21 +305,6 @@
 
 .write-embed--media {
   max-width: min(100%, 620px);
-}
-
-.write-embed--media[data-align='left'] {
-  margin-left: 0;
-  margin-right: auto;
-}
-
-.write-embed--media[data-align='center'] {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.write-embed--media[data-align='right'] {
-  margin-left: auto;
-  margin-right: 0;
 }
 
 .write-embed__remove {
@@ -372,21 +345,6 @@
 
 .write-embed--file {
   max-width: min(100%, 620px);
-}
-
-.write-embed--file[data-align='left'] {
-  margin-left: 0;
-  margin-right: auto;
-}
-
-.write-embed--file[data-align='center'] {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.write-embed--file[data-align='right'] {
-  margin-left: auto;
-  margin-right: 0;
 }
 
 .write-embed__file {
@@ -433,22 +391,6 @@
 }
 
 @media (max-width: 900px) {
-  .write-editor-toolbar {
-    gap: 6px;
-    top: 8px;
-    padding: 8px 10px;
-    margin-bottom: 8px;
-  }
-
-  .write-editor-toolbar__btn,
-  .write-editor-toolbar__control {
-    flex: 0 0 auto;
-  }
-
-  .write-editor-toolbar__divider {
-    padding: 0;
-  }
-
   .write-editor {
     height: 320px;
     min-height: 240px;

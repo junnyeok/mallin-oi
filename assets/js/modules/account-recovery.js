@@ -51,6 +51,49 @@ function getResetRedirectUrl() {
   return new URL(resetPasswordHref(), window.location.origin).toString();
 }
 
+async function ensureRecoverySession() {
+  const {
+    data: { session: currentSession },
+  } = await supabase.auth.getSession();
+
+  if (currentSession) return currentSession;
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const hashParams = new URLSearchParams(hash);
+
+  const code = searchParams.get('code');
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      console.error('[account-recovery] exchangeCodeForSession error:', error);
+      return null;
+    }
+    return data?.session || null;
+  }
+
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+
+  if (accessToken && refreshToken) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error) {
+      console.error('[account-recovery] setSession error:', error);
+      return null;
+    }
+
+    return data?.session || null;
+  }
+
+  return null;
+}
+
 function getFriendlyRpcError(error) {
   const message = String(error?.message || '').trim();
 
@@ -347,20 +390,37 @@ async function initResetPasswordPage() {
 
   if (!form || !pw1Input || !pw2Input || !msg) return;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  let recoverySession = await ensureRecoverySession();
 
-  if (!session) {
+  if (!recoverySession) {
+    const { data } = await supabase.auth.getSession();
+    recoverySession = data?.session || null;
+  }
+
+  if (!recoverySession) {
     setMessage(
       msg,
       '재설정 링크로 들어온 세션을 찾지 못했어. 이메일에서 다시 들어와줘.',
       'is-error',
     );
+  } else {
+    setMessage(msg, '');
   }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const { data } = await supabase.auth.getSession();
+    const activeSession = data?.session || recoverySession;
+
+    if (!activeSession) {
+      setMessage(
+        msg,
+        '재설정 세션이 만료됐거나 유실됐어. 이메일에서 링크를 다시 눌러줘.',
+        'is-error',
+      );
+      return;
+    }
 
     const pw1 = pw1Input.value.trim();
     const pw2 = pw2Input.value.trim();
@@ -406,6 +466,9 @@ async function initResetPasswordPage() {
 
     pw1Input.value = '';
     pw2Input.value = '';
+
+    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+    window.history.replaceState({}, document.title, cleanUrl);
   });
 }
 

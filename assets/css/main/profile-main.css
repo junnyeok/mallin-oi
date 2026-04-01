@@ -350,7 +350,7 @@
 }
 
 .profile-row--pickle {
-  align-items: center;
+  align-items: flex-start;
 }
 
 .profile-row__side {
@@ -393,6 +393,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--radius-btn);
   background: rgba(170, 208, 94, 0.1);
+  align-items: center;
 }
 
 .profile-pickle-status__label {

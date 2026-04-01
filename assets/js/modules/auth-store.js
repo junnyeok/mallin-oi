@@ -67,6 +67,31 @@ function isHomePage() {
   return path.endsWith('/index.html') || path.endsWith('/');
 }
 
+function hasRecoveryParamsInUrl() {
+  const hash = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+
+  const hashParams = new URLSearchParams(hash);
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return (
+    searchParams.has('code') ||
+    searchParams.get('type') === 'recovery' ||
+    hashParams.has('access_token') ||
+    hashParams.has('refresh_token') ||
+    hashParams.get('type') === 'recovery'
+  );
+}
+
+function isResetPasswordPage() {
+  return document.body?.dataset?.page === 'reset-password';
+}
+
+function shouldBypassLoginPolicy() {
+  return isResetPasswordPage() || hasRecoveryParamsInUrl();
+}
+
 async function claimDailyAttendanceForAuto() {
   const { data, error } = await supabase.rpc('claim_daily_attendance');
 
@@ -92,6 +117,13 @@ async function enforceLoginPolicy() {
   if (!session?.user) {
     clearLoginPolicy();
     return null;
+  }
+
+  if (shouldBypassLoginPolicy()) {
+    return {
+      session,
+      policy: readAuthPolicy(),
+    };
   }
 
   const policy = readAuthPolicy();

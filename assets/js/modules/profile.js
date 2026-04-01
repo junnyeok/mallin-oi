@@ -609,7 +609,7 @@ export async function initProfile() {
 
       setupPagedList({
         items: pickleEntries,
-        perPage: 5,
+        perPage: 3,
         listEl: profilePickleListEl,
         prevBtn: profilePicklePrevBtn,
         nextBtn: profilePickleNextBtn,
