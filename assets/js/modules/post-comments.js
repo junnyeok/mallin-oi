@@ -8,6 +8,63 @@ import {
   saveRedirect,
 } from './auth-store.js';
 
+const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
+const commentProfileImageCache = new Map();
+
+function getProfileImageSrc(url) {
+  return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
+}
+
+async function loadProfileImageMap(authorIds = []) {
+  const safeIds = [
+    ...new Set(
+      (authorIds || []).map((id) => String(id || '').trim()).filter(Boolean),
+    ),
+  ];
+
+  const missingIds = safeIds.filter((id) => !commentProfileImageCache.has(id));
+
+  if (missingIds.length) {
+    const { data, error } = await supabase
+      .from('public_profiles')
+      .select('id, profile_image_url')
+      .in('id', missingIds);
+
+    if (error) {
+      console.error('[post-comments] load profile images failed:', error);
+      missingIds.forEach((id) =>
+        commentProfileImageCache.set(id, DEFAULT_PROFILE_IMAGE),
+      );
+    } else {
+      const rows = data || [];
+      const foundIds = new Set();
+
+      rows.forEach((row) => {
+        const id = String(row?.id || '').trim();
+        if (!id) return;
+        foundIds.add(id);
+        commentProfileImageCache.set(
+          id,
+          getProfileImageSrc(row?.profile_image_url),
+        );
+      });
+
+      missingIds.forEach((id) => {
+        if (!foundIds.has(id)) {
+          commentProfileImageCache.set(id, DEFAULT_PROFILE_IMAGE);
+        }
+      });
+    }
+  }
+
+  const map = new Map();
+  safeIds.forEach((id) => {
+    map.set(id, commentProfileImageCache.get(id) || DEFAULT_PROFILE_IMAGE);
+  });
+
+  return map;
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -34,19 +91,47 @@ function formatDateTime(value) {
   return `${yy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-function renderAuthorProfileLink(authorId, authorNickname, className = '') {
+function renderAuthorProfileLink(
+  authorId,
+  authorNickname,
+  profileImageUrl = '',
+  className = '',
+) {
   const nickname = escapeHtml(authorNickname || '익명');
   const safeAuthorId = String(authorId || '').trim();
+  const avatarSrc = escapeHtml(getProfileImageSrc(profileImageUrl));
 
   if (!safeAuthorId) {
-    return `<strong class="${className}">${nickname}</strong>`;
+    return `
+      <span class="comment-author-wrap">
+        <img
+          class="comment-author-avatar"
+          src="${avatarSrc}"
+          alt="${nickname} 프로필 사진"
+        />
+        <strong class="${className}">${nickname}</strong>
+      </span>
+    `;
   }
 
   return `
-    <a
-      class="${className} comment-author-link"
-      href="${publicProfileHref(safeAuthorId)}"
-    >${nickname}</a>
+    <span class="comment-author-wrap">
+      <a
+        class="comment-author-avatar-link"
+        href="${publicProfileHref(safeAuthorId)}"
+        aria-label="${nickname} 프로필로 이동"
+      >
+        <img
+          class="comment-author-avatar"
+          src="${avatarSrc}"
+          alt="${nickname} 프로필 사진"
+        />
+      </a>
+      <a
+        class="${className} comment-author-link"
+        href="${publicProfileHref(safeAuthorId)}"
+      >${nickname}</a>
+    </span>
   `;
 }
 
@@ -150,7 +235,12 @@ function getThreadToggleLabel(count, isOpen = false) {
   return `답글 ${safeCount}개 보기`;
 }
 
-function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
+function renderReplyItem(
+  reply,
+  currentUserId = '',
+  isAdmin = false,
+  profileImageMap = new Map(),
+) {
   const isMine =
     currentUserId &&
     reply.author_id &&
@@ -165,6 +255,8 @@ function renderReplyItem(reply, currentUserId = '', isAdmin = false) {
           ${renderAuthorProfileLink(
             reply.author_id,
             reply.author_nickname,
+            profileImageMap.get(String(reply.author_id || '').trim()) ||
+              DEFAULT_PROFILE_IMAGE,
             'comment-reply-item__author',
           )}
           <div class="comment-meta-inline">
@@ -203,6 +295,7 @@ function renderCommentItem(
   replies = [],
   currentUserId = '',
   isAdmin = false,
+  profileImageMap = new Map(),
 ) {
   const isMine =
     currentUserId &&
@@ -221,6 +314,8 @@ function renderCommentItem(
           ${renderAuthorProfileLink(
             comment.author_id,
             comment.author_nickname,
+            profileImageMap.get(String(comment.author_id || '').trim()) ||
+              DEFAULT_PROFILE_IMAGE,
             'comment-item__author',
           )}
           <div class="comment-meta-inline">
@@ -385,7 +480,9 @@ function renderCommentItem(
             hidden
           >
             ${replies
-              .map((reply) => renderReplyItem(reply, currentUserId, isAdmin))
+              .map((reply) =>
+                renderReplyItem(reply, currentUserId, isAdmin, profileImageMap),
+              )
               .join('')}
           </div>
         </div>
@@ -478,6 +575,11 @@ async function renderComments(postId, secretPassword = null) {
     }
 
     const repliesMap = groupRepliesByParent(comments);
+
+    const profileImageMap = await loadProfileImageMap(
+      comments.map((comment) => comment.author_id),
+    );
+
     const rootComments = comments.filter(
       (comment) => !Number(comment.parent_comment_id || 0),
     );
@@ -489,6 +591,7 @@ async function renderComments(postId, secretPassword = null) {
           repliesMap.get(Number(comment.id)) || [],
           currentUserId,
           isAdmin,
+          profileImageMap,
         ),
       )
       .join('');

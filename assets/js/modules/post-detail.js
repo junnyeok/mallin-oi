@@ -3,6 +3,38 @@ import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, publicProfileHref } from './auth-store.js';
 
+const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
+const profileImageCache = new Map();
+
+function getProfileImageSrc(url) {
+  return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
+}
+
+async function loadProfileImageUrl(userId) {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId) return DEFAULT_PROFILE_IMAGE;
+
+  if (profileImageCache.has(safeUserId)) {
+    return profileImageCache.get(safeUserId);
+  }
+
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('id, profile_image_url')
+    .eq('id', safeUserId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[post-detail] load profile image failed:', error);
+    profileImageCache.set(safeUserId, DEFAULT_PROFILE_IMAGE);
+    return DEFAULT_PROFILE_IMAGE;
+  }
+
+  const imageUrl = getProfileImageSrc(data?.profile_image_url);
+  profileImageCache.set(safeUserId, imageUrl);
+  return imageUrl;
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -138,7 +170,7 @@ function renderTags(tags = []) {
     .join('');
 }
 
-function renderAuthor(post) {
+async function renderAuthor(post) {
   const authorEl = $('postAuthor');
   if (!authorEl) return;
 
@@ -148,17 +180,42 @@ function renderAuthor(post) {
     : '';
 
   if (post.authorId) {
+    const profileImageUrl = await loadProfileImageUrl(post.authorId);
+
     authorEl.innerHTML = `
-      작성자 :
+    <span class="post-author__label">작성자 :</span>
+    <span class="post-author__value">
+      <a
+        class="post-author__avatar-link"
+        href="${publicProfileHref(post.authorId)}"
+        aria-label="${nickname} 프로필로 이동"
+      >
+        <img
+          class="post-author__avatar"
+          src="${escapeHtml(profileImageUrl)}"
+          alt="${nickname} 프로필 사진"
+        />
+      </a>
       <a
         class="post-author__link"
         href="${publicProfileHref(post.authorId)}"
       >${nickname}</a>${privateMark}
-    `;
+    </span>
+  `;
     return;
   }
 
-  authorEl.innerHTML = `작성자 : ${nickname}${privateMark}`;
+  authorEl.innerHTML = `
+    <span class="post-author__label">작성자 :</span>
+    <span class="post-author__value">
+      <img
+        class="post-author__avatar"
+        src="${escapeHtml(DEFAULT_PROFILE_IMAGE)}"
+        alt="${nickname} 프로필 사진"
+      />
+      <span>${nickname}</span>${privateMark}
+    </span>
+  `;
 }
 
 function formatDateTime(value) {
@@ -696,7 +753,7 @@ async function applyPost(post) {
         : `💬 ${Number(post.commentCount || 0)}`;
   }
 
-  renderAuthor(post);
+  await renderAuthor(post);
   renderPostDateTime(post);
   renderTags(post.tags);
 
