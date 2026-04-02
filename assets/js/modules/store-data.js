@@ -9,19 +9,30 @@ export const BASIC_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
   };
 });
 
+export const CHEER_EMOTICON_PACK = Array.from({ length: 5 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `cheer-${order}`,
+    label: `응원 이모티콘 ${order}`,
+    imagePath: `./images/emoticons/cheer-${order}.png`,
+    displayOrder: order,
+  };
+});
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
     name: '기본 말린오이 이모티콘팩',
     category: 'emoticon',
-    badge: '무료 지급',
+    badge: '이모티콘',
     icon: '🥒',
     thumbImagePath: './images/emoticons/free-7.png',
     price: 0,
-    state: '지급 가능',
+    state: '무료 지급',
     description: '사이트 기본 지급용 이모티콘 7종 묶음.',
     detailDescription:
-      '말린오이닷컴에서 기본으로 쓰는 무료 이모티콘팩이야. 구매하면 7개의 무료 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 게시물/댓글/답글 작성 시 사용할 수 있어.',
     previewImages: BASIC_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -29,16 +40,16 @@ export const STORE_ITEMS = [
     id: 'emo-cheer-01',
     name: '응원 오이 이모티콘팩',
     category: 'emoticon',
-    badge: '인기 예정',
+    badge: '이모티콘',
     icon: '🎉',
     thumbImagePath: './images/emoticons/cheer-1.png',
     price: 150,
-    state: '판매 준비중',
+    state: '판매 중',
     description: '축하, 응원, 박수 반응용 이모티콘 세트.',
     detailDescription:
-      '응원, 축하, 박수 반응에 특화된 이모티콘팩이야. 상세 페이지까지만 먼저 열어두고 구매는 다음 단계에서 붙일 예정이야.',
-    previewImages: [],
-    isPurchasable: false,
+      '응원, 축하, 박수 반응에 쓰기 좋은 응원 이모티콘팩이야. 구매하면 5개의 응원 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: CHEER_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'emo-police-01',

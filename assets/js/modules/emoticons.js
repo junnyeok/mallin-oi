@@ -1,8 +1,11 @@
 import { supabase } from './supabase-client.js';
-import { BASIC_EMOTICON_PACK } from './store-data.js';
+import { BASIC_EMOTICON_PACK, CHEER_EMOTICON_PACK } from './store-data.js';
 
 const EMOTICON_MAP = new Map(
-  BASIC_EMOTICON_PACK.map((item) => [item.code, item]),
+  [...BASIC_EMOTICON_PACK, ...CHEER_EMOTICON_PACK].map((item) => [
+    item.code,
+    item,
+  ]),
 );
 
 function escapeHtml(value) {
@@ -19,9 +22,16 @@ function nl2br(text = '') {
 }
 
 export function getEmoticonPackByItemId(itemId = '') {
-  if (String(itemId || '').trim() === 'emo-basic-01') {
+  const safeItemId = String(itemId || '').trim();
+
+  if (safeItemId === 'emo-basic-01') {
     return BASIC_EMOTICON_PACK;
   }
+
+  if (safeItemId === 'emo-cheer-01') {
+    return CHEER_EMOTICON_PACK;
+  }
+
   return [];
 }
 

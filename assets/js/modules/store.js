@@ -320,7 +320,7 @@ async function initStorePage() {
 
   if (balanceHintEl) {
     balanceHintEl.textContent =
-      '상세 페이지에서 품목 구매/지급을 진행할 수 있어.';
+      '품목 페이지에서 품목 구매/지급을 진행할 수 있어.';
   }
 }
 
@@ -449,7 +449,7 @@ async function initStoreItemPage() {
                 (isOwned
                   ? '이미 지급받은 품목이야.'
                   : item.isPurchasable
-                    ? '무료 지급 테스트용 품목이야.'
+                    ? '피클이 있다면 구입 가능한 품목이야.'
                     : '이 품목은 아직 판매 준비중이야.')
               }
             </p>
