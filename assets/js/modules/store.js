@@ -31,6 +31,21 @@ function getCategoryLabel(category) {
   return '기타';
 }
 
+function renderStoreThumb(item) {
+  if (item.thumbImagePath) {
+    return `
+      <img
+        class="store-card__thumb-image"
+        src="${item.thumbImagePath}"
+        alt="${item.name}"
+        loading="lazy"
+      />
+    `;
+  }
+
+  return item.icon || '';
+}
+
 function renderStoreCard(item, { compact = false } = {}) {
   const detailHref = getStoreItemDetailHref(item.id);
   const cardClassName = compact
@@ -39,8 +54,7 @@ function renderStoreCard(item, { compact = false } = {}) {
 
   return `
     <article class="${cardClassName}" id="item-${item.id}">
-      <div class="store-card__thumb" aria-hidden="true">${item.icon}</div>
-
+      <div class="store-card__thumb">${renderStoreThumb(item)}</div>
       <div class="store-card__body">
         <div class="store-card__top">
           <span class="store-card__badge">${item.badge}</span>
