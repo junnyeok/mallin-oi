@@ -245,6 +245,23 @@
                     placeholder="댓글을 입력해줘. (최대 500자)"
                   ></textarea>
                 </label>
+                <div class="comment-form__tools emoticon-picker-box">
+                  <button
+                    type="button"
+                    class="comment-emoticon-toggle"
+                    id="commentEmoticonToggle"
+                    data-action="toggle-emoticon"
+                  >
+                    🥒 이모티콘
+                  </button>
+
+                  <div
+                    class="emoticon-picker"
+                    id="commentEmoticonPanel"
+                    data-role="emoticon-panel"
+                    hidden
+                  ></div>
+                </div>
 
                 <div class="comment-form__bottom">
                   <p class="comment-form__msg" id="commentFormMsg"></p>

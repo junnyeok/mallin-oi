@@ -7,9 +7,17 @@ import {
   publicProfileHref,
   saveRedirect,
 } from './auth-store.js';
+import {
+  loadOwnedEmoticons,
+  renderOwnedEmoticonPicker,
+  insertEmoticonToken,
+  renderTextWithEmoticons,
+} from './emoticons.js';
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const commentProfileImageCache = new Map();
+let ownedCommentEmoticons = [];
+let commentEmoticonDocumentBound = false;
 
 function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
@@ -176,7 +184,7 @@ function getPostIdFromUrl() {
 }
 
 function nl2brSafe(text) {
-  return escapeHtml(text || '').replaceAll('\n', '<br />');
+  return renderTextWithEmoticons(text || '');
 }
 
 function toBoolean(value) {
@@ -436,6 +444,26 @@ function renderCommentItem(
           ></textarea>
         </label>
 
+                <div class="comment-reply-form__tools emoticon-picker-box">
+          <button
+            type="button"
+            class="comment-emoticon-toggle"
+            data-action="toggle-emoticon"
+          >
+            🥒 이모티콘
+          </button>
+
+          <div
+            class="emoticon-picker"
+            data-role="emoticon-panel"
+            hidden
+          >
+            ${renderOwnedEmoticonPicker(ownedCommentEmoticons, {
+              emptyText: '보유한 이모티콘이 없어.',
+            })}
+          </div>
+        </div>
+
         <div class="comment-reply-form__bottom">
           <p class="comment-reply-form__msg" data-role="reply-msg"></p>
           <div class="comment-reply-form__actions">
@@ -571,6 +599,7 @@ async function renderComments(postId, secretPassword = null) {
 
     if (!comments.length) {
       listEl.innerHTML = `<div class="comment-empty">아직 댓글이 없어. 첫 댓글을 남겨봐.</div>`;
+      refreshCommentEmoticonUi();
       return;
     }
 
@@ -595,6 +624,7 @@ async function renderComments(postId, secretPassword = null) {
         ),
       )
       .join('');
+    refreshCommentEmoticonUi();
   } catch (error) {
     console.error('[post-comments] render failed:', error);
     countEl.textContent = '0';
@@ -740,6 +770,96 @@ function setReplyFormMessage(formEl, text, type = '') {
   msg.className = type
     ? `comment-reply-form__msg ${type}`
     : 'comment-reply-form__msg';
+}
+
+function closeAllEmoticonPanels() {
+  document
+    .querySelectorAll('.emoticon-picker[data-role="emoticon-panel"]')
+    .forEach((panel) => {
+      panel.hidden = true;
+    });
+}
+
+function refreshCommentEmoticonUi() {
+  const html = renderOwnedEmoticonPicker(ownedCommentEmoticons, {
+    emptyText: '보유한 이모티콘이 없어.',
+  });
+
+  document
+    .querySelectorAll('.emoticon-picker[data-role="emoticon-panel"]')
+    .forEach((panel) => {
+      panel.innerHTML = html;
+    });
+
+  document
+    .querySelectorAll('.comment-emoticon-toggle[data-action="toggle-emoticon"]')
+    .forEach((button) => {
+      button.disabled = ownedCommentEmoticons.length === 0;
+    });
+}
+
+async function syncOwnedCommentEmoticons() {
+  const user = await getCurrentUser();
+
+  if (!user?.id) {
+    ownedCommentEmoticons = [];
+    refreshCommentEmoticonUi();
+    return;
+  }
+
+  ownedCommentEmoticons = await loadOwnedEmoticons(user.id);
+  refreshCommentEmoticonUi();
+}
+
+function toggleEmoticonPanel(button) {
+  const box = button.closest('.emoticon-picker-box');
+  const panel = box?.querySelector('[data-role="emoticon-panel"]');
+  if (!panel) return;
+
+  const nextOpen = panel.hidden;
+  closeAllEmoticonPanels();
+  panel.hidden = !nextOpen;
+}
+
+function insertEmoticonToForm(formEl, emoticonCode) {
+  const textarea = formEl?.querySelector('textarea');
+  if (!textarea) return;
+
+  insertEmoticonToken(textarea, emoticonCode);
+}
+
+function bindMainCommentFormExtras() {
+  const form = $('commentForm');
+  if (!form || form.dataset.emoticonBound === '1') return;
+
+  form.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+
+    const action = button.dataset.action || '';
+
+    if (action === 'toggle-emoticon') {
+      toggleEmoticonPanel(button);
+      return;
+    }
+
+    if (action === 'select-emoticon') {
+      const code = String(button.dataset.emoticonCode || '').trim();
+      insertEmoticonToForm(form, code);
+      closeAllEmoticonPanels();
+    }
+  });
+
+  if (!commentEmoticonDocumentBound) {
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('.emoticon-picker-box')) return;
+      closeAllEmoticonPanels();
+    });
+
+    commentEmoticonDocumentBound = true;
+  }
+
+  form.dataset.emoticonBound = '1';
 }
 
 function toggleReplyThread(commentId) {
@@ -964,7 +1084,21 @@ function bindCommentListEvents(postId) {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
 
-    const action = btn.dataset.action;
+    const action = btn.dataset.action || '';
+
+    if (action === 'toggle-emoticon') {
+      toggleEmoticonPanel(btn);
+      return;
+    }
+
+    if (action === 'select-emoticon') {
+      const code = String(btn.dataset.emoticonCode || '').trim();
+      const form = btn.closest('form');
+      insertEmoticonToForm(form, code);
+      closeAllEmoticonPanels();
+      return;
+    }
+
     const commentId = Number(btn.dataset.commentId || 0);
     if (!Number.isFinite(commentId) || commentId <= 0) return;
 
@@ -987,6 +1121,7 @@ function bindCommentListEvents(postId) {
       }
 
       toggleReplyForm(commentId, true);
+      refreshCommentEmoticonUi();
       return;
     }
 
@@ -1076,6 +1211,8 @@ export async function initPostComments() {
   if (!form || !textarea || !submitBtn || !postId) return;
 
   bindCommentListEvents(postId);
+  bindMainCommentFormExtras();
+  await syncOwnedCommentEmoticons();
   await handleCreateComment(postId);
   await syncCommentAccess(postId, '');
 
@@ -1086,5 +1223,6 @@ export async function initPostComments() {
     if (eventPostId !== postId) return;
 
     await syncCommentAccess(postId, String(detail.secretPassword || ''));
+    await syncOwnedCommentEmoticons();
   });
 }

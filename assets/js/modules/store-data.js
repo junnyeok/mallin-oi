@@ -1,3 +1,14 @@
+export const BASIC_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `free-${order}`,
+    label: `기본 이모티콘 ${order}`,
+    imagePath: `./images/emoticons/free-${order}.png`,
+    displayOrder: order,
+  };
+});
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -6,8 +17,12 @@ export const STORE_ITEMS = [
     badge: '무료 지급',
     icon: '🥒',
     price: 0,
-    state: '사용 가능 예정',
-    description: '사이트 기본 지급용 이모티콘 5종 묶음.',
+    state: '지급 가능',
+    description: '사이트 기본 지급용 이모티콘 7종 묶음.',
+    detailDescription:
+      '말린오이닷컴에서 기본으로 쓰는 무료 이모티콘팩이야. 구매하면 7개의 무료 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: BASIC_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'emo-cheer-01',
@@ -18,6 +33,10 @@ export const STORE_ITEMS = [
     price: 150,
     state: '판매 준비중',
     description: '축하, 응원, 박수 반응용 이모티콘 세트.',
+    detailDescription:
+      '응원, 축하, 박수 반응에 특화된 이모티콘팩이야. 상세 페이지까지만 먼저 열어두고 구매는 다음 단계에서 붙일 예정이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'emo-police-01',
@@ -28,6 +47,10 @@ export const STORE_ITEMS = [
     price: 180,
     state: '판매 준비중',
     description: '경찰 모자와 제스처가 들어간 이모티콘 세트.',
+    detailDescription:
+      '경찰 테마 이모티콘팩이야. 추후 판매 기능을 연결할 예정이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'fashion-hat-01',
@@ -38,6 +61,9 @@ export const STORE_ITEMS = [
     price: 220,
     state: '장착 기능 예정',
     description: '오이 캐릭터 머리에 장착할 수 있는 기본 모자.',
+    detailDescription: '오이 캐릭터 머리에 장착하는 꾸미기 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'fashion-cloth-01',
@@ -48,6 +74,9 @@ export const STORE_ITEMS = [
     price: 320,
     state: '장착 기능 예정',
     description: '오이 캐릭터 전용 후드티 아이템.',
+    detailDescription: '오이 캐릭터 전용 후드티 꾸미기 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'fashion-shoes-01',
@@ -58,6 +87,9 @@ export const STORE_ITEMS = [
     price: 260,
     state: '장착 기능 예정',
     description: '캐릭터 하단 장착용 신발 아이템.',
+    detailDescription: '캐릭터 하단 장착용 신발 꾸미기 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'profile-bg-01',
@@ -68,6 +100,9 @@ export const STORE_ITEMS = [
     price: 400,
     state: '적용 기능 예정',
     description: '프로필 상단 배경에 적용할 수 있는 잔디 느낌 배경.',
+    detailDescription: '프로필 상단에 적용할 수 있는 배경 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'profile-frame-01',
@@ -78,6 +113,9 @@ export const STORE_ITEMS = [
     price: 450,
     state: '적용 기능 예정',
     description: '프로필 사진 둘레에 표시되는 장식 프레임.',
+    detailDescription: '프로필 사진 둘레에 적용되는 프레임 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'emo-work-01',
@@ -88,6 +126,10 @@ export const STORE_ITEMS = [
     price: 190,
     state: '판매 준비중',
     description: '출근, 보고, 완료 체크 반응에 쓰기 좋은 세트.',
+    detailDescription:
+      '업무 반응형 이모티콘팩이야. 추후 판매 기능 연결 예정이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'emo-study-01',
@@ -98,6 +140,10 @@ export const STORE_ITEMS = [
     price: 210,
     state: '판매 준비중',
     description: '공부, 독서, 기록용 리액션 이모티콘 세트.',
+    detailDescription:
+      '자기개발 반응형 이모티콘팩이야. 추후 판매 기능 연결 예정이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'fashion-glasses-01',
@@ -108,6 +154,9 @@ export const STORE_ITEMS = [
     price: 240,
     state: '장착 기능 예정',
     description: '오이 캐릭터 얼굴에 착용 가능한 기본 안경.',
+    detailDescription: '얼굴에 착용 가능한 안경 꾸미기 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'fashion-bag-01',
@@ -118,6 +167,9 @@ export const STORE_ITEMS = [
     price: 280,
     state: '장착 기능 예정',
     description: '가볍게 메는 포인트 아이템.',
+    detailDescription: '캐릭터에 장착할 수 있는 크로스백 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'profile-bg-02',
@@ -128,6 +180,9 @@ export const STORE_ITEMS = [
     price: 520,
     state: '적용 기능 예정',
     description: '어두운 톤의 야간 감성 배경 테마.',
+    detailDescription: '야간 감성 프로필 배경 테마야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'profile-frame-02',
@@ -138,6 +193,9 @@ export const STORE_ITEMS = [
     price: 560,
     state: '적용 기능 예정',
     description: '프로필을 더 눈에 띄게 보여주는 금빛 프레임.',
+    detailDescription: '골드 배지 느낌의 프로필 프레임이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
   {
     id: 'fashion-headset-01',
@@ -148,9 +206,21 @@ export const STORE_ITEMS = [
     price: 300,
     state: '장착 기능 예정',
     description: '집중 모드 느낌을 살려주는 헤드셋 아이템.',
+    detailDescription: '집중 테마 꾸미기 아이템이야.',
+    previewImages: [],
+    isPurchasable: false,
   },
 ];
 
 export function getFeaturedStoreItems(limit = 15) {
   return STORE_ITEMS.slice(0, limit);
+}
+
+export function getStoreItemById(itemId = '') {
+  const safeId = String(itemId || '').trim();
+  return STORE_ITEMS.find((item) => item.id === safeId) || null;
+}
+
+export function getStoreItemDetailHref(itemId = '') {
+  return `./store-item.html?id=${encodeURIComponent(String(itemId || '').trim())}`;
 }

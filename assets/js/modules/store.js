@@ -1,6 +1,11 @@
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, loginHref } from './auth-store.js';
-import { STORE_ITEMS, getFeaturedStoreItems } from './store-data.js';
+import {
+  STORE_ITEMS,
+  getFeaturedStoreItems,
+  getStoreItemById,
+  getStoreItemDetailHref,
+} from './store-data.js';
 
 const HOME_STORE_MOBILE_BREAKPOINT = 768;
 const HOME_STORE_DESKTOP_VISIBLE = 5;
@@ -27,7 +32,7 @@ function getCategoryLabel(category) {
 }
 
 function renderStoreCard(item, { compact = false } = {}) {
-  const detailHref = `./store.html#item-${item.id}`;
+  const detailHref = getStoreItemDetailHref(item.id);
   const cardClassName = compact
     ? 'store-card store-card--compact'
     : 'store-card';
@@ -53,11 +58,9 @@ function renderStoreCard(item, { compact = false } = {}) {
         <p class="store-card__price">${formatPrice(item.price)}</p>
 
         <div class="store-card__actions">
-          ${
-            compact
-              ? `<a class="store-card__btn store-card__btn--primary" href="${detailHref}">보러가기</a>`
-              : `<button type="button" class="store-card__btn store-card__btn--primary">구매 준비중</button>`
-          }
+          <a class="store-card__btn store-card__btn--primary" href="${detailHref}">
+            보러가기
+          </a>
         </div>
       </div>
     </article>
@@ -146,9 +149,7 @@ function initHomeStoreSection() {
     currentStep = (step + stepCount) % stepCount;
     updateSlider({ animate });
 
-    if (resetTimer) {
-      startAutoPlay();
-    }
+    if (resetTimer) startAutoPlay();
   }
 
   function handleResize() {
@@ -168,13 +169,8 @@ function initHomeStoreSection() {
     startAutoPlay();
   }
 
-  prevBtn.addEventListener('click', () => {
-    goToStep(currentStep - 1);
-  });
-
-  nextBtn.addEventListener('click', () => {
-    goToStep(currentStep + 1);
-  });
+  prevBtn.addEventListener('click', () => goToStep(currentStep - 1));
+  nextBtn.addEventListener('click', () => goToStep(currentStep + 1));
 
   viewportEl.addEventListener('mouseenter', stopAutoPlay);
   viewportEl.addEventListener('mouseleave', startAutoPlay);
@@ -199,12 +195,8 @@ function initHomeStoreSection() {
       const diffY = touch.clientY - touchStartY;
 
       if (Math.abs(diffX) < 45 || Math.abs(diffX) <= Math.abs(diffY)) return;
-
-      if (diffX < 0) {
-        goToStep(currentStep + 1);
-      } else {
-        goToStep(currentStep - 1);
-      }
+      if (diffX < 0) goToStep(currentStep + 1);
+      else goToStep(currentStep - 1);
     },
     { passive: true },
   );
@@ -214,7 +206,6 @@ function initHomeStoreSection() {
       stopAutoPlay();
       return;
     }
-
     startAutoPlay();
   });
 
@@ -240,6 +231,23 @@ async function loadMyPickles() {
   }
 
   return Number(data?.pickles || 0);
+}
+
+async function loadOwnedItemIds() {
+  const user = await getCurrentUser();
+  if (!user?.id) return new Set();
+
+  const { data, error } = await supabase
+    .from('user_store_items')
+    .select('item_id')
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('[store] loadOwnedItemIds error:', error);
+    return new Set();
+  }
+
+  return new Set((data || []).map((row) => String(row.item_id || '').trim()));
 }
 
 function bindStoreFilter(renderByCategory) {
@@ -298,11 +306,186 @@ async function initStorePage() {
 
   if (balanceHintEl) {
     balanceHintEl.textContent =
-      '구매 기능이 붙으면 여기 피클 기준으로 차감되게 만들면 돼.';
+      '상세 페이지에서 품목 구매/지급을 진행할 수 있어.';
   }
+}
+
+function renderStoreItemPreview(item) {
+  const previews = Array.isArray(item?.previewImages) ? item.previewImages : [];
+
+  if (!previews.length) {
+    return `
+      <div class="store-item-preview__empty">
+        <div class="store-item-preview__icon">${item.icon}</div>
+        <p>미리보기는 다음 단계에서 추가될 예정이야.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="store-item-preview__grid">
+      ${previews
+        .map(
+          (preview) => `
+            <figure class="store-item-preview__card">
+              <img
+                src="${preview.imagePath}"
+                alt="${preview.label}"
+                class="store-item-preview__img"
+                loading="lazy"
+              />
+            </figure>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+async function initStoreItemPage() {
+  const root = $('#storeItemDetail');
+  if (!root) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const itemId = params.get('id') || 'emo-basic-01';
+  const item = getStoreItemById(itemId) || getStoreItemById('emo-basic-01');
+
+  if (!item) {
+    root.innerHTML = `
+      <div class="store-item-detail">
+        <div class="store-item-detail__main">
+          <p class="store-item-detail__desc">품목 정보를 찾지 못했어.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  async function renderDetail(message = '') {
+    const [user, myPickles, ownedIds] = await Promise.all([
+      getCurrentUser(),
+      loadMyPickles(),
+      loadOwnedItemIds(),
+    ]);
+
+    const isLoggedIn = !!user?.id;
+    const isOwned = ownedIds.has(item.id);
+    const canPurchase = item.isPurchasable && !isOwned;
+
+    let actionLabel = '준비중';
+    let actionDisabled = true;
+
+    if (!isLoggedIn) {
+      actionLabel = '로그인 후 이용';
+      actionDisabled = false;
+    } else if (isOwned) {
+      actionLabel = '지급 완료';
+      actionDisabled = true;
+    } else if (item.isPurchasable) {
+      actionLabel = item.price === 0 ? '무료 받기' : '구매하기';
+      actionDisabled = false;
+    }
+
+    root.innerHTML = `
+      <div class="store-item-detail">
+        <div class="store-item-detail__main">
+          <div class="store-item-detail__meta">
+            <span class="store-card__badge">${item.badge}</span>
+            <span class="store-card__state">${item.state}</span>
+          </div>
+
+          <h1 class="store-item-detail__title">${item.name}</h1>
+          <p class="store-item-detail__desc">${item.detailDescription}</p>
+
+          <div class="store-item-detail__chips">
+            <span class="store-chip">${getCategoryLabel(item.category)}</span>
+            <span class="store-chip">ID ${item.id}</span>
+          </div>
+
+          <section class="store-item-preview">
+            <div class="store-item-preview__head">
+              <h2>구성 미리보기</h2>
+            </div>
+            ${renderStoreItemPreview(item)}
+          </section>
+        </div>
+
+        <aside class="store-item-detail__side">
+          <div class="store-item-purchase">
+            <p class="store-item-purchase__label">가격</p>
+            <p class="store-item-purchase__price">${formatPrice(item.price)}</p>
+
+            <p class="store-item-purchase__label">내 보유 피클</p>
+            <p class="store-item-purchase__balance">
+              ${myPickles === null ? '로그인 필요' : `${myPickles.toLocaleString('ko-KR')} 🥒`}
+            </p>
+
+            <button
+              type="button"
+              class="store-item-purchase__btn"
+              id="storeItemBuyBtn"
+              ${actionDisabled ? 'disabled' : ''}
+            >
+              ${actionLabel}
+            </button>
+
+            <p class="store-item-purchase__msg" id="storeItemBuyMsg">
+              ${
+                message ||
+                (isOwned
+                  ? '이미 지급받은 품목이야.'
+                  : item.isPurchasable
+                    ? '무료 지급 테스트용 품목이야.'
+                    : '이 품목은 아직 판매 준비중이야.')
+              }
+            </p>
+
+            <a class="store-item-purchase__back" href="./store.html">← 상점으로 돌아가기</a>
+          </div>
+        </aside>
+      </div>
+    `;
+
+    const buyBtn = $('#storeItemBuyBtn');
+    const msgEl = $('#storeItemBuyMsg');
+
+    if (!buyBtn) return;
+
+    buyBtn.addEventListener('click', async () => {
+      if (!isLoggedIn) {
+        window.location.href = loginHref();
+        return;
+      }
+
+      if (!canPurchase) return;
+
+      buyBtn.disabled = true;
+      if (msgEl) msgEl.textContent = '지급 처리 중...';
+
+      const { data, error } = await supabase.rpc('purchase_store_item', {
+        p_item_id: item.id,
+      });
+
+      if (error) {
+        console.error('[store] purchase_store_item failed:', error);
+        if (msgEl) msgEl.textContent = '지급 처리에 실패했어. 다시 시도해줘.';
+        buyBtn.disabled = false;
+        return;
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      const nextMessage =
+        String(row?.message || '').trim() || '지급이 완료됐어.';
+
+      await renderDetail(nextMessage);
+    });
+  }
+
+  await renderDetail('');
 }
 
 export async function initStore() {
   initHomeStoreSection();
   await initStorePage();
+  await initStoreItemPage();
 }

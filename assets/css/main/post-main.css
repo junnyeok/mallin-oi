@@ -180,8 +180,8 @@
 }
 
 .post-author__avatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   object-fit: cover;
   flex-shrink: 0;
@@ -911,8 +911,8 @@
 }
 
 .comment-author-avatar {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   object-fit: cover;
   flex-shrink: 0;
@@ -1274,5 +1274,168 @@
   .post-body__text img,
   .post-body__text video {
     max-height: none;
+  }
+}
+
+/* =========================
+  COMMENT EMOTICON
+========================= */
+
+.comment-form__tools,
+.comment-reply-form__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.comment-emoticon-toggle {
+  align-self: flex-start;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.comment-emoticon-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.inline-emoticon--comment {
+  width: 40px;
+  height: 40px;
+}
+
+/* =========================
+  POST / COMMENT EMOTICON SIZE FIX
+========================= */
+
+/* 게시물 본문 안에 들어간 이모티콘은 일반 첨부이미지처럼 커지지 않게 고정 */
+.post-body__text img.inline-emoticon,
+.post-body__text img.inline-emoticon.inline-emoticon--comment {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  max-width: 50px;
+  min-width: 50px;
+  max-height: 50px;
+  min-height: 50px;
+  margin: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+/* 댓글 / 답글 본문 안 이모티콘 */
+.comment-item__content .inline-emoticon,
+.comment-item__content .inline-emoticon--comment,
+.comment-reply-item__content .inline-emoticon,
+.comment-reply-item__content .inline-emoticon--comment {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  min-width: 40px;
+  max-height: 40px;
+  min-height: 40px;
+  margin: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+/* 댓글 / 답글 이모티콘 선택창 */
+.comment-form .emoticon-picker,
+.comment-reply-form .emoticon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.comment-form .emoticon-picker__item,
+.comment-reply-form .emoticon-picker__item {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.comment-form .emoticon-picker__item:hover,
+.comment-reply-form .emoticon-picker__item:hover {
+  transform: translateY(-1px);
+}
+
+.comment-form .emoticon-picker__img,
+.comment-reply-form .emoticon-picker__img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+}
+
+.comment-form .emoticon-picker__empty,
+.comment-reply-form .emoticon-picker__empty {
+  font-size: 13px;
+  color: var(--color-text-sub);
+  line-height: 1.5;
+}
+
+/* 모바일에서 본문 이모티콘 살짝 줄이기 */
+@media (max-width: 768px) {
+  .post-body__text img.inline-emoticon,
+  .post-body__text img.inline-emoticon.inline-emoticon--comment {
+    width: 40px;
+    height: 40px;
+    max-width: 40px;
+    min-width: 40px;
+    max-height: 40px;
+    min-height: 40px;
+  }
+
+  .comment-form .emoticon-picker,
+  .comment-reply-form .emoticon-picker {
+    grid-template-columns: repeat(auto-fill, minmax(52px, 52px));
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .comment-form .emoticon-picker__item,
+  .comment-reply-form .emoticon-picker__item {
+    width: 52px;
+    height: 52px;
+  }
+
+  .comment-form .emoticon-picker__img,
+  .comment-reply-form .emoticon-picker__img {
+    width: 36px;
+    height: 36px;
+    max-width: 36px;
+    max-height: 36px;
   }
 }

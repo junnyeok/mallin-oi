@@ -1,5 +1,10 @@
 import { supabase } from './supabase-client.js';
 import { loadEditablePostById } from './posts-repo.js';
+import {
+  loadOwnedEmoticons,
+  renderOwnedEmoticonPicker,
+  createInlineEmoticonNode,
+} from './emoticons.js';
 
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 const STORAGE_BUCKET = 'post-assets';
@@ -187,6 +192,67 @@ function getBodyEditor() {
 
 function getBodyField() {
   return $('#body');
+}
+
+async function initWriteEmoticonPicker(user) {
+  const editor = getBodyEditor();
+  const toggleBtn = $('#writeEmoticonToggle');
+  const panel = $('#writeEmoticonPanel');
+
+  if (!editor || !toggleBtn || !panel) return;
+
+  if (!user?.id) {
+    toggleBtn.disabled = true;
+    panel.innerHTML = renderOwnedEmoticonPicker([], {
+      emptyText: '로그인 후 이모티콘을 사용할 수 있어.',
+    });
+    return;
+  }
+
+  const ownedEmoticons = await loadOwnedEmoticons(user.id);
+
+  panel.innerHTML = renderOwnedEmoticonPicker(ownedEmoticons, {
+    emptyText: '보유한 이모티콘이 없어.',
+  });
+
+  toggleBtn.disabled = ownedEmoticons.length === 0;
+
+  toggleBtn.addEventListener('click', () => {
+    if (!ownedEmoticons.length) return;
+    panel.hidden = !panel.hidden;
+  });
+
+  panel.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-action="select-emoticon"]');
+    if (!button) return;
+
+    const code = String(button.dataset.emoticonCode || '').trim();
+    const emoticon = ownedEmoticons.find((item) => item.emoticon_code === code);
+
+    if (!emoticon) return;
+
+    editor.focus();
+    restoreSavedSelectionRange();
+
+    const node = createInlineEmoticonNode(emoticon);
+    insertNodeAtCaret(node);
+    insertNodeAtCaret(document.createTextNode(' '));
+    syncBodyFromEditor();
+
+    panel.hidden = true;
+    saveCurrentSelectionRange();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (
+      event.target.closest('#writeEmoticonToggle') ||
+      event.target.closest('#writeEmoticonPanel')
+    ) {
+      return;
+    }
+
+    panel.hidden = true;
+  });
 }
 
 function saveCurrentSelectionRange() {
@@ -1271,6 +1337,7 @@ export async function initWrite() {
   }
 
   const { isAdmin } = await getMyRole();
+  await initWriteEmoticonPicker(user);
   setPinnedUiVisible(isAdmin);
 
   if (editPostId) {
