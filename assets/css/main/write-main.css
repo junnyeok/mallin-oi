@@ -480,8 +480,8 @@
 
 .inline-emoticon {
   display: inline-block;
-  width: 50px;
-  height: 50px;
+  width: 100px;
+  height: 100px;
   vertical-align: middle;
   object-fit: contain;
   margin: 0 2px;
