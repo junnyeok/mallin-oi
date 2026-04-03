@@ -692,6 +692,7 @@
 
   .store-item-purchase {
     position: static;
+    margin-left: 0;
   }
 
   .store-item-preview__grid {

@@ -22,6 +22,17 @@ export const CHEER_EMOTICON_PACK = Array.from({ length: 5 }, (_, index) => {
   };
 });
 
+export const POLICE_EMOTICON_PACK = Array.from({ length: 8 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `police-${order}`,
+    label: `경찰 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/police-${order}.png`),
+    displayOrder: 200 + order,
+  };
+});
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -57,16 +68,16 @@ export const STORE_ITEMS = [
     id: 'emo-police-01',
     name: '경찰오이 이모티콘팩',
     category: 'emoticon',
-    badge: '테마',
+    badge: '이모티콘',
     icon: '🚓',
     thumbImagePath: withAssetVersion('./images/emoticons/police-1.png'),
-    price: 180,
-    state: '판매 준비중',
-    description: '경찰 모자와 제스처가 들어간 이모티콘 세트.',
+    price: 230,
+    state: '판매 중',
+    description: '경찰 모자, 장비와 제스처가 들어간 이모티콘 세트.',
     detailDescription:
-      '경찰 테마 이모티콘팩이야. 추후 판매 기능을 연결할 예정이야.',
-    previewImages: [],
-    isPurchasable: false,
+      '경찰 테마 이모티콘팩이야. 경찰 모자, 장비, 순찰차 등을 넣어봤어. 구매하면 8개의 경찰 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: POLICE_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'fashion-hat-01',
