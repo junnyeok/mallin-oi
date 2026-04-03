@@ -1,11 +1,46 @@
-import { supabase } from './supabase-client.js';
-import { getCurrentUser, loginHref } from './auth-store.js';
-import {
-  STORE_ITEMS,
-  getFeaturedStoreItems,
-  getStoreItemById,
-  getStoreItemDetailHref,
-} from './store-data.js';
+let supabase;
+let getCurrentUser;
+let loginHref;
+let STORE_ITEMS;
+let getFeaturedStoreItems;
+let getStoreItemById;
+let getStoreItemDetailHref;
+
+function getRuntimeVersion() {
+  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
+}
+
+function importVersioned(path) {
+  return import(`${path}?v=${getRuntimeVersion()}`);
+}
+
+async function ensureStoreDeps() {
+  if (
+    supabase &&
+    getCurrentUser &&
+    loginHref &&
+    STORE_ITEMS &&
+    getFeaturedStoreItems &&
+    getStoreItemById &&
+    getStoreItemDetailHref
+  ) {
+    return;
+  }
+
+  const [supabaseModule, authStoreModule, storeDataModule] = await Promise.all([
+    importVersioned('./supabase-client.js'),
+    importVersioned('./auth-store.js'),
+    importVersioned('./store-data.js'),
+  ]);
+
+  supabase = supabaseModule.supabase;
+  getCurrentUser = authStoreModule.getCurrentUser;
+  loginHref = authStoreModule.loginHref;
+  STORE_ITEMS = storeDataModule.STORE_ITEMS;
+  getFeaturedStoreItems = storeDataModule.getFeaturedStoreItems;
+  getStoreItemById = storeDataModule.getStoreItemById;
+  getStoreItemDetailHref = storeDataModule.getStoreItemDetailHref;
+}
 
 const HOME_STORE_MOBILE_BREAKPOINT = 768;
 const HOME_STORE_DESKTOP_VISIBLE = 5;
@@ -499,6 +534,7 @@ async function initStoreItemPage() {
 }
 
 export async function initStore() {
+  await ensureStoreDeps();
   initHomeStoreSection();
   await initStorePage();
   await initStoreItemPage();

@@ -1,12 +1,15 @@
 import { withAssetVersion } from './site-version.js';
 import { supabase } from './supabase-client.js';
-import { BASIC_EMOTICON_PACK, CHEER_EMOTICON_PACK } from './store-data.js';
+import {
+  BASIC_EMOTICON_PACK,
+  CHEER_EMOTICON_PACK,
+  POLICE_EMOTICON_PACK,
+} from './store-data.js';
 
 const EMOTICON_MAP = new Map(
-  [...BASIC_EMOTICON_PACK, ...CHEER_EMOTICON_PACK].map((item) => [
-    item.code,
-    item,
-  ]),
+  [...BASIC_EMOTICON_PACK, ...CHEER_EMOTICON_PACK, ...POLICE_EMOTICON_PACK].map(
+    (item) => [item.code, item],
+  ),
 );
 
 function escapeHtml(value) {
@@ -31,6 +34,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-cheer-01') {
     return CHEER_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-police-01') {
+    return POLICE_EMOTICON_PACK;
   }
 
   return [];
