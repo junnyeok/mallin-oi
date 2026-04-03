@@ -1,10 +1,12 @@
 import { withAssetVersion } from './site-version.js';
 import { supabase } from './supabase-client.js';
-import {
-  BASIC_EMOTICON_PACK,
-  CHEER_EMOTICON_PACK,
-  POLICE_EMOTICON_PACK,
-} from './store-data.js';
+
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const { BASIC_EMOTICON_PACK, CHEER_EMOTICON_PACK, POLICE_EMOTICON_PACK } =
+  await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
   [...BASIC_EMOTICON_PACK, ...CHEER_EMOTICON_PACK, ...POLICE_EMOTICON_PACK].map(

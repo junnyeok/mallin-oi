@@ -1282,6 +1282,7 @@
 ========================= */
 
 .comment-form__tools,
+.comment-edit-form__tools,
 .comment-reply-form__tools {
   display: flex;
   flex-direction: column;
@@ -1337,10 +1338,10 @@
 }
 
 /* 댓글 / 답글 본문 안 이모티콘 */
-.comment-item__content .inline-emoticon,
-.comment-item__content .inline-emoticon--comment,
-.comment-reply-item__content .inline-emoticon,
-.comment-reply-item__content .inline-emoticon--comment {
+.comment-item__body .inline-emoticon,
+.comment-item__body .inline-emoticon--comment,
+.comment-reply-item__body .inline-emoticon,
+.comment-reply-item__body .inline-emoticon--comment {
   display: inline-block;
   width: 40px;
   height: 40px;
@@ -1358,6 +1359,7 @@
 
 /* 댓글 / 답글 이모티콘 선택창 */
 .comment-form .emoticon-picker,
+.comment-edit-form .emoticon-picker,
 .comment-reply-form .emoticon-picker {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
@@ -1368,6 +1370,46 @@
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: #fff;
+}
+
+.comment-form .emoticon-picker__item,
+.comment-edit-form .emoticon-picker__item,
+.comment-reply-form .emoticon-picker__item {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.comment-form .emoticon-picker__item:hover,
+.comment-edit-form .emoticon-picker__item:hover,
+.comment-reply-form .emoticon-picker__item:hover {
+  transform: translateY(-1px);
+}
+
+.comment-form .emoticon-picker__img,
+.comment-edit-form .emoticon-picker__img,
+.comment-reply-form .emoticon-picker__img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+}
+
+.comment-form .emoticon-picker__empty,
+.comment-edit-form .emoticon-picker__empty,
+.comment-reply-form .emoticon-picker__empty {
+  font-size: 13px;
+  color: var(--color-text-sub);
+  line-height: 1.5;
 }
 
 .comment-form .emoticon-picker__item,
@@ -1419,6 +1461,7 @@
   }
 
   .comment-form .emoticon-picker,
+  .comment-edit-form .emoticon-picker,
   .comment-reply-form .emoticon-picker {
     grid-template-columns: repeat(auto-fill, minmax(52px, 52px));
     gap: 8px;
@@ -1426,12 +1469,14 @@
   }
 
   .comment-form .emoticon-picker__item,
+  .comment-edit-form .emoticon-picker__item,
   .comment-reply-form .emoticon-picker__item {
     width: 52px;
     height: 52px;
   }
 
   .comment-form .emoticon-picker__img,
+  .comment-edit-form .emoticon-picker__img,
   .comment-reply-form .emoticon-picker__img {
     width: 36px;
     height: 36px;

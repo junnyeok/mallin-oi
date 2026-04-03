@@ -7,12 +7,17 @@ import {
   publicProfileHref,
   saveRedirect,
 } from './auth-store.js';
-import {
+
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const {
   loadOwnedEmoticons,
   renderOwnedEmoticonPicker,
   insertEmoticonToken,
   renderTextWithEmoticons,
-} from './emoticons.js';
+} = await import(`./emoticons.js?v=${MODULE_VERSION}`);
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const commentProfileImageCache = new Map();
@@ -390,9 +395,9 @@ function renderCommentItem(
         <div class="comment-item__body">${nl2brSafe(comment.body || '')}</div>
       </div>
 
-      ${
-        canEdit
-          ? `
+            ${
+              canEdit
+                ? `
         <form class="comment-edit-form" data-role="comment-edit-form" hidden>
           <textarea
             class="comment-edit-form__textarea"
@@ -400,6 +405,26 @@ function renderCommentItem(
             rows="4"
             data-role="comment-edit-textarea"
           >${escapeHtml(comment.body || '')}</textarea>
+
+          <div class="comment-edit-form__tools emoticon-picker-box">
+            <button
+              type="button"
+              class="comment-emoticon-toggle"
+              data-action="toggle-emoticon"
+            >
+              🥒 이모티콘
+            </button>
+
+            <div
+              class="emoticon-picker"
+              data-role="emoticon-panel"
+              hidden
+            >
+              ${renderOwnedEmoticonPicker(ownedCommentEmoticons, {
+                emptyText: '보유한 이모티콘이 없어.',
+              })}
+            </div>
+          </div>
 
           <div class="comment-edit-form__bottom">
             <p class="comment-edit-form__msg" data-role="comment-edit-msg"></p>
@@ -424,8 +449,8 @@ function renderCommentItem(
           </div>
         </form>
       `
-          : ''
-      }
+                : ''
+            }
 
       <form
         class="comment-reply-form"
@@ -681,6 +706,7 @@ function setEditMode(commentId, isEditing) {
   if (isEditing) {
     viewEl.hidden = true;
     formEl.hidden = false;
+    refreshCommentEmoticonUi();
 
     const textarea = formEl.querySelector(
       '[data-role="comment-edit-textarea"]',
