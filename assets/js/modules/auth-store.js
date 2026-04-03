@@ -277,17 +277,29 @@ export async function getCurrentSession() {
 }
 
 export async function getCurrentUser() {
+  const session = await getCurrentSession();
+
+  if (!session?.user) {
+    return null;
+  }
+
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
 
   if (error) {
-    console.error('[auth-store] getCurrentUser error:', error.message);
-    return null;
+    const message = String(error.message || '').trim();
+
+    if (message.toLowerCase().includes('auth session missing')) {
+      return session.user || null;
+    }
+
+    console.error('[auth-store] getCurrentUser error:', message);
+    return session.user || null;
   }
 
-  return user;
+  return user || session.user || null;
 }
 
 export async function isLoggedIn() {

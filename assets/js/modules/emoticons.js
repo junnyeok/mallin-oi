@@ -1,3 +1,4 @@
+import { withAssetVersion } from './site-version.js';
 import { supabase } from './supabase-client.js';
 import { BASIC_EMOTICON_PACK, CHEER_EMOTICON_PACK } from './store-data.js';
 
@@ -53,14 +54,14 @@ export async function loadOwnedEmoticons(userId) {
   return (data || []).map((row) => ({
     emoticon_code: String(row?.emoticon_code || '').trim(),
     emoticon_label: String(row?.emoticon_label || '이모티콘').trim(),
-    image_path: String(row?.image_path || '').trim(),
+    image_path: withAssetVersion(String(row?.image_path || '').trim()),
     display_order: Number(row?.display_order || 0),
   }));
 }
 
 export function createInlineEmoticonNode(emoticon) {
   const img = document.createElement('img');
-  img.src = String(emoticon?.image_path || '').trim();
+  img.src = withAssetVersion(String(emoticon?.image_path || '').trim());
   img.alt = String(emoticon?.emoticon_label || '이모티콘').trim();
   img.className = 'inline-emoticon';
   img.setAttribute(
@@ -111,7 +112,7 @@ export function renderOwnedEmoticonPicker(
           title="${escapeHtml(item.emoticon_label)}"
         >
           <img
-            src="${escapeHtml(item.image_path)}"
+            src="${escapeHtml(withAssetVersion(item.image_path))}"
             alt="${escapeHtml(item.emoticon_label)}"
             class="emoticon-picker__img"
             loading="lazy"

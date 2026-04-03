@@ -1,10 +1,12 @@
+import { withAssetVersion } from './site-version.js';
+
 export const BASIC_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
   const order = index + 1;
 
   return {
     code: `free-${order}`,
     label: `기본 이모티콘 ${order}`,
-    imagePath: `./images/emoticons/free-${order}.png`,
+    imagePath: withAssetVersion(`./images/emoticons/free-${order}.png`),
     displayOrder: order,
   };
 });
@@ -15,7 +17,7 @@ export const CHEER_EMOTICON_PACK = Array.from({ length: 5 }, (_, index) => {
   return {
     code: `cheer-${order}`,
     label: `응원 이모티콘 ${order}`,
-    imagePath: `./images/emoticons/cheer-${order}.png`,
+    imagePath: withAssetVersion(`./images/emoticons/cheer-${order}.png`),
     displayOrder: order,
   };
 });
@@ -27,7 +29,7 @@ export const STORE_ITEMS = [
     category: 'emoticon',
     badge: '이모티콘',
     icon: '🥒',
-    thumbImagePath: './images/emoticons/free-7.png',
+    thumbImagePath: withAssetVersion('./images/emoticons/free-7.png'),
     price: 0,
     state: '무료 지급',
     description: '사이트 기본 지급용 이모티콘 7종 묶음.',
@@ -42,7 +44,7 @@ export const STORE_ITEMS = [
     category: 'emoticon',
     badge: '이모티콘',
     icon: '🎉',
-    thumbImagePath: './images/emoticons/cheer-1.png',
+    thumbImagePath: withAssetVersion('./images/emoticons/cheer-1.png'),
     price: 150,
     state: '판매 중',
     description: '축하, 응원, 박수 반응용 이모티콘 세트.',
@@ -57,8 +59,7 @@ export const STORE_ITEMS = [
     category: 'emoticon',
     badge: '테마',
     icon: '🚓',
-    thumbImagePath: './images/emoticons/police-1.png',
-
+    thumbImagePath: withAssetVersion('./images/emoticons/police-1.png'),
     price: 180,
     state: '판매 준비중',
     description: '경찰 모자와 제스처가 들어간 이모티콘 세트.',
@@ -138,8 +139,7 @@ export const STORE_ITEMS = [
     category: 'emoticon',
     badge: '신규',
     icon: '💼',
-    thumbImagePath: './images/emoticons/nightwork-1.png',
-
+    thumbImagePath: withAssetVersion('./images/emoticons/nightwork-1.png'),
     price: 190,
     state: '판매 준비중',
     description: '출근, 보고, 완료 체크 반응에 쓰기 좋은 세트.',
@@ -154,7 +154,7 @@ export const STORE_ITEMS = [
     category: 'emoticon',
     badge: '신규',
     icon: '📚',
-    thumbImagePath: './images/emoticons/work-1.png',
+    thumbImagePath: withAssetVersion('./images/emoticons/work-1.png'),
     price: 210,
     state: '판매 준비중',
     description: '공부, 독서, 기록용 리액션 이모티콘 세트.',

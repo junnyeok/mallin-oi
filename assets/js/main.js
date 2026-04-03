@@ -1,25 +1,14 @@
-import { initCursorBuddy } from './modules/cursor-buddy.js';
-import { initPostsUI } from './modules/posts-ui.js';
-import { initPostDetail, initBackLink } from './modules/post-detail.js';
-import { initPostsAll } from './modules/posts-all.js';
-import { initSearchNav } from './modules/search-nav.js';
-import { initPostDetailList } from './modules/post-detail-list.js';
-import { initPostPrevNext } from './modules/post-prev-next.js';
-import { initScrollButtons } from './modules/scroll-buttons.js';
-import { initWrite } from './modules/write.js';
-import { initLogin } from './modules/login.js';
-import { initSignup } from './modules/signup.js';
-import { initLayoutIncludes } from './modules/layout-includes.js';
-import { initPrevMypage } from './modules/prev-mypage.js';
-import { initMypage } from './modules/mypage.js';
-import { initAccountRecovery } from './modules/account-recovery.js';
-import { initAuthUI } from './modules/auth-store.js';
-import { initPostViews } from './modules/post-views.js?v=20260311-1325';
-import { initPostComments } from './modules/post-comments.js';
-import { initSuggestionsBoard } from './modules/suggestions-board.js';
-import { initPostReactions } from './modules/post-reactions.js';
-import { initProfile } from './modules/profile.js';
-import { initStore } from './modules/store.js';
+function getRuntimeSiteVersion() {
+  return String(window.__SITE_VERSION__ || 'dev').trim();
+}
+
+function withModuleVersion(path = '') {
+  const raw = String(path || '').trim();
+  if (!raw) return raw;
+
+  const sep = raw.includes('?') ? '&' : '?';
+  return `${raw}${sep}v=${encodeURIComponent(getRuntimeSiteVersion())}`;
+}
 
 function isInAccountFolder() {
   return window.location.pathname.includes('/account/');
@@ -29,7 +18,144 @@ function getPostsAllBaseUrl() {
   return isInAccountFolder() ? '../posts-all.html' : './posts-all.html';
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initApp() {
+  let siteVersionModule;
+  let updateBannerModule;
+  let cursorBuddyModule;
+  let postsUiModule;
+  let postDetailModule;
+  let postsAllModule;
+  let searchNavModule;
+  let postDetailListModule;
+  let postPrevNextModule;
+  let scrollButtonsModule;
+  let writeModule;
+  let loginModule;
+  let signupModule;
+  let layoutIncludesModule;
+  let prevMypageModule;
+  let mypageModule;
+  let accountRecoveryModule;
+  let authStoreModule;
+  let postViewsModule;
+  let postCommentsModule;
+  let suggestionsBoardModule;
+  let postReactionsModule;
+  let profileModule;
+  let storeModule;
+
+  try {
+    [
+      siteVersionModule,
+      updateBannerModule,
+      cursorBuddyModule,
+      postsUiModule,
+      postDetailModule,
+      postsAllModule,
+      searchNavModule,
+      postDetailListModule,
+      postPrevNextModule,
+      scrollButtonsModule,
+      writeModule,
+      loginModule,
+      signupModule,
+      layoutIncludesModule,
+      prevMypageModule,
+      mypageModule,
+      accountRecoveryModule,
+      authStoreModule,
+      postViewsModule,
+      postCommentsModule,
+      suggestionsBoardModule,
+      postReactionsModule,
+      profileModule,
+      storeModule,
+    ] = await Promise.all([
+      import(withModuleVersion('./modules/site-version.js')),
+      import(withModuleVersion('./modules/update-banner.js')),
+      import(withModuleVersion('./modules/cursor-buddy.js')),
+      import(withModuleVersion('./modules/posts-ui.js')),
+      import(withModuleVersion('./modules/post-detail.js')),
+      import(withModuleVersion('./modules/posts-all.js')),
+      import(withModuleVersion('./modules/search-nav.js')),
+      import(withModuleVersion('./modules/post-detail-list.js')),
+      import(withModuleVersion('./modules/post-prev-next.js')),
+      import(withModuleVersion('./modules/scroll-buttons.js')),
+      import(withModuleVersion('./modules/write.js')),
+      import(withModuleVersion('./modules/login.js')),
+      import(withModuleVersion('./modules/signup.js')),
+      import(withModuleVersion('./modules/layout-includes.js')),
+      import(withModuleVersion('./modules/prev-mypage.js')),
+      import(withModuleVersion('./modules/mypage.js')),
+      import(withModuleVersion('./modules/account-recovery.js')),
+      import(withModuleVersion('./modules/auth-store.js')),
+      import(withModuleVersion('./modules/post-views.js')),
+      import(withModuleVersion('./modules/post-comments.js')),
+      import(withModuleVersion('./modules/suggestions-board.js')),
+      import(withModuleVersion('./modules/post-reactions.js')),
+      import(withModuleVersion('./modules/profile.js')),
+      import(withModuleVersion('./modules/store.js')),
+    ]);
+  } catch (error) {
+    console.error('[main] core module load failed:', error);
+    return;
+  }
+
+  const {
+    getVersionChangeInfo,
+    markCurrentVersionApplied,
+    applyVersionUpdateAndReload,
+    withAssetVersion,
+  } = siteVersionModule;
+
+  const { showUpdateBanner } = updateBannerModule;
+  const { initCursorBuddy } = cursorBuddyModule;
+  const { initPostsUI } = postsUiModule;
+  const { initPostDetail, initBackLink } = postDetailModule;
+  const { initPostsAll } = postsAllModule;
+  const { initSearchNav } = searchNavModule;
+  const { initPostDetailList } = postDetailListModule;
+  const { initPostPrevNext } = postPrevNextModule;
+  const { initScrollButtons } = scrollButtonsModule;
+  const { initWrite } = writeModule;
+  const { initLogin } = loginModule;
+  const { initSignup } = signupModule;
+  const { initLayoutIncludes } = layoutIncludesModule;
+  const { initPrevMypage } = prevMypageModule;
+  const { initMypage } = mypageModule;
+  const { initAccountRecovery } = accountRecoveryModule;
+  const { initAuthUI } = authStoreModule;
+  const { initPostViews } = postViewsModule;
+  const { initPostComments } = postCommentsModule;
+  const { initSuggestionsBoard } = suggestionsBoardModule;
+  const { initPostReactions } = postReactionsModule;
+  const { initProfile } = profileModule;
+  const { initStore } = storeModule;
+
+  document
+    .querySelectorAll(
+      'link[rel="stylesheet"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]',
+    )
+    .forEach((link) => {
+      const href = link.getAttribute('href');
+      if (!href) return;
+      link.href = withAssetVersion(href);
+    });
+
+  try {
+    const versionInfo = getVersionChangeInfo();
+
+    if (versionInfo.changed) {
+      showUpdateBanner(async () => {
+        await applyVersionUpdateAndReload();
+      });
+    } else if (versionInfo.firstVisit) {
+      markCurrentVersionApplied();
+    }
+  } catch (e) {
+    console.error('[main] site version check failed:', e);
+  }
+
   try {
     await initLayoutIncludes();
   } catch (e) {
@@ -177,4 +303,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const y = document.querySelector('#year');
   if (y) y.textContent = String(new Date().getFullYear());
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp, { once: true });
+} else {
+  initApp();
+}
