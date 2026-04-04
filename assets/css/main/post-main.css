@@ -901,6 +901,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .comment-author-wrap {
@@ -1463,7 +1464,7 @@
   .comment-form .emoticon-picker,
   .comment-edit-form .emoticon-picker,
   .comment-reply-form .emoticon-picker {
-    grid-template-columns: repeat(auto-fill, minmax(52px, 52px));
+    grid-template-columns: repeat(auto-fill, minmax(60px, 52px));
     gap: 8px;
     padding: 10px;
   }
