@@ -32,12 +32,20 @@ function getAuthorNickname(post) {
   return String(post?.authorNickname || '익명').trim() || '익명';
 }
 
+function normalizeSearchType(raw) {
+  const type = String(raw || 'title')
+    .trim()
+    .toLowerCase();
+  if (type === 'tag') return 'tag';
+  if (type === 'author') return 'author';
+  return 'title';
+}
+
 function getState() {
   const sp = new URLSearchParams(window.location.search);
   const tab = (sp.get('tab') || 'all').toLowerCase();
   const q = (sp.get('q') || '').trim();
-  const type =
-    (sp.get('type') || 'title').toLowerCase() === 'tag' ? 'tag' : 'title';
+  const type = normalizeSearchType(sp.get('type') || 'title');
   const page = Math.max(1, Number(sp.get('page') || 1));
 
   return { tab, q, type, page };
@@ -52,8 +60,11 @@ function setState(nextState) {
   if (nextState.q) sp.set('q', nextState.q);
   else sp.delete('q');
 
-  if (nextState.type === 'tag') sp.set('type', 'tag');
-  else sp.delete('type');
+  if (nextState.type && nextState.type !== 'title') {
+    sp.set('type', nextState.type);
+  } else {
+    sp.delete('type');
+  }
 
   if (nextState.page > 1) sp.set('page', String(nextState.page));
   else sp.delete('page');
@@ -81,6 +92,12 @@ function filterPosts(posts, { tab, q, type }) {
           .toLowerCase()
           .includes(query),
       ),
+    );
+  }
+
+  if (type === 'author') {
+    return scoped.filter((post) =>
+      getAuthorNickname(post).toLowerCase().includes(query),
     );
   }
 
