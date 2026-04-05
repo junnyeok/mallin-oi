@@ -23,6 +23,44 @@ const EMOTICON_MAP = new Map(
   ].map((item) => [item.code, item]),
 );
 
+const PACK_META = [
+  {
+    key: 'basic',
+    itemId: 'emo-basic-01',
+    label: '기본',
+    iconPath: BASIC_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'free-',
+  },
+  {
+    key: 'cheer',
+    itemId: 'emo-cheer-01',
+    label: '응원',
+    iconPath: CHEER_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'cheer-',
+  },
+  {
+    key: 'police',
+    itemId: 'emo-police-01',
+    label: '경찰',
+    iconPath: POLICE_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'police-',
+  },
+  {
+    key: 'thanks',
+    itemId: 'emo-thanks-01',
+    label: '감사',
+    iconPath: THANKS_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'thanks-',
+  },
+  {
+    key: 'sorry',
+    itemId: 'emo-sorry-01',
+    label: '사과',
+    iconPath: SORRY_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'sorry-',
+  },
+];
+
 function escapeHtml(value) {
   return String(value || '')
     .replaceAll('&', '&amp;')
@@ -34,6 +72,36 @@ function escapeHtml(value) {
 
 function nl2br(text = '') {
   return escapeHtml(text).replaceAll('\n', '<br />');
+}
+
+function getPackKeyByEmoticonCode(code = '') {
+  const safeCode = String(code || '')
+    .trim()
+    .toLowerCase();
+
+  const found = PACK_META.find((pack) => safeCode.startsWith(pack.prefix));
+  return found?.key || 'etc';
+}
+
+function groupOwnedEmoticonsByPack(emoticons = []) {
+  const grouped = new Map();
+
+  for (const pack of PACK_META) {
+    grouped.set(pack.key, []);
+  }
+
+  (emoticons || []).forEach((item) => {
+    const key = getPackKeyByEmoticonCode(item?.emoticon_code);
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key).push(item);
+  });
+
+  return PACK_META.map((pack) => ({
+    ...pack,
+    emoticons: grouped.get(pack.key) || [],
+  })).filter((pack) => pack.emoticons.length > 0);
 }
 
 export function getEmoticonPackByItemId(itemId = '') {
@@ -119,6 +187,30 @@ export function insertEmoticonToken(textarea, emoticonCode = '') {
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+export function switchEmoticonPickerPack(rootEl, packKey = '') {
+  if (!rootEl) return;
+
+  const tabs = rootEl.querySelectorAll('[data-action="select-emoticon-pack"]');
+  const panes = rootEl.querySelectorAll('[data-role="emoticon-pack-pane"]');
+
+  if (!tabs.length || !panes.length) return;
+
+  const fallbackKey =
+    packKey || tabs[0]?.dataset.packKey || panes[0]?.dataset.packKey || '';
+
+  tabs.forEach((tab) => {
+    const isActive = tab.dataset.packKey === fallbackKey;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+
+  panes.forEach((pane) => {
+    const isActive = pane.dataset.packKey === fallbackKey;
+    pane.hidden = !isActive;
+    pane.classList.toggle('is-active', isActive);
+  });
+}
+
 export function renderOwnedEmoticonPicker(
   emoticons = [],
   { emptyText = '보유한 이모티콘이 없어.' } = {},
@@ -127,26 +219,84 @@ export function renderOwnedEmoticonPicker(
     return `<div class="emoticon-picker__empty">${escapeHtml(emptyText)}</div>`;
   }
 
-  return emoticons
+  const packGroups = groupOwnedEmoticonsByPack(emoticons);
+
+  if (!packGroups.length) {
+    return `<div class="emoticon-picker__empty">${escapeHtml(emptyText)}</div>`;
+  }
+
+  const activePackKey = packGroups[0].key;
+
+  const tabsHtml = packGroups
     .map(
-      (item) => `
+      (pack) => `
         <button
           type="button"
-          class="emoticon-picker__item"
-          data-action="select-emoticon"
-          data-emoticon-code="${escapeHtml(item.emoticon_code)}"
-          title="${escapeHtml(item.emoticon_label)}"
+          class="emoticon-picker__pack-tab ${
+            pack.key === activePackKey ? 'is-active' : ''
+          }"
+          data-action="select-emoticon-pack"
+          data-pack-key="${escapeHtml(pack.key)}"
+          aria-pressed="${pack.key === activePackKey ? 'true' : 'false'}"
+          title="${escapeHtml(pack.label)}"
         >
           <img
-            src="${escapeHtml(withAssetVersion(item.image_path))}"
-            alt="${escapeHtml(item.emoticon_label)}"
-            class="emoticon-picker__img"
+            src="${escapeHtml(withAssetVersion(pack.iconPath))}"
+            alt="${escapeHtml(pack.label)}"
+            class="emoticon-picker__pack-icon"
             loading="lazy"
           />
         </button>
       `,
     )
     .join('');
+
+  const panesHtml = packGroups
+    .map(
+      (pack) => `
+        <div
+          class="emoticon-picker__pack-pane ${
+            pack.key === activePackKey ? 'is-active' : ''
+          }"
+          data-role="emoticon-pack-pane"
+          data-pack-key="${escapeHtml(pack.key)}"
+          ${pack.key === activePackKey ? '' : 'hidden'}
+        >
+          <div class="emoticon-picker__grid">
+            ${pack.emoticons
+              .map(
+                (item) => `
+                  <button
+                    type="button"
+                    class="emoticon-picker__item"
+                    data-action="select-emoticon"
+                    data-emoticon-code="${escapeHtml(item.emoticon_code)}"
+                    title="${escapeHtml(item.emoticon_label)}"
+                  >
+                    <img
+                      src="${escapeHtml(item.image_path)}"
+                      alt="${escapeHtml(item.emoticon_label)}"
+                      class="emoticon-picker__img"
+                      loading="lazy"
+                    />
+                  </button>
+                `,
+              )
+              .join('')}
+          </div>
+        </div>
+      `,
+    )
+    .join('');
+
+  return `
+    <div class="emoticon-picker__packs" aria-label="이모티콘 팩 목록">
+      ${tabsHtml}
+    </div>
+    <div class="emoticon-picker__body">
+      ${panesHtml}
+    </div>
+  `;
 }
 
 export function renderTextWithEmoticons(text = '') {

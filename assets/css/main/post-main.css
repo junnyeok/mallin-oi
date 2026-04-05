@@ -1320,7 +1320,6 @@
   POST / COMMENT EMOTICON SIZE FIX
 ========================= */
 
-/* 게시물 본문 안에 들어간 이모티콘은 일반 첨부이미지처럼 커지지 않게 고정 */
 .post-body__text img.inline-emoticon,
 .post-body__text img.inline-emoticon.inline-emoticon--comment {
   display: inline-block;
@@ -1338,7 +1337,6 @@
   object-fit: contain;
 }
 
-/* 댓글 / 답글 본문 안 이모티콘 */
 .comment-item__body .inline-emoticon,
 .comment-item__body .inline-emoticon--comment,
 .comment-reply-item__body .inline-emoticon,
@@ -1362,15 +1360,78 @@
 .comment-form .emoticon-picker,
 .comment-edit-form .emoticon-picker,
 .comment-reply-form .emoticon-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
-  gap: 10px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: #fff;
+}
+
+.comment-form .emoticon-picker__packs,
+.comment-edit-form .emoticon-picker__packs,
+.comment-reply-form .emoticon-picker__packs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.comment-form .emoticon-picker__pack-tab,
+.comment-edit-form .emoticon-picker__pack-tab,
+.comment-reply-form .emoticon-picker__pack-tab {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.comment-form .emoticon-picker__pack-tab:hover,
+.comment-edit-form .emoticon-picker__pack-tab:hover,
+.comment-reply-form .emoticon-picker__pack-tab:hover {
+  transform: translateY(-1px);
+}
+
+.comment-form .emoticon-picker__pack-tab.is-active,
+.comment-edit-form .emoticon-picker__pack-tab.is-active,
+.comment-reply-form .emoticon-picker__pack-tab.is-active {
+  border-color: #b26bff;
+  background: #faf5ff;
+  box-shadow: 0 0 0 2px rgba(178, 107, 255, 0.12);
+}
+
+.comment-form .emoticon-picker__pack-icon,
+.comment-edit-form .emoticon-picker__pack-icon,
+.comment-reply-form .emoticon-picker__pack-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.comment-form .emoticon-picker__grid,
+.comment-edit-form .emoticon-picker__grid,
+.comment-reply-form .emoticon-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
+  gap: 10px;
+  width: 100%;
 }
 
 .comment-form .emoticon-picker__item,
@@ -1386,12 +1447,18 @@
   background: #fff;
   cursor: pointer;
   overflow: hidden;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .comment-form .emoticon-picker__item:hover,
 .comment-edit-form .emoticon-picker__item:hover,
 .comment-reply-form .emoticon-picker__item:hover {
   transform: translateY(-1px);
+  border-color: #b26bff;
+  box-shadow: 0 0 0 2px rgba(178, 107, 255, 0.1);
 }
 
 .comment-form .emoticon-picker__img,
@@ -1413,43 +1480,7 @@
   line-height: 1.5;
 }
 
-.comment-form .emoticon-picker__item,
-.comment-reply-form .emoticon-picker__item {
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: #fff;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.comment-form .emoticon-picker__item:hover,
-.comment-reply-form .emoticon-picker__item:hover {
-  transform: translateY(-1px);
-}
-
-.comment-form .emoticon-picker__img,
-.comment-reply-form .emoticon-picker__img {
-  display: block;
-  width: 40px;
-  height: 40px;
-  max-width: 40px;
-  max-height: 40px;
-  object-fit: contain;
-}
-
-.comment-form .emoticon-picker__empty,
-.comment-reply-form .emoticon-picker__empty {
-  font-size: 13px;
-  color: var(--color-text-sub);
-  line-height: 1.5;
-}
-
-/* 모바일에서 본문 이모티콘 살짝 줄이기 */
+/* 모바일 */
 @media (max-width: 768px) {
   .post-body__text img.inline-emoticon,
   .post-body__text img.inline-emoticon.inline-emoticon--comment {
@@ -1464,9 +1495,40 @@
   .comment-form .emoticon-picker,
   .comment-edit-form .emoticon-picker,
   .comment-reply-form .emoticon-picker {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 52px));
-    gap: 8px;
     padding: 10px;
+  }
+
+  .comment-form .emoticon-picker__packs,
+  .comment-edit-form .emoticon-picker__packs,
+  .comment-reply-form .emoticon-picker__packs {
+    gap: 6px;
+    padding-top: 4px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .comment-form .emoticon-picker__pack-tab,
+  .comment-edit-form .emoticon-picker__pack-tab,
+  .comment-reply-form .emoticon-picker__pack-tab {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .comment-form .emoticon-picker__pack-icon,
+  .comment-edit-form .emoticon-picker__pack-icon,
+  .comment-reply-form .emoticon-picker__pack-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .comment-form .emoticon-picker__grid,
+  .comment-edit-form .emoticon-picker__grid,
+  .comment-reply-form .emoticon-picker__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
   }
 
   .comment-form .emoticon-picker__item,

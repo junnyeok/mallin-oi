@@ -17,6 +17,7 @@ const {
   renderOwnedEmoticonPicker,
   insertEmoticonToken,
   renderTextWithEmoticons,
+  switchEmoticonPickerPack,
 } = await import(`./emoticons.js?v=${MODULE_VERSION}`);
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
@@ -815,6 +816,7 @@ function refreshCommentEmoticonUi() {
     .querySelectorAll('.emoticon-picker[data-role="emoticon-panel"]')
     .forEach((panel) => {
       panel.innerHTML = html;
+      switchEmoticonPickerPack(panel);
     });
 
   document
@@ -866,6 +868,13 @@ function bindMainCommentFormExtras() {
 
     if (action === 'toggle-emoticon') {
       toggleEmoticonPanel(button);
+      return;
+    }
+
+    if (action === 'select-emoticon-pack') {
+      const panel = button.closest('[data-role="emoticon-panel"]');
+      const packKey = String(button.dataset.packKey || '').trim();
+      switchEmoticonPickerPack(panel, packKey);
       return;
     }
 
@@ -1114,6 +1123,13 @@ function bindCommentListEvents(postId) {
 
     if (action === 'toggle-emoticon') {
       toggleEmoticonPanel(btn);
+      return;
+    }
+
+    if (action === 'select-emoticon-pack') {
+      const panel = btn.closest('[data-role="emoticon-panel"]');
+      const packKey = String(btn.dataset.packKey || '').trim();
+      switchEmoticonPickerPack(panel, packKey);
       return;
     }
 

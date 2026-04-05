@@ -17,15 +17,26 @@ export function initSearchNav({
 
   if (!form || !input) return;
 
-  const typeBtns = Array.from(document.querySelectorAll(typeBtnSelector));
+  const typeBtns = Array.from(form.querySelectorAll(typeBtnSelector));
+  const currentBtn = form.querySelector('#searchTypeCurrent');
+  const currentLabel = form.querySelector('.search-type-current__label');
+  const menu = form.querySelector('#searchTypeMenu');
 
   function normalizeType(raw) {
     const t = String(raw || 'title')
       .trim()
       .toLowerCase();
+
     if (t === 'tag') return 'tag';
     if (t === 'author') return 'author';
     return 'title';
+  }
+
+  function getTypeLabel(type) {
+    const safeType = normalizeType(type);
+    if (safeType === 'tag') return '태그';
+    if (safeType === 'author') return '작성자';
+    return '제목';
   }
 
   function getTabFromPage() {
@@ -51,29 +62,79 @@ export function initSearchNav({
   }
 
   function getType() {
-    const pressed = typeBtns.find(
-      (b) => b.getAttribute('aria-pressed') === 'true',
-    );
-    return normalizeType(pressed?.dataset?.type || 'title');
+    return normalizeType(form.dataset.searchType || getTypeFromUrl());
+  }
+
+  function openMenu() {
+    if (!menu || !currentBtn) return;
+    menu.hidden = false;
+    currentBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMenu() {
+    if (!menu || !currentBtn) return;
+    menu.hidden = true;
+    currentBtn.setAttribute('aria-expanded', 'false');
   }
 
   function setTypeUI(type) {
     const safeType = normalizeType(type);
 
-    typeBtns.forEach((b) => {
-      const active = normalizeType(b.dataset.type) === safeType;
-      b.classList.toggle('is-active', active);
-      b.setAttribute('aria-pressed', String(active));
+    form.dataset.searchType = safeType;
+
+    typeBtns.forEach((btn) => {
+      const active = normalizeType(btn.dataset.type) === safeType;
+
+      if (btn.classList.contains('search-type-btn')) {
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      }
+
+      if (btn.classList.contains('search-type-menu__item')) {
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-checked', String(active));
+      }
     });
+
+    if (currentLabel) {
+      currentLabel.textContent = getTypeLabel(safeType);
+    }
   }
 
   if (typeBtns.length) {
     setTypeUI(getTypeFromUrl());
 
-    typeBtns.forEach((b) => {
-      b.addEventListener('click', () => {
-        setTypeUI(normalizeType(b.dataset.type));
+    typeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setTypeUI(btn.dataset.type);
+
+        if (btn.classList.contains('search-type-menu__item')) {
+          closeMenu();
+        }
       });
+    });
+  }
+
+  if (currentBtn && menu) {
+    currentBtn.addEventListener('click', () => {
+      const expanded = currentBtn.getAttribute('aria-expanded') === 'true';
+      if (expanded) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!form.contains(e.target)) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeMenu();
+      }
     });
   }
 

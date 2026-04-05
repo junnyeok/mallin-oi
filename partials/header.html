@@ -15,6 +15,7 @@
 
     <form class="search" id="searchForm" role="search">
       <label class="sr-only" for="q">검색</label>
+
       <input
         id="q"
         name="q"
@@ -23,7 +24,12 @@
         placeholder="검색어를 입력하세요."
       />
 
-      <div class="search__type" role="group" aria-label="검색 방식">
+      <!-- PC용 -->
+      <div
+        class="search__type search__type--desktop"
+        role="group"
+        aria-label="검색 방식"
+      >
         <button
           type="button"
           class="search-type-btn is-active"
@@ -48,6 +54,57 @@
         >
           작성자
         </button>
+      </div>
+
+      <!-- 모바일용 -->
+      <div class="search__type-mobile">
+        <button
+          type="button"
+          class="search-type-current"
+          id="searchTypeCurrent"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="searchTypeMenu"
+        >
+          <span class="search-type-current__label">제목</span>
+          <span class="search-type-current__arrow" aria-hidden="true">▾</span>
+        </button>
+
+        <div
+          class="search-type-menu"
+          id="searchTypeMenu"
+          role="menu"
+          aria-label="검색 방식 선택"
+          hidden
+        >
+          <button
+            type="button"
+            class="search-type-menu__item is-active"
+            data-type="title"
+            role="menuitemradio"
+            aria-checked="true"
+          >
+            제목
+          </button>
+          <button
+            type="button"
+            class="search-type-menu__item"
+            data-type="tag"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            태그
+          </button>
+          <button
+            type="button"
+            class="search-type-menu__item"
+            data-type="author"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            작성자
+          </button>
+        </div>
       </div>
 
       <button class="btn search__btn" type="submit" aria-label="검색">

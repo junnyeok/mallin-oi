@@ -22,6 +22,9 @@
 
   [mypage.html]
   - TOP / POST / END
+
+  [store.html]
+  - TOP / END
 ================================================= */
 
 function isMobileViewport() {
@@ -36,6 +39,7 @@ function getPageType() {
   if (path.includes('write.html')) return 'write';
   if (path.includes('mypage.html')) return 'mypage';
   if (path.includes('profile.html')) return 'profile';
+  if (path.includes('store.html')) return 'store';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
@@ -45,6 +49,7 @@ function getPageType() {
   if (page === 'write') return 'write';
   if (page === 'mypage') return 'mypage';
   if (page === 'profile') return 'profile';
+  if (page === 'store') return 'store';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }
@@ -351,6 +356,10 @@ export function initScrollButtons(options = {}) {
     }
 
     btnBottom.setAttribute('aria-label', '하단으로 이동');
+  }
+
+  if (pageType === 'store') {
+    btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 
   wrap.appendChild(btnTop);

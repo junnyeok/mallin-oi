@@ -4,6 +4,7 @@ import {
   loadOwnedEmoticons,
   renderOwnedEmoticonPicker,
   createInlineEmoticonNode,
+  switchEmoticonPickerPack,
 } from './emoticons.js';
 
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
@@ -215,6 +216,8 @@ async function initWriteEmoticonPicker(user) {
     emptyText: '보유한 이모티콘이 없어.',
   });
 
+  switchEmoticonPickerPack(panel);
+
   toggleBtn.disabled = ownedEmoticons.length === 0;
 
   toggleBtn.addEventListener('click', () => {
@@ -223,6 +226,16 @@ async function initWriteEmoticonPicker(user) {
   });
 
   panel.addEventListener('click', (event) => {
+    const packBtn = event.target.closest(
+      '[data-action="select-emoticon-pack"]',
+    );
+
+    if (packBtn) {
+      const packKey = String(packBtn.dataset.packKey || '').trim();
+      switchEmoticonPickerPack(panel, packKey);
+      return;
+    }
+
     const button = event.target.closest('[data-action="select-emoticon"]');
     if (!button) return;
 

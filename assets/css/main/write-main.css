@@ -442,13 +442,74 @@
 }
 
 .emoticon-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
-  gap: 10px;
+  width: 100%;
+  max-width: 100%;
   padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: #fff;
+}
+
+.emoticon-picker__packs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.emoticon-picker__pack-tab {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.emoticon-picker__pack-tab:hover {
+  transform: translateY(-1px);
+}
+
+.emoticon-picker__pack-tab.is-active {
+  border-color: #b26bff;
+  background: #faf5ff;
+  box-shadow: 0 0 0 2px rgba(178, 107, 255, 0.12);
+}
+
+.emoticon-picker__pack-icon {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.emoticon-picker__body {
+  width: 100%;
+}
+
+.emoticon-picker__pack-pane {
+  width: 100%;
+}
+
+.emoticon-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
+  gap: 10px;
+  width: 100%;
 }
 
 .emoticon-picker__item {
@@ -460,10 +521,17 @@
   border-radius: 14px;
   background: #fff;
   cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .emoticon-picker__item:hover {
   transform: translateY(-1px);
+  border-color: #b26bff;
+  box-shadow: 0 0 0 2px rgba(178, 107, 255, 0.1);
 }
 
 .emoticon-picker__img {
@@ -485,4 +553,45 @@
   vertical-align: middle;
   object-fit: contain;
   margin: 0 2px;
+}
+
+@media (max-width: 768px) {
+  .emoticon-picker {
+    padding: 10px;
+  }
+
+  .emoticon-picker__packs {
+    gap: 6px;
+    padding-top: 4px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .emoticon-picker__pack-tab {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+
+  .emoticon-picker__pack-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .emoticon-picker__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .emoticon-picker__item {
+    width: 52px;
+    height: 52px;
+  }
+
+  .emoticon-picker__img {
+    width: 36px;
+    height: 36px;
+  }
 }
