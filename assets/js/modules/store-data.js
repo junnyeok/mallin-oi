@@ -44,6 +44,17 @@ export const THANKS_EMOTICON_PACK = Array.from({ length: 5 }, (_, index) => {
   };
 });
 
+export const SORRY_EMOTICON_PACK = Array.from({ length: 6 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `sorry-${order}`,
+    label: `사과 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/sorry-${order}.png`),
+    displayOrder: 400 + order,
+  };
+});
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -106,17 +117,19 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'fashion-cloth-01',
-    name: '후드티',
-    category: 'fashion',
-    badge: '꾸미기',
-    icon: '👕',
-    price: 320,
-    state: '장착 기능 예정',
-    description: '오이 캐릭터 전용 후드티 아이템.',
-    detailDescription: '오이 캐릭터 전용 후드티 꾸미기 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'emo-sorry-01',
+    name: '사과오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🍎',
+    thumbImagePath: withAssetVersion('./images/emoticons/sorry-1.png'),
+    price: 180,
+    state: '판매 중',
+    description: '사과를 하는 오이 이모티콘 세트.',
+    detailDescription:
+      '오이 캐릭터가 사과를 하는 이모티콘 세트야. 구매하면 6개의 사과 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: SORRY_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'fashion-shoes-01',

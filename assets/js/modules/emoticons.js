@@ -10,6 +10,7 @@ const {
   CHEER_EMOTICON_PACK,
   POLICE_EMOTICON_PACK,
   THANKS_EMOTICON_PACK,
+  SORRY_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -18,6 +19,7 @@ const EMOTICON_MAP = new Map(
     ...CHEER_EMOTICON_PACK,
     ...POLICE_EMOTICON_PACK,
     ...THANKS_EMOTICON_PACK,
+    ...SORRY_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -51,6 +53,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-thanks-01') {
     return THANKS_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-sorry-01') {
+    return SORRY_EMOTICON_PACK;
   }
 
   return [];
