@@ -399,6 +399,13 @@ function findMypageLink() {
   );
 }
 
+function findProfileButton() {
+  return (
+    document.querySelector('[data-profile-btn]') ||
+    document.querySelector('.header-actions .write-btn[href$="profile.html"]')
+  );
+}
+
 function findAuthText(loginLink) {
   if (!loginLink) return null;
   return loginLink.querySelector('[data-auth-text]') || loginLink;
@@ -413,6 +420,7 @@ function setLinkText(el, text) {
 export async function updateAuthUI() {
   const loginLink = findLoginLink();
   const mypageLink = findMypageLink();
+  const profileButton = findProfileButton();
 
   removeOldNickname();
 
@@ -453,6 +461,11 @@ export async function updateAuthUI() {
       mypageLink.onclick = null;
     }
 
+    if (profileButton) {
+      profileButton.href = profileHref();
+      profileButton.onclick = null;
+    }
+
     return;
   }
 
@@ -467,6 +480,15 @@ export async function updateAuthUI() {
   if (mypageLink) {
     mypageLink.href = loginHref();
     mypageLink.onclick = (e) => {
+      e.preventDefault();
+      saveRedirect();
+      window.location.href = loginHref();
+    };
+  }
+
+  if (profileButton) {
+    profileButton.href = loginHref();
+    profileButton.onclick = (e) => {
       e.preventDefault();
       saveRedirect();
       window.location.href = loginHref();

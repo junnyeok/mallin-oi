@@ -75,13 +75,16 @@
   .header-actions--corner {
     position: static;
     margin-top: var(--space-8);
-    flex-wrap: wrap;
+    width: 100%;
+    flex-wrap: nowrap;
     justify-content: center;
   }
 
   .write-btn {
+    flex: 1 1 0;
+    min-width: 0;
     height: 36px;
-    padding: 0 var(--space-12);
+    padding: 0 var(--space-10);
     font-size: 13px;
   }
 }

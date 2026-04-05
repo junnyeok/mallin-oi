@@ -31,3 +31,20 @@
 #update-btn:hover {
   background: #00b34a;
 }
+
+@media (max-width: 480px) {
+  .update-inner {
+    white-space: nowrap; /* 줄바꿈 금지 */
+  }
+
+  #update-banner {
+    padding: 10px 14px; /* 살짝 줄여서 공간 확보 */
+    font-size: 13px; /* 글씨 조금 줄이기 */
+  }
+
+  #update-btn {
+    padding: 5px 10px; /* 버튼도 살짝 줄임 */
+    font-size: 12px;
+    flex-shrink: 0; /* 버튼 찌그러지는거 방지 */
+  }
+}
