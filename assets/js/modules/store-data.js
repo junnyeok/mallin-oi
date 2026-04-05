@@ -33,6 +33,17 @@ export const POLICE_EMOTICON_PACK = Array.from({ length: 8 }, (_, index) => {
   };
 });
 
+export const THANKS_EMOTICON_PACK = Array.from({ length: 5 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `thanks-${order}`,
+    label: `감사 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/thanks-${order}.png`),
+    displayOrder: 300 + order,
+  };
+});
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -51,7 +62,7 @@ export const STORE_ITEMS = [
   },
   {
     id: 'emo-cheer-01',
-    name: '응원 오이 이모티콘팩',
+    name: '응원오이 이모티콘팩',
     category: 'emoticon',
     badge: '이모티콘',
     icon: '🎉',
@@ -73,24 +84,26 @@ export const STORE_ITEMS = [
     thumbImagePath: withAssetVersion('./images/emoticons/police-1.png'),
     price: 230,
     state: '판매 중',
-    description: '경찰 모자, 장비와 제스처가 들어간 이모티콘 세트.',
+    description: '경찰 모자, 장비 등이 들어간 이모티콘 세트.',
     detailDescription:
       '경찰 테마 이모티콘팩이야. 경찰 모자, 장비, 순찰차 등을 넣어봤어. 구매하면 8개의 경찰 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
     previewImages: POLICE_EMOTICON_PACK,
     isPurchasable: true,
   },
   {
-    id: 'fashion-hat-01',
-    name: '초록 모자',
-    category: 'fashion',
-    badge: '꾸미기',
-    icon: '🧢',
-    price: 220,
-    state: '장착 기능 예정',
-    description: '오이 캐릭터 머리에 장착할 수 있는 기본 모자.',
-    detailDescription: '오이 캐릭터 머리에 장착하는 꾸미기 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'emo-thanks-01',
+    name: '감사오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🙇🏽‍♂️',
+    thumbImagePath: withAssetVersion('./images/emoticons/thanks-1.png'),
+    price: 150,
+    state: '판매 중',
+    description: '감사인사를 하는 오이 이모티콘 세트.',
+    detailDescription:
+      '오이 캐릭터가 감사인사를 하는 이모티콘 세트야. 구매하면 5개의 감사 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: THANKS_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'fashion-cloth-01',

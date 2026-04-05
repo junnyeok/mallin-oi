@@ -5,13 +5,20 @@ const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
 
-const { BASIC_EMOTICON_PACK, CHEER_EMOTICON_PACK, POLICE_EMOTICON_PACK } =
-  await import(`./store-data.js?v=${MODULE_VERSION}`);
+const {
+  BASIC_EMOTICON_PACK,
+  CHEER_EMOTICON_PACK,
+  POLICE_EMOTICON_PACK,
+  THANKS_EMOTICON_PACK,
+} = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
-  [...BASIC_EMOTICON_PACK, ...CHEER_EMOTICON_PACK, ...POLICE_EMOTICON_PACK].map(
-    (item) => [item.code, item],
-  ),
+  [
+    ...BASIC_EMOTICON_PACK,
+    ...CHEER_EMOTICON_PACK,
+    ...POLICE_EMOTICON_PACK,
+    ...THANKS_EMOTICON_PACK,
+  ].map((item) => [item.code, item]),
 );
 
 function escapeHtml(value) {
@@ -40,6 +47,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-police-01') {
     return POLICE_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-thanks-01') {
+    return THANKS_EMOTICON_PACK;
   }
 
   return [];
