@@ -216,11 +216,6 @@ async function renderAuthor(post) {
     authorEl.innerHTML = `
   <span class="post-author__label">작성자 :</span>
   <span class="post-author__value">
-    <img
-      class="post-author__character"
-      src="${escapeHtml(characterImageUrl)}"
-      alt="${nickname} 캐릭터"
-    />
     <a
       class="post-author__avatar-link"
       href="${publicProfileHref(post.authorId)}"
@@ -236,6 +231,11 @@ async function renderAuthor(post) {
       class="post-author__link"
       href="${publicProfileHref(post.authorId)}"
     >${nickname}</a>${privateMark}
+    <img
+      class="post-author__character"
+      src="${escapeHtml(characterImageUrl)}"
+      alt="${nickname} 캐릭터"
+    />
   </span>
 `;
     return;
@@ -245,16 +245,16 @@ async function renderAuthor(post) {
   <span class="post-author__label">작성자 :</span>
   <span class="post-author__value">
     <img
-      class="post-author__character"
-      src="${escapeHtml(DEFAULT_CHARACTER_IMAGE)}"
-      alt="${nickname} 캐릭터"
-    />
-    <img
       class="post-author__avatar"
       src="${escapeHtml(DEFAULT_PROFILE_IMAGE)}"
       alt="${nickname} 프로필 사진"
     />
     <span>${nickname}</span>${privateMark}
+    <img
+      class="post-author__character"
+      src="${escapeHtml(DEFAULT_CHARACTER_IMAGE)}"
+      alt="${nickname} 캐릭터"
+    />
   </span>
 `;
 }
