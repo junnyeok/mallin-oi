@@ -19,6 +19,7 @@ function getPostsAllBaseUrl() {
 }
 
 async function initApp() {
+  let notificationsModule;
   let siteVersionModule;
   let updateBannerModule;
   let cursorBuddyModule;
@@ -70,6 +71,7 @@ async function initApp() {
       postReactionsModule,
       profileModule,
       storeModule,
+      notificationsModule,
     ] = await Promise.all([
       import(withModuleVersion('./modules/site-version.js')),
       import(withModuleVersion('./modules/update-banner.js')),
@@ -95,6 +97,7 @@ async function initApp() {
       import(withModuleVersion('./modules/post-reactions.js')),
       import(withModuleVersion('./modules/profile.js')),
       import(withModuleVersion('./modules/store.js')),
+      import(withModuleVersion('./modules/notifications.js')),
     ]);
   } catch (error) {
     console.error('[main] core module load failed:', error);
@@ -131,6 +134,7 @@ async function initApp() {
   const { initPostReactions } = postReactionsModule;
   const { initProfile } = profileModule;
   const { initStore } = storeModule;
+  const { initNotifications } = notificationsModule;
 
   document
     .querySelectorAll(
@@ -299,6 +303,12 @@ async function initApp() {
     await initStore();
   } catch (e) {
     console.error('[main] store module failed:', e);
+  }
+
+  try {
+    await initNotifications();
+  } catch (e) {
+    console.error('[main] notifications module failed:', e);
   }
 
   const y = document.querySelector('#year');

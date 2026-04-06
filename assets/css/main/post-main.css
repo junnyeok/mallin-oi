@@ -1547,3 +1547,10 @@
     max-height: 36px;
   }
 }
+
+.comment-item.is-target-comment,
+.comment-reply-item.is-target-comment {
+  border-color: #8bc34a !important;
+  box-shadow: 0 0 0 3px rgba(139, 195, 74, 0.18);
+  background: #f8fff0;
+}

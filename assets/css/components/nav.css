@@ -81,3 +81,213 @@ body[data-page='home'] .logo #siteLogoImg {
 body[data-page='post'] .logo #siteLogoImg {
   margin-right: -15px;
 }
+
+/* =========================
+   NOTIFICATION
+========================= */
+
+.site-header {
+  position: relative;
+}
+
+.notification-menu {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 1100;
+}
+
+.notification-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 86px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notification-btn:hover {
+  transform: translateY(-1px);
+}
+
+.notification-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.notification-btn__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e53935;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.notification-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notification-panel__title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.notification-panel__refresh {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.notification-panel__desc {
+  margin: 0;
+  padding: 10px 14px 0;
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.notification-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 330px;
+  overflow-y: auto;
+  padding: 12px 14px 14px;
+}
+
+.notification-empty {
+  padding: 16px 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-sub);
+  font-size: 13px;
+  text-align: center;
+  background: #fff;
+}
+
+.notification-item {
+  display: block;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.notification-item:hover {
+  transform: translateY(-1px);
+}
+
+.notification-item.is-unread {
+  border-color: #8bc34a;
+  background: #f8fff0;
+}
+
+.notification-item__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.notification-item__title {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.notification-item__date {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-text-sub);
+  white-space: nowrap;
+}
+
+.notification-item__message {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-sub);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+@media (max-width: 700px) {
+  .notification-menu {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: auto;
+    bottom: 12px;
+    z-index: 1100;
+  }
+
+  .notification-btn {
+    min-width: 72px;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .notification-btn__text {
+    white-space: nowrap;
+  }
+
+  .notification-panel {
+    top: auto;
+    left: 0;
+    right: auto;
+    bottom: calc(100% + 8px);
+    width: min(360px, calc(100vw - 24px));
+    max-height: min(420px, 58vh);
+  }
+}

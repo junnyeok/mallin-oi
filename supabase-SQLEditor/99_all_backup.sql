@@ -6915,3 +6915,163 @@ cross join (
 ) as v(emoticon_code, emoticon_label, image_path, display_order)
 where s.item_id = 'emo-carrot-01'
 on conflict (user_id, emoticon_code) do nothing;
+
+-- =========================================
+-- 알림 테이블
+-- =========================================
+create table if not exists public.user_notifications (
+  id bigint generated always as identity primary key,
+  recipient_user_id uuid not null references auth.users(id) on delete cascade,
+  actor_user_id uuid not null references auth.users(id) on delete cascade,
+  actor_nickname text not null default '익명',
+  post_id bigint not null references public.posts(id) on delete cascade,
+  comment_id bigint not null references public.post_comments(id) on delete cascade,
+  notification_type text not null check (
+    notification_type in ('post_comment', 'post_participant_comment')
+  ),
+  title text not null,
+  message text not null default '',
+  is_read boolean not null default false,
+  created_at timestamptz not null default now(),
+  read_at timestamptz null
+);
+
+create index if not exists user_notifications_recipient_created_idx
+  on public.user_notifications(recipient_user_id, created_at desc);
+
+create index if not exists user_notifications_recipient_unread_idx
+  on public.user_notifications(recipient_user_id, is_read, created_at desc);
+
+alter table public.user_notifications enable row level security;
+
+drop policy if exists "알림은 본인만 조회 가능" on public.user_notifications;
+create policy "알림은 본인만 조회 가능"
+on public.user_notifications
+for select
+to authenticated
+using (auth.uid() = recipient_user_id);
+
+drop policy if exists "알림은 본인만 수정 가능" on public.user_notifications;
+create policy "알림은 본인만 수정 가능"
+on public.user_notifications
+for update
+to authenticated
+using (auth.uid() = recipient_user_id)
+with check (auth.uid() = recipient_user_id);
+
+drop policy if exists "알림은 본인만 삭제 가능" on public.user_notifications;
+create policy "알림은 본인만 삭제 가능"
+on public.user_notifications
+for delete
+to authenticated
+using (auth.uid() = recipient_user_id);
+
+-- =========================================
+-- 댓글 작성 시 알림 생성 함수
+-- 1) 게시물 작성자에게 알림
+-- 2) 그 게시물에 이미 참여했던 댓글 작성자들에게 알림
+--    (새 댓글 작성자 본인은 제외)
+-- =========================================
+create or replace function public.handle_comment_notification_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_post_author_id uuid;
+  v_post_title text;
+  v_event_label text;
+begin
+  select p.author_id, p.title
+    into v_post_author_id, v_post_title
+  from public.posts p
+  where p.id = new.post_id;
+
+  if not found then
+    return new;
+  end if;
+
+  v_event_label :=
+    case
+      when new.parent_comment_id is null then '댓글'
+      else '답글'
+    end;
+
+  insert into public.user_notifications (
+    recipient_user_id,
+    actor_user_id,
+    actor_nickname,
+    post_id,
+    comment_id,
+    notification_type,
+    title,
+    message
+  )
+  with raw_recipients as (
+    select
+      v_post_author_id as recipient_user_id,
+      'post_author'::text as recipient_kind
+
+    union all
+
+    select
+      c.author_id as recipient_user_id,
+      'participant'::text as recipient_kind
+    from public.post_comments c
+    where c.post_id = new.post_id
+      and c.id <> new.id
+      and c.author_id is not null
+  ),
+  grouped_recipients as (
+    select
+      recipient_user_id,
+      bool_or(recipient_kind = 'post_author') as is_post_author
+    from raw_recipients
+    where recipient_user_id is not null
+      and recipient_user_id <> new.author_id
+    group by recipient_user_id
+  )
+  select
+    g.recipient_user_id,
+    new.author_id,
+    coalesce(new.author_nickname, '익명'),
+    new.post_id,
+    new.id,
+    case
+      when g.is_post_author then 'post_comment'
+      else 'post_participant_comment'
+    end,
+    case
+      when g.is_post_author
+        then format('%s님이 네 게시물에 %s을 남겼어.', coalesce(new.author_nickname, '익명'), v_event_label)
+      else format('%s님이 네가 참여한 게시물에 %s을 남겼어.', coalesce(new.author_nickname, '익명'), v_event_label)
+    end,
+    left(
+      regexp_replace(coalesce(new.body, ''), '\s+', ' ', 'g'),
+      120
+    )
+  from grouped_recipients g;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_post_comments_insert_notification on public.post_comments;
+create trigger trg_post_comments_insert_notification
+after insert on public.post_comments
+for each row
+execute function public.handle_comment_notification_insert();
+
+-- =========================================
+-- Realtime 구독용 publication 등록
+-- =========================================
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.user_notifications;
+  exception
+    when duplicate_object then
+      null;
+  end;
+end $$;

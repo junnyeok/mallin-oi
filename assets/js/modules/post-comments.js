@@ -263,8 +263,11 @@ function renderReplyItem(
   const canDelete = !!isMine || !!isAdmin;
 
   return `
-    <article class="comment-reply-item" data-comment-id="${reply.id}">
-      <div class="comment-reply-item__head">
+<article
+  class="comment-reply-item"
+  id="comment-${reply.id}"
+  data-comment-id="${reply.id}"
+>      <div class="comment-reply-item__head">
         <div class="comment-reply-item__meta">
           ${renderAuthorProfileLink(
             reply.author_id,
@@ -322,8 +325,11 @@ function renderCommentItem(
   const replyCount = replies.length;
 
   return `
-    <article class="comment-item" data-comment-id="${comment.id}">
-      <div class="comment-item__head">
+<article
+  class="comment-item"
+  id="comment-${comment.id}"
+  data-comment-id="${comment.id}"
+>      <div class="comment-item__head">
         <div class="comment-item__meta">
           ${renderAuthorProfileLink(
             comment.author_id,
@@ -650,6 +656,7 @@ async function renderComments(postId, secretPassword = null) {
         ),
       )
       .join('');
+    focusTargetCommentFromUrl();
     refreshCommentEmoticonUi();
   } catch (error) {
     console.error('[post-comments] render failed:', error);
@@ -895,6 +902,50 @@ function bindMainCommentFormExtras() {
   }
 
   form.dataset.emoticonBound = '1';
+}
+
+function getTargetCommentIdFromUrl() {
+  const sp = new URLSearchParams(window.location.search);
+  const commentId = Number(sp.get('comment') || 0);
+  return Number.isFinite(commentId) && commentId > 0 ? commentId : null;
+}
+
+function focusTargetCommentFromUrl() {
+  const commentId = getTargetCommentIdFromUrl();
+  if (!commentId) return;
+
+  const targetEl = document.querySelector(`[data-comment-id="${commentId}"]`);
+  if (!targetEl) return;
+
+  const hiddenReplyWrap = targetEl.closest(
+    '[data-role="reply-thread-wrap"][hidden]',
+  );
+
+  if (hiddenReplyWrap) {
+    const rootItem = targetEl.closest('.comment-item');
+    const rootCommentId = Number(rootItem?.dataset?.commentId || 0);
+
+    if (Number.isFinite(rootCommentId) && rootCommentId > 0) {
+      toggleReplyThread(rootCommentId);
+    }
+  }
+
+  document
+    .querySelectorAll('.is-target-comment')
+    .forEach((el) => el.classList.remove('is-target-comment'));
+
+  targetEl.classList.add('is-target-comment');
+
+  window.requestAnimationFrame(() => {
+    targetEl.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+  });
+
+  window.setTimeout(() => {
+    targetEl.classList.remove('is-target-comment');
+  }, 2600);
 }
 
 function toggleReplyThread(commentId) {

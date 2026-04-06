@@ -1,4 +1,46 @@
 <header class="site-header">
+  <div class="notification-menu" id="notificationMenu">
+    <button
+      type="button"
+      class="notification-btn"
+      id="notificationBtn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="notificationPanel"
+    >
+      <span class="notification-btn__icon" aria-hidden="true">🔔</span>
+      <span class="notification-btn__text">알림</span>
+      <span class="notification-btn__badge" id="notificationBadge" hidden
+        >0</span
+      >
+    </button>
+
+    <section
+      class="notification-panel"
+      id="notificationPanel"
+      aria-label="알림 목록"
+      hidden
+    >
+      <div class="notification-panel__head">
+        <strong class="notification-panel__title">알림</strong>
+        <button
+          type="button"
+          class="notification-panel__refresh"
+          id="notificationRefreshBtn"
+        >
+          새로고침
+        </button>
+      </div>
+
+      <p class="notification-panel__desc" id="notificationPanelDesc">
+        알림을 불러오는 중이야.
+      </p>
+
+      <div class="notification-panel__list" id="notificationList">
+        <div class="notification-empty">알림을 확인하는 중이야.</div>
+      </div>
+    </section>
+  </div>
   <div class="container header-inner">
     <a class="logo" href="__BASE__index.html" aria-label="홈으로">
       <img
