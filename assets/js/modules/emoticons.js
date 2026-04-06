@@ -11,6 +11,7 @@ const {
   POLICE_EMOTICON_PACK,
   THANKS_EMOTICON_PACK,
   SORRY_EMOTICON_PACK,
+  CARROT_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -20,6 +21,7 @@ const EMOTICON_MAP = new Map(
     ...POLICE_EMOTICON_PACK,
     ...THANKS_EMOTICON_PACK,
     ...SORRY_EMOTICON_PACK,
+    ...CARROT_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -58,6 +60,13 @@ const PACK_META = [
     label: '사과',
     iconPath: SORRY_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'sorry-',
+  },
+  {
+    key: 'carrot',
+    itemId: 'emo-carrot-01',
+    label: '당근',
+    iconPath: CARROT_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'carrot-',
   },
 ];
 
@@ -125,6 +134,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-sorry-01') {
     return SORRY_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-carrot-01') {
+    return CARROT_EMOTICON_PACK;
   }
 
   return [];

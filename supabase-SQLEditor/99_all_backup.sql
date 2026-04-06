@@ -6880,3 +6880,38 @@ end;
 $$;
 
 grant execute on function public.purchase_store_item(text) to authenticated;
+
+insert into public.user_emoticons (
+  user_id,
+  item_id,
+  emoticon_code,
+  emoticon_label,
+  image_path,
+  display_order
+)
+select
+  s.user_id,
+  'emo-carrot-01',
+  v.emoticon_code,
+  v.emoticon_label,
+  v.image_path,
+  v.display_order
+from public.user_store_items s
+cross join (
+  values
+    ('carrot-1',  '당근 이모티콘 1',  './images/emoticons/carrot-1.png',  501),
+    ('carrot-2',  '당근 이모티콘 2',  './images/emoticons/carrot-2.png',  502),
+    ('carrot-3',  '당근 이모티콘 3',  './images/emoticons/carrot-3.png',  503),
+    ('carrot-4',  '당근 이모티콘 4',  './images/emoticons/carrot-4.png',  504),
+    ('carrot-5',  '당근 이모티콘 5',  './images/emoticons/carrot-5.png',  505),
+    ('carrot-6',  '당근 이모티콘 6',  './images/emoticons/carrot-6.png',  506),
+    ('carrot-7',  '당근 이모티콘 7',  './images/emoticons/carrot-7.png',  507),
+    ('carrot-8',  '당근 이모티콘 8',  './images/emoticons/carrot-8.png',  508),
+    ('carrot-9',  '당근 이모티콘 9',  './images/emoticons/carrot-9.png',  509),
+    ('carrot-10', '당근 이모티콘 10', './images/emoticons/carrot-10.png', 510),
+    ('carrot-11', '당근 이모티콘 11', './images/emoticons/carrot-11.png', 511),
+    ('carrot-12', '당근 이모티콘 12', './images/emoticons/carrot-12.png', 512),
+    ('carrot-13', '당근 이모티콘 13', './images/emoticons/carrot-13.png', 513)
+) as v(emoticon_code, emoticon_label, image_path, display_order)
+where s.item_id = 'emo-carrot-01'
+on conflict (user_id, emoticon_code) do nothing;
