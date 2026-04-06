@@ -55,6 +55,17 @@ export const SORRY_EMOTICON_PACK = Array.from({ length: 6 }, (_, index) => {
   };
 });
 
+export const CARROT_EMOTICON_PACK = Array.from({ length: 13 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `carrot-${order}`,
+    label: `당근 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/carrot-${order}.png`),
+    displayOrder: 500 + order,
+  };
+});
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -132,17 +143,19 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'fashion-shoes-01',
-    name: '러닝화',
-    category: 'fashion',
-    badge: '꾸미기',
-    icon: '👟',
-    price: 260,
-    state: '장착 기능 예정',
-    description: '캐릭터 하단 장착용 신발 아이템.',
-    detailDescription: '캐릭터 하단 장착용 신발 꾸미기 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'emo-carrot-01',
+    name: '특별제작 당근 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🥕',
+    thumbImagePath: withAssetVersion('./images/emoticons/carrot-1.png'),
+    price: 310,
+    state: '판매 중',
+    description: '특별제작한 당근을 이모티콘으로 사용할 수 있는 세트.',
+    detailDescription:
+      '특별제작한 당근 캐릭터를 이모티콘으로 사용할 수 있는 세트야. 구매하면 13개의 당근 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: CARROT_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'profile-bg-01',
