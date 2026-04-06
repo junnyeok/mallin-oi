@@ -146,12 +146,12 @@ function renderAuthorProfileLink(
           src="${avatarSrc}"
           alt="${nickname} 프로필 사진"
         />
+        <strong class="${className}">${nickname}</strong>
         <img
           class="comment-author-character"
           src="${characterSrc}"
           alt="${nickname} 캐릭터"
         />
-        <strong class="${className}">${nickname}</strong>
       </span>
     `;
   }
@@ -169,15 +169,15 @@ function renderAuthorProfileLink(
           alt="${nickname} 프로필 사진"
         />
       </a>
+      <a
+        class="${className} comment-author-link"
+        href="${publicProfileHref(safeAuthorId)}"
+      >${nickname}</a>
       <img
         class="comment-author-character"
         src="${characterSrc}"
         alt="${nickname} 캐릭터"
       />
-      <a
-        class="${className} comment-author-link"
-        href="${publicProfileHref(safeAuthorId)}"
-      >${nickname}</a>
     </span>
   `;
 }

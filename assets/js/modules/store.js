@@ -61,6 +61,7 @@ function formatPrice(price) {
 
 function getCategoryLabel(category) {
   if (category === 'emoticon') return '이모티콘';
+  if (category === 'character') return '캐릭터';
   if (category === 'fashion') return '꾸미기';
   if (category === 'profile') return '프로필';
   return '기타';

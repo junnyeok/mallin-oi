@@ -7546,3 +7546,330 @@ begin
   return new;
 end;
 $$;
+
+create or replace function public.purchase_store_item(p_item_id text)
+returns table (
+  ok boolean,
+  message text,
+  balance integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_price integer := 0;
+  v_name text := '';
+  v_category text := '';
+  v_exists boolean := false;
+  v_balance integer := 0;
+begin
+  if v_user_id is null then
+    raise exception '로그인이 필요해.';
+  end if;
+
+  if coalesce(trim(p_item_id), '') = '' then
+    raise exception '품목 id가 비어 있어.';
+  end if;
+
+  if p_item_id = 'emo-basic-01' then
+    v_price := 0;
+    v_name := '기본 말린오이 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'emo-cheer-01' then
+    v_price := 150;
+    v_name := '응원 오이 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'emo-police-01' then
+    v_price := 230;
+    v_name := '경찰오이 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'emo-thanks-01' then
+    v_price := 150;
+    v_name := '감사오이 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'emo-sorry-01' then
+    v_price := 180;
+    v_name := '사과오이 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'emo-carrot-01' then
+    v_price := 310;
+    v_name := '특별제작 당근 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'character-carrot-01' then
+    v_price := 530;
+    v_name := '테토당근 캐릭터';
+    v_category := 'character';
+
+  else
+    return query
+    select
+      false,
+      '아직 구매 가능한 품목이 아니야.',
+      coalesce((select p.pickles from public.profiles p where p.id = v_user_id), 0);
+    return;
+  end if;
+
+  select exists (
+    select 1
+    from public.user_store_items
+    where user_id = v_user_id
+      and item_id = p_item_id
+  )
+  into v_exists;
+
+  if v_exists then
+    return query
+    select
+      false,
+      '이미 보유 중인 품목이야.',
+      coalesce((select p.pickles from public.profiles p where p.id = v_user_id), 0);
+    return;
+  end if;
+
+  if v_price > 0 then
+    update public.profiles
+    set pickles = coalesce(pickles, 0) - v_price,
+        updated_at = now()
+    where id = v_user_id
+      and coalesce(pickles, 0) >= v_price;
+
+    if not found then
+      return query
+      select
+        false,
+        '피클이 부족해.',
+        coalesce((select p.pickles from public.profiles p where p.id = v_user_id), 0);
+      return;
+    end if;
+  end if;
+
+  insert into public.user_store_items (
+    user_id,
+    item_id,
+    item_name,
+    item_category,
+    purchase_price
+  )
+  values (
+    v_user_id,
+    p_item_id,
+    v_name,
+    v_category,
+    v_price
+  );
+
+  if p_item_id = 'emo-basic-01' then
+    insert into public.user_emoticons (
+      user_id,
+      item_id,
+      emoticon_code,
+      emoticon_label,
+      image_path,
+      display_order
+    )
+    values
+      (v_user_id, 'emo-basic-01', 'free-1', '기본 이모티콘 1', './images/emoticons/free-1.png', 1),
+      (v_user_id, 'emo-basic-01', 'free-2', '기본 이모티콘 2', './images/emoticons/free-2.png', 2),
+      (v_user_id, 'emo-basic-01', 'free-3', '기본 이모티콘 3', './images/emoticons/free-3.png', 3),
+      (v_user_id, 'emo-basic-01', 'free-4', '기본 이모티콘 4', './images/emoticons/free-4.png', 4),
+      (v_user_id, 'emo-basic-01', 'free-5', '기본 이모티콘 5', './images/emoticons/free-5.png', 5),
+      (v_user_id, 'emo-basic-01', 'free-6', '기본 이모티콘 6', './images/emoticons/free-6.png', 6),
+      (v_user_id, 'emo-basic-01', 'free-7', '기본 이모티콘 7', './images/emoticons/free-7.png', 7)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-cheer-01' then
+    insert into public.user_emoticons (
+      user_id,
+      item_id,
+      emoticon_code,
+      emoticon_label,
+      image_path,
+      display_order
+    )
+    values
+      (v_user_id, 'emo-cheer-01', 'cheer-1', '응원 이모티콘 1', './images/emoticons/cheer-1.png', 101),
+      (v_user_id, 'emo-cheer-01', 'cheer-2', '응원 이모티콘 2', './images/emoticons/cheer-2.png', 102),
+      (v_user_id, 'emo-cheer-01', 'cheer-3', '응원 이모티콘 3', './images/emoticons/cheer-3.png', 103),
+      (v_user_id, 'emo-cheer-01', 'cheer-4', '응원 이모티콘 4', './images/emoticons/cheer-4.png', 104),
+      (v_user_id, 'emo-cheer-01', 'cheer-5', '응원 이모티콘 5', './images/emoticons/cheer-5.png', 105)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-police-01' then
+    insert into public.user_emoticons (
+      user_id,
+      item_id,
+      emoticon_code,
+      emoticon_label,
+      image_path,
+      display_order
+    )
+    values
+      (v_user_id, 'emo-police-01', 'police-1', '경찰 이모티콘 1', './images/emoticons/police-1.png', 201),
+      (v_user_id, 'emo-police-01', 'police-2', '경찰 이모티콘 2', './images/emoticons/police-2.png', 202),
+      (v_user_id, 'emo-police-01', 'police-3', '경찰 이모티콘 3', './images/emoticons/police-3.png', 203),
+      (v_user_id, 'emo-police-01', 'police-4', '경찰 이모티콘 4', './images/emoticons/police-4.png', 204),
+      (v_user_id, 'emo-police-01', 'police-5', '경찰 이모티콘 5', './images/emoticons/police-5.png', 205),
+      (v_user_id, 'emo-police-01', 'police-6', '경찰 이모티콘 6', './images/emoticons/police-6.png', 206),
+      (v_user_id, 'emo-police-01', 'police-7', '경찰 이모티콘 7', './images/emoticons/police-7.png', 207),
+      (v_user_id, 'emo-police-01', 'police-8', '경찰 이모티콘 8', './images/emoticons/police-8.png', 208)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-thanks-01' then
+    insert into public.user_emoticons (
+      user_id,
+      item_id,
+      emoticon_code,
+      emoticon_label,
+      image_path,
+      display_order
+    )
+    values
+      (v_user_id, 'emo-thanks-01', 'thanks-1', '감사 이모티콘 1', './images/emoticons/thanks-1.png', 301),
+      (v_user_id, 'emo-thanks-01', 'thanks-2', '감사 이모티콘 2', './images/emoticons/thanks-2.png', 302),
+      (v_user_id, 'emo-thanks-01', 'thanks-3', '감사 이모티콘 3', './images/emoticons/thanks-3.png', 303),
+      (v_user_id, 'emo-thanks-01', 'thanks-4', '감사 이모티콘 4', './images/emoticons/thanks-4.png', 304),
+      (v_user_id, 'emo-thanks-01', 'thanks-5', '감사 이모티콘 5', './images/emoticons/thanks-5.png', 305)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-sorry-01' then
+    insert into public.user_emoticons (
+      user_id,
+      item_id,
+      emoticon_code,
+      emoticon_label,
+      image_path,
+      display_order
+    )
+    values
+      (v_user_id, 'emo-sorry-01', 'sorry-1', '사과 이모티콘 1', './images/emoticons/sorry-1.png', 401),
+      (v_user_id, 'emo-sorry-01', 'sorry-2', '사과 이모티콘 2', './images/emoticons/sorry-2.png', 402),
+      (v_user_id, 'emo-sorry-01', 'sorry-3', '사과 이모티콘 3', './images/emoticons/sorry-3.png', 403),
+      (v_user_id, 'emo-sorry-01', 'sorry-4', '사과 이모티콘 4', './images/emoticons/sorry-4.png', 404),
+      (v_user_id, 'emo-sorry-01', 'sorry-5', '사과 이모티콘 5', './images/emoticons/sorry-5.png', 405),
+      (v_user_id, 'emo-sorry-01', 'sorry-6', '사과 이모티콘 6', './images/emoticons/sorry-6.png', 406)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-carrot-01' then
+    insert into public.user_emoticons (
+      user_id,
+      item_id,
+      emoticon_code,
+      emoticon_label,
+      image_path,
+      display_order
+    )
+    values
+      (v_user_id, 'emo-carrot-01', 'carrot-1', '당근 이모티콘 1', './images/emoticons/carrot-1.png', 501),
+      (v_user_id, 'emo-carrot-01', 'carrot-2', '당근 이모티콘 2', './images/emoticons/carrot-2.png', 502),
+      (v_user_id, 'emo-carrot-01', 'carrot-3', '당근 이모티콘 3', './images/emoticons/carrot-3.png', 503),
+      (v_user_id, 'emo-carrot-01', 'carrot-4', '당근 이모티콘 4', './images/emoticons/carrot-4.png', 504),
+      (v_user_id, 'emo-carrot-01', 'carrot-5', '당근 이모티콘 5', './images/emoticons/carrot-5.png', 505),
+      (v_user_id, 'emo-carrot-01', 'carrot-6', '당근 이모티콘 6', './images/emoticons/carrot-6.png', 506),
+      (v_user_id, 'emo-carrot-01', 'carrot-7', '당근 이모티콘 7', './images/emoticons/carrot-7.png', 507),
+      (v_user_id, 'emo-carrot-01', 'carrot-8', '당근 이모티콘 8', './images/emoticons/carrot-8.png', 508),
+      (v_user_id, 'emo-carrot-01', 'carrot-9', '당근 이모티콘 9', './images/emoticons/carrot-9.png', 509),
+      (v_user_id, 'emo-carrot-01', 'carrot-10', '당근 이모티콘 10', './images/emoticons/carrot-10.png', 510),
+      (v_user_id, 'emo-carrot-01', 'carrot-11', '당근 이모티콘 11', './images/emoticons/carrot-11.png', 511),
+      (v_user_id, 'emo-carrot-01', 'carrot-12', '당근 이모티콘 12', './images/emoticons/carrot-12.png', 512),
+      (v_user_id, 'emo-carrot-01', 'carrot-13', '당근 이모티콘 13', './images/emoticons/carrot-13.png', 513)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'character-carrot-01' then
+    insert into public.user_characters (
+      user_id,
+      character_code,
+      character_name,
+      base_image_path,
+      preview_image_path,
+      display_order,
+      acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-teto-carrot',
+      '테토당근',
+      './images/characters/teto-carrot.png',
+      './images/characters/teto-carrot.png',
+      2,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id,
+      character_code,
+      skin_code,
+      skin_name,
+      image_path,
+      display_order,
+      acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-teto-carrot',
+      'char-teto-carrot-basic',
+      '테토당근',
+      './images/characters/teto-carrot.png',
+      201,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+  end if;
+
+  if v_price > 0 then
+    insert into public.pickle_ledger (
+      user_id,
+      amount,
+      reason_code,
+      reason_label,
+      description,
+      awarded_on
+    )
+    values (
+      v_user_id,
+      -v_price,
+      'store_purchase',
+      '상점 구매',
+      v_name || ' 구매',
+      public.seoul_today()
+    );
+  end if;
+
+  select coalesce(p.pickles, 0)
+    into v_balance
+  from public.profiles p
+  where p.id = v_user_id;
+
+  return query
+  select
+    true,
+    case
+      when p_item_id = 'emo-basic-01'
+        then '기본 이모티콘팩이 지급됐어. 이제 게시물/댓글/답글에서 사용할 수 있어.'
+      when p_item_id = 'emo-cheer-01'
+        then '응원 이모티콘팩 구매가 완료됐어. 150피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-police-01'
+        then '경찰오이 이모티콘팩 구매가 완료됐어. 230피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-thanks-01'
+        then '감사오이 이모티콘팩 구매가 완료됐어. 150피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-sorry-01'
+        then '사과오이 이모티콘팩 구매가 완료됐어. 180피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-carrot-01'
+        then '특별제작 당근 이모티콘팩 구매가 완료됐어. 310피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'character-carrot-01'
+        then '테토당근 캐릭터 구매가 완료됐어. 530피클이 차감됐고 내프로필에서 착용할 수 있어.'
+      else '구매가 완료됐어.'
+    end,
+    coalesce(v_balance, 0);
+end;
+$$;
+
+grant execute on function public.purchase_store_item(text) to authenticated;

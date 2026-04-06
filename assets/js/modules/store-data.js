@@ -66,6 +66,15 @@ export const CARROT_EMOTICON_PACK = Array.from({ length: 13 }, (_, index) => {
   };
 });
 
+export const TETO_CARROT_CHARACTER_PREVIEW = [
+  {
+    code: 'char-teto-carrot-basic',
+    label: '테토당근 캐릭터',
+    imagePath: withAssetVersion('./images/characters/teto-carrot.png'),
+    displayOrder: 1,
+  },
+];
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -158,17 +167,19 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'profile-bg-01',
-    name: '프로필 배경 - 잔디밭',
-    category: 'profile',
-    badge: '프로필',
-    icon: '🌿',
-    price: 400,
-    state: '적용 기능 예정',
-    description: '프로필 상단 배경에 적용할 수 있는 잔디 느낌 배경.',
-    detailDescription: '프로필 상단에 적용할 수 있는 배경 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'character-carrot-01',
+    name: '테토당근 캐릭터',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🥕',
+    thumbImagePath: withAssetVersion('./images/characters/teto-carrot.png'),
+    price: 530,
+    state: '판매 중',
+    description: '내 캐릭터를 오이말고 당근으로도 설정할 수 있어!',
+    detailDescription:
+      '프로필 캐릭터를 테토당근으로 설정할 수 있어. 구매하면 내프로필 인벤토리의 캐릭터 목록에 테토당근이 추가되고, 착용 시 게시물/댓글/답글 닉네임 오른쪽에 표시돼.',
+    previewImages: TETO_CARROT_CHARACTER_PREVIEW,
+    isPurchasable: true,
   },
   {
     id: 'profile-frame-01',

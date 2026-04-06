@@ -438,7 +438,12 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
   const isEquipped = imagePath === getCharacterImageSrc(equippedImageUrl);
 
   return `
-    <div class="profile-character-card ${isEquipped ? 'is-equipped' : ''}">
+    <button
+      type="button"
+      class="profile-character-card ${isEquipped ? 'is-equipped' : ''}"
+      data-skin-image-path="${escapeHtml(imagePath)}"
+      data-skin-name="${escapeHtml(item?.skin_name || '스킨')}"
+    >
       <img
         class="profile-character-card__thumb"
         src="${escapeHtml(imagePath)}"
@@ -448,9 +453,9 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
         ${escapeHtml(item?.skin_name || '스킨')}
       </div>
       <div class="profile-character-card__meta">
-        ${isEquipped ? '현재 착용 중' : '보유 중'}
+        ${isEquipped ? '현재 착용 중' : '클릭해서 착용'}
       </div>
-    </div>
+    </button>
   `;
 }
 
@@ -492,20 +497,20 @@ function renderCharacterSection({
 
   if (!sectionEl || !previewEl) return;
 
-  const equippedImageUrl = getCharacterImageSrc(
-    profileRow?.equipped_character_image_url,
-  );
-
   const safeCharacterRows = getSafeCharacterRows(characterRows, skinRows);
   const safeSkinRows = getSafeSkinRows(skinRows);
+
+  function getEquippedImageUrl() {
+    return getCharacterImageSrc(profileRow?.equipped_character_image_url);
+  }
 
   let selectedCharacterCode = getEquippedCharacterCode({
     characterRows: safeCharacterRows,
     skinRows: safeSkinRows,
-    equippedImageUrl,
+    equippedImageUrl: getEquippedImageUrl(),
   });
 
-  previewEl.src = equippedImageUrl;
+  previewEl.src = getEquippedImageUrl();
   previewEl.alt = isOwnProfile ? '내 캐릭터' : '이용자 캐릭터';
 
   if (titleEl) {
@@ -533,15 +538,15 @@ function renderCharacterSection({
 
   function getPreviewImageForCharacter(characterCode) {
     const safeCode = normalizeCharacterCode(characterCode);
+    const equippedImageUrl = getEquippedImageUrl();
 
-    if (
-      safeCode ===
-      getEquippedCharacterCode({
-        characterRows: safeCharacterRows,
-        skinRows: safeSkinRows,
-        equippedImageUrl,
-      })
-    ) {
+    const equippedCharacterCode = getEquippedCharacterCode({
+      characterRows: safeCharacterRows,
+      skinRows: safeSkinRows,
+      equippedImageUrl,
+    });
+
+    if (safeCode === equippedCharacterCode) {
       return equippedImageUrl;
     }
 
@@ -566,6 +571,37 @@ function renderCharacterSection({
     );
   }
 
+  async function equipCharacterSkin(imagePath, skinName) {
+    const nextImagePath = getCharacterImageSrc(imagePath);
+
+    if (nextImagePath === getEquippedImageUrl()) {
+      setMsg('이미 착용 중인 캐릭터야.');
+      return;
+    }
+
+    setMsg('캐릭터 적용 중...');
+
+    try {
+      await updateProfileRow(profileRow.id, {
+        equipped_character_image_url: nextImagePath,
+        updated_at: new Date().toISOString(),
+      });
+
+      profileRow = {
+        ...profileRow,
+        equipped_character_image_url: nextImagePath,
+      };
+
+      previewEl.src = nextImagePath;
+      renderOwnCharacterInventory();
+      setMsg(`${skinName || '캐릭터'} 착용 완료!`, 'green');
+      window.dispatchEvent(new Event('auth-changed'));
+    } catch (error) {
+      console.error('[profile] equip character failed:', error);
+      setMsg('캐릭터 적용 중 오류가 발생했어.', 'red');
+    }
+  }
+
   function bindCharacterEvents() {
     const buttons = Array.from(
       characterListEl.querySelectorAll('[data-character-code]'),
@@ -583,7 +619,23 @@ function renderCharacterSection({
     });
   }
 
+  function bindSkinEvents() {
+    const buttons = Array.from(
+      skinListEl.querySelectorAll('[data-skin-image-path]'),
+    );
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', async () => {
+        const imagePath = button.dataset.skinImagePath || '';
+        const skinName = button.dataset.skinName || '캐릭터';
+        await equipCharacterSkin(imagePath, skinName);
+      });
+    });
+  }
+
   function renderOwnCharacterInventory() {
+    const equippedImageUrl = getEquippedImageUrl();
+
     const equippedCharacterCode = getEquippedCharacterCode({
       characterRows: safeCharacterRows,
       skinRows: safeSkinRows,
@@ -632,6 +684,7 @@ function renderCharacterSection({
     }
 
     bindCharacterEvents();
+    bindSkinEvents();
   }
 
   renderOwnCharacterInventory();
