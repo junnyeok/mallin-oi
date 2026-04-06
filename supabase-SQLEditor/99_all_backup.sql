@@ -7075,3 +7075,474 @@ begin
       null;
   end;
 end $$;
+
+-- =========================================
+-- 1) profiles : 현재 착용 캐릭터 경로 추가
+-- =========================================
+alter table public.profiles
+add column if not exists equipped_character_image_url text
+not null
+default './images/characters/cucumber.png';
+
+comment on column public.profiles.equipped_character_image_url
+is '현재 착용 중인 캐릭터(스킨) 이미지 경로';
+
+update public.profiles
+set equipped_character_image_url = './images/characters/cucumber.png'
+where coalesce(trim(equipped_character_image_url), '') = '';
+
+-- =========================================
+-- 2) 유저 캐릭터 인벤토리 테이블
+-- =========================================
+create table if not exists public.user_character_skins (
+  id bigserial primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  skin_code text not null,
+  skin_name text not null,
+  image_path text not null,
+  display_order integer not null default 0,
+  acquired_reason text not null default 'default_grant',
+  acquired_at timestamptz not null default now(),
+  unique (user_id, skin_code)
+);
+
+create index if not exists user_character_skins_user_id_idx
+  on public.user_character_skins(user_id);
+
+create index if not exists user_character_skins_user_id_order_idx
+  on public.user_character_skins(user_id, display_order, acquired_at);
+
+alter table public.user_character_skins enable row level security;
+
+drop policy if exists "내 캐릭터 인벤토리 조회" on public.user_character_skins;
+create policy "내 캐릭터 인벤토리 조회"
+on public.user_character_skins
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+grant select on public.user_character_skins to authenticated;
+
+-- =========================================
+-- 3) 기존 회원들에게 기본 오이 지급
+-- =========================================
+insert into public.user_character_skins (
+  user_id,
+  skin_code,
+  skin_name,
+  image_path,
+  display_order,
+  acquired_reason
+)
+select
+  p.id,
+  'char-cucumber-basic',
+  '기본 오이',
+  './images/characters/cucumber.png',
+  1,
+  'default_grant'
+from public.profiles p
+on conflict (user_id, skin_code) do nothing;
+
+-- =========================================
+-- 4) 신규 회원가입 시 기본 오이 자동 지급
+--    기존 sync_profile_from_auth_user 함수 교체
+-- =========================================
+create or replace function public.sync_profile_from_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_nickname text;
+begin
+  v_nickname := nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), '');
+
+  if v_nickname is null then
+    v_nickname := split_part(coalesce(new.email, ''), '@', 1);
+  end if;
+
+  insert into public.profiles (
+    id,
+    email,
+    nickname,
+    equipped_character_image_url,
+    created_at,
+    updated_at
+  )
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    v_nickname,
+    './images/characters/cucumber.png',
+    now(),
+    now()
+  )
+  on conflict (id)
+  do update set
+    email = excluded.email,
+    nickname = excluded.nickname,
+    equipped_character_image_url = coalesce(
+      nullif(trim(public.profiles.equipped_character_image_url), ''),
+      excluded.equipped_character_image_url
+    ),
+    updated_at = now();
+
+  insert into public.user_character_skins (
+    user_id,
+    skin_code,
+    skin_name,
+    image_path,
+    display_order,
+    acquired_reason
+  )
+  values (
+    new.id,
+    'char-cucumber-basic',
+    '기본 오이',
+    './images/characters/cucumber.png',
+    1,
+    'default_grant'
+  )
+  on conflict (user_id, skin_code) do nothing;
+
+  return new;
+end;
+$$;
+
+-- =========================================
+-- 5) 공개 프로필 뷰에 캐릭터 경로 추가
+-- =========================================
+create or replace view public.public_profiles as
+select
+  id,
+  nickname,
+  profile_image_url,
+  equipped_character_image_url,
+  created_at,
+  updated_at
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;
+
+alter table public.profiles
+add column if not exists equipped_character_image_url text
+not null
+default './images/characters/cucumber.png';
+
+update public.profiles
+set equipped_character_image_url = './images/characters/cucumber.png'
+where coalesce(trim(equipped_character_image_url), '') = '';
+
+create table if not exists public.user_character_skins (
+  id bigserial primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  skin_code text not null,
+  skin_name text not null,
+  image_path text not null,
+  display_order integer not null default 0,
+  acquired_reason text not null default 'default_grant',
+  acquired_at timestamptz not null default now(),
+  unique (user_id, skin_code)
+);
+
+create index if not exists user_character_skins_user_id_idx
+  on public.user_character_skins(user_id);
+
+create index if not exists user_character_skins_user_id_order_idx
+  on public.user_character_skins(user_id, display_order, acquired_at);
+
+alter table public.user_character_skins enable row level security;
+
+drop policy if exists "내 캐릭터 인벤토리 조회" on public.user_character_skins;
+
+create policy "내 캐릭터 인벤토리 조회"
+on public.user_character_skins
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+grant select on public.user_character_skins to authenticated;
+
+insert into public.user_character_skins (
+  user_id,
+  skin_code,
+  skin_name,
+  image_path,
+  display_order,
+  acquired_reason
+)
+select
+  p.id,
+  'char-cucumber-basic',
+  '기본 오이',
+  './images/characters/cucumber.png',
+  1,
+  'default_grant'
+from public.profiles p
+on conflict (user_id, skin_code) do nothing;
+
+create or replace function public.sync_profile_from_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_nickname text;
+begin
+  v_nickname := nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), '');
+
+  if v_nickname is null then
+    v_nickname := split_part(coalesce(new.email, ''), '@', 1);
+  end if;
+
+  insert into public.profiles (
+    id,
+    email,
+    nickname,
+    equipped_character_image_url,
+    created_at,
+    updated_at
+  )
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    v_nickname,
+    './images/characters/cucumber.png',
+    now(),
+    now()
+  )
+  on conflict (id)
+  do update set
+    email = excluded.email,
+    nickname = excluded.nickname,
+    equipped_character_image_url = coalesce(
+      nullif(trim(public.profiles.equipped_character_image_url), ''),
+      excluded.equipped_character_image_url
+    ),
+    updated_at = now();
+
+  insert into public.user_character_skins (
+    user_id,
+    skin_code,
+    skin_name,
+    image_path,
+    display_order,
+    acquired_reason
+  )
+  values (
+    new.id,
+    'char-cucumber-basic',
+    '기본 오이',
+    './images/characters/cucumber.png',
+    1,
+    'default_grant'
+  )
+  on conflict (user_id, skin_code) do nothing;
+
+  return new;
+end;
+$$;
+
+drop view if exists public.public_profiles;
+
+create view public.public_profiles as
+select
+  id,
+  nickname,
+  profile_image_url,
+  created_at,
+  updated_at,
+  equipped_character_image_url
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;
+
+-- =========================================
+-- 1) 캐릭터 인벤토리 테이블 생성
+-- =========================================
+create table if not exists public.user_characters (
+  id bigserial primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  character_code text not null,
+  character_name text not null,
+  base_image_path text not null,
+  preview_image_path text not null,
+  display_order integer not null default 0,
+  acquired_reason text not null default 'default_grant',
+  acquired_at timestamptz not null default now(),
+  unique (user_id, character_code)
+);
+
+create index if not exists user_characters_user_id_idx
+  on public.user_characters(user_id);
+
+create index if not exists user_characters_user_id_order_idx
+  on public.user_characters(user_id, display_order, acquired_at);
+
+alter table public.user_characters enable row level security;
+
+drop policy if exists "내 캐릭터 목록 조회" on public.user_characters;
+create policy "내 캐릭터 목록 조회"
+on public.user_characters
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+grant select on public.user_characters to authenticated;
+
+-- =========================================
+-- 2) 기존 스킨 테이블에 character_code 추가
+-- =========================================
+alter table public.user_character_skins
+add column if not exists character_code text;
+
+update public.user_character_skins
+set character_code = 'char-cucumber'
+where coalesce(trim(character_code), '') = '';
+
+alter table public.user_character_skins
+alter column character_code set default 'char-cucumber';
+
+alter table public.user_character_skins
+alter column character_code set not null;
+
+create index if not exists user_character_skins_user_character_idx
+  on public.user_character_skins(user_id, character_code, display_order, acquired_at);
+
+-- =========================================
+-- 3) 기존 회원에게 기본 캐릭터 지급
+-- =========================================
+insert into public.user_characters (
+  user_id,
+  character_code,
+  character_name,
+  base_image_path,
+  preview_image_path,
+  display_order,
+  acquired_reason
+)
+select
+  p.id,
+  'char-cucumber',
+  '기본 오이',
+  './images/characters/cucumber.png',
+  './images/characters/cucumber.png',
+  1,
+  'default_grant'
+from public.profiles p
+on conflict (user_id, character_code) do nothing;
+
+update public.user_character_skins
+set character_code = 'char-cucumber'
+where coalesce(trim(character_code), '') = '';
+
+insert into public.user_character_skins (
+  user_id,
+  character_code,
+  skin_code,
+  skin_name,
+  image_path,
+  display_order,
+  acquired_reason
+)
+select
+  p.id,
+  'char-cucumber',
+  'char-cucumber-basic',
+  '기본 오이',
+  './images/characters/cucumber.png',
+  1,
+  'default_grant'
+from public.profiles p
+on conflict (user_id, skin_code) do nothing;
+
+-- =========================================
+-- 4) 신규 회원가입 시 기본 캐릭터 + 기본 스킨 자동 지급
+-- =========================================
+create or replace function public.sync_profile_from_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_nickname text;
+begin
+  v_nickname := nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), '');
+
+  if v_nickname is null then
+    v_nickname := split_part(coalesce(new.email, ''), '@', 1);
+  end if;
+
+  insert into public.profiles (
+    id,
+    email,
+    nickname,
+    equipped_character_image_url,
+    created_at,
+    updated_at
+  )
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    v_nickname,
+    './images/characters/cucumber.png',
+    now(),
+    now()
+  )
+  on conflict (id)
+  do update set
+    email = excluded.email,
+    nickname = excluded.nickname,
+    equipped_character_image_url = coalesce(
+      nullif(trim(public.profiles.equipped_character_image_url), ''),
+      excluded.equipped_character_image_url
+    ),
+    updated_at = now();
+
+  insert into public.user_characters (
+    user_id,
+    character_code,
+    character_name,
+    base_image_path,
+    preview_image_path,
+    display_order,
+    acquired_reason
+  )
+  values (
+    new.id,
+    'char-cucumber',
+    '기본 오이',
+    './images/characters/cucumber.png',
+    './images/characters/cucumber.png',
+    1,
+    'default_grant'
+  )
+  on conflict (user_id, character_code) do nothing;
+
+  insert into public.user_character_skins (
+    user_id,
+    character_code,
+    skin_code,
+    skin_name,
+    image_path,
+    display_order,
+    acquired_reason
+  )
+  values (
+    new.id,
+    'char-cucumber',
+    'char-cucumber-basic',
+    '기본 오이',
+    './images/characters/cucumber.png',
+    1,
+    'default_grant'
+  )
+  on conflict (user_id, skin_code) do nothing;
+
+  return new;
+end;
+$$;

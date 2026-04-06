@@ -5,6 +5,11 @@ import { getCurrentUser, loginHref } from './auth-store.js';
 const PROFILE_BUCKET = 'profile-images';
 const PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
+const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
+const DEFAULT_CHARACTER_CODE = 'char-cucumber';
+const DEFAULT_CHARACTER_NAME = '기본 오이';
+const DEFAULT_SKIN_CODE = 'char-cucumber-basic';
+const DEFAULT_SKIN_NAME = '기본 오이';
 
 function $(id) {
   return document.getElementById(id);
@@ -62,6 +67,10 @@ function setMsg(text, color = 'var(--color-text-sub)') {
 
 function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
+}
+
+function getCharacterImageSrc(url) {
+  return String(url || '').trim() || DEFAULT_CHARACTER_IMAGE;
 }
 
 function formatPickleAmount(value) {
@@ -253,7 +262,9 @@ function setupPagedList({
 async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nickname, email, profile_image_url, pickles')
+    .select(
+      'id, nickname, email, profile_image_url, pickles, equipped_character_image_url',
+    )
     .eq('id', userId)
     .maybeSingle();
 
@@ -264,12 +275,366 @@ async function loadProfileRow(userId) {
 async function loadPublicProfileRow(userId) {
   const { data, error } = await supabase
     .from('public_profiles')
-    .select('id, nickname, profile_image_url, created_at, updated_at')
+    .select(
+      'id, nickname, profile_image_url, equipped_character_image_url, created_at, updated_at',
+    )
     .eq('id', userId)
     .maybeSingle();
 
   if (error) throw error;
   return data || null;
+}
+
+async function loadOwnedCharacters(userId) {
+  const { data, error } = await supabase
+    .from('user_characters')
+    .select(
+      'id, character_code, character_name, base_image_path, preview_image_path, acquired_reason, acquired_at, display_order',
+    )
+    .eq('user_id', userId)
+    .order('display_order', { ascending: true })
+    .order('acquired_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+async function loadCharacterInventory(userId) {
+  const { data, error } = await supabase
+    .from('user_character_skins')
+    .select(
+      'id, character_code, skin_code, skin_name, image_path, acquired_reason, acquired_at, display_order',
+    )
+    .eq('user_id', userId)
+    .order('display_order', { ascending: true })
+    .order('acquired_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+function normalizeCharacterCode(value) {
+  return String(value || '').trim() || DEFAULT_CHARACTER_CODE;
+}
+
+function getSafeCharacterRows(characterRows = [], skinRows = []) {
+  if (characterRows.length) {
+    return characterRows.map((row) => ({
+      ...row,
+      character_code: normalizeCharacterCode(row?.character_code),
+      character_name: String(row?.character_name || '').trim() || '캐릭터',
+      base_image_path: getCharacterImageSrc(
+        row?.base_image_path || row?.preview_image_path,
+      ),
+      preview_image_path: getCharacterImageSrc(
+        row?.preview_image_path || row?.base_image_path,
+      ),
+    }));
+  }
+
+  const skinCharacterMap = new Map();
+
+  (skinRows || []).forEach((row) => {
+    const characterCode = normalizeCharacterCode(row?.character_code);
+    if (skinCharacterMap.has(characterCode)) return;
+
+    skinCharacterMap.set(characterCode, {
+      character_code: characterCode,
+      character_name:
+        characterCode === DEFAULT_CHARACTER_CODE
+          ? DEFAULT_CHARACTER_NAME
+          : '캐릭터',
+      base_image_path: getCharacterImageSrc(row?.image_path),
+      preview_image_path: getCharacterImageSrc(row?.image_path),
+      display_order: 999,
+    });
+  });
+
+  if (!skinCharacterMap.size) {
+    skinCharacterMap.set(DEFAULT_CHARACTER_CODE, {
+      character_code: DEFAULT_CHARACTER_CODE,
+      character_name: DEFAULT_CHARACTER_NAME,
+      base_image_path: DEFAULT_CHARACTER_IMAGE,
+      preview_image_path: DEFAULT_CHARACTER_IMAGE,
+      display_order: 1,
+    });
+  }
+
+  return Array.from(skinCharacterMap.values());
+}
+
+function getSafeSkinRows(skinRows = []) {
+  if (skinRows.length) {
+    return skinRows.map((row) => ({
+      ...row,
+      character_code: normalizeCharacterCode(row?.character_code),
+      skin_code: String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE,
+      skin_name: String(row?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
+      image_path: getCharacterImageSrc(row?.image_path),
+    }));
+  }
+
+  return [
+    {
+      character_code: DEFAULT_CHARACTER_CODE,
+      skin_code: DEFAULT_SKIN_CODE,
+      skin_name: DEFAULT_SKIN_NAME,
+      image_path: DEFAULT_CHARACTER_IMAGE,
+    },
+  ];
+}
+
+function getEquippedCharacterCode({
+  characterRows = [],
+  skinRows = [],
+  equippedImageUrl = '',
+}) {
+  const safeEquippedImageUrl = getCharacterImageSrc(equippedImageUrl);
+
+  const matchedSkin = skinRows.find(
+    (row) => getCharacterImageSrc(row?.image_path) === safeEquippedImageUrl,
+  );
+
+  if (matchedSkin) {
+    return normalizeCharacterCode(matchedSkin.character_code);
+  }
+
+  return normalizeCharacterCode(characterRows?.[0]?.character_code);
+}
+
+function renderOwnedCharacterCard(
+  item,
+  { isSelected = false, isEquipped = false } = {},
+) {
+  return `
+    <button
+      type="button"
+      class="profile-character-card ${isSelected ? 'is-selected' : ''} ${
+        isEquipped ? 'is-equipped' : ''
+      }"
+      data-character-code="${escapeHtml(normalizeCharacterCode(item?.character_code))}"
+    >
+      <img
+        class="profile-character-card__thumb"
+        src="${escapeHtml(
+          getCharacterImageSrc(
+            item?.preview_image_path || item?.base_image_path,
+          ),
+        )}"
+        alt="${escapeHtml(item?.character_name || '캐릭터')}"
+      />
+      <div class="profile-character-card__name">
+        ${escapeHtml(item?.character_name || '캐릭터')}
+      </div>
+      <div class="profile-character-card__meta">
+        ${isEquipped ? '현재 착용 캐릭터' : '보유 중'}
+      </div>
+    </button>
+  `;
+}
+
+function renderCharacterSkinCard(item, equippedImageUrl = '') {
+  const imagePath = getCharacterImageSrc(item?.image_path);
+  const isEquipped = imagePath === getCharacterImageSrc(equippedImageUrl);
+
+  return `
+    <div class="profile-character-card ${isEquipped ? 'is-equipped' : ''}">
+      <img
+        class="profile-character-card__thumb"
+        src="${escapeHtml(imagePath)}"
+        alt="${escapeHtml(item?.skin_name || '스킨')}"
+      />
+      <div class="profile-character-card__name">
+        ${escapeHtml(item?.skin_name || '스킨')}
+      </div>
+      <div class="profile-character-card__meta">
+        ${isEquipped ? '현재 착용 중' : '보유 중'}
+      </div>
+    </div>
+  `;
+}
+
+function renderCharacterInventoryItem(item, equippedImageUrl = '') {
+  const imagePath = getCharacterImageSrc(item?.image_path);
+  const isEquipped = imagePath === getCharacterImageSrc(equippedImageUrl);
+
+  return `
+    <div class="profile-character-card ${isEquipped ? 'is-equipped' : ''}">
+      <img
+        class="profile-character-card__thumb"
+        src="${escapeHtml(imagePath)}"
+        alt="${escapeHtml(item?.skin_name || '캐릭터')}"
+      />
+      <div class="profile-character-card__name">
+        ${escapeHtml(item?.skin_name || '캐릭터')}
+      </div>
+      <div class="profile-character-card__meta">
+        ${isEquipped ? '현재 착용 중' : '보유 중'}
+      </div>
+    </div>
+  `;
+}
+
+function renderCharacterSection({
+  profileRow,
+  characterRows = [],
+  skinRows = [],
+  isOwnProfile = false,
+}) {
+  const sectionEl = $('profileCharacterSection');
+  const titleEl = $('profileCharacterTitle');
+  const previewEl = $('profileCharacterImage');
+  const characterWrapEl = $('profileCharacterCharacterWrap');
+  const characterListEl = $('profileCharacterList');
+  const skinWrapEl = $('profileCharacterSkinWrap');
+  const skinTitleEl = $('profileCharacterSkinTitle');
+  const skinListEl = $('profileCharacterSkinList');
+
+  if (!sectionEl || !previewEl) return;
+
+  const equippedImageUrl = getCharacterImageSrc(
+    profileRow?.equipped_character_image_url,
+  );
+
+  const safeCharacterRows = getSafeCharacterRows(characterRows, skinRows);
+  const safeSkinRows = getSafeSkinRows(skinRows);
+
+  let selectedCharacterCode = getEquippedCharacterCode({
+    characterRows: safeCharacterRows,
+    skinRows: safeSkinRows,
+    equippedImageUrl,
+  });
+
+  previewEl.src = equippedImageUrl;
+  previewEl.alt = isOwnProfile ? '내 캐릭터' : '이용자 캐릭터';
+
+  if (titleEl) {
+    titleEl.textContent = isOwnProfile ? '내 캐릭터' : '캐릭터';
+  }
+
+  if (characterWrapEl) {
+    characterWrapEl.hidden = !isOwnProfile;
+  }
+
+  if (skinWrapEl) {
+    skinWrapEl.hidden = !isOwnProfile;
+  }
+
+  if (!isOwnProfile || !characterListEl || !skinListEl) return;
+
+  function getSelectedCharacter() {
+    return (
+      safeCharacterRows.find(
+        (row) =>
+          normalizeCharacterCode(row?.character_code) === selectedCharacterCode,
+      ) || safeCharacterRows[0]
+    );
+  }
+
+  function getPreviewImageForCharacter(characterCode) {
+    const safeCode = normalizeCharacterCode(characterCode);
+
+    if (
+      safeCode ===
+      getEquippedCharacterCode({
+        characterRows: safeCharacterRows,
+        skinRows: safeSkinRows,
+        equippedImageUrl,
+      })
+    ) {
+      return equippedImageUrl;
+    }
+
+    const characterRow = safeCharacterRows.find(
+      (row) => normalizeCharacterCode(row?.character_code) === safeCode,
+    );
+
+    if (characterRow?.preview_image_path) {
+      return getCharacterImageSrc(characterRow.preview_image_path);
+    }
+
+    if (characterRow?.base_image_path) {
+      return getCharacterImageSrc(characterRow.base_image_path);
+    }
+
+    const firstSkin = safeSkinRows.find(
+      (row) => normalizeCharacterCode(row?.character_code) === safeCode,
+    );
+
+    return getCharacterImageSrc(
+      firstSkin?.image_path || DEFAULT_CHARACTER_IMAGE,
+    );
+  }
+
+  function bindCharacterEvents() {
+    const buttons = Array.from(
+      characterListEl.querySelectorAll('[data-character-code]'),
+    );
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const nextCode = normalizeCharacterCode(button.dataset.characterCode);
+
+        if (nextCode === selectedCharacterCode) return;
+
+        selectedCharacterCode = nextCode;
+        renderOwnCharacterInventory();
+      });
+    });
+  }
+
+  function renderOwnCharacterInventory() {
+    const equippedCharacterCode = getEquippedCharacterCode({
+      characterRows: safeCharacterRows,
+      skinRows: safeSkinRows,
+      equippedImageUrl,
+    });
+
+    const selectedCharacter = getSelectedCharacter();
+    const selectedCharacterName =
+      selectedCharacter?.character_name || DEFAULT_CHARACTER_NAME;
+
+    previewEl.src = getPreviewImageForCharacter(selectedCharacterCode);
+    previewEl.alt = `${selectedCharacterName} 미리보기`;
+
+    characterListEl.innerHTML = safeCharacterRows
+      .map((item) =>
+        renderOwnedCharacterCard(item, {
+          isSelected:
+            normalizeCharacterCode(item?.character_code) ===
+            selectedCharacterCode,
+          isEquipped:
+            normalizeCharacterCode(item?.character_code) ===
+            equippedCharacterCode,
+        }),
+      )
+      .join('');
+
+    const filteredSkins = safeSkinRows.filter(
+      (item) =>
+        normalizeCharacterCode(item?.character_code) === selectedCharacterCode,
+    );
+
+    if (skinTitleEl) {
+      skinTitleEl.textContent = `${selectedCharacterName} 스킨`;
+    }
+
+    if (!filteredSkins.length) {
+      skinListEl.innerHTML = `
+        <div class="profile-character-empty">
+          아직 이 캐릭터에 착용 가능한 스킨이 없어.
+        </div>
+      `;
+    } else {
+      skinListEl.innerHTML = filteredSkins
+        .map((item) => renderCharacterSkinCard(item, equippedImageUrl))
+        .join('');
+    }
+
+    bindCharacterEvents();
+  }
+
+  renderOwnCharacterInventory();
 }
 
 async function loadCommentsWithPostsByAuthorId(userId) {
@@ -351,6 +716,9 @@ function applyProfileModeUI({
   const avatar = $('profileAvatar');
   const heroPickleEl = $('profileHeroPickle');
   const pickleSection = $('profilePickleSection');
+  const characterSection = $('profileCharacterSection');
+  const inventoryWrap = $('profileCharacterInventoryWrap');
+
   if (heroPickleEl) {
     heroPickleEl.hidden = !isOwnProfile;
   }
@@ -358,6 +726,15 @@ function applyProfileModeUI({
   if (pickleSection) {
     pickleSection.hidden = !isOwnProfile;
   }
+
+  if (characterSection) {
+    characterSection.hidden = false;
+  }
+
+  if (inventoryWrap) {
+    inventoryWrap.hidden = !isOwnProfile;
+  }
+
   if (eyebrowEl) {
     eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
   }
@@ -407,15 +784,21 @@ function renderProfileNotFound() {
   const postList = $('profilePostList');
   const commentList = $('profileCommentList');
   const avatar = $('profileAvatar');
+  const heroPickleEl = $('profileHeroPickle');
+  const pickleSection = $('profilePickleSection');
+  const characterSection = $('profileCharacterSection');
 
   if (nicknameText) nicknameText.textContent = '프로필을 찾을 수 없어';
   if (emailText) emailText.textContent = '-';
-  if (descEl)
+  if (descEl) {
     descEl.textContent = '존재하지 않거나 볼 수 없는 이용자 프로필이야.';
+  }
   if (form) form.hidden = true;
   if (avatar) avatar.src = DEFAULT_PROFILE_IMAGE;
   if (heroPickleEl) heroPickleEl.hidden = true;
   if (pickleSection) pickleSection.hidden = true;
+  if (characterSection) characterSection.hidden = true;
+
   if (postList) {
     postList.innerHTML = `<div class="empty">작성한 글을 불러올 수 없어.</div>`;
   }
@@ -475,6 +858,30 @@ export async function initProfile() {
     profileRow,
   });
 
+  let characterRows = [];
+  let characterSkinRows = [];
+
+  if (isOwnProfile) {
+    try {
+      characterRows = await loadOwnedCharacters(targetUserId);
+    } catch (error) {
+      console.error('[profile] load owned characters failed:', error);
+    }
+
+    try {
+      characterSkinRows = await loadCharacterInventory(targetUserId);
+    } catch (error) {
+      console.error('[profile] load character skins failed:', error);
+    }
+  }
+
+  renderCharacterSection({
+    profileRow,
+    characterRows,
+    skinRows: characterSkinRows,
+    isOwnProfile,
+  });
+
   if (isOwnProfile && nicknameInput) {
     nicknameInput.value = currentNickname;
   }
@@ -509,6 +916,11 @@ export async function initProfile() {
       if (avatar) {
         avatar.src = URL.createObjectURL(file);
       }
+      renderCharacterSection({
+        profileRow,
+        inventoryRows: [],
+        isOwnProfile,
+      });
     });
 
     const form = $('profileForm');

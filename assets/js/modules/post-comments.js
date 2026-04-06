@@ -21,7 +21,9 @@ const {
 } = await import(`./emoticons.js?v=${MODULE_VERSION}`);
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
+const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
 const commentProfileImageCache = new Map();
+const commentCharacterImageCache = new Map();
 let ownedCommentEmoticons = [];
 let commentEmoticonDocumentBound = false;
 
@@ -29,26 +31,34 @@ function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
 }
 
-async function loadProfileImageMap(authorIds = []) {
+function getCharacterImageSrc(url) {
+  return String(url || '').trim() || DEFAULT_CHARACTER_IMAGE;
+}
+
+async function loadProfileAssetMap(authorIds = []) {
   const safeIds = [
     ...new Set(
       (authorIds || []).map((id) => String(id || '').trim()).filter(Boolean),
     ),
   ];
 
-  const missingIds = safeIds.filter((id) => !commentProfileImageCache.has(id));
+  const missingIds = safeIds.filter(
+    (id) =>
+      !commentProfileImageCache.has(id) || !commentCharacterImageCache.has(id),
+  );
 
   if (missingIds.length) {
     const { data, error } = await supabase
       .from('public_profiles')
-      .select('id, profile_image_url')
+      .select('id, profile_image_url, equipped_character_image_url')
       .in('id', missingIds);
 
     if (error) {
-      console.error('[post-comments] load profile images failed:', error);
-      missingIds.forEach((id) =>
-        commentProfileImageCache.set(id, DEFAULT_PROFILE_IMAGE),
-      );
+      console.error('[post-comments] load profile assets failed:', error);
+      missingIds.forEach((id) => {
+        commentProfileImageCache.set(id, DEFAULT_PROFILE_IMAGE);
+        commentCharacterImageCache.set(id, DEFAULT_CHARACTER_IMAGE);
+      });
     } else {
       const rows = data || [];
       const foundIds = new Set();
@@ -56,16 +66,22 @@ async function loadProfileImageMap(authorIds = []) {
       rows.forEach((row) => {
         const id = String(row?.id || '').trim();
         if (!id) return;
+
         foundIds.add(id);
         commentProfileImageCache.set(
           id,
           getProfileImageSrc(row?.profile_image_url),
+        );
+        commentCharacterImageCache.set(
+          id,
+          getCharacterImageSrc(row?.equipped_character_image_url),
         );
       });
 
       missingIds.forEach((id) => {
         if (!foundIds.has(id)) {
           commentProfileImageCache.set(id, DEFAULT_PROFILE_IMAGE);
+          commentCharacterImageCache.set(id, DEFAULT_CHARACTER_IMAGE);
         }
       });
     }
@@ -73,7 +89,12 @@ async function loadProfileImageMap(authorIds = []) {
 
   const map = new Map();
   safeIds.forEach((id) => {
-    map.set(id, commentProfileImageCache.get(id) || DEFAULT_PROFILE_IMAGE);
+    map.set(id, {
+      profileImageUrl:
+        commentProfileImageCache.get(id) || DEFAULT_PROFILE_IMAGE,
+      characterImageUrl:
+        commentCharacterImageCache.get(id) || DEFAULT_CHARACTER_IMAGE,
+    });
   });
 
   return map;
@@ -109,11 +130,13 @@ function renderAuthorProfileLink(
   authorId,
   authorNickname,
   profileImageUrl = '',
+  characterImageUrl = '',
   className = '',
 ) {
   const nickname = escapeHtml(authorNickname || '익명');
   const safeAuthorId = String(authorId || '').trim();
   const avatarSrc = escapeHtml(getProfileImageSrc(profileImageUrl));
+  const characterSrc = escapeHtml(getCharacterImageSrc(characterImageUrl));
 
   if (!safeAuthorId) {
     return `
@@ -122,6 +145,11 @@ function renderAuthorProfileLink(
           class="comment-author-avatar"
           src="${avatarSrc}"
           alt="${nickname} 프로필 사진"
+        />
+        <img
+          class="comment-author-character"
+          src="${characterSrc}"
+          alt="${nickname} 캐릭터"
         />
         <strong class="${className}">${nickname}</strong>
       </span>
@@ -141,6 +169,11 @@ function renderAuthorProfileLink(
           alt="${nickname} 프로필 사진"
         />
       </a>
+      <img
+        class="comment-author-character"
+        src="${characterSrc}"
+        alt="${nickname} 캐릭터"
+      />
       <a
         class="${className} comment-author-link"
         href="${publicProfileHref(safeAuthorId)}"
@@ -269,13 +302,21 @@ function renderReplyItem(
   data-comment-id="${reply.id}"
 >      <div class="comment-reply-item__head">
         <div class="comment-reply-item__meta">
-          ${renderAuthorProfileLink(
-            reply.author_id,
-            reply.author_nickname,
-            profileImageMap.get(String(reply.author_id || '').trim()) ||
-              DEFAULT_PROFILE_IMAGE,
-            'comment-reply-item__author',
-          )}
+                    ${renderAuthorProfileLink(
+                      reply.author_id,
+                      reply.author_nickname,
+                      (
+                        profileImageMap.get(
+                          String(reply.author_id || '').trim(),
+                        ) || {}
+                      ).profileImageUrl || DEFAULT_PROFILE_IMAGE,
+                      (
+                        profileImageMap.get(
+                          String(reply.author_id || '').trim(),
+                        ) || {}
+                      ).characterImageUrl || DEFAULT_CHARACTER_IMAGE,
+                      'comment-reply-item__author',
+                    )}
           <div class="comment-meta-inline">
             ${renderDateMeta(reply.created_at, reply.updated_at)}
           </div>
@@ -331,13 +372,21 @@ function renderCommentItem(
   data-comment-id="${comment.id}"
 >      <div class="comment-item__head">
         <div class="comment-item__meta">
-          ${renderAuthorProfileLink(
-            comment.author_id,
-            comment.author_nickname,
-            profileImageMap.get(String(comment.author_id || '').trim()) ||
-              DEFAULT_PROFILE_IMAGE,
-            'comment-item__author',
-          )}
+                    ${renderAuthorProfileLink(
+                      comment.author_id,
+                      comment.author_nickname,
+                      (
+                        profileImageMap.get(
+                          String(comment.author_id || '').trim(),
+                        ) || {}
+                      ).profileImageUrl || DEFAULT_PROFILE_IMAGE,
+                      (
+                        profileImageMap.get(
+                          String(comment.author_id || '').trim(),
+                        ) || {}
+                      ).characterImageUrl || DEFAULT_CHARACTER_IMAGE,
+                      'comment-item__author',
+                    )}
           <div class="comment-meta-inline">
             ${renderDateMeta(comment.created_at, comment.updated_at)}
           </div>
@@ -637,7 +686,7 @@ async function renderComments(postId, secretPassword = null) {
 
     const repliesMap = groupRepliesByParent(comments);
 
-    const profileImageMap = await loadProfileImageMap(
+    const profileImageMap = await loadProfileAssetMap(
       comments.map((comment) => comment.author_id),
     );
 
