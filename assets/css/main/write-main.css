@@ -587,18 +587,26 @@
 }
 
 @media (max-width: 768px) {
-  .write-editor-tools {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .write-editor-tools > .emoticon-picker {
+  .write-editor-wrap,
+  .write-editor-tools,
+  .write-editor-tools .emoticon-picker,
+  .write-editor-tools .emoticon-picker__body,
+  .write-editor-tools .emoticon-picker__pack-pane,
+  .write-editor-tools .emoticon-picker__grid {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    padding: 10px;
-    overflow: hidden;
     box-sizing: border-box;
+  }
+
+  .write-editor-tools {
+    padding: 10px 0;
+    overflow-x: hidden;
+  }
+
+  .write-editor-tools .emoticon-picker {
+    padding: 10px;
+    overflow-x: hidden;
   }
 
   .write-editor-tools .emoticon-picker__packs {
@@ -610,7 +618,7 @@
     margin-bottom: 10px;
     padding-left: 0;
     padding-right: 0;
-    gap: 8px;
+    box-sizing: border-box;
   }
 
   .write-editor-tools .emoticon-picker__pack-tab {
@@ -619,6 +627,7 @@
     max-width: 70px;
     height: 70px;
     border-radius: 12px;
+    box-sizing: border-box;
   }
 
   .write-editor-tools .emoticon-picker__pack-icon {
@@ -628,20 +637,11 @@
     flex-shrink: 0;
   }
 
-  .write-editor-tools .emoticon-picker__body,
-  .write-editor-tools .emoticon-picker__pack-pane {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
   .write-editor-tools .emoticon-picker__grid {
-    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
+    justify-items: stretch;
+    align-items: stretch;
   }
 
   .write-editor-tools .emoticon-picker__item {
@@ -656,6 +656,99 @@
   }
 
   .write-editor-tools .emoticon-picker__img {
+    width: 100%;
+    height: 100%;
+    max-width: 60px;
+    max-height: 60px;
+    object-fit: contain;
+  }
+}
+
+/* =========================
+  WRITE EMOTICON MOBILE FIX
+========================= */
+@media (max-width: 768px) {
+  .write-card,
+  .write-form,
+  .write-row,
+  .write-editor-wrap,
+  .write-editor-tools,
+  .write-editor-tools .emoticon-picker,
+  .write-editor-tools .emoticon-picker__body,
+  .write-editor-tools .emoticon-picker__pack-pane,
+  .write-editor-tools .emoticon-picker__grid {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .write-card,
+  .write-row,
+  .write-editor-wrap,
+  .write-editor-tools,
+  .write-editor-tools .emoticon-picker,
+  .write-editor-tools .emoticon-picker__body,
+  .write-editor-tools .emoticon-picker__pack-pane {
+    overflow-x: hidden;
+  }
+
+  .write-editor-tools {
+    padding: 10px 0;
+  }
+
+  .write-editor-tools .emoticon-picker {
+    padding: 10px;
+  }
+
+  .write-editor-tools .emoticon-picker__packs {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 70px;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 4px 0 10px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-sizing: border-box;
+  }
+
+  .write-editor-tools .emoticon-picker__pack-tab {
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
+    height: 70px;
+    box-sizing: border-box;
+  }
+
+  .write-editor-tools .emoticon-picker__grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-content: stretch !important;
+    align-content: start;
+  }
+
+  .write-editor-tools .emoticon-picker__item {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
+  }
+
+  .write-editor-tools .emoticon-picker__img {
+    display: block;
     width: 100%;
     height: 100%;
     max-width: 52px;
