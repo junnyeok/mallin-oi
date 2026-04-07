@@ -303,3 +303,41 @@ export function getStoreItemById(itemId = '') {
 export function getStoreItemDetailHref(itemId = '') {
   return `./store-item.html?id=${encodeURIComponent(String(itemId || '').trim())}`;
 }
+
+export const CHARACTER_CATALOG = [
+  {
+    character_code: 'char-cucumber',
+    character_name: '기본 오이',
+    base_image_path: withAssetVersion('./images/characters/cucumber.png'),
+    preview_image_path: withAssetVersion('./images/characters/cucumber.png'),
+    display_order: 1,
+    store_item_id: null,
+  },
+  {
+    character_code: 'char-teto-carrot',
+    character_name: '테토당근',
+    base_image_path: withAssetVersion('./images/characters/teto-carrot.png'),
+    preview_image_path: withAssetVersion('./images/characters/teto-carrot.png'),
+    display_order: 2,
+    store_item_id: 'character-carrot-01',
+  },
+];
+
+export const CHARACTER_SKIN_CATALOG = [
+  {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-basic',
+    skin_name: '기본 오이',
+    image_path: withAssetVersion('./images/characters/cucumber.png'),
+    display_order: 1,
+    store_item_id: null,
+  },
+  {
+    character_code: 'char-teto-carrot',
+    skin_code: 'char-teto-carrot-basic',
+    skin_name: '테토당근',
+    image_path: withAssetVersion('./images/characters/teto-carrot.png'),
+    display_order: 201,
+    store_item_id: 'character-carrot-01',
+  },
+];

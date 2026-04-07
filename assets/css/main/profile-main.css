@@ -451,6 +451,55 @@
   text-align: left;
 }
 
+.profile-character-inventory__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.profile-character-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 2px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  cursor: pointer;
+  user-select: none;
+}
+
+.profile-character-toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.profile-character-card.is-locked {
+  opacity: 0.78;
+  border-style: dashed;
+}
+
+button.profile-character-card.is-locked:hover {
+  opacity: 1;
+  border-color: var(--color-primary);
+  background: rgba(170, 208, 94, 0.08);
+}
+
+.profile-character-card__meta.is-locked {
+  color: #c36b2c;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .profile-character-inventory__head {
+    align-items: flex-start;
+  }
+}
+
 .profile-character-grid {
   display: grid;
   gap: var(--space-12);

@@ -62,7 +62,7 @@ function formatPrice(price) {
 function getCategoryLabel(category) {
   if (category === 'emoticon') return '이모티콘';
   if (category === 'character') return '캐릭터';
-  if (category === 'fashion') return '꾸미기';
+  if (category === 'fashion') return '스킨';
   if (category === 'profile') return '프로필';
   return '기타';
 }
@@ -362,12 +362,30 @@ async function initStorePage() {
 
 function renderStoreItemPreview(item) {
   const previews = Array.isArray(item?.previewImages) ? item.previewImages : [];
+  const isCharacter = item?.category === 'character';
 
   if (!previews.length) {
     return `
       <div class="store-item-preview__empty">
         <div class="store-item-preview__icon">${item.icon}</div>
         <p>미리보기는 다음 단계에서 추가될 예정이야.</p>
+      </div>
+    `;
+  }
+
+  if (isCharacter) {
+    const preview = previews[0];
+
+    return `
+      <div class="store-item-preview__character">
+        <figure class="store-item-preview__character-card">
+          <img
+            src="${preview.imagePath}"
+            alt="${preview.label}"
+            class="store-item-preview__character-img"
+            loading="lazy"
+          />
+        </figure>
       </div>
     `;
   }

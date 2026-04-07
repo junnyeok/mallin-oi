@@ -420,6 +420,8 @@
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
 .write-emoticon-toggle {
@@ -441,33 +443,52 @@
   cursor: not-allowed;
 }
 
-.emoticon-picker {
+/* write.html 이모티콘 선택창 - post.html 댓글창과 동일 기준 */
+.write-editor-tools .emoticon-picker {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: #fff;
+  box-sizing: border-box;
 }
 
-.emoticon-picker__packs {
-  display: flex;
+.write-editor-tools .emoticon-picker__packs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 70px;
   align-items: center;
+  justify-content: start;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding-top: 4px;
   padding-bottom: 10px;
   margin-bottom: 12px;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
   border-bottom: 1px solid var(--color-border);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-sizing: border-box;
 }
 
-.emoticon-picker__pack-tab {
+.write-editor-tools .emoticon-picker__packs::-webkit-scrollbar {
+  display: none;
+}
+
+.write-editor-tools .emoticon-picker__pack-tab {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 70px;
+  height: 70px;
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: 14px;
@@ -478,45 +499,51 @@
     border-color 0.15s ease,
     box-shadow 0.15s ease,
     background 0.15s ease;
+  box-sizing: border-box;
 }
 
-.emoticon-picker__pack-tab:hover {
+.write-editor-tools .emoticon-picker__pack-tab:hover {
   transform: translateY(-1px);
 }
 
-.emoticon-picker__pack-tab.is-active {
+.write-editor-tools .emoticon-picker__pack-tab.is-active {
   border-color: #b26bff;
   background: #faf5ff;
   box-shadow: 0 0 0 2px rgba(178, 107, 255, 0.12);
 }
 
-.emoticon-picker__pack-icon {
+.write-editor-tools .emoticon-picker__pack-icon {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
-.emoticon-picker__body {
+.write-editor-tools .emoticon-picker__body,
+.write-editor-tools .emoticon-picker__pack-pane {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-.emoticon-picker__pack-pane {
-  width: 100%;
-}
-
-.emoticon-picker__grid {
+.write-editor-tools .emoticon-picker__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(58px, 58px));
-  gap: 10px;
+  gap: 15px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
-.emoticon-picker__item {
+.write-editor-tools .emoticon-picker__item {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
+  width: 70px;
+  height: 70px;
+  padding: 0;
   border: 1px solid var(--color-border);
   border-radius: 14px;
   background: #fff;
@@ -526,21 +553,25 @@
     transform 0.15s ease,
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+  box-sizing: border-box;
 }
 
-.emoticon-picker__item:hover {
+.write-editor-tools .emoticon-picker__item:hover {
   transform: translateY(-1px);
   border-color: #b26bff;
   box-shadow: 0 0 0 2px rgba(178, 107, 255, 0.1);
 }
 
-.emoticon-picker__img {
-  width: 40px;
-  height: 40px;
+.write-editor-tools .emoticon-picker__img {
+  display: block;
+  width: 60px;
+  height: 60px;
+  max-width: 60px;
+  max-height: 60px;
   object-fit: contain;
 }
 
-.emoticon-picker__empty {
+.write-editor-tools .emoticon-picker__empty {
   font-size: 13px;
   color: var(--color-text-sub);
   line-height: 1.5;
@@ -556,42 +587,79 @@
 }
 
 @media (max-width: 768px) {
-  .emoticon-picker {
-    padding: 10px;
+  .write-editor-tools {
+    width: 100%;
+    min-width: 0;
   }
 
-  .emoticon-picker__packs {
-    gap: 6px;
+  .write-editor-tools > .emoticon-picker {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 10px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .write-editor-tools .emoticon-picker__packs {
+    grid-auto-columns: 70px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     padding-top: 4px;
     margin-bottom: 10px;
-    padding-bottom: 8px;
+    padding-left: 0;
+    padding-right: 0;
+    gap: 8px;
   }
 
-  .emoticon-picker__pack-tab {
-    width: 44px;
-    height: 44px;
+  .write-editor-tools .emoticon-picker__pack-tab {
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
+    height: 70px;
     border-radius: 12px;
   }
 
-  .emoticon-picker__pack-icon {
-    width: 30px;
-    height: 30px;
+  .write-editor-tools .emoticon-picker__pack-icon {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
-  .emoticon-picker__grid {
-    display: flex;
-    flex-wrap: wrap;
+  .write-editor-tools .emoticon-picker__body,
+  .write-editor-tools .emoticon-picker__pack-pane {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .write-editor-tools .emoticon-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
-    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
-  .emoticon-picker__item {
-    width: 52px;
-    height: 52px;
+  .write-editor-tools .emoticon-picker__item {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    padding: 4px;
+    box-sizing: border-box;
   }
 
-  .emoticon-picker__img {
-    width: 36px;
-    height: 36px;
+  .write-editor-tools .emoticon-picker__img {
+    width: 100%;
+    height: 100%;
+    max-width: 52px;
+    max-height: 52px;
+    object-fit: contain;
   }
 }

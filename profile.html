@@ -95,7 +95,17 @@
               id="profileCharacterCharacterWrap"
               class="profile-character-inventory"
             >
-              <h3 class="profile-character-inventory__title">캐릭터</h3>
+              <div class="profile-character-inventory__head">
+                <h3 class="profile-character-inventory__title">캐릭터</h3>
+
+                <label
+                  class="profile-character-toggle"
+                  for="profileOwnedOnlyToggle"
+                >
+                  <input type="checkbox" id="profileOwnedOnlyToggle" />
+                  <span>보유중</span>
+                </label>
+              </div>
               <div
                 id="profileCharacterList"
                 class="profile-character-grid profile-character-grid--characters"

@@ -1,6 +1,11 @@
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 import { getCurrentUser, loginHref } from './auth-store.js';
+import {
+  CHARACTER_CATALOG,
+  CHARACTER_SKIN_CATALOG,
+  getStoreItemDetailHref,
+} from './store-data.js';
 
 const PROFILE_BUCKET = 'profile-images';
 const PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -318,70 +323,174 @@ function normalizeCharacterCode(value) {
 }
 
 function getSafeCharacterRows(characterRows = [], skinRows = []) {
-  if (characterRows.length) {
-    return characterRows.map((row) => ({
-      ...row,
-      character_code: normalizeCharacterCode(row?.character_code),
-      character_name: String(row?.character_name || '').trim() || '캐릭터',
-      base_image_path: getCharacterImageSrc(
-        row?.base_image_path || row?.preview_image_path,
-      ),
-      preview_image_path: getCharacterImageSrc(
-        row?.preview_image_path || row?.base_image_path,
-      ),
-    }));
-  }
+  const ownedMap = new Map(
+    (characterRows || []).map((row) => [
+      normalizeCharacterCode(row?.character_code),
+      {
+        ...row,
+        character_code: normalizeCharacterCode(row?.character_code),
+        character_name: String(row?.character_name || '').trim() || '캐릭터',
+        base_image_path: getCharacterImageSrc(
+          row?.base_image_path || row?.preview_image_path,
+        ),
+        preview_image_path: getCharacterImageSrc(
+          row?.preview_image_path || row?.base_image_path,
+        ),
+        is_owned: true,
+        store_item_id: null,
+      },
+    ]),
+  );
 
-  const skinCharacterMap = new Map();
+  const merged = CHARACTER_CATALOG.map((item) => {
+    const code = normalizeCharacterCode(item?.character_code);
+    const owned = ownedMap.get(code);
+
+    if (owned) {
+      return {
+        ...item,
+        ...owned,
+        is_owned: true,
+        store_item_id: item?.store_item_id || null,
+      };
+    }
+
+    return {
+      character_code: code,
+      character_name: String(item?.character_name || '').trim() || '캐릭터',
+      base_image_path: getCharacterImageSrc(item?.base_image_path),
+      preview_image_path: getCharacterImageSrc(item?.preview_image_path),
+      display_order: Number(item?.display_order || 999),
+      is_owned: code === DEFAULT_CHARACTER_CODE ? true : false,
+      store_item_id: item?.store_item_id || null,
+    };
+  });
 
   (skinRows || []).forEach((row) => {
-    const characterCode = normalizeCharacterCode(row?.character_code);
-    if (skinCharacterMap.has(characterCode)) return;
+    const code = normalizeCharacterCode(row?.character_code);
+    if (
+      merged.some(
+        (item) => normalizeCharacterCode(item.character_code) === code,
+      )
+    ) {
+      return;
+    }
 
-    skinCharacterMap.set(characterCode, {
-      character_code: characterCode,
+    merged.push({
+      character_code: code,
       character_name:
-        characterCode === DEFAULT_CHARACTER_CODE
-          ? DEFAULT_CHARACTER_NAME
-          : '캐릭터',
+        code === DEFAULT_CHARACTER_CODE ? DEFAULT_CHARACTER_NAME : '캐릭터',
       base_image_path: getCharacterImageSrc(row?.image_path),
       preview_image_path: getCharacterImageSrc(row?.image_path),
       display_order: 999,
+      is_owned: true,
+      store_item_id: null,
     });
   });
 
-  if (!skinCharacterMap.size) {
-    skinCharacterMap.set(DEFAULT_CHARACTER_CODE, {
+  if (!merged.length) {
+    merged.push({
       character_code: DEFAULT_CHARACTER_CODE,
       character_name: DEFAULT_CHARACTER_NAME,
       base_image_path: DEFAULT_CHARACTER_IMAGE,
       preview_image_path: DEFAULT_CHARACTER_IMAGE,
       display_order: 1,
+      is_owned: true,
+      store_item_id: null,
     });
   }
 
-  return Array.from(skinCharacterMap.values());
+  return merged.sort((a, b) => {
+    const orderDiff =
+      Number(a?.display_order || 999) - Number(b?.display_order || 999);
+    if (orderDiff !== 0) return orderDiff;
+    return String(a?.character_name || '').localeCompare(
+      String(b?.character_name || ''),
+      'ko',
+    );
+  });
 }
 
 function getSafeSkinRows(skinRows = []) {
-  if (skinRows.length) {
-    return skinRows.map((row) => ({
-      ...row,
+  const ownedMap = new Map(
+    (skinRows || []).map((row) => [
+      String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE,
+      {
+        ...row,
+        character_code: normalizeCharacterCode(row?.character_code),
+        skin_code: String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE,
+        skin_name: String(row?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
+        image_path: getCharacterImageSrc(row?.image_path),
+        is_owned: true,
+        store_item_id: null,
+      },
+    ]),
+  );
+
+  const merged = CHARACTER_SKIN_CATALOG.map((item) => {
+    const skinCode = String(item?.skin_code || '').trim() || DEFAULT_SKIN_CODE;
+    const owned = ownedMap.get(skinCode);
+
+    if (owned) {
+      return {
+        ...item,
+        ...owned,
+        is_owned: true,
+        store_item_id: item?.store_item_id || null,
+      };
+    }
+
+    return {
+      character_code: normalizeCharacterCode(item?.character_code),
+      skin_code: skinCode,
+      skin_name: String(item?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
+      image_path: getCharacterImageSrc(item?.image_path),
+      display_order: Number(item?.display_order || 999),
+      is_owned: skinCode === DEFAULT_SKIN_CODE ? true : false,
+      store_item_id: item?.store_item_id || null,
+    };
+  });
+
+  (skinRows || []).forEach((row) => {
+    const skinCode = String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE;
+    if (
+      merged.some((item) => String(item?.skin_code || '').trim() === skinCode)
+    ) {
+      return;
+    }
+
+    merged.push({
       character_code: normalizeCharacterCode(row?.character_code),
-      skin_code: String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE,
+      skin_code: skinCode,
       skin_name: String(row?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
       image_path: getCharacterImageSrc(row?.image_path),
-    }));
-  }
+      display_order: Number(row?.display_order || 999),
+      is_owned: true,
+      store_item_id: null,
+    });
+  });
 
-  return [
-    {
+  if (!merged.length) {
+    merged.push({
       character_code: DEFAULT_CHARACTER_CODE,
       skin_code: DEFAULT_SKIN_CODE,
       skin_name: DEFAULT_SKIN_NAME,
       image_path: DEFAULT_CHARACTER_IMAGE,
-    },
-  ];
+      display_order: 1,
+      is_owned: true,
+      store_item_id: null,
+    });
+  }
+
+  return merged.sort((a, b) => {
+    const orderDiff =
+      Number(a?.display_order || 999) - Number(b?.display_order || 999);
+    if (orderDiff !== 0) return orderDiff;
+    return String(a?.skin_name || '').localeCompare(
+      String(b?.skin_name || ''),
+      'ko',
+    );
+  });
 }
 
 function getEquippedCharacterCode({
@@ -406,13 +515,25 @@ function renderOwnedCharacterCard(
   item,
   { isSelected = false, isEquipped = false } = {},
 ) {
+  const isOwned = item?.is_owned !== false;
+  const storeItemId = String(item?.store_item_id || '').trim();
+  const detailHref = storeItemId ? getStoreItemDetailHref(storeItemId) : '';
+  const metaText = isOwned
+    ? isEquipped
+      ? '현재 착용 캐릭터'
+      : '보유 중'
+    : '미보유 · 클릭하면 구매페이지로 이동';
+  const extraMetaClass = isOwned ? '' : ' is-locked';
+
   return `
     <button
       type="button"
       class="profile-character-card ${isSelected ? 'is-selected' : ''} ${
         isEquipped ? 'is-equipped' : ''
-      }"
+      } ${!isOwned ? 'is-locked' : ''}"
       data-character-code="${escapeHtml(normalizeCharacterCode(item?.character_code))}"
+      data-owned="${isOwned ? 'true' : 'false'}"
+      data-store-href="${escapeHtml(detailHref)}"
     >
       <img
         class="profile-character-card__thumb"
@@ -426,8 +547,8 @@ function renderOwnedCharacterCard(
       <div class="profile-character-card__name">
         ${escapeHtml(item?.character_name || '캐릭터')}
       </div>
-      <div class="profile-character-card__meta">
-        ${isEquipped ? '현재 착용 캐릭터' : '보유 중'}
+      <div class="profile-character-card__meta${extraMetaClass}">
+        ${metaText}
       </div>
     </button>
   `;
@@ -436,13 +557,26 @@ function renderOwnedCharacterCard(
 function renderCharacterSkinCard(item, equippedImageUrl = '') {
   const imagePath = getCharacterImageSrc(item?.image_path);
   const isEquipped = imagePath === getCharacterImageSrc(equippedImageUrl);
+  const isOwned = item?.is_owned !== false;
+  const storeItemId = String(item?.store_item_id || '').trim();
+  const detailHref = storeItemId ? getStoreItemDetailHref(storeItemId) : '';
+  const metaText = isOwned
+    ? isEquipped
+      ? '현재 착용 중'
+      : '클릭해서 착용'
+    : '미보유 · 클릭하면 구매페이지로 이동';
+  const extraMetaClass = isOwned ? '' : ' is-locked';
 
   return `
     <button
       type="button"
-      class="profile-character-card ${isEquipped ? 'is-equipped' : ''}"
+      class="profile-character-card ${isEquipped ? 'is-equipped' : ''} ${
+        !isOwned ? 'is-locked' : ''
+      }"
       data-skin-image-path="${escapeHtml(imagePath)}"
       data-skin-name="${escapeHtml(item?.skin_name || '스킨')}"
+      data-owned="${isOwned ? 'true' : 'false'}"
+      data-store-href="${escapeHtml(detailHref)}"
     >
       <img
         class="profile-character-card__thumb"
@@ -452,8 +586,8 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
       <div class="profile-character-card__name">
         ${escapeHtml(item?.skin_name || '스킨')}
       </div>
-      <div class="profile-character-card__meta">
-        ${isEquipped ? '현재 착용 중' : '클릭해서 착용'}
+      <div class="profile-character-card__meta${extraMetaClass}">
+        ${metaText}
       </div>
     </button>
   `;
@@ -494,6 +628,7 @@ function renderCharacterSection({
   const skinWrapEl = $('profileCharacterSkinWrap');
   const skinTitleEl = $('profileCharacterSkinTitle');
   const skinListEl = $('profileCharacterSkinList');
+  const ownedOnlyToggleEl = $('profileOwnedOnlyToggle');
 
   if (!sectionEl || !previewEl) return;
 
@@ -526,6 +661,11 @@ function renderCharacterSection({
   }
 
   if (!isOwnProfile || !characterListEl || !skinListEl) return;
+  let ownedOnly = false;
+
+  if (ownedOnlyToggleEl) {
+    ownedOnlyToggleEl.checked = false;
+  }
 
   function getSelectedCharacter() {
     return (
@@ -609,6 +749,14 @@ function renderCharacterSection({
 
     buttons.forEach((button) => {
       button.addEventListener('click', () => {
+        const isOwned = button.dataset.owned === 'true';
+        const storeHref = String(button.dataset.storeHref || '').trim();
+
+        if (!isOwned) {
+          if (storeHref) window.location.href = storeHref;
+          return;
+        }
+
         const nextCode = normalizeCharacterCode(button.dataset.characterCode);
 
         if (nextCode === selectedCharacterCode) return;
@@ -626,6 +774,14 @@ function renderCharacterSection({
 
     buttons.forEach((button) => {
       button.addEventListener('click', async () => {
+        const isOwned = button.dataset.owned === 'true';
+        const storeHref = String(button.dataset.storeHref || '').trim();
+
+        if (!isOwned) {
+          if (storeHref) window.location.href = storeHref;
+          return;
+        }
+
         const imagePath = button.dataset.skinImagePath || '';
         const skinName = button.dataset.skinName || '캐릭터';
         await equipCharacterSkin(imagePath, skinName);
@@ -649,7 +805,28 @@ function renderCharacterSection({
     previewEl.src = getPreviewImageForCharacter(selectedCharacterCode);
     previewEl.alt = `${selectedCharacterName} 미리보기`;
 
-    characterListEl.innerHTML = safeCharacterRows
+    const visibleCharacterRows = ownedOnly
+      ? safeCharacterRows.filter((item) => item?.is_owned !== false)
+      : safeCharacterRows;
+
+    if (
+      !visibleCharacterRows.some(
+        (item) =>
+          normalizeCharacterCode(item?.character_code) ===
+          selectedCharacterCode,
+      )
+    ) {
+      const firstOwnedCharacter =
+        visibleCharacterRows.find((item) => item?.is_owned !== false) ||
+        visibleCharacterRows[0] ||
+        safeCharacterRows[0];
+
+      selectedCharacterCode = normalizeCharacterCode(
+        firstOwnedCharacter?.character_code,
+      );
+    }
+
+    characterListEl.innerHTML = visibleCharacterRows
       .map((item) =>
         renderOwnedCharacterCard(item, {
           isSelected:
@@ -662,10 +839,14 @@ function renderCharacterSection({
       )
       .join('');
 
-    const filteredSkins = safeSkinRows.filter(
-      (item) =>
-        normalizeCharacterCode(item?.character_code) === selectedCharacterCode,
-    );
+    const filteredSkins = safeSkinRows.filter((item) => {
+      const isSameCharacter =
+        normalizeCharacterCode(item?.character_code) === selectedCharacterCode;
+
+      if (!isSameCharacter) return false;
+      if (ownedOnly && item?.is_owned === false) return false;
+      return true;
+    });
 
     if (skinTitleEl) {
       skinTitleEl.textContent = `${selectedCharacterName} 스킨`;
@@ -673,10 +854,14 @@ function renderCharacterSection({
 
     if (!filteredSkins.length) {
       skinListEl.innerHTML = `
-        <div class="profile-character-empty">
-          아직 이 캐릭터에 착용 가능한 스킨이 없어.
-        </div>
-      `;
+    <div class="profile-character-empty">
+      ${
+        ownedOnly
+          ? '보유 중인 스킨이 없어.'
+          : '아직 이 캐릭터에 표시할 스킨이 없어.'
+      }
+    </div>
+  `;
     } else {
       skinListEl.innerHTML = filteredSkins
         .map((item) => renderCharacterSkinCard(item, equippedImageUrl))
@@ -687,6 +872,10 @@ function renderCharacterSection({
     bindSkinEvents();
   }
 
+  ownedOnlyToggleEl?.addEventListener('change', () => {
+    ownedOnly = !!ownedOnlyToggleEl.checked;
+    renderOwnCharacterInventory();
+  });
   renderOwnCharacterInventory();
 }
 
