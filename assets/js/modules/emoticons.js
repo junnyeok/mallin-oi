@@ -312,7 +312,10 @@ export function renderOwnedEmoticonPicker(
   `;
 }
 
-export function renderTextWithEmoticons(text = '') {
+export function renderTextWithEmoticons(
+  text = '',
+  { imageClass = 'inline-emoticon inline-emoticon--comment' } = {},
+) {
   const raw = String(text || '');
   const tokenRegex = /\[emo:([a-z0-9-]+)\]/gi;
 
@@ -334,7 +337,7 @@ export function renderTextWithEmoticons(text = '') {
         <img
           src="${escapeHtml(catalog.imagePath)}"
           alt="${escapeHtml(catalog.label)}"
-          class="inline-emoticon inline-emoticon--comment"
+          class="${escapeHtml(imageClass)}"
           loading="lazy"
         />
       `;

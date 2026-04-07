@@ -16,6 +16,14 @@ const DEFAULT_CHARACTER_NAME = '기본 오이';
 const DEFAULT_SKIN_CODE = 'char-cucumber-basic';
 const DEFAULT_SKIN_NAME = '기본 오이';
 
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const { renderTextWithEmoticons } = await import(
+  `./emoticons.js?v=${MODULE_VERSION}`
+);
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -40,8 +48,33 @@ function trimCommentPreview(text, max = 70) {
     .trim();
 
   if (!clean) return '(내용 없음)';
-  if (clean.length <= max) return clean;
-  return `${clean.slice(0, max)}...`;
+
+  const parts = clean.split(/(\[emo:[a-z0-9-]+\])/gi).filter(Boolean);
+
+  let result = '';
+  let length = 0;
+  let truncated = false;
+
+  for (const part of parts) {
+    const isToken = /^\[emo:[a-z0-9-]+\]$/i.test(part);
+    const unitLength = isToken ? 2 : part.length;
+
+    if (length + unitLength > max) {
+      if (!isToken) {
+        const remain = Math.max(0, max - length);
+        if (remain > 0) {
+          result += part.slice(0, remain);
+        }
+      }
+      truncated = true;
+      break;
+    }
+
+    result += part;
+    length += unitLength;
+  }
+
+  return truncated ? `${result}...` : result;
 }
 
 function formatDateTime(dateStr) {
@@ -207,8 +240,11 @@ function renderMyCommentRow(comment, postMap) {
     <a class="profile-row" href="${postUrl}">
       <div class="profile-row__main">
         <div class="profile-row__title">${escapeHtml(postTitle)}</div>
-        <div class="profile-row__body">${escapeHtml(preview)}</div>
-      </div>
+        <div class="profile-row__body">
+          ${renderTextWithEmoticons(preview, {
+            imageClass: 'inline-emoticon inline-emoticon--compact',
+          })}
+        </div>      </div>
       <span class="profile-row__meta">
         ${formatDateTime(comment.created_at)} · ${escapeHtml(postCategory)}
       </span>

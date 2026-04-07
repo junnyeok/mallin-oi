@@ -291,3 +291,17 @@ body[data-page='post'] .logo #siteLogoImg {
     max-height: min(420px, 58vh);
   }
 }
+
+.notification-item__message .inline-emoticon,
+.notification-item__message .inline-emoticon--compact {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  max-width: 22px;
+  min-width: 22px;
+  max-height: 22px;
+  min-height: 22px;
+  margin: 0 2px;
+  vertical-align: text-bottom;
+  object-fit: contain;
+}

@@ -226,6 +226,73 @@ function nl2brSafe(text) {
   return renderTextWithEmoticons(text || '');
 }
 
+function ensureLivePreviewEl(textarea) {
+  if (!textarea) return null;
+
+  const field =
+    textarea.closest('.comment-form__field') ||
+    textarea.closest('.comment-reply-form__field') ||
+    textarea.closest('.comment-edit-form');
+
+  if (!field) return null;
+
+  let preview = field.querySelector('[data-role="comment-live-preview"]');
+
+  if (!preview) {
+    preview = document.createElement('div');
+    preview.className = 'comment-live-preview';
+    preview.dataset.role = 'comment-live-preview';
+    preview.hidden = true;
+    textarea.insertAdjacentElement('afterend', preview);
+  }
+
+  return preview;
+}
+
+function renderLivePreview(textarea) {
+  if (!textarea) return;
+
+  const preview = ensureLivePreviewEl(textarea);
+  if (!preview) return;
+
+  const value = String(textarea.value || '').trim();
+
+  if (!value) {
+    preview.hidden = true;
+    preview.innerHTML = '';
+    return;
+  }
+
+  preview.hidden = false;
+  preview.innerHTML = `
+    <div class="comment-live-preview__label">미리보기</div>
+    <div class="comment-live-preview__body">
+      ${renderTextWithEmoticons(value)}
+    </div>
+  `;
+}
+
+function bindLivePreview(textarea) {
+  if (!textarea || textarea.dataset.previewBound === '1') return;
+
+  textarea.addEventListener('input', () => {
+    renderLivePreview(textarea);
+  });
+
+  textarea.dataset.previewBound = '1';
+  renderLivePreview(textarea);
+}
+
+function bindAllCommentLivePreviews(root = document) {
+  root
+    .querySelectorAll(
+      '#commentBody, [data-role="reply-textarea"], [data-role="comment-edit-textarea"]',
+    )
+    .forEach((textarea) => {
+      bindLivePreview(textarea);
+    });
+}
+
 function toBoolean(value) {
   if (value === true) return true;
   if (value === false) return false;
@@ -705,6 +772,8 @@ async function renderComments(postId, secretPassword = null) {
         ),
       )
       .join('');
+
+    bindAllCommentLivePreviews(listEl);
     focusTargetCommentFromUrl();
     refreshCommentEmoticonUi();
   } catch (error) {
@@ -950,6 +1019,9 @@ function bindMainCommentFormExtras() {
     commentEmoticonDocumentBound = true;
   }
 
+  const mainTextarea = form.querySelector('#commentBody');
+  bindLivePreview(mainTextarea);
+
   form.dataset.emoticonBound = '1';
 }
 
@@ -1083,6 +1155,7 @@ async function handleCreateComment(postId) {
     }
 
     textarea.value = '';
+    renderLivePreview(textarea);
     setFormMessage('댓글이 등록됐어.', 'is-success');
 
     await syncCommentFormUser(false);

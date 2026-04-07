@@ -250,6 +250,20 @@
   word-break: break-word;
 }
 
+.profile-row__body .inline-emoticon,
+.profile-row__body .inline-emoticon--compact {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  max-width: 24px;
+  min-width: 24px;
+  max-height: 24px;
+  min-height: 24px;
+  margin: 0 2px;
+  vertical-align: text-bottom;
+  object-fit: contain;
+}
+
 .profile-row__meta {
   flex: 0 0 auto;
   font-size: var(--text-small);

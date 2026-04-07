@@ -6,6 +6,14 @@ import {
   saveRedirect,
 } from './auth-store.js';
 
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const { renderTextWithEmoticons } = await import(
+  `./emoticons.js?v=${MODULE_VERSION}`
+);
+
 const MAX_NOTIFICATIONS = 20;
 let currentUserId = '';
 let notificationChannel = null;
@@ -200,8 +208,11 @@ function renderNotifications(items = [], unreadCount = 0) {
             <strong class="notification-item__title">${escapeHtml(item.title || '새 알림')}</strong>
             <span class="notification-item__date">${escapeHtml(formatDateTime(item.created_at))}</span>
           </div>
-          <p class="notification-item__message">${escapeHtml(item.message || '')}</p>
-        </a>
+          <p class="notification-item__message">
+            ${renderTextWithEmoticons(item.message || '', {
+              imageClass: 'inline-emoticon inline-emoticon--compact',
+            })}
+          </p>        </a>
       `;
     })
     .join('');
