@@ -66,6 +66,17 @@ export const CARROT_EMOTICON_PACK = Array.from({ length: 13 }, (_, index) => {
   };
 });
 
+export const HEART_EMOTICON_PACK = Array.from({ length: 11 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `heart-${order}`,
+    label: `애정오이 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/heart-${order}.png`),
+    displayOrder: 600 + order,
+  };
+});
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -182,17 +193,19 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'profile-frame-01',
-    name: '프로필 테두리 - 반짝 피클',
-    category: 'profile',
-    badge: '프로필',
-    icon: '✨',
-    price: 450,
-    state: '적용 기능 예정',
-    description: '프로필 사진 둘레에 표시되는 장식 프레임.',
-    detailDescription: '프로필 사진 둘레에 적용되는 프레임 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'emo-heart-01',
+    name: '애정오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '❤️',
+    price: 300,
+    thumbImagePath: withAssetVersion('./images/emoticons/heart-1.png'),
+    state: '판매 중',
+    description: '애정표현을 하는 오이들의 이모티콘팩.',
+    detailDescription:
+      '애정표현을 하는 오이들의 이모티콘팩이야. 구매하면 11개의 애정오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: HEART_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'emo-work-01',

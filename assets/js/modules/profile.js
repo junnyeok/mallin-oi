@@ -149,7 +149,7 @@ function updateTodayPickleStatus(entries = []) {
   ).length;
 
   postEl.textContent = `${todayPostCount} / 5`;
-  commentEl.textContent = `${todayCommentCount} / 10`;
+  commentEl.textContent = `${todayCommentCount} / 20`;
 }
 
 function updatePickleSummary(balance = 0, isVisible = false) {

@@ -156,7 +156,6 @@ async function enforceLoginPolicy() {
 
 async function maybeAutoClaimAttendance(policy) {
   if (policy?.mode !== 'remember') return;
-  if (!isHomePage()) return;
 
   const todayKey = getTodayKey();
   const lastAutoAttendanceKey = localStorage.getItem(AUTO_ATTENDANCE_KEY);
