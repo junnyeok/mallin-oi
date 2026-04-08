@@ -86,6 +86,15 @@ export const TETO_CARROT_CHARACTER_PREVIEW = [
   },
 ];
 
+export const CUCUMBER_GIRL_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-girl',
+    label: '오이소녀 오이스킨',
+    imagePath: withAssetVersion('./images/skins/cucumbergirl.png'),
+    displayOrder: 1,
+  },
+];
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -178,7 +187,7 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'character-carrot-01',
+    id: 'character-carrot',
     name: '테토당근 캐릭터',
     category: 'character',
     badge: '캐릭터',
@@ -193,34 +202,19 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'emo-heart-01',
-    name: '애정오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '❤️',
-    price: 300,
-    thumbImagePath: withAssetVersion('./images/emoticons/heart-1.png'),
+    id: 'skin-cucumbergirl',
+    name: '오이소녀 오이스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '👒',
+    thumbImagePath: withAssetVersion('./images/skins/cucumbergirl.png'),
+    price: 820,
     state: '판매 중',
-    description: '애정표현을 하는 오이들의 이모티콘팩.',
+    description: '기본오이 캐릭터에 착용 가능한 오이소녀 스킨.',
     detailDescription:
-      '애정표현을 하는 오이들의 이모티콘팩이야. 구매하면 11개의 애정오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: HEART_EMOTICON_PACK,
+      '기본오이 캐릭터 전용 오이명품백을 들고있는 오이소녀 스킨이야. 구매하면 내프로필의 기본오이 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: CUCUMBER_GIRL_SKIN_PREVIEW,
     isPurchasable: true,
-  },
-  {
-    id: 'emo-work-01',
-    name: '업무집중 오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '신규',
-    icon: '💼',
-    thumbImagePath: withAssetVersion('./images/emoticons/nightwork-1.png'),
-    price: 190,
-    state: '판매 준비중',
-    description: '출근, 보고, 완료 체크 반응에 쓰기 좋은 세트.',
-    detailDescription:
-      '업무 반응형 이모티콘팩이야. 추후 판매 기능 연결 예정이야.',
-    previewImages: [],
-    isPurchasable: false,
   },
   {
     id: 'emo-study-01',
@@ -320,7 +314,7 @@ export function getStoreItemDetailHref(itemId = '') {
 export const CHARACTER_CATALOG = [
   {
     character_code: 'char-cucumber',
-    character_name: '기본 오이',
+    character_name: '기본오이',
     base_image_path: withAssetVersion('./images/characters/cucumber.png'),
     preview_image_path: withAssetVersion('./images/characters/cucumber.png'),
     display_order: 1,
@@ -340,10 +334,18 @@ export const CHARACTER_SKIN_CATALOG = [
   {
     character_code: 'char-cucumber',
     skin_code: 'char-cucumber-basic',
-    skin_name: '기본 오이',
+    skin_name: '기본오이',
     image_path: withAssetVersion('./images/characters/cucumber.png'),
     display_order: 1,
     store_item_id: null,
+  },
+  {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-girl',
+    skin_name: '오이소녀',
+    image_path: withAssetVersion('./images/skins/cucumbergirl.png'),
+    display_order: 2,
+    store_item_id: 'skin-cucumbergirl',
   },
   {
     character_code: 'char-teto-carrot',

@@ -362,7 +362,8 @@ async function initStorePage() {
 
 function renderStoreItemPreview(item) {
   const previews = Array.isArray(item?.previewImages) ? item.previewImages : [];
-  const isCharacter = item?.category === 'character';
+  const isLargePreview =
+    item?.category === 'character' || item?.category === 'skin';
 
   if (!previews.length) {
     return `
@@ -373,7 +374,7 @@ function renderStoreItemPreview(item) {
     `;
   }
 
-  if (isCharacter) {
+  if (isLargePreview) {
     const preview = previews[0];
 
     return `

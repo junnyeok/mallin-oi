@@ -12,9 +12,9 @@ const PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
 const DEFAULT_CHARACTER_CODE = 'char-cucumber';
-const DEFAULT_CHARACTER_NAME = '기본 오이';
+const DEFAULT_CHARACTER_NAME = '기본오이';
 const DEFAULT_SKIN_CODE = 'char-cucumber-basic';
-const DEFAULT_SKIN_NAME = '기본 오이';
+const DEFAULT_SKIN_NAME = '기본오이';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
