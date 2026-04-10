@@ -32,20 +32,39 @@ function normalizeTags(tags) {
 }
 
 function normalizeMediaItems(items) {
-  if (!Array.isArray(items)) return [];
+  let source = items;
 
-  return items
-    .map((item) => ({
-      id: String(item?.id || ''),
-      type: String(item?.type || '').trim(),
-      title: String(item?.title || '').trim(),
-      url: String(item?.url || '').trim(),
-      path: String(item?.path || '').trim(),
-      fileName: String(item?.fileName || '').trim(),
-      mimeType: String(item?.mimeType || '').trim(),
-      size: Number(item?.size || 0),
-    }))
-    .filter((item) => item.type && (item.url || item.path));
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      source = [];
+    }
+  }
+
+  if (!Array.isArray(source)) return [];
+
+  return source
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+
+      return {
+        id: String(item.id || '').trim(),
+        type: String(item.type || '').trim(),
+        embedKind: String(item.embedKind || '').trim(),
+        title: String(item.title || '').trim(),
+        url: String(item.url || '').trim(),
+        originalUrl: String(item.originalUrl || '').trim(),
+        path: String(item.path || '').trim(),
+        fileName: String(item.fileName || '').trim(),
+        mimeType: String(item.mimeType || '').trim(),
+        size: Number(item.size || 0),
+      };
+    })
+    .filter(
+      (item) =>
+        item && item.type && (item.url || item.path || item.originalUrl),
+    );
 }
 
 function formatDateOnly(value) {
@@ -195,13 +214,36 @@ export async function loadEditablePostById(id) {
   const safeId = Number(id);
   if (!Number.isFinite(safeId)) return null;
 
-  const { data, error } = await supabase.rpc('get_post_for_edit', {
-    p_post_id: safeId,
-  });
+  let row = null;
 
-  if (error) throw error;
+  try {
+    const { data, error } = await supabase.rpc('get_post_for_edit', {
+      p_post_id: safeId,
+    });
 
-  const row = Array.isArray(data) ? data[0] : data;
+    if (error) throw error;
+    row = Array.isArray(data) ? data[0] : data;
+  } catch (rpcError) {
+    console.warn(
+      '[posts-repo] get_post_for_edit rpc failed, fallback 사용:',
+      rpcError,
+    );
+
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('posts')
+      .select(
+        'id, title, excerpt, body, category, tags, pinned, media_items, author_id, author_nickname, is_private',
+      )
+      .eq('id', safeId)
+      .maybeSingle();
+
+    if (fallbackError) {
+      throw fallbackError;
+    }
+
+    row = fallbackData || null;
+  }
+
   if (!row) return null;
 
   return {

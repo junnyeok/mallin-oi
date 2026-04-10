@@ -204,6 +204,7 @@ function formatBytes(bytes) {
 function getAttachmentLabel(type) {
   if (type === 'image') return '이미지';
   if (type === 'video') return '동영상';
+  if (type === 'video-link') return '동영상 링크';
   return '파일';
 }
 
@@ -1564,21 +1565,26 @@ function fillWriteForm(post, isAdmin) {
   if (isPrivateEl) isPrivateEl.checked = !!post.is_private;
   if (privatePasswordEl) privatePasswordEl.value = '';
 
-  aattachmentState = Array.isArray(post.media_items)
-    ? post.media_items.map((item) => ({
-        id: item.id || createLocalId(),
-        type: item.type,
-        embedKind: item.embedKind || '',
-        title: item.title || item.fileName || '첨부',
-        url: item.url || '',
-        originalUrl: item.originalUrl || '',
-        previewUrl: item.url || '',
-        path: item.path || '',
-        fileName: item.fileName || '',
-        mimeType: item.mimeType || '',
-        size: Number(item.size || 0),
-        removable: true,
-      }))
+  attachmentState = Array.isArray(post.media_items)
+    ? post.media_items
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          id: item.id || createLocalId(),
+          type: String(item.type || '').trim(),
+          embedKind: String(item.embedKind || '').trim(),
+          title: item.title || item.fileName || '첨부',
+          url: item.url || '',
+          originalUrl: item.originalUrl || '',
+          previewUrl: item.url || item.originalUrl || '',
+          path: item.path || '',
+          fileName: item.fileName || '',
+          mimeType: item.mimeType || '',
+          size: Number(item.size || 0),
+          removable: true,
+        }))
+        .filter(
+          (item) => item.type && (item.url || item.path || item.originalUrl),
+        )
     : [];
 
   removedStoragePaths = new Set();
