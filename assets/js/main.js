@@ -44,6 +44,7 @@ async function initApp() {
   let postReactionsModule;
   let profileModule;
   let storeModule;
+  let dailyAttendancePopupModule;
 
   try {
     [
@@ -71,6 +72,7 @@ async function initApp() {
       postReactionsModule,
       profileModule,
       storeModule,
+      dailyAttendancePopupModule,
       notificationsModule,
     ] = await Promise.all([
       import(withModuleVersion('./modules/site-version.js')),
@@ -97,6 +99,7 @@ async function initApp() {
       import(withModuleVersion('./modules/post-reactions.js')),
       import(withModuleVersion('./modules/profile.js')),
       import(withModuleVersion('./modules/store.js')),
+      import(withModuleVersion('./modules/daily-attendance-popup.js')),
       import(withModuleVersion('./modules/notifications.js')),
     ]);
   } catch (error) {
@@ -134,6 +137,7 @@ async function initApp() {
   const { initPostReactions } = postReactionsModule;
   const { initProfile } = profileModule;
   const { initStore } = storeModule;
+  const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
 
   document
@@ -170,6 +174,12 @@ async function initApp() {
     await initAuthUI();
   } catch (e) {
     console.error('[main] auth ui failed:', e);
+  }
+
+  try {
+    await initDailyAttendancePopup();
+  } catch (e) {
+    console.error('[main] daily attendance popup failed:', e);
   }
 
   try {

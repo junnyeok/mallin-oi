@@ -8802,3 +8802,50 @@ end;
 $$;
 
 grant execute on function public.purchase_store_item(text) to authenticated;
+
+create or replace function public.claim_daily_attendance()
+returns table (
+  ok boolean,
+  amount integer,
+  message text,
+  balance integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_granted boolean := false;
+begin
+  if v_user_id is null then
+    raise exception '로그인이 필요해.';
+  end if;
+
+  v_granted := public.grant_pickle_reward(
+    v_user_id,
+    100,
+    'attendance',
+    '출석 체크',
+    '출석체크 팝업에서 피클을 받았어.',
+    null,
+    null,
+    public.seoul_today()
+  );
+
+  return query
+  select
+    v_granted,
+    case when v_granted then 100 else 0 end,
+    case
+      when v_granted then '오늘 출석 체크로 피클 100개 지급이 완료됐어.'
+      else '오늘 출석 피클은 이미 받았어.'
+    end,
+    coalesce(
+      (select p.pickles from public.profiles p where p.id = v_user_id),
+      0
+    );
+end;
+$$;
+
+grant execute on function public.claim_daily_attendance() to authenticated;

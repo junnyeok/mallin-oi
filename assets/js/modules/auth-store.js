@@ -4,18 +4,9 @@ export const REDIRECT_KEY = 'authRedirectTo';
 export const MYPAGE_VERIFY_KEY = 'mypageVerified_v1';
 
 export const AUTH_POLICY_KEY = 'mallinAuthPolicy_v1';
-export const AUTO_ATTENDANCE_KEY = 'mallinAutoAttendance_v1';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * ONE_DAY_MS;
-
-function getTodayKey() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 function readAuthPolicy() {
   try {
@@ -30,13 +21,8 @@ function readAuthPolicy() {
   }
 }
 
-function clearAutoAttendanceMarker() {
-  localStorage.removeItem(AUTO_ATTENDANCE_KEY);
-}
-
 export function clearLoginPolicy() {
   localStorage.removeItem(AUTH_POLICY_KEY);
-  clearAutoAttendanceMarker();
 }
 
 export function saveLoginPolicy({ rememberMe = false } = {}) {
@@ -94,21 +80,6 @@ function shouldBypassLoginPolicy() {
 
 async function claimDailyAttendanceForAuto() {
   const { data, error } = await supabase.rpc('claim_daily_attendance');
-
-  if (error) {
-    console.error('[auth-store] claim_daily_attendance error:', error);
-    return {
-      ok: false,
-      message: '',
-    };
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-
-  return {
-    ok: !!row?.ok,
-    message: String(row?.message || '').trim(),
-  };
 }
 
 async function enforceLoginPolicy() {
@@ -152,21 +123,6 @@ async function enforceLoginPolicy() {
     session,
     policy,
   };
-}
-
-async function maybeAutoClaimAttendance(policy) {
-  if (policy?.mode !== 'remember') return;
-
-  const todayKey = getTodayKey();
-  const lastAutoAttendanceKey = localStorage.getItem(AUTO_ATTENDANCE_KEY);
-
-  if (lastAutoAttendanceKey === todayKey) return;
-
-  const result = await claimDailyAttendanceForAuto();
-
-  if (result.ok || result.message) {
-    localStorage.setItem(AUTO_ATTENDANCE_KEY, todayKey);
-  }
 }
 
 function normalizePath(path) {
@@ -498,12 +454,7 @@ export async function updateAuthUI() {
 let authUiBound = false;
 
 export async function initAuthUI() {
-  const state = await enforceLoginPolicy();
-
-  if (state?.policy) {
-    await maybeAutoClaimAttendance(state.policy);
-  }
-
+  await enforceLoginPolicy();
   await updateAuthUI();
 
   if (authUiBound) return;
