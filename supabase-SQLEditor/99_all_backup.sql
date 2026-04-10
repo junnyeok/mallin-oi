@@ -8849,3 +8849,718 @@ end;
 $$;
 
 grant execute on function public.claim_daily_attendance() to authenticated;
+
+create or replace function public.grant_pickle_reward(
+  p_user_id uuid,
+  p_amount integer,
+  p_reason_code text,
+  p_reason_label text default null,
+  p_description text default null,
+  p_source_post_id bigint default null,
+  p_source_comment_id bigint default null,
+  p_awarded_on date default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_exists boolean := false;
+  v_awarded_on date := coalesce(p_awarded_on, public.seoul_today());
+  v_daily_count integer := 0;
+begin
+  if p_user_id is null then
+    return false;
+  end if;
+
+  if coalesce(p_amount, 0) = 0 then
+    return false;
+  end if;
+
+  if coalesce(trim(p_reason_code), '') = '' then
+    return false;
+  end if;
+
+  if p_reason_code = 'attendance' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'attendance'
+        and awarded_on = v_awarded_on
+    )
+    into v_exists;
+
+  elsif p_reason_code = 'post_create' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_create'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'post_create'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 5 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'comment_post' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'comment_post'
+        and source_comment_id = p_source_comment_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'comment_post'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 20 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'post_reaction' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_reaction'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+  else
+    return false;
+  end if;
+
+  if v_exists then
+    return false;
+  end if;
+
+  insert into public.pickle_ledger (
+    user_id,
+    amount,
+    reason_code,
+    reason_label,
+    description,
+    source_post_id,
+    source_comment_id,
+    awarded_on
+  )
+  values (
+    p_user_id,
+    p_amount,
+    p_reason_code,
+    coalesce(nullif(trim(p_reason_label), ''), '피클 획득'),
+    coalesce(p_description, ''),
+    p_source_post_id,
+    p_source_comment_id,
+    v_awarded_on
+  );
+
+  update public.profiles
+  set pickles = coalesce(pickles, 0) + p_amount,
+      updated_at = now()
+  where id = p_user_id;
+
+  return true;
+end;
+$$;
+
+create or replace function public.grant_pickle_reward(
+  p_user_id uuid,
+  p_amount integer,
+  p_reason_code text,
+  p_reason_label text default null,
+  p_description text default null,
+  p_source_post_id bigint default null,
+  p_source_comment_id bigint default null,
+  p_awarded_on date default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_exists boolean := false;
+  v_awarded_on date := coalesce(p_awarded_on, public.seoul_today());
+  v_daily_count integer := 0;
+begin
+  if p_user_id is null then
+    return false;
+  end if;
+
+  if coalesce(p_amount, 0) = 0 then
+    return false;
+  end if;
+
+  if coalesce(trim(p_reason_code), '') = '' then
+    return false;
+  end if;
+
+  if p_reason_code = 'attendance' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'attendance'
+        and awarded_on = v_awarded_on
+    )
+    into v_exists;
+
+  elsif p_reason_code = 'post_create' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_create'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'post_create'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 5 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'comment_post' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'comment_post'
+        and source_comment_id = p_source_comment_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'comment_post'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 20 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'post_reaction' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_reaction'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+  else
+    return false;
+  end if;
+
+  if v_exists then
+    return false;
+  end if;
+
+  insert into public.pickle_ledger (
+    user_id,
+    amount,
+    reason_code,
+    reason_label,
+    description,
+    source_post_id,
+    source_comment_id,
+    awarded_on
+  )
+  values (
+    p_user_id,
+    p_amount,
+    p_reason_code,
+    coalesce(nullif(trim(p_reason_label), ''), '피클 획득'),
+    coalesce(p_description, ''),
+    p_source_post_id,
+    p_source_comment_id,
+    v_awarded_on
+  );
+
+  update public.profiles
+  set pickles = coalesce(pickles, 0) + p_amount,
+      updated_at = now()
+  where id = p_user_id;
+
+  return true;
+end;
+$$;
+
+create or replace function public.toggle_post_reaction(
+  p_post_id bigint,
+  p_reaction_type text
+)
+returns table (
+  likes_count bigint,
+  dislikes_count bigint,
+  my_reaction text,
+  reward_granted boolean,
+  reward_amount integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_existing_reaction text;
+  v_safe_reaction text;
+  v_reward_granted boolean := false;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'LOGIN_REQUIRED';
+  end if;
+
+  v_safe_reaction := lower(trim(coalesce(p_reaction_type, '')));
+
+  if v_safe_reaction not in ('like', 'dislike') then
+    raise exception 'INVALID_REACTION_TYPE';
+  end if;
+
+  select reaction_type
+  into v_existing_reaction
+  from public.post_reactions
+  where post_id = p_post_id
+    and user_id = v_user_id
+  limit 1;
+
+  if v_existing_reaction is null then
+    insert into public.post_reactions (
+      post_id,
+      user_id,
+      reaction_type
+    )
+    values (
+      p_post_id,
+      v_user_id,
+      v_safe_reaction
+    );
+
+    v_reward_granted := public.grant_pickle_reward(
+      v_user_id,
+      3,
+      'post_reaction',
+      '게시물 반응',
+      '좋아요/참신해요 반응으로 피클 3개를 받았어.',
+      p_post_id,
+      null,
+      public.seoul_today()
+    );
+
+  elsif v_existing_reaction = v_safe_reaction then
+    delete from public.post_reactions
+    where post_id = p_post_id
+      and user_id = v_user_id;
+
+  else
+    update public.post_reactions
+    set reaction_type = v_safe_reaction
+    where post_id = p_post_id
+      and user_id = v_user_id;
+  end if;
+
+  return query
+  select
+    s.likes_count,
+    s.dislikes_count,
+    s.my_reaction,
+    v_reward_granted,
+    case when v_reward_granted then 3 else 0 end
+  from public.get_post_reaction_summary(p_post_id, v_user_id) s;
+end;
+$$;
+
+grant execute on function public.toggle_post_reaction(bigint, text) to authenticated;
+
+drop function if exists public.toggle_post_reaction(bigint, text);
+
+create or replace function public.toggle_post_reaction(
+  p_post_id bigint,
+  p_reaction_type text
+)
+returns table (
+  likes_count bigint,
+  dislikes_count bigint,
+  my_reaction text,
+  reward_granted boolean,
+  reward_amount integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_existing_reaction text;
+  v_safe_reaction text;
+  v_reward_granted boolean := false;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'LOGIN_REQUIRED';
+  end if;
+
+  v_safe_reaction := lower(trim(coalesce(p_reaction_type, '')));
+
+  if v_safe_reaction not in ('like', 'dislike') then
+    raise exception 'INVALID_REACTION_TYPE';
+  end if;
+
+  select reaction_type
+  into v_existing_reaction
+  from public.post_reactions
+  where post_id = p_post_id
+    and user_id = v_user_id
+  limit 1;
+
+  if v_existing_reaction is null then
+    insert into public.post_reactions (
+      post_id,
+      user_id,
+      reaction_type
+    )
+    values (
+      p_post_id,
+      v_user_id,
+      v_safe_reaction
+    );
+
+    v_reward_granted := public.grant_pickle_reward(
+      v_user_id,
+      3,
+      'post_reaction',
+      '게시물 반응',
+      '좋아요/참신해요 반응으로 피클 3개를 받았어.',
+      p_post_id,
+      null,
+      public.seoul_today()
+    );
+
+  elsif v_existing_reaction = v_safe_reaction then
+    delete from public.post_reactions
+    where post_id = p_post_id
+      and user_id = v_user_id;
+
+  else
+    update public.post_reactions
+    set reaction_type = v_safe_reaction
+    where post_id = p_post_id
+      and user_id = v_user_id;
+  end if;
+
+  return query
+  select
+    s.likes_count,
+    s.dislikes_count,
+    s.my_reaction,
+    v_reward_granted,
+    case when v_reward_granted then 3 else 0 end
+  from public.get_post_reaction_summary(p_post_id, v_user_id) s;
+end;
+$$;
+
+grant execute on function public.toggle_post_reaction(bigint, text) to authenticated;
+
+alter table public.pickle_ledger
+drop constraint if exists pickle_ledger_reason_code_check;
+
+alter table public.pickle_ledger
+add constraint pickle_ledger_reason_code_check
+check (
+  reason_code in (
+    'attendance',
+    'post_create',
+    'comment_post',
+    'store_purchase',
+    'post_reaction'
+  )
+);
+
+create or replace function public.grant_pickle_reward(
+  p_user_id uuid,
+  p_amount integer,
+  p_reason_code text,
+  p_reason_label text default null,
+  p_description text default null,
+  p_source_post_id bigint default null,
+  p_source_comment_id bigint default null,
+  p_awarded_on date default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_exists boolean := false;
+  v_awarded_on date := coalesce(p_awarded_on, public.seoul_today());
+  v_daily_count integer := 0;
+begin
+  if p_user_id is null then
+    return false;
+  end if;
+
+  if coalesce(p_amount, 0) = 0 then
+    return false;
+  end if;
+
+  if coalesce(trim(p_reason_code), '') = '' then
+    return false;
+  end if;
+
+  if p_reason_code = 'attendance' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'attendance'
+        and awarded_on = v_awarded_on
+    )
+    into v_exists;
+
+  elsif p_reason_code = 'post_create' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_create'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'post_create'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 5 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'comment_post' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'comment_post'
+        and source_comment_id = p_source_comment_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+    select count(*)
+      into v_daily_count
+    from public.pickle_ledger
+    where user_id = p_user_id
+      and reason_code = 'comment_post'
+      and awarded_on = v_awarded_on;
+
+    if v_daily_count >= 20 then
+      return false;
+    end if;
+
+  elsif p_reason_code = 'post_reaction' then
+    select exists (
+      select 1
+      from public.pickle_ledger
+      where user_id = p_user_id
+        and reason_code = 'post_reaction'
+        and source_post_id = p_source_post_id
+    )
+    into v_exists;
+
+    if v_exists then
+      return false;
+    end if;
+
+  else
+    return false;
+  end if;
+
+  if v_exists then
+    return false;
+  end if;
+
+  insert into public.pickle_ledger (
+    user_id,
+    amount,
+    reason_code,
+    reason_label,
+    description,
+    source_post_id,
+    source_comment_id,
+    awarded_on
+  )
+  values (
+    p_user_id,
+    p_amount,
+    p_reason_code,
+    coalesce(nullif(trim(p_reason_label), ''), '피클 획득'),
+    coalesce(p_description, ''),
+    p_source_post_id,
+    p_source_comment_id,
+    v_awarded_on
+  );
+
+  update public.profiles
+  set pickles = coalesce(pickles, 0) + p_amount,
+      updated_at = now()
+  where id = p_user_id;
+
+  return true;
+end;
+$$;
+
+drop function if exists public.toggle_post_reaction(bigint, text);
+
+create or replace function public.toggle_post_reaction(
+  p_post_id bigint,
+  p_reaction_type text
+)
+returns table (
+  likes_count bigint,
+  dislikes_count bigint,
+  my_reaction text,
+  reward_granted boolean,
+  reward_amount integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_existing_reaction text;
+  v_safe_reaction text;
+  v_reward_granted boolean := false;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'LOGIN_REQUIRED';
+  end if;
+
+  v_safe_reaction := lower(trim(coalesce(p_reaction_type, '')));
+
+  if v_safe_reaction not in ('like', 'dislike') then
+    raise exception 'INVALID_REACTION_TYPE';
+  end if;
+
+  select reaction_type
+  into v_existing_reaction
+  from public.post_reactions
+  where post_id = p_post_id
+    and user_id = v_user_id
+  limit 1;
+
+  if v_existing_reaction is null then
+    insert into public.post_reactions (
+      post_id,
+      user_id,
+      reaction_type
+    )
+    values (
+      p_post_id,
+      v_user_id,
+      v_safe_reaction
+    );
+
+    v_reward_granted := public.grant_pickle_reward(
+      v_user_id,
+      3,
+      'post_reaction',
+      '게시물 반응',
+      '좋아요/참신해요 반응으로 피클 3개를 받았어.',
+      p_post_id,
+      null,
+      public.seoul_today()
+    );
+
+  elsif v_existing_reaction = v_safe_reaction then
+    delete from public.post_reactions
+    where post_id = p_post_id
+      and user_id = v_user_id;
+
+  else
+    update public.post_reactions
+    set reaction_type = v_safe_reaction
+    where post_id = p_post_id
+      and user_id = v_user_id;
+  end if;
+
+  return query
+  select
+    s.likes_count,
+    s.dislikes_count,
+    s.my_reaction,
+    v_reward_granted,
+    case when v_reward_granted then 3 else 0 end
+  from public.get_post_reaction_summary(p_post_id, v_user_id) s;
+end;
+$$;
+
+grant execute on function public.toggle_post_reaction(bigint, text) to authenticated;

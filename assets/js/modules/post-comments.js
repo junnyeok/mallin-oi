@@ -7,6 +7,7 @@ import {
   publicProfileHref,
   saveRedirect,
 } from './auth-store.js';
+import { playPickleBurst } from './pickle-burst.js';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
@@ -26,6 +27,25 @@ const commentProfileImageCache = new Map();
 const commentCharacterImageCache = new Map();
 let ownedCommentEmoticons = [];
 let commentEmoticonDocumentBound = false;
+async function hasCommentPickleReward(userId, commentId) {
+  if (!userId || !commentId) return false;
+
+  const { data, error } = await supabase
+    .from('pickle_ledger')
+    .select('id, amount')
+    .eq('user_id', userId)
+    .eq('reason_code', 'comment_post')
+    .eq('source_comment_id', commentId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[post-comments] reward check failed:', error);
+    return false;
+  }
+
+  return !!data && Number(data.amount || 0) > 0;
+}
 
 function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
@@ -1141,7 +1161,11 @@ async function handleCreateComment(postId) {
       author_nickname: getDisplayName(user),
     };
 
-    const { error } = await supabase.from('post_comments').insert(payload);
+    const { data: insertedComment, error } = await supabase
+      .from('post_comments')
+      .insert(payload)
+      .select('id')
+      .single();
 
     submitBtn.disabled = false;
 
@@ -1154,9 +1178,21 @@ async function handleCreateComment(postId) {
       return;
     }
 
+    const rewardGranted = await hasCommentPickleReward(
+      user.id,
+      insertedComment?.id,
+    );
+
     textarea.value = '';
     renderLivePreview(textarea);
     setFormMessage('댓글이 등록됐어.', 'is-success');
+
+    if (rewardGranted) {
+      playPickleBurst({
+        originEl: submitBtn,
+        count: 9,
+      });
+    }
 
     await syncCommentFormUser(false);
     await renderComments(postId, currentSecretPassword);
@@ -1207,7 +1243,11 @@ async function handleCreateReply(replyForm, postId, parentCommentId) {
     author_nickname: getDisplayName(user),
   };
 
-  const { error } = await supabase.from('post_comments').insert(payload);
+  const { data: insertedReply, error } = await supabase
+    .from('post_comments')
+    .insert(payload)
+    .select('id')
+    .single();
 
   submitBtn.disabled = false;
 
@@ -1221,7 +1261,20 @@ async function handleCreateReply(replyForm, postId, parentCommentId) {
     return;
   }
 
+  const rewardGranted = await hasCommentPickleReward(
+    user.id,
+    insertedReply?.id,
+  );
+
   setReplyFormMessage(replyForm, '답글이 등록됐어.', 'is-success');
+
+  if (rewardGranted) {
+    playPickleBurst({
+      originEl: submitBtn,
+      count: 9,
+    });
+  }
+
   await renderComments(postId, currentSecretPassword);
 }
 

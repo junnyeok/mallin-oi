@@ -58,7 +58,7 @@ export function initLogin() {
     }
 
     saveLoginPolicy({
-      rememberMe: !!rememberInput?.checked,
+      autoLogin: !!rememberInput?.checked,
     });
 
     setMsg(msg, '로그인 성공! 이동할게.', 'green');

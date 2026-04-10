@@ -1,5 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, loginHref, saveRedirect } from './auth-store.js';
+import { playPickleBurst } from './pickle-burst.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -70,6 +71,8 @@ function normalizeSummaryRow(row) {
     likesCount: Number(row?.likes_count || 0),
     dislikesCount: Number(row?.dislikes_count || 0),
     myReaction: normalizeReaction(row?.my_reaction),
+    rewardGranted: !!row?.reward_granted,
+    rewardAmount: Number(row?.reward_amount || 0),
   };
 }
 
@@ -118,13 +121,28 @@ async function handleReactionClick(type, postId) {
     renderSummary(summary);
 
     if (summary.myReaction === safeType) {
-      setMessage(
-        safeType === 'like' ? '좋아요를 눌렀어.' : '싫어요를 눌렀어.',
-        'is-success',
-      );
+      if (summary.rewardGranted && summary.rewardAmount > 0) {
+        playPickleBurst({
+          originEl:
+            safeType === 'like' ? $('postLikeBtn') : $('postDislikeBtn'),
+          count: 8,
+        });
+
+        setMessage(
+          safeType === 'like'
+            ? `좋아요를 눌렀어. ${summary.rewardAmount}피클 지급됐어.`
+            : `참신해요를 눌렀어. ${summary.rewardAmount}피클 지급됐어.`,
+          'is-success',
+        );
+      } else {
+        setMessage(
+          safeType === 'like' ? '좋아요를 눌렀어.' : '참신해요를 눌렀어.',
+          'is-success',
+        );
+      }
     } else {
       setMessage(
-        safeType === 'like' ? '좋아요를 취소했어.' : '싫어요를 취소했어.',
+        safeType === 'like' ? '좋아요를 취소했어.' : '참신해요를 취소했어.',
         'is-success',
       );
     }

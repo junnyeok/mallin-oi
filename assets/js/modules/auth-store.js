@@ -1,19 +1,18 @@
 // assets/js/modules/auth-store.js
 import { supabase } from './supabase-client.js';
+
 export const REDIRECT_KEY = 'authRedirectTo';
 export const MYPAGE_VERIFY_KEY = 'mypageVerified_v1';
-
-export const AUTH_POLICY_KEY = 'mallinAuthPolicy_v1';
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const THIRTY_DAYS_MS = 30 * ONE_DAY_MS;
+export const AUTH_POLICY_KEY = 'mallinAuthPolicy_v2';
 
 function readAuthPolicy() {
   try {
     const raw = localStorage.getItem(AUTH_POLICY_KEY);
     if (!raw) return null;
+
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
+
     return parsed;
   } catch (error) {
     console.error('[auth-store] readAuthPolicy error:', error);
@@ -25,14 +24,13 @@ export function clearLoginPolicy() {
   localStorage.removeItem(AUTH_POLICY_KEY);
 }
 
-export function saveLoginPolicy({ rememberMe = false } = {}) {
+export function saveLoginPolicy({ autoLogin = false } = {}) {
   const now = Date.now();
-  const expiresAt = now + (rememberMe ? THIRTY_DAYS_MS : ONE_DAY_MS);
 
   const policy = {
-    mode: rememberMe ? 'remember' : 'normal',
+    mode: autoLogin ? 'auto' : 'normal',
     loginAt: now,
-    expiresAt,
+    autoLogin: !!autoLogin,
   };
 
   localStorage.setItem(AUTH_POLICY_KEY, JSON.stringify(policy));
@@ -41,11 +39,6 @@ export function saveLoginPolicy({ rememberMe = false } = {}) {
 
 export function getLoginPolicy() {
   return readAuthPolicy();
-}
-
-function isLoginPolicyExpired(policy) {
-  if (!policy?.expiresAt) return true;
-  return Date.now() >= Number(policy.expiresAt);
 }
 
 function isHomePage() {
@@ -79,14 +72,18 @@ function shouldBypassLoginPolicy() {
 }
 
 async function claimDailyAttendanceForAuto() {
-  const { data, error } = await supabase.rpc('claim_daily_attendance');
+  try {
+    await supabase.rpc('claim_daily_attendance');
+  } catch (error) {
+    console.error('[auth-store] claimDailyAttendanceForAuto error:', error);
+  }
 }
 
 async function enforceLoginPolicy() {
   const session = await getCurrentSession();
 
   if (!session?.user) {
-    clearLoginPolicy();
+    clearMypageVerified();
     return null;
   }
 
@@ -99,24 +96,26 @@ async function enforceLoginPolicy() {
 
   const policy = readAuthPolicy();
 
-  if (!policy) {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('[auth-store] signOut without policy failed:', error);
-    }
-    clearLoginPolicy();
-    return null;
+  // 예전 v1(30일 만료 정책)이나 정책 누락 상태에서도
+  // 이미 살아있는 Supabase 세션이 있으면 강제 로그아웃시키지 않고
+  // 새 정책으로 자동 마이그레이션
+  if (!policy || typeof policy !== 'object') {
+    const nextPolicy = saveLoginPolicy({ autoLogin: true });
+
+    return {
+      session,
+      policy: nextPolicy,
+    };
   }
 
-  if (isLoginPolicyExpired(policy)) {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('[auth-store] signOut on expired policy failed:', error);
-    }
-    clearLoginPolicy();
-    return null;
+  // 예전 remember 정책도 새 auto 정책으로 승격
+  if (policy.mode === 'remember') {
+    const nextPolicy = saveLoginPolicy({ autoLogin: true });
+
+    return {
+      session,
+      policy: nextPolicy,
+    };
   }
 
   return {
@@ -452,18 +451,41 @@ export async function updateAuthUI() {
 }
 
 let authUiBound = false;
+let attendanceClaimedOnce = false;
 
 export async function initAuthUI() {
-  await enforceLoginPolicy();
+  const enforced = await enforceLoginPolicy();
   await updateAuthUI();
+
+  if (enforced?.session?.user && !attendanceClaimedOnce) {
+    attendanceClaimedOnce = true;
+    claimDailyAttendanceForAuto().catch((error) => {
+      console.error('[auth-store] auto attendance failed:', error);
+    });
+  }
 
   if (authUiBound) return;
   authUiBound = true;
 
-  supabase.auth.onAuthStateChange((event) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       clearLoginPolicy();
       clearMypageVerified();
+    }
+
+    if (event === 'SIGNED_IN' && session?.user) {
+      const policy = readAuthPolicy();
+
+      if (!policy) {
+        saveLoginPolicy({ autoLogin: true });
+      }
+
+      if (!attendanceClaimedOnce) {
+        attendanceClaimedOnce = true;
+        claimDailyAttendanceForAuto().catch((error) => {
+          console.error('[auth-store] auto attendance failed:', error);
+        });
+      }
     }
 
     updateAuthUI().catch((err) => {

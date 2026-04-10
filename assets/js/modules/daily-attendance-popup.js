@@ -1,6 +1,7 @@
 // assets/js/modules/daily-attendance-popup.js
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, resolveSitePath } from './auth-store.js';
+import { playPickleBurst } from './pickle-burst.js';
 
 const POPUP_ID = 'dailyAttendancePopup';
 
@@ -103,7 +104,7 @@ function createPopup() {
         />
         <h2 class="attendance-popup__title" id="attendancePopupTitle">오늘 출석 체크</h2>
         <p class="attendance-popup__desc" id="attendancePopupDesc">
-          오전 8시 이후 출석체크 버튼을 누르면 100피클을 받을 수 있어.
+          출석체크 버튼을 누르면 100피클을 받을 수 있어.
         </p>
         <div class="attendance-popup__actions" id="attendancePopupActions">
           <button type="button" class="attendance-popup__btn attendance-popup__btn--primary" id="attendanceClaimBtn">
@@ -175,6 +176,13 @@ export async function initDailyAttendancePopup() {
     popup.claimBtn.textContent = '처리 중...';
 
     const result = await claimDailyAttendance();
+
+    if (result.ok && Number(result.amount || 0) > 0) {
+      playPickleBurst({
+        originEl: popup.claimBtn,
+        count: 12,
+      });
+    }
 
     renderCompletedState(
       popup,

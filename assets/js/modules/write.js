@@ -6,6 +6,7 @@ import {
   createInlineEmoticonNode,
   switchEmoticonPickerPack,
 } from './emoticons.js';
+import { playPickleBurst } from './pickle-burst.js';
 
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 const STORAGE_BUCKET = 'post-assets';
@@ -37,6 +38,25 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+async function hasPostCreatePickleReward(userId, postId) {
+  if (!userId || !postId) return false;
+
+  const { data, error } = await supabase
+    .from('pickle_ledger')
+    .select('id, amount')
+    .eq('user_id', userId)
+    .eq('reason_code', 'post_create')
+    .eq('source_post_id', postId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[write] reward check failed:', error);
+    return false;
+  }
+
+  return !!data && Number(data.amount || 0) > 0;
 }
 
 function escapeAttr(value) {
@@ -1486,7 +1506,21 @@ export async function initWrite() {
 
       if (error) throw error;
 
-      if (note) note.textContent = '등록 완료! 상세 페이지로 이동할게.';
+      const rewardGranted = await hasPostCreatePickleReward(user.id, data.id);
+
+      if (note) {
+        note.textContent = rewardGranted
+          ? '등록 완료! 피클 지급됐어. 상세 페이지로 이동할게.'
+          : '등록 완료! 상세 페이지로 이동할게.';
+      }
+
+      if (rewardGranted) {
+        playPickleBurst({
+          originEl: submitBtn,
+          count: 10,
+        });
+      }
+
       form.reset();
       resetAttachmentInputs();
 
@@ -1505,7 +1539,7 @@ export async function initWrite() {
 
       setTimeout(() => {
         window.location.href = `./post.html?id=${data.id}`;
-      }, 400);
+      }, 700);
     } catch (error) {
       console.error('[write] save failed:', error);
       if (note) note.textContent = `저장 실패: ${error.message}`;
