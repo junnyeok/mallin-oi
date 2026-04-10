@@ -13,7 +13,6 @@ import {
   deleteSuggestion,
   loadSuggestionReplies,
   insertSuggestionReply,
-  updateSuggestionReply,
   deleteSuggestionReply,
   groupRepliesBySuggestion,
 } from './suggestions-repo.js';
@@ -103,17 +102,6 @@ function setReplyFormMessage(formEl, text, type = '') {
     : 'suggestion-admin-form__msg';
 }
 
-function setReplyEditMessage(replyEl, text, type = '') {
-  if (!replyEl) return;
-  const el = replyEl.querySelector('[data-role="reply-edit-msg"]');
-  if (!el) return;
-
-  el.textContent = text;
-  el.className = type
-    ? `suggestion-reply-edit-form__msg ${type}`
-    : 'suggestion-reply-edit-form__msg';
-}
-
 async function syncSuggestionFormUser() {
   const userBox = $('suggestionUserBox');
   const hint = $('suggestionLoginHint');
@@ -144,8 +132,7 @@ function renderReply(reply, currentUserId = '', isAdmin = false) {
     reply.author_id &&
     String(currentUserId) === String(reply.author_id);
 
-  const canEdit = !!isAdmin && !!isMine;
-  const canDelete = !!isAdmin;
+  const canDelete = !!isMine || !!isAdmin;
 
   return `
     <div class="suggestion-reply" data-reply-id="${reply.id}">
@@ -158,38 +145,17 @@ function renderReply(reply, currentUserId = '', isAdmin = false) {
         </div>
 
         ${
-          canEdit || canDelete
+          canDelete
             ? `
           <div class="suggestion-reply__actions">
-            ${
-              canEdit
-                ? `
-              <button
-                type="button"
-                class="suggestion-action-btn"
-                data-action="edit-reply"
-                data-reply-id="${reply.id}"
-              >
-                수정
-              </button>
-            `
-                : ''
-            }
-
-            ${
-              canDelete
-                ? `
-              <button
-                type="button"
-                class="suggestion-action-btn is-danger"
-                data-action="delete-reply"
-                data-reply-id="${reply.id}"
-              >
-                삭제
-              </button>
-            `
-                : ''
-            }
+            <button
+              type="button"
+              class="suggestion-action-btn is-danger"
+              data-action="delete-reply"
+              data-reply-id="${reply.id}"
+            >
+              삭제
+            </button>
           </div>
         `
             : ''
@@ -199,43 +165,6 @@ function renderReply(reply, currentUserId = '', isAdmin = false) {
       <div class="suggestion-reply__view" data-role="reply-view">
         <div class="suggestion-reply__body">${nl2brSafe(reply.body || '')}</div>
       </div>
-
-      ${
-        canEdit
-          ? `
-        <form class="suggestion-reply-edit-form" data-role="reply-edit-form" hidden>
-          <textarea
-            class="suggestion-reply-edit-form__textarea"
-            data-role="reply-edit-textarea"
-            rows="2"
-            maxlength="500"
-          >${escapeHtml(reply.body || '')}</textarea>
-
-          <div class="suggestion-reply-edit-form__bottom">
-            <p class="suggestion-reply-edit-form__msg" data-role="reply-edit-msg"></p>
-
-            <div class="suggestion-reply-edit-form__actions">
-              <button
-                type="button"
-                class="suggestion-action-btn"
-                data-action="cancel-edit-reply"
-                data-reply-id="${reply.id}"
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                class="suggestion-action-btn is-primary"
-                data-reply-id="${reply.id}"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </form>
-      `
-          : ''
-      }
     </div>
   `;
 }
@@ -421,32 +350,6 @@ function setSuggestionEditMode(suggestionId, isEditing) {
   viewEl.hidden = false;
   formEl.hidden = true;
   setSuggestionEditMessage(itemEl, '');
-}
-
-function setReplyEditMode(replyId, isEditing) {
-  const replyEl = findReplyElById(replyId);
-  if (!replyEl) return;
-
-  const viewEl = replyEl.querySelector('[data-role="reply-view"]');
-  const formEl = replyEl.querySelector('[data-role="reply-edit-form"]');
-
-  if (!viewEl || !formEl) return;
-
-  if (isEditing) {
-    viewEl.hidden = true;
-    formEl.hidden = false;
-
-    const textarea = formEl.querySelector('[data-role="reply-edit-textarea"]');
-    if (textarea) {
-      textarea.focus();
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-    }
-    return;
-  }
-
-  viewEl.hidden = false;
-  formEl.hidden = true;
-  setReplyEditMessage(replyEl, '');
 }
 
 export async function initSuggestionsBoard() {
@@ -651,20 +554,6 @@ export async function initSuggestionsBoard() {
       return;
     }
 
-    if (action === 'edit-reply') {
-      const replyId = Number(btn.dataset.replyId || 0);
-      if (!replyId) return;
-      setReplyEditMode(replyId, true);
-      return;
-    }
-
-    if (action === 'cancel-edit-reply') {
-      const replyId = Number(btn.dataset.replyId || 0);
-      if (!replyId) return;
-      setReplyEditMode(replyId, false);
-      return;
-    }
-
     if (action === 'delete-reply') {
       const replyId = Number(btn.dataset.replyId || 0);
       if (!replyId) return;
@@ -810,47 +699,6 @@ export async function initSuggestionsBoard() {
       }
 
       return;
-    }
-
-    const replyEditForm = e.target.closest('[data-role="reply-edit-form"]');
-    if (replyEditForm) {
-      e.preventDefault();
-
-      const replyEl = replyEditForm.closest('.suggestion-reply');
-      const replyId = Number(replyEl?.dataset?.replyId || 0);
-      const textareaEl = replyEditForm.querySelector(
-        '[data-role="reply-edit-textarea"]',
-      );
-
-      if (!replyEl || !replyId || !textareaEl) return;
-
-      const nextBody = textareaEl.value.trim();
-
-      if (!nextBody) {
-        setReplyEditMessage(replyEl, '댓글 내용을 입력해줘.', 'is-error');
-        textareaEl.focus();
-        return;
-      }
-
-      if (nextBody.length > 500) {
-        setReplyEditMessage(
-          replyEl,
-          '댓글은 500자 이하로 입력해줘.',
-          'is-error',
-        );
-        textareaEl.focus();
-        return;
-      }
-
-      setReplyEditMessage(replyEl, '수정 중...');
-
-      try {
-        await updateSuggestionReply(replyId, nextBody);
-        await refreshAll({ keepPage: true });
-      } catch (error) {
-        console.error('[suggestions-board] update reply failed:', error);
-        setReplyEditMessage(replyEl, '댓글 수정에 실패했어.', 'is-error');
-      }
     }
   });
 

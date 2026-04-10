@@ -57,15 +57,6 @@ export async function insertSuggestionReply(payload) {
   if (error) throw error;
 }
 
-export async function updateSuggestionReply(replyId, body) {
-  const { error } = await supabase
-    .from('suggestion_admin_comments')
-    .update({ body })
-    .eq('id', replyId);
-
-  if (error) throw error;
-}
-
 export async function deleteSuggestionReply(replyId) {
   const { error } = await supabase
     .from('suggestion_admin_comments')

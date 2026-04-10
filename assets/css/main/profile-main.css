@@ -24,6 +24,10 @@
   margin-bottom: var(--space-24);
 }
 
+.profile-hero__content {
+  padding: var(--space-8);
+}
+
 .profile-avatar-wrap {
   display: flex;
   justify-content: center;
