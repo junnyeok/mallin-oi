@@ -320,6 +320,27 @@ function isSafeUrl(url = '') {
   );
 }
 
+function isSafeIframeUrl(url = '') {
+  const value = String(url || '').trim();
+  if (!value) return false;
+
+  try {
+    const parsed = new URL(value, window.location.origin);
+    const host = parsed.hostname.toLowerCase();
+
+    const allowedHosts = new Set([
+      'www.youtube.com',
+      'youtube.com',
+      'www.youtube-nocookie.com',
+      'youtube-nocookie.com',
+    ]);
+
+    return allowedHosts.has(host) && parsed.pathname.startsWith('/embed/');
+  } catch {
+    return false;
+  }
+}
+
 function sanitizeNode(node) {
   if (node.nodeType === Node.TEXT_NODE) {
     return document.createTextNode(node.textContent || '');
@@ -348,6 +369,7 @@ function sanitizeNode(node) {
     'img',
     'video',
     'source',
+    'iframe',
     'a',
   ]);
 
@@ -393,6 +415,27 @@ function sanitizeNode(node) {
     if (isSafeUrl(src)) clean.setAttribute('src', src);
     const type = node.getAttribute('type') || '';
     if (type) clean.setAttribute('type', type);
+  }
+
+  if (tag === 'iframe') {
+    const src = node.getAttribute('src') || '';
+    if (!isSafeIframeUrl(src)) {
+      return document.createTextNode('');
+    }
+
+    clean.setAttribute('src', src);
+    clean.setAttribute('loading', 'lazy');
+    clean.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+    clean.setAttribute(
+      'allow',
+      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    );
+    clean.setAttribute('allowfullscreen', '');
+
+    const title = node.getAttribute('title') || '동영상';
+    clean.setAttribute('title', title);
+
+    if (node.className) clean.className = node.className;
   }
 
   if (

@@ -167,10 +167,18 @@
                   </div>
 
                   <!-- 첨부 -->
+                  <!-- 첨부 -->
                   <div class="write-row">
                     <p class="write-label">첨부</p>
 
                     <div class="write-attach-box">
+                      <p class="write-attach-note">
+                        사진은 10MB 이하, 동영상은 100MB 이하, 일반 파일은 30MB
+                        이하만 업로드할 수 있어. 큰 동영상은 업로드보다 동영상
+                        링크 삽입을 권장해. 큰 파일은 zip으로 압축하거나 분할
+                        압축 후 올리거나, 외부 링크를 활용해줘.
+                      </p>
+
                       <div class="write-upload-grid">
                         <label class="write-upload-tile" for="writeImage">
                           <span class="write-upload-tile__icon">🖼️</span>
@@ -178,7 +186,7 @@
                             >사진 업로드</span
                           >
                           <span class="write-upload-tile__desc"
-                            >jpg, png, webp 등</span
+                            >jpg, png, webp / 최대 10MB</span
                           >
                         </label>
                         <input
@@ -195,7 +203,7 @@
                             >영상 업로드</span
                           >
                           <span class="write-upload-tile__desc"
-                            >mp4, mov, webm 등</span
+                            >mp4, mov, webm / 최대 100MB</span
                           >
                         </label>
                         <input
@@ -212,7 +220,7 @@
                             >파일 업로드</span
                           >
                           <span class="write-upload-tile__desc"
-                            >pdf, hwp, docx, zip 등</span
+                            >pdf, hwp, docx, zip / 최대 30MB</span
                           >
                         </label>
                         <input
@@ -221,6 +229,32 @@
                           type="file"
                           multiple
                         />
+                      </div>
+
+                      <div class="write-link-box">
+                        <label class="write-label" for="writeVideoLink"
+                          >동영상 링크 삽입</label
+                        >
+                        <div class="write-link-row">
+                          <input
+                            id="writeVideoLink"
+                            class="write-control"
+                            type="url"
+                            placeholder="유튜브 링크 또는 직접 재생 가능한 mp4/webm 링크를 넣어줘"
+                            inputmode="url"
+                          />
+                          <button
+                            id="writeVideoLinkAddBtn"
+                            class="btn btn--ghost write-link-btn"
+                            type="button"
+                          >
+                            링크 넣기
+                          </button>
+                        </div>
+                        <p class="write-help write-help--compact">
+                          지원 예시: youtube.com, youtu.be, 직접 재생 가능한
+                          mp4/webm 링크
+                        </p>
                       </div>
                     </div>
                   </div>

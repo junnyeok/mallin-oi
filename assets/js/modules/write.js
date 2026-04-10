@@ -207,6 +207,106 @@ function getAttachmentLabel(type) {
   return '파일';
 }
 
+const DIRECT_VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v|ogv|ogg)(\?.*)?$/i;
+
+function extractYoutubeId(url) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+
+    if (host === 'youtu.be') {
+      return parsed.pathname.split('/').filter(Boolean)[0] || '';
+    }
+
+    if (host.includes('youtube.com')) {
+      if (parsed.pathname === '/watch') {
+        return parsed.searchParams.get('v') || '';
+      }
+
+      if (parsed.pathname.startsWith('/shorts/')) {
+        return parsed.pathname.split('/')[2] || '';
+      }
+
+      if (parsed.pathname.startsWith('/embed/')) {
+        return parsed.pathname.split('/')[2] || '';
+      }
+    }
+
+    return '';
+  } catch {
+    return '';
+  }
+}
+
+function parseVideoLink(rawInput = '') {
+  const raw = String(rawInput || '').trim();
+  if (!raw) return null;
+
+  try {
+    const parsed = new URL(raw);
+    const youtubeId = extractYoutubeId(raw);
+
+    if (youtubeId) {
+      return {
+        type: 'video-link',
+        embedKind: 'youtube',
+        title: '유튜브 동영상',
+        url: `https://www.youtube-nocookie.com/embed/${youtubeId}`,
+        originalUrl: raw,
+        fileName: '',
+        mimeType: 'text/html',
+        size: 0,
+      };
+    }
+
+    if (DIRECT_VIDEO_EXT_RE.test(parsed.pathname.toLowerCase())) {
+      const fileName = parsed.pathname.split('/').pop() || 'video';
+
+      return {
+        type: 'video-link',
+        embedKind: 'direct',
+        title: fileName,
+        url: raw,
+        originalUrl: raw,
+        fileName,
+        mimeType: 'video/*',
+        size: 0,
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function pushExternalVideoLink(rawUrl) {
+  const parsed = parseVideoLink(rawUrl);
+
+  if (!parsed) {
+    return '지원하지 않는 동영상 링크야. 유튜브 링크나 직접 재생 가능한 mp4/webm 링크를 넣어줘.';
+  }
+
+  const item = {
+    id: createLocalId(),
+    type: parsed.type,
+    embedKind: parsed.embedKind,
+    title: parsed.title,
+    fileName: parsed.fileName,
+    mimeType: parsed.mimeType,
+    size: parsed.size,
+    url: parsed.url,
+    originalUrl: parsed.originalUrl,
+    previewUrl: parsed.url,
+    removable: true,
+  };
+
+  attachmentState.push(item);
+  renderAttachmentList();
+  insertAttachmentIntoEditor(item);
+  return '';
+}
+
 function getBodyEditor() {
   return $('#bodyEditor');
 }
@@ -547,13 +647,40 @@ function buildPersistedBodyHtml(mediaItems = []) {
     if (type === 'image') {
       const img = node.querySelector('img');
       if (img) img.setAttribute('src', url);
-    } else if (type === 'video') {
+      return;
+    }
+
+    if (type === 'video') {
       const video = node.querySelector('video');
       if (video) video.setAttribute('src', url);
-    } else {
-      const link = node.querySelector('.write-embed__file-link');
-      if (link) link.setAttribute('href', url);
+      return;
     }
+
+    if (type === 'video-link') {
+      const embedKind = String(item.embedKind || 'direct').trim();
+      const originalUrl = String(item.originalUrl || item.url || '').trim();
+
+      if (embedKind === 'youtube') {
+        const iframe = node.querySelector('iframe');
+        if (iframe) iframe.setAttribute('src', url);
+
+        const link = node.querySelector('.write-embed__external-link');
+        if (link && originalUrl) link.setAttribute('href', originalUrl);
+        return;
+      }
+
+      const video = node.querySelector('video');
+      if (video) video.setAttribute('src', url);
+
+      const link = node.querySelector('.write-embed__external-link');
+      if (link && (originalUrl || url)) {
+        link.setAttribute('href', originalUrl || url);
+      }
+      return;
+    }
+
+    const link = node.querySelector('.write-embed__file-link');
+    if (link) link.setAttribute('href', url);
   });
 
   return clone.innerHTML.trim();
@@ -810,6 +937,7 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
   const title = escapeHtml(item?.title || item?.fileName || '첨부');
   const url = escapeAttr(urlOverride || item?.url || item?.previewUrl || '');
   const label = getAttachmentLabel(type);
+  const originalUrl = escapeAttr(item?.originalUrl || item?.url || '');
 
   if (type === 'image') {
     return `
@@ -862,6 +990,88 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
           playsinline
           preload="metadata"
         ></video>
+      </figure>
+    `;
+  }
+
+  if (type === 'video-link') {
+    const embedKind = String(item?.embedKind || 'direct').trim();
+
+    if (embedKind === 'youtube') {
+      return `
+        <figure
+          class="write-embed write-embed--media write-embed--video-link"
+          data-media-id="${mediaId}"
+          data-media-type="video-link"
+          data-align="left"
+          contenteditable="false"
+        >
+          <button
+            type="button"
+            class="write-embed__remove write-embed__remove--floating"
+            data-embed-remove="${mediaId}"
+            aria-label="동영상 링크 삭제"
+          >
+            삭제
+          </button>
+
+          <div class="write-embed__ratio">
+            <iframe
+              class="write-embed__iframe"
+              src="${url}"
+              title="${title}"
+              loading="lazy"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+            ></iframe>
+          </div>
+
+          <a
+            class="write-embed__file-link write-embed__external-link"
+            href="${originalUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            원본 링크 열기
+          </a>
+        </figure>
+      `;
+    }
+
+    return `
+      <figure
+        class="write-embed write-embed--media write-embed--video-link"
+        data-media-id="${mediaId}"
+        data-media-type="video-link"
+        data-align="left"
+        contenteditable="false"
+      >
+        <button
+          type="button"
+          class="write-embed__remove write-embed__remove--floating"
+          data-embed-remove="${mediaId}"
+          aria-label="동영상 링크 삭제"
+        >
+          삭제
+        </button>
+
+        <video
+          class="write-embed__media-el"
+          src="${url}"
+          controls
+          playsinline
+          preload="metadata"
+        ></video>
+
+        <a
+          class="write-embed__file-link write-embed__external-link"
+          href="${originalUrl || url}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          원본 링크 열기
+        </a>
       </figure>
     `;
   }
@@ -948,11 +1158,11 @@ function validateAttachment(file, type) {
   }
 
   if (type === 'video' && size > VIDEO_MAX_BYTES) {
-    return '동영상은 100MB 이하만 가능해.';
+    return '동영상은 100MB 이하만 가능해. 큰 영상은 해상도를 줄여서 다시 올리거나, 동영상 링크 삽입을 이용해줘.';
   }
 
   if (type === 'file' && size > FILE_MAX_BYTES) {
-    return '일반 파일은 30MB 이하만 가능해.';
+    return '일반 파일은 30MB 이하만 가능해. 큰 파일은 zip 압축/분할 압축 또는 외부 링크를 사용해줘.';
   }
 
   return '';
@@ -962,6 +1172,8 @@ function bindAttachmentInputs(note) {
   const imageInput = $('#writeImage');
   const videoInput = $('#writeVideo');
   const fileInput = $('#writeFile');
+  const videoLinkInput = $('#writeVideoLink');
+  const videoLinkAddBtn = $('#writeVideoLinkAddBtn');
   const editor = getBodyEditor();
   const uploadTiles = document.querySelectorAll('.write-upload-tile');
 
@@ -988,6 +1200,42 @@ function bindAttachmentInputs(note) {
 
       imageInput.value = '';
       saveCurrentSelectionRange();
+    });
+  }
+
+  if (videoLinkAddBtn) {
+    videoLinkAddBtn.addEventListener('mousedown', () => {
+      saveCurrentSelectionRange();
+    });
+
+    videoLinkAddBtn.addEventListener('click', () => {
+      const raw = videoLinkInput?.value?.trim() || '';
+
+      if (!raw) {
+        if (note) note.textContent = '동영상 링크를 입력해줘.';
+        return;
+      }
+
+      ensureEditorHasParagraph();
+      restoreSavedSelectionRange();
+
+      const errorMsg = pushExternalVideoLink(raw);
+      if (errorMsg) {
+        if (note) note.textContent = errorMsg;
+        return;
+      }
+
+      if (note) note.textContent = '동영상 링크를 본문에 넣었어.';
+      if (videoLinkInput) videoLinkInput.value = '';
+      saveCurrentSelectionRange();
+    });
+  }
+
+  if (videoLinkInput) {
+    videoLinkInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      videoLinkAddBtn?.click();
     });
   }
 
@@ -1100,8 +1348,10 @@ async function uploadSingleAttachment(user, item) {
     return {
       id: item.id,
       type: item.type,
+      embedKind: item.embedKind || '',
       title: item.title || item.fileName || '첨부',
       url: item.url || '',
+      originalUrl: item.originalUrl || '',
       path: item.path || '',
       fileName: item.fileName || '',
       mimeType: item.mimeType || '',
@@ -1133,8 +1383,10 @@ async function uploadSingleAttachment(user, item) {
   return {
     id: item.id,
     type: item.type,
+    embedKind: item.embedKind || '',
     title: item.title || item.fileName || item.file.name || '첨부',
     url: publicData?.publicUrl || '',
+    originalUrl: item.originalUrl || '',
     path,
     fileName: item.file.name || item.fileName || '',
     mimeType: item.file.type || item.mimeType || '',
@@ -1312,12 +1564,14 @@ function fillWriteForm(post, isAdmin) {
   if (isPrivateEl) isPrivateEl.checked = !!post.is_private;
   if (privatePasswordEl) privatePasswordEl.value = '';
 
-  attachmentState = Array.isArray(post.media_items)
+  aattachmentState = Array.isArray(post.media_items)
     ? post.media_items.map((item) => ({
         id: item.id || createLocalId(),
         type: item.type,
+        embedKind: item.embedKind || '',
         title: item.title || item.fileName || '첨부',
         url: item.url || '',
+        originalUrl: item.originalUrl || '',
         previewUrl: item.url || '',
         path: item.path || '',
         fileName: item.fileName || '',

@@ -19,6 +19,7 @@ const {
   insertEmoticonToken,
   renderTextWithEmoticons,
   switchEmoticonPickerPack,
+  createInlineEmoticonNode,
 } = await import(`./emoticons.js?v=${MODULE_VERSION}`);
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
@@ -246,70 +247,191 @@ function nl2brSafe(text) {
   return renderTextWithEmoticons(text || '');
 }
 
-function ensureLivePreviewEl(textarea) {
+function getCommentFieldEl(textarea) {
   if (!textarea) return null;
 
-  const field =
+  return (
     textarea.closest('.comment-form__field') ||
     textarea.closest('.comment-reply-form__field') ||
-    textarea.closest('.comment-edit-form');
-
-  if (!field) return null;
-
-  let preview = field.querySelector('[data-role="comment-live-preview"]');
-
-  if (!preview) {
-    preview = document.createElement('div');
-    preview.className = 'comment-live-preview';
-    preview.dataset.role = 'comment-live-preview';
-    preview.hidden = true;
-    textarea.insertAdjacentElement('afterend', preview);
-  }
-
-  return preview;
+    textarea.closest('.comment-edit-form')
+  );
 }
 
-function renderLivePreview(textarea) {
+function editorHtmlFromText(text = '') {
+  return renderTextWithEmoticons(text, {
+    imageClass: 'inline-emoticon inline-emoticon--editor',
+  });
+}
+
+function removeCommentLivePreview(textarea) {
+  const field = getCommentFieldEl(textarea);
+  if (!field) return;
+
+  const preview = field.querySelector('[data-role="comment-live-preview"]');
+  if (preview) preview.remove();
+}
+
+function editorNodeToTokenText(node) {
+  if (!node) return '';
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.nodeValue || '';
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return '';
+  }
+
+  const el = node;
+
+  if (el.matches?.('img[data-emoticon-code]')) {
+    const code = String(el.dataset.emoticonCode || '').trim();
+    return code ? `[emo:${code}]` : '';
+  }
+
+  if (el.tagName === 'BR') {
+    return '\n';
+  }
+
+  let text = '';
+  Array.from(el.childNodes).forEach((child) => {
+    text += editorNodeToTokenText(child);
+  });
+
+  if (['DIV', 'P'].includes(el.tagName) && !text.endsWith('\n')) {
+    text += '\n';
+  }
+
+  return text;
+}
+
+function editorToTokenText(editor) {
+  if (!editor) return '';
+
+  let text = '';
+  Array.from(editor.childNodes).forEach((node) => {
+    text += editorNodeToTokenText(node);
+  });
+
+  return text
+    .replaceAll('\u00A0', ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd();
+}
+
+function syncEditorToTextarea(textarea, editor) {
+  if (!textarea || !editor) return;
+  textarea.value = editorToTokenText(editor);
+}
+
+function syncTextareaToEditor(textarea, editor) {
+  if (!textarea || !editor) return;
+
+  const html = editorHtmlFromText(textarea.value || '');
+  editor.innerHTML = html || '';
+}
+
+function placeCaretAtEnd(editor) {
+  if (!editor) return;
+
+  editor.focus();
+
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(false);
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function ensureCommentRichEditor(textarea) {
+  if (!textarea) return null;
+
+  const field = getCommentFieldEl(textarea);
+  if (!field) return null;
+
+  removeCommentLivePreview(textarea);
+
+  let editor = field.querySelector(
+    `[data-role="comment-rich-editor"][data-source-key="${textarea.id || textarea.name || 'comment'}"]`,
+  );
+
+  if (!editor) {
+    editor = document.createElement('div');
+    editor.className = 'comment-rich-editor';
+    editor.dataset.role = 'comment-rich-editor';
+    editor.dataset.sourceKey = textarea.id || textarea.name || 'comment';
+    editor.contentEditable = 'true';
+    editor.spellcheck = true;
+    editor.setAttribute('role', 'textbox');
+    editor.setAttribute('aria-multiline', 'true');
+    editor.dataset.placeholder = textarea.placeholder || '';
+
+    textarea.classList.add('comment-editor-source');
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.tabIndex = -1;
+
+    textarea.insertAdjacentElement('afterend', editor);
+  }
+
+  if (editor.dataset.bound === '1') {
+    return editor;
+  }
+
+  syncTextareaToEditor(textarea, editor);
+  syncEditorToTextarea(textarea, editor);
+
+  editor.addEventListener('input', () => {
+    syncEditorToTextarea(textarea, editor);
+  });
+
+  editor.addEventListener('paste', (event) => {
+    event.preventDefault();
+    const text = event.clipboardData?.getData('text/plain') || '';
+    document.execCommand('insertText', false, text);
+  });
+
+  editor.dataset.bound = '1';
+  return editor;
+}
+
+function clearCommentEditor(textarea) {
   if (!textarea) return;
 
-  const preview = ensureLivePreviewEl(textarea);
-  if (!preview) return;
+  textarea.value = '';
 
-  const value = String(textarea.value || '').trim();
+  const editor = ensureCommentRichEditor(textarea);
+  if (editor) {
+    editor.innerHTML = '';
+  }
+}
 
-  if (!value) {
-    preview.hidden = true;
-    preview.innerHTML = '';
+function focusEditorForTextarea(textarea) {
+  const editor = ensureCommentRichEditor(textarea);
+  if (!editor) {
+    textarea?.focus();
     return;
   }
 
-  preview.hidden = false;
-  preview.innerHTML = `
-    <div class="comment-live-preview__label">미리보기</div>
-    <div class="comment-live-preview__body">
-      ${renderTextWithEmoticons(value)}
-    </div>
-  `;
+  placeCaretAtEnd(editor);
 }
 
-function bindLivePreview(textarea) {
-  if (!textarea || textarea.dataset.previewBound === '1') return;
-
-  textarea.addEventListener('input', () => {
-    renderLivePreview(textarea);
-  });
-
-  textarea.dataset.previewBound = '1';
-  renderLivePreview(textarea);
+function bindCommentRichEditor(textarea) {
+  if (!textarea || textarea.dataset.richEditorBound === '1') return;
+  ensureCommentRichEditor(textarea);
+  textarea.dataset.richEditorBound = '1';
 }
 
-function bindAllCommentLivePreviews(root = document) {
+function bindAllCommentRichEditors(root = document) {
   root
     .querySelectorAll(
       '#commentBody, [data-role="reply-textarea"], [data-role="comment-edit-textarea"]',
     )
     .forEach((textarea) => {
-      bindLivePreview(textarea);
+      bindCommentRichEditor(textarea);
     });
 }
 
@@ -793,7 +915,7 @@ async function renderComments(postId, secretPassword = null) {
       )
       .join('');
 
-    bindAllCommentLivePreviews(listEl);
+    bindAllCommentRichEditors(listEl);
     focusTargetCommentFromUrl();
     refreshCommentEmoticonUi();
   } catch (error) {
@@ -858,8 +980,7 @@ function setEditMode(commentId, isEditing) {
       '[data-role="comment-edit-textarea"]',
     );
     if (textarea) {
-      textarea.focus();
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      focusEditorForTextarea(textarea);
     }
     return;
   }
@@ -892,7 +1013,7 @@ function closeAllReplyForms() {
     const textarea = form.querySelector('[data-role="reply-textarea"]');
     const msg = form.querySelector('[data-role="reply-msg"]');
 
-    if (textarea) textarea.value = '';
+    if (textarea) clearCommentEditor(textarea);
     if (msg) {
       msg.textContent = '';
       msg.className = 'comment-reply-form__msg';
@@ -915,7 +1036,7 @@ function toggleReplyForm(commentId, shouldOpen = true) {
     const textarea = form.querySelector('[data-role="reply-textarea"]');
     const msg = form.querySelector('[data-role="reply-msg"]');
 
-    if (textarea) textarea.value = '';
+    if (textarea) clearCommentEditor(textarea);
     if (msg) {
       msg.textContent = '';
       msg.className = 'comment-reply-form__msg';
@@ -929,7 +1050,7 @@ function toggleReplyForm(commentId, shouldOpen = true) {
 
   if (!form.hidden) {
     const textarea = form.querySelector('[data-role="reply-textarea"]');
-    if (textarea) textarea.focus();
+    if (textarea) focusEditorForTextarea(textarea);
   }
 }
 
@@ -998,7 +1119,60 @@ function insertEmoticonToForm(formEl, emoticonCode) {
   const textarea = formEl?.querySelector('textarea');
   if (!textarea) return;
 
-  insertEmoticonToken(textarea, emoticonCode);
+  const editor = ensureCommentRichEditor(textarea);
+  if (!editor) {
+    insertEmoticonToken(textarea, emoticonCode);
+    return;
+  }
+
+  const selected = ownedCommentEmoticons.find(
+    (item) =>
+      String(item?.emoticon_code || '').trim() ===
+      String(emoticonCode || '').trim(),
+  );
+
+  if (!selected) {
+    insertEmoticonToken(textarea, emoticonCode);
+    syncTextareaToEditor(textarea, editor);
+    return;
+  }
+
+  editor.focus();
+
+  const selection = window.getSelection();
+  let range = null;
+
+  if (
+    selection &&
+    selection.rangeCount > 0 &&
+    editor.contains(selection.anchorNode)
+  ) {
+    range = selection.getRangeAt(0);
+  } else {
+    range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+  }
+
+  range.deleteContents();
+
+  const img = createInlineEmoticonNode(selected);
+  img.classList.remove('inline-emoticon--comment');
+  img.classList.add('inline-emoticon--editor');
+
+  const spacer = document.createTextNode('\u00A0');
+
+  range.insertNode(spacer);
+  range.insertNode(img);
+
+  const nextRange = document.createRange();
+  nextRange.setStartAfter(spacer);
+  nextRange.collapse(true);
+
+  selection?.removeAllRanges();
+  selection?.addRange(nextRange);
+
+  syncEditorToTextarea(textarea, editor);
 }
 
 function bindMainCommentFormExtras() {
@@ -1040,7 +1214,7 @@ function bindMainCommentFormExtras() {
   }
 
   const mainTextarea = form.querySelector('#commentBody');
-  bindLivePreview(mainTextarea);
+  bindCommentRichEditor(mainTextarea);
 
   form.dataset.emoticonBound = '1';
 }
@@ -1183,8 +1357,7 @@ async function handleCreateComment(postId) {
       insertedComment?.id,
     );
 
-    textarea.value = '';
-    renderLivePreview(textarea);
+    clearCommentEditor(textarea);
     setFormMessage('댓글이 등록됐어.', 'is-success');
 
     if (rewardGranted) {
