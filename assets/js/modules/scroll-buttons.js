@@ -38,6 +38,7 @@ function getPageType() {
   if (path.includes('posts-all.html')) return 'posts-all';
   if (path.includes('write.html')) return 'write';
   if (path.includes('mypage.html')) return 'mypage';
+  if (path.includes('profile-history.html')) return 'profile-history';
   if (path.includes('profile.html')) return 'profile';
   if (path.includes('store.html')) return 'store';
 
@@ -48,6 +49,7 @@ function getPageType() {
   if (page === 'post') return 'post';
   if (page === 'write') return 'write';
   if (page === 'mypage') return 'mypage';
+  if (page === 'profile-history') return 'profile-history';
   if (page === 'profile') return 'profile';
   if (page === 'store') return 'store';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
@@ -359,6 +361,10 @@ export function initScrollButtons(options = {}) {
   }
 
   if (pageType === 'store') {
+    btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
+  }
+
+  if (pageType === 'profile-history') {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 

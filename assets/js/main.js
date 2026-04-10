@@ -45,6 +45,7 @@ async function initApp() {
   let profileModule;
   let storeModule;
   let dailyAttendancePopupModule;
+  let profileHistoryModule;
 
   try {
     [
@@ -71,6 +72,7 @@ async function initApp() {
       suggestionsBoardModule,
       postReactionsModule,
       profileModule,
+      profileHistoryModule,
       storeModule,
       dailyAttendancePopupModule,
       notificationsModule,
@@ -98,6 +100,7 @@ async function initApp() {
       import(withModuleVersion('./modules/suggestions-board.js')),
       import(withModuleVersion('./modules/post-reactions.js')),
       import(withModuleVersion('./modules/profile.js')),
+      import(withModuleVersion('./modules/profile-history.js')),
       import(withModuleVersion('./modules/store.js')),
       import(withModuleVersion('./modules/daily-attendance-popup.js')),
       import(withModuleVersion('./modules/notifications.js')),
@@ -136,6 +139,7 @@ async function initApp() {
   const { initSuggestionsBoard } = suggestionsBoardModule;
   const { initPostReactions } = postReactionsModule;
   const { initProfile } = profileModule;
+  const { initProfileHistory } = profileHistoryModule;
   const { initStore } = storeModule;
   const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
@@ -307,6 +311,12 @@ async function initApp() {
     await initProfile();
   } catch (e) {
     console.error('[main] profile module failed:', e);
+  }
+
+  try {
+    await initProfileHistory();
+  } catch (e) {
+    console.error('[main] profile history module failed:', e);
   }
 
   try {

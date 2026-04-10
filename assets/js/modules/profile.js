@@ -252,52 +252,21 @@ function renderMyCommentRow(comment, postMap) {
   `;
 }
 
-function setupPagedList({
+function renderPreviewList({
   items = [],
-  perPage = 10,
+  limit = 3,
   listEl,
-  prevBtn,
-  nextBtn,
-  pageInfoEl,
   emptyHtml = '',
   renderItem,
 }) {
-  if (!listEl || !prevBtn || !nextBtn || !pageInfoEl) return;
+  if (!listEl) return;
 
-  let currentPage = 1;
-  const totalPages = Math.max(1, Math.ceil(items.length / perPage));
-
-  function render() {
-    if (!items.length) {
-      listEl.innerHTML = emptyHtml;
-      pageInfoEl.textContent = '1 / 1';
-      prevBtn.disabled = true;
-      nextBtn.disabled = true;
-      return;
-    }
-
-    const start = (currentPage - 1) * perPage;
-    const pageItems = items.slice(start, start + perPage);
-
-    listEl.innerHTML = pageItems.map(renderItem).join('');
-    pageInfoEl.textContent = `${currentPage} / ${totalPages}`;
-    prevBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= totalPages;
+  if (!items.length) {
+    listEl.innerHTML = emptyHtml;
+    return;
   }
 
-  prevBtn.onclick = () => {
-    if (currentPage <= 1) return;
-    currentPage -= 1;
-    render();
-  };
-
-  nextBtn.onclick = () => {
-    if (currentPage >= totalPages) return;
-    currentPage += 1;
-    render();
-  };
-
-  render();
+  listEl.innerHTML = items.slice(0, limit).map(renderItem).join('');
 }
 
 async function loadProfileRow(userId) {
@@ -1046,7 +1015,9 @@ function applyProfileModeUI({
   }
 
   if (commentsTitle) {
-    commentsTitle.textContent = isOwnProfile ? '내가 쓴 댓글' : '작성한 댓글';
+    commentsTitle.textContent = isOwnProfile
+      ? '내가 쓴 댓글/답글'
+      : '작성한 댓글/답글';
   }
 
   if (avatar) {
@@ -1277,19 +1248,10 @@ export async function initProfile() {
   }
 
   const profilePostListEl = $('profilePostList');
-  const profilePostPrevBtn = $('profilePostPrevBtn');
-  const profilePostNextBtn = $('profilePostNextBtn');
-  const profilePostPageInfo = $('profilePostPageInfo');
 
   const profileCommentListEl = $('profileCommentList');
-  const profileCommentPrevBtn = $('profileCommentPrevBtn');
-  const profileCommentNextBtn = $('profileCommentNextBtn');
-  const profileCommentPageInfo = $('profileCommentPageInfo');
 
   const profilePickleListEl = $('profilePickleList');
-  const profilePicklePrevBtn = $('profilePicklePrevBtn');
-  const profilePickleNextBtn = $('profilePickleNextBtn');
-  const profilePicklePageInfo = $('profilePicklePageInfo');
 
   if (isOwnProfile) {
     try {
@@ -1297,13 +1259,10 @@ export async function initProfile() {
 
       updateTodayPickleStatus(pickleEntries);
 
-      setupPagedList({
+      renderPreviewList({
         items: pickleEntries,
-        perPage: 3,
+        limit: 3,
         listEl: profilePickleListEl,
-        prevBtn: profilePicklePrevBtn,
-        nextBtn: profilePickleNextBtn,
-        pageInfoEl: profilePicklePageInfo,
         emptyHtml: `<div class="empty">아직 받은 피클 내역이 없어.</div>`,
         renderItem: renderPickleRow,
       });
@@ -1322,13 +1281,10 @@ export async function initProfile() {
   try {
     const posts = await loadPostsByAuthorId(targetUserId);
 
-    setupPagedList({
+    renderPreviewList({
       items: posts,
-      perPage: 3,
+      limit: 3,
       listEl: profilePostListEl,
-      prevBtn: profilePostPrevBtn,
-      nextBtn: profilePostNextBtn,
-      pageInfoEl: profilePostPageInfo,
       emptyHtml: `<div class="empty">${
         isOwnProfile ? '아직 작성한 글이 없어.' : '아직 작성한 글이 없어.'
       }</div>`,
@@ -1350,15 +1306,14 @@ export async function initProfile() {
     const { comments, postMap } =
       await loadCommentsWithPostsByAuthorId(targetUserId);
 
-    setupPagedList({
+    renderPreviewList({
       items: comments,
-      perPage: 3,
+      limit: 3,
       listEl: profileCommentListEl,
-      prevBtn: profileCommentPrevBtn,
-      nextBtn: profileCommentNextBtn,
-      pageInfoEl: profileCommentPageInfo,
       emptyHtml: `<div class="empty">${
-        isOwnProfile ? '아직 작성한 댓글이 없어.' : '아직 작성한 댓글이 없어.'
+        isOwnProfile
+          ? '아직 작성한 댓글/답글이 없어.'
+          : '아직 작성한 댓글/답글이 없어.'
       }</div>`,
       renderItem: (comment) => renderMyCommentRow(comment, postMap),
     });

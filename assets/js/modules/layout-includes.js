@@ -61,6 +61,7 @@ function getLogoSrcByPage(page, base) {
     'find-id': `${base}images/logo-home.png`,
     'find-password': `${base}images/logo-home.png`,
     'reset-password': `${base}images/logo-home.png`,
+    'profile-history': `${base}images/logo-home.png`,
   };
 
   return map[page] || `${base}images/logo-home.png`;
