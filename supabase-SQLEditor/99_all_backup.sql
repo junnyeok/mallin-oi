@@ -9638,12 +9638,12 @@ begin
 
   elsif p_item_id = 'character-fat-avocado-01' then
     v_price := 580;
-    v_name := '뚱한 아보카도 캐릭터';
+    v_name := '아보카도 캐릭터';
     v_category := 'character';
 
   elsif p_item_id = 'character-grilled-egg-01' then
     v_price := 640;
-    v_name := '구운계란형님';
+    v_name := '구운계란 캐릭터';
     v_category := 'character';
 
   else
@@ -9918,7 +9918,7 @@ begin
     values (
       v_user_id,
       'char-fat-avocado',
-      '뚱한 아보카도',
+      '아보카도 캐릭터',
       './images/characters/fat-avocado.png',
       './images/characters/fat-avocado.png',
       3,
@@ -9939,7 +9939,7 @@ begin
       v_user_id,
       'char-fat-avocado',
       'char-fat-avocado-basic',
-      '뚱한 아보카도',
+      '아보카도 캐릭터',
       './images/characters/fat-avocado.png',
       301,
       'store_purchase'
@@ -9959,7 +9959,7 @@ begin
     values (
       v_user_id,
       'char-grilled-egg',
-      '구운계란형님',
+      '구운계란 캐릭터',
       './images/characters/grilled-egg.png',
       './images/characters/grilled-egg.png',
       4,
@@ -9980,7 +9980,7 @@ begin
       v_user_id,
       'char-grilled-egg',
       'char-grilled-egg-basic',
-      '구운계란형님',
+      '구운계란 캐릭터',
       './images/characters/grilled-egg.png',
       401,
       'store_purchase'
@@ -10035,9 +10035,9 @@ begin
       when p_item_id = 'skin-cucumbergirl'
         then '오이소녀 오이스킨 구매가 완료됐어. 820피클이 차감됐고 내프로필 기본오이 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-fat-avocado-01'
-        then '뚱한 아보카도 캐릭터 구매가 완료됐어. 580피클이 차감됐고 내프로필에서 착용할 수 있어.'
+        then '아보카도 캐릭터 구매가 완료됐어. 580피클이 차감됐고 내프로필에서 착용할 수 있어.'
       when p_item_id = 'character-grilled-egg-01'
-        then '구운계란형님 구매가 완료됐어. 640피클이 차감됐고 내프로필에서 착용할 수 있어.'
+        then '구운계란 캐릭터 구매가 완료됐어. 640피클이 차감됐고 내프로필에서 착용할 수 있어.'
       else '구매가 완료됐어.'
     end,
     coalesce(v_balance, 0);
