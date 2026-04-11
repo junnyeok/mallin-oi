@@ -243,7 +243,7 @@ export const STORE_ITEMS = [
     thumbImagePath: withAssetVersion('./images/characters/fat-avocado.png'),
     price: 580,
     state: '판매 중',
-    description: '뚱뚱하고 멍한 아보카도 캐릭터를 사용할 수 있어.',
+    description: '뚱한 아보카도 캐릭터를 사용할 수 있어.',
     detailDescription:
       '뚱한 아보카도 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
     previewImages: FAT_AVOCADO_CHARACTER_PREVIEW,
@@ -258,7 +258,7 @@ export const STORE_ITEMS = [
     thumbImagePath: withAssetVersion('./images/characters/grilled-egg.png'),
     price: 640,
     state: '판매 중',
-    description: '든든한 구운계란형님 캐릭터를 사용할 수 있어.',
+    description: '운동 후에 구운계란은 좋아.',
     detailDescription:
       '구운계란형님 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
     previewImages: GRILLED_EGG_CHARACTER_PREVIEW,
