@@ -71,14 +71,6 @@ function shouldBypassLoginPolicy() {
   return isResetPasswordPage() || hasRecoveryParamsInUrl();
 }
 
-async function claimDailyAttendanceForAuto() {
-  try {
-    await supabase.rpc('claim_daily_attendance');
-  } catch (error) {
-    console.error('[auth-store] claimDailyAttendanceForAuto error:', error);
-  }
-}
-
 async function enforceLoginPolicy() {
   const session = await getCurrentSession();
 
@@ -451,18 +443,10 @@ export async function updateAuthUI() {
 }
 
 let authUiBound = false;
-let attendanceClaimedOnce = false;
 
 export async function initAuthUI() {
   const enforced = await enforceLoginPolicy();
   await updateAuthUI();
-
-  if (enforced?.session?.user && !attendanceClaimedOnce) {
-    attendanceClaimedOnce = true;
-    claimDailyAttendanceForAuto().catch((error) => {
-      console.error('[auth-store] auto attendance failed:', error);
-    });
-  }
 
   if (authUiBound) return;
   authUiBound = true;
@@ -478,13 +462,6 @@ export async function initAuthUI() {
 
       if (!policy) {
         saveLoginPolicy({ autoLogin: true });
-      }
-
-      if (!attendanceClaimedOnce) {
-        attendanceClaimedOnce = true;
-        claimDailyAttendanceForAuto().catch((error) => {
-          console.error('[auth-store] auto attendance failed:', error);
-        });
       }
     }
 

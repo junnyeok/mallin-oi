@@ -95,6 +95,24 @@ export const CUCUMBER_GIRL_SKIN_PREVIEW = [
   },
 ];
 
+export const FAT_AVOCADO_CHARACTER_PREVIEW = [
+  {
+    code: 'char-fat-avocado-basic',
+    label: '뚱한 아보카도 캐릭터',
+    imagePath: withAssetVersion('./images/characters/fat-avocado.png'),
+    displayOrder: 1,
+  },
+];
+
+export const GRILLED_EGG_CHARACTER_PREVIEW = [
+  {
+    code: 'char-grilled-egg-basic',
+    label: '구운계란형님',
+    imagePath: withAssetVersion('./images/characters/grilled-egg.png'),
+    displayOrder: 1,
+  },
+];
+
 export const STORE_ITEMS = [
   {
     id: 'emo-basic-01',
@@ -187,7 +205,7 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'character-carrot',
+    id: 'character-carrot-01',
     name: '테토당근 캐릭터',
     category: 'character',
     badge: '캐릭터',
@@ -217,32 +235,34 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'emo-study-01',
-    name: '자기개발 오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '신규',
-    icon: '📚',
-    thumbImagePath: withAssetVersion('./images/emoticons/work-1.png'),
-    price: 210,
-    state: '판매 준비중',
-    description: '공부, 독서, 기록용 리액션 이모티콘 세트.',
+    id: 'character-fat-avocado-01',
+    name: '뚱한 아보카도 캐릭터',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🥑',
+    thumbImagePath: withAssetVersion('./images/characters/fat-avocado.png'),
+    price: 580,
+    state: '판매 중',
+    description: '뚱뚱하고 멍한 아보카도 캐릭터를 사용할 수 있어.',
     detailDescription:
-      '자기개발 반응형 이모티콘팩이야. 추후 판매 기능 연결 예정이야.',
-    previewImages: [],
-    isPurchasable: false,
+      '뚱한 아보카도 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: FAT_AVOCADO_CHARACTER_PREVIEW,
+    isPurchasable: true,
   },
   {
-    id: 'fashion-glasses-01',
-    name: '둥근 안경',
-    category: 'fashion',
-    badge: '꾸미기',
-    icon: '👓',
-    price: 240,
-    state: '장착 기능 예정',
-    description: '오이 캐릭터 얼굴에 착용 가능한 기본 안경.',
-    detailDescription: '얼굴에 착용 가능한 안경 꾸미기 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'character-grilled-egg-01',
+    name: '구운계란형님',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🥚',
+    thumbImagePath: withAssetVersion('./images/characters/grilled-egg.png'),
+    price: 640,
+    state: '판매 중',
+    description: '든든한 구운계란형님 캐릭터를 사용할 수 있어.',
+    detailDescription:
+      '구운계란형님 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: GRILLED_EGG_CHARACTER_PREVIEW,
+    isPurchasable: true,
   },
   {
     id: 'fashion-bag-01',
@@ -328,6 +348,22 @@ export const CHARACTER_CATALOG = [
     display_order: 2,
     store_item_id: 'character-carrot-01',
   },
+  {
+    character_code: 'char-fat-avocado',
+    character_name: '뚱한 아보카도',
+    base_image_path: withAssetVersion('./images/characters/fat-avocado.png'),
+    preview_image_path: withAssetVersion('./images/characters/fat-avocado.png'),
+    display_order: 3,
+    store_item_id: 'character-fat-avocado-01',
+  },
+  {
+    character_code: 'char-grilled-egg',
+    character_name: '구운계란형님',
+    base_image_path: withAssetVersion('./images/characters/grilled-egg.png'),
+    preview_image_path: withAssetVersion('./images/characters/grilled-egg.png'),
+    display_order: 4,
+    store_item_id: 'character-grilled-egg-01',
+  },
 ];
 
 export const CHARACTER_SKIN_CATALOG = [
@@ -354,5 +390,21 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/teto-carrot.png'),
     display_order: 201,
     store_item_id: 'character-carrot-01',
+  },
+  {
+    character_code: 'char-fat-avocado',
+    skin_code: 'char-fat-avocado-basic',
+    skin_name: '뚱한 아보카도',
+    image_path: withAssetVersion('./images/characters/fat-avocado.png'),
+    display_order: 301,
+    store_item_id: 'character-fat-avocado-01',
+  },
+  {
+    character_code: 'char-grilled-egg',
+    skin_code: 'char-grilled-egg-basic',
+    skin_name: '구운계란형님',
+    image_path: withAssetVersion('./images/characters/grilled-egg.png'),
+    display_order: 401,
+    store_item_id: 'character-grilled-egg-01',
   },
 ];
