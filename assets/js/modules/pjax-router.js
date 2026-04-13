@@ -23,8 +23,17 @@ function isHtmlLikePath(pathname = '') {
 function isPjaxAllowedUrl(url) {
   if (!(url instanceof URL)) return false;
   if (url.origin !== window.location.origin) return false;
-  if (url.pathname.includes('/account/')) return false;
   if (!isHtmlLikePath(url.pathname)) return false;
+
+  const pathname = url.pathname.toLowerCase();
+
+  // account 쪽은 기본 제외
+  // 단, signup 페이지만 예외적으로 허용해서
+  // BGM 끊김 없이 이동되게 함
+  if (pathname.includes('/account/')) {
+    return pathname.endsWith('/account/signup.html');
+  }
+
   return true;
 }
 
@@ -127,33 +136,68 @@ function createStylesheetClone(link, nextUrl) {
   return clone;
 }
 
-function syncManagedStylesheets(nextDoc, nextUrl) {
-  const currentManaged = document.querySelectorAll(
-    'head link[rel="stylesheet"][data-pjax-managed="true"]',
-  );
+function getComparableHref(value) {
+  try {
+    const url = new URL(value, window.location.origin);
+    return `${url.pathname}${url.search}`;
+  } catch (error) {
+    return String(value || '');
+  }
+}
 
-  currentManaged.forEach((node) => node.remove());
+function syncManagedStylesheets(nextDoc, nextUrl) {
+  const currentManaged = [
+    ...document.querySelectorAll(
+      'head link[rel="stylesheet"][data-pjax-managed="true"]',
+    ),
+  ];
 
   const incomingLinks = [
     ...nextDoc.querySelectorAll('head link[rel="stylesheet"]'),
   ];
 
-  const fragment = document.createDocumentFragment();
+  const currentMap = new Map(
+    currentManaged.map((node) => [getComparableHref(node.href), node]),
+  );
 
-  incomingLinks.forEach((link) => {
-    fragment.appendChild(createStylesheetClone(link, nextUrl));
+  const nextItems = incomingLinks.map((link) => {
+    const href = normalizeSameOriginUrl(
+      link.getAttribute('href') || '',
+      nextUrl,
+    );
+    return {
+      key: getComparableHref(href),
+      href,
+      source: link,
+    };
+  });
+
+  const nextKeySet = new Set(nextItems.map((item) => item.key));
+
+  // 현재 것 중 다음 페이지에 없는 것만 제거
+  currentManaged.forEach((node) => {
+    const key = getComparableHref(node.href);
+    if (!nextKeySet.has(key)) {
+      node.remove();
+    }
   });
 
   const bootScript = document.querySelector(
     'script[type="module"][src*="assets/js/boot.js"]',
   );
 
-  if (bootScript?.parentNode) {
-    bootScript.parentNode.insertBefore(fragment, bootScript);
-    return;
-  }
+  nextItems.forEach((item) => {
+    if (currentMap.has(item.key)) return;
 
-  document.head.appendChild(fragment);
+    const clone = createStylesheetClone(item.source, nextUrl);
+    clone.setAttribute('href', item.href);
+
+    if (bootScript?.parentNode) {
+      bootScript.parentNode.insertBefore(clone, bootScript);
+    } else {
+      document.head.appendChild(clone);
+    }
+  });
 }
 
 function getCurrentMain(selector = DEFAULT_MAIN_SELECTOR) {

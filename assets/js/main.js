@@ -147,6 +147,10 @@ async function runSafe(label, fn, options = {}) {
 }
 
 async function initPageModules(modules) {
+  const page = String(document.body?.dataset?.page || '')
+    .trim()
+    .toLowerCase();
+
   const {
     postsUiModule,
     postDetailModule,
@@ -189,94 +193,140 @@ async function initPageModules(modules) {
   const { initProfileHistory } = profileHistoryModule;
   const { initStore } = storeModule;
 
-  await runSafe('post views', async () => {
-    initPostViews();
-  });
-
-  await runSafe('posts ui', async () => {
-    await initPostsUI();
-  });
-
-  await runSafe('posts all', async () => {
-    await initPostsAll();
-  });
-
-  await runSafe('post detail list', async () => {
-    await initPostDetailList();
-  });
-
-  await runSafe('post prev/next', async () => {
-    await initPostPrevNext();
-  });
-
+  // 공통
   await runSafe('scroll buttons', async () => {
     initScrollButtons();
   });
 
-  await runSafe('write module', async () => {
-    await initWrite();
-  });
+  switch (page) {
+    case 'home':
+    case 'index':
+    case 'study':
+    case 'work':
+    case 'event':
+    case 'career':
+      await runSafe('posts ui', async () => {
+        await initPostsUI();
+      });
 
-  await runSafe('prev mypage module', async () => {
-    initPrevMypage();
-  });
+      await runSafe('store module', async () => {
+        await initStore();
+      });
 
-  await runSafe('mypage module', async () => {
-    await initMypage();
-  });
+      await runSafe('suggestions board', async () => {
+        await initSuggestionsBoard();
+      });
+      break;
 
-  await runSafe('login module', async () => {
-    initLogin();
-  });
+    case 'posts-all':
+      await runSafe('posts all', async () => {
+        await initPostsAll();
+      });
+      break;
 
-  await runSafe('signup module', async () => {
-    initSignup();
-  });
+    case 'post':
+      await runSafe('post views', async () => {
+        initPostViews();
+      });
 
-  await runSafe('account recovery module', async () => {
-    initAccountRecovery();
-  });
+      await runSafe(
+        'post detail',
+        async () => {
+          await initPostDetail();
+        },
+        {
+          fallback: () => {
+            const titleEl = document.getElementById('postTitle');
+            if (titleEl) titleEl.textContent = '로딩 실패';
+          },
+        },
+      );
 
-  await runSafe(
-    'post detail',
-    async () => {
-      await initPostDetail();
-    },
-    {
-      fallback: () => {
-        const titleEl = document.getElementById('postTitle');
-        if (titleEl) titleEl.textContent = '로딩 실패';
-      },
-    },
-  );
+      await runSafe('post detail list', async () => {
+        await initPostDetailList();
+      });
 
-  await runSafe('post reactions', async () => {
-    await initPostReactions();
-  });
+      await runSafe('post prev/next', async () => {
+        await initPostPrevNext();
+      });
 
-  await runSafe('post comments', async () => {
-    await initPostComments();
-  });
+      await runSafe('post reactions', async () => {
+        await initPostReactions();
+      });
 
-  await runSafe('back link', async () => {
-    initBackLink();
-  });
+      await runSafe('post comments', async () => {
+        await initPostComments();
+      });
 
-  await runSafe('suggestions board', async () => {
-    await initSuggestionsBoard();
-  });
+      await runSafe('back link', async () => {
+        initBackLink();
+      });
 
-  await runSafe('profile module', async () => {
-    await initProfile();
-  });
+      await runSafe('suggestions board', async () => {
+        await initSuggestionsBoard();
+      });
+      break;
 
-  await runSafe('profile history module', async () => {
-    await initProfileHistory();
-  });
+    case 'write':
+      await runSafe('write module', async () => {
+        await initWrite();
+      });
+      break;
 
-  await runSafe('store module', async () => {
-    await initStore();
-  });
+    case 'login':
+      await runSafe('login module', async () => {
+        initLogin();
+      });
+      break;
+
+    case 'signup':
+      await runSafe('signup module', async () => {
+        initSignup();
+      });
+      break;
+
+    case 'prev-mypage':
+      await runSafe('prev mypage module', async () => {
+        initPrevMypage();
+      });
+      break;
+
+    case 'mypage':
+      await runSafe('mypage module', async () => {
+        await initMypage();
+      });
+      break;
+
+    case 'find-id':
+    case 'find-password':
+    case 'reset-password':
+      await runSafe('account recovery module', async () => {
+        initAccountRecovery();
+      });
+      break;
+
+    case 'profile':
+      await runSafe('profile module', async () => {
+        await initProfile();
+      });
+      break;
+
+    case 'profile-history':
+      await runSafe('profile history module', async () => {
+        await initProfileHistory();
+      });
+      break;
+
+    case 'store':
+    case 'store-item':
+      await runSafe('store module', async () => {
+        await initStore();
+      });
+      break;
+
+    default:
+      break;
+  }
 
   const y = document.querySelector('#year');
   if (y) y.textContent = String(new Date().getFullYear());

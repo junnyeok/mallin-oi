@@ -15,7 +15,27 @@ function isSpecialPath(path = '') {
   return /^(data:|blob:|mailto:|tel:|javascript:)/i.test(path);
 }
 
-export function withAssetVersion(path = '') {
+function isSiteRootAssetPath(path = '') {
+  return /^(?:\.\/)?(?:images|assets|partials)\//i.test(
+    String(path || '').trim(),
+  );
+}
+
+function normalizePath(path = '') {
+  return String(path || '').replace(/^\.?\//, '');
+}
+
+function getSiteBasePath() {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+
+  if (window.location.hostname.endsWith('github.io') && parts.length > 0) {
+    return `/${parts[0]}/`;
+  }
+
+  return '/';
+}
+
+function toSiteAbsolutePath(path = '') {
   const raw = String(path || '').trim();
   if (!raw) return raw;
   if (isExternalPath(raw) || isSpecialPath(raw)) return raw;
@@ -24,7 +44,48 @@ export function withAssetVersion(path = '') {
   const hash = hashIndex >= 0 ? raw.slice(hashIndex) : '';
   const noHash = hashIndex >= 0 ? raw.slice(0, hashIndex) : raw;
 
+  if (isSiteRootAssetPath(noHash)) {
+    const queryIndex = noHash.indexOf('?');
+    const pathname = queryIndex >= 0 ? noHash.slice(0, queryIndex) : noHash;
+    const search = queryIndex >= 0 ? noHash.slice(queryIndex) : '';
+
+    return `${getSiteBasePath()}${normalizePath(pathname)}${search}${hash}`;
+  }
+
   const url = new URL(noHash, window.location.href);
+
+  if (url.origin !== window.location.origin) {
+    return `${url.toString()}${hash}`;
+  }
+
+  const siteBase = getSiteBasePath();
+
+  let relativePath = url.pathname;
+
+  if (relativePath.startsWith(siteBase)) {
+    relativePath = relativePath.slice(siteBase.length);
+  } else if (relativePath.startsWith('/')) {
+    relativePath = relativePath.slice(1);
+  }
+
+  const normalized = normalizePath(relativePath);
+
+  return `${siteBase}${normalized}${url.search}${hash}`;
+}
+
+export function withAssetVersion(path = '') {
+  const absolutePath = toSiteAbsolutePath(path);
+  if (!absolutePath) return absolutePath;
+  if (isExternalPath(absolutePath) || isSpecialPath(absolutePath)) {
+    return absolutePath;
+  }
+
+  const hashIndex = absolutePath.indexOf('#');
+  const hash = hashIndex >= 0 ? absolutePath.slice(hashIndex) : '';
+  const noHash =
+    hashIndex >= 0 ? absolutePath.slice(0, hashIndex) : absolutePath;
+
+  const url = new URL(noHash, window.location.origin);
   url.searchParams.set('v', SITE_VERSION);
 
   return `${url.pathname}${url.search}${hash}`;

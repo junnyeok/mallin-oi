@@ -84,6 +84,64 @@ function applyPageLogos(base) {
   if (footerLogo) footerLogo.src = src;
 }
 
+function applyLayoutBase(base) {
+  const setHref = (selector, href) => {
+    document.querySelectorAll(selector).forEach((el) => {
+      el.setAttribute('href', href);
+    });
+  };
+
+  const setSrc = (selector, src) => {
+    document.querySelectorAll(selector).forEach((el) => {
+      el.setAttribute('src', src);
+    });
+  };
+
+  // header
+  setHref('.site-header .logo', `${base}index.html`);
+  setHref('.site-header .write-btn--all', `${base}posts-all.html`);
+  setHref('.site-header .write-btn[href*="write.html"]', `${base}write.html`);
+  setHref('.site-header [data-profile-btn]', `${base}login.html`);
+  setHref('.site-header [data-auth-link]', `${base}login.html`);
+  setHref('.site-header [data-mypage-link]', `${base}prev-mypage.html`);
+
+  setHref(
+    '.site-header .site-nav__link[href*="index.html"]',
+    `${base}index.html`,
+  );
+  setHref(
+    '.site-header .site-nav__link[href*="study.html"]',
+    `${base}study.html`,
+  );
+  setHref(
+    '.site-header .site-nav__link[href*="work.html"]',
+    `${base}work.html`,
+  );
+  setHref(
+    '.site-header .site-nav__link[href*="event.html"]',
+    `${base}event.html`,
+  );
+  setHref(
+    '.site-header .site-nav__link[href*="career.html"]',
+    `${base}career.html`,
+  );
+
+  setSrc('#siteLogoImg', `${base}images/logo-home.png`);
+  setSrc('#siteLogoWord', `${base}images/logo-word.png`);
+
+  // footer
+  setHref('.site-footer .footer-brand__logo', `${base}index.html`);
+  setHref('.site-footer .footer-link[href*="study.html"]', `${base}study.html`);
+  setHref('.site-footer .footer-link[href*="work.html"]', `${base}work.html`);
+  setHref('.site-footer .footer-link[href*="event.html"]', `${base}event.html`);
+  setHref(
+    '.site-footer .footer-link[href*="career.html"]',
+    `${base}career.html`,
+  );
+
+  setSrc('#footerLogoImg', `${base}images/logo-home.png`);
+}
+
 /* ================= nav 활성화 ================= */
 
 function getNavHrefByPage(page, base) {
@@ -137,6 +195,7 @@ export async function refreshLayoutState() {
     document.body.dataset.base = base;
   }
 
+  applyLayoutBase(base);
   applyPageLogos(base);
   applyCurrentNav(base);
   applyYear();

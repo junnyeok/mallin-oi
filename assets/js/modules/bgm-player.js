@@ -1,5 +1,11 @@
+import { supabase } from './supabase-client.js';
 import { withAssetVersion } from './site-version.js';
-import { resolveSitePath } from './auth-store.js';
+import {
+  getCurrentUser,
+  loginHref,
+  resolveSitePath,
+  saveRedirect,
+} from './auth-store.js';
 
 const BGM_STORAGE_KEY = 'mallin_bgm_selected_v1';
 const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v2';
@@ -27,6 +33,10 @@ let playBlocked = false;
 let isPlaying = false;
 let currentTrackId = '';
 let saveStateTimer = null;
+let retryBinded = false;
+let lifecycleBinded = false;
+let panelEventsBinded = false;
+let authWatcherBinded = false;
 
 function $(id) {
   return document.getElementById(id);
@@ -120,6 +130,95 @@ function clearSavedPlaybackState() {
   } catch (error) {
     console.error('[bgm] failed to clear playback state:', error);
   }
+}
+
+function stopAndResetPlayback() {
+  if (audio) {
+    try {
+      audio.pause();
+    } catch (error) {
+      console.warn('[bgm] failed to pause audio:', error);
+    }
+
+    try {
+      audio.currentTime = 0;
+    } catch (error) {
+      console.warn('[bgm] failed to reset currentTime:', error);
+    }
+
+    audio.removeAttribute('src');
+    audio.load();
+  }
+
+  isPlaying = false;
+  playBlocked = false;
+  currentTrackId = '';
+  clearSavedPlaybackState();
+}
+
+function renderLoginRequiredState() {
+  const list = $('bgmList');
+  const toggleBtn = $('bgmPlayToggleBtn');
+
+  if (toggleBtn) toggleBtn.disabled = true;
+
+  setPanelDesc('로그인 후 BGM을 들을 수 있어.');
+
+  if (list) {
+    list.innerHTML = `
+      <div class="bgm-empty">
+        로그인 후 배경음악을 재생할 수 있어.
+      </div>
+    `;
+  }
+}
+
+function moveToLoginForBgm() {
+  saveRedirect();
+  window.location.href = loginHref();
+}
+
+function bindPanelGlobalEvents() {
+  if (panelEventsBinded) return;
+  panelEventsBinded = true;
+
+  document.addEventListener('click', (event) => {
+    if (!panelOpen) return;
+
+    const menu = $('bgmMenu');
+    if (menu?.contains(event.target)) return;
+
+    closePanel();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closePanel();
+    }
+  });
+}
+
+function bindAuthWatcher() {
+  if (authWatcherBinded) return;
+  authWatcherBinded = true;
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) return;
+
+    stopAndResetPlayback();
+    closePanel();
+    renderLoginRequiredState();
+  });
+
+  window.addEventListener('auth-changed', async () => {
+    const user = await getCurrentUser();
+
+    if (user) return;
+
+    stopAndResetPlayback();
+    closePanel();
+    renderLoginRequiredState();
+  });
 }
 
 function ensureAudio() {
@@ -450,10 +549,16 @@ function closePanel() {
 }
 
 function bindRetryOnUserGesture() {
+  if (retryBinded) return;
+  retryBinded = true;
+
   const retry = async () => {
     if (!playBlocked) return;
 
     try {
+      const user = await getCurrentUser();
+      if (!user) return;
+
       await tryPlayCurrentTrack();
     } catch (error) {
       console.error('[bgm] retry play failed:', error);
@@ -466,6 +571,9 @@ function bindRetryOnUserGesture() {
 }
 
 function bindPageLifecycleSave() {
+  if (lifecycleBinded) return;
+  lifecycleBinded = true;
+
   const persist = () => {
     savePlaybackState();
   };
@@ -489,6 +597,38 @@ export async function initBgmPlayer() {
 
   if (!menu || !btn || !panel || !list || !toggleBtn) return;
 
+  bindRetryOnUserGesture();
+  bindPageLifecycleSave();
+  bindPanelGlobalEvents();
+  bindAuthWatcher();
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    stopAndResetPlayback();
+    closePanel();
+    renderLoginRequiredState();
+
+    btn.onclick = (event) => {
+      event.preventDefault();
+      moveToLoginForBgm();
+    };
+
+    toggleBtn.onclick = (event) => {
+      event.preventDefault();
+      moveToLoginForBgm();
+    };
+
+    list.onclick = (event) => {
+      event.preventDefault();
+      moveToLoginForBgm();
+    };
+
+    return;
+  }
+
+  toggleBtn.disabled = false;
+
   playlist = await loadOwnedBgmList();
 
   if (!playlist.length) {
@@ -503,23 +643,21 @@ export async function initBgmPlayer() {
 
   renderPlaylist();
   updatePanelDesc();
-  bindRetryOnUserGesture();
-  bindPageLifecycleSave();
 
-  btn.addEventListener('click', () => {
+  btn.onclick = () => {
     if (panel.hidden) {
       openPanel();
       return;
     }
 
     closePanel();
-  });
+  };
 
-  toggleBtn.addEventListener('click', async () => {
+  toggleBtn.onclick = async () => {
     await togglePlayPause();
-  });
+  };
 
-  list.addEventListener('click', async (event) => {
+  list.onclick = async (event) => {
     const actionBtn = event.target.closest('[data-bgm-index]');
     if (!actionBtn) return;
 
@@ -532,19 +670,7 @@ export async function initBgmPlayer() {
     }
 
     await playTrack(index, { startTime: 0, autoPlay: true });
-  });
-
-  document.addEventListener('click', (event) => {
-    if (!panelOpen) return;
-    if (menu.contains(event.target)) return;
-    closePanel();
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closePanel();
-    }
-  });
+  };
 
   const restored = await restorePlaybackPosition();
 

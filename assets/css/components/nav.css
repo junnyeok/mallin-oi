@@ -307,13 +307,13 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 /* =========================
-   BGM
+  BGM
 ========================= */
 
 .bgm-menu {
   position: absolute;
   top: 14px;
-  left: 126px;
+  left: 110px;
   z-index: 1100;
 }
 
