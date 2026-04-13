@@ -41,6 +41,38 @@
       </div>
     </section>
   </div>
+
+  <div class="bgm-menu" id="bgmMenu">
+    <button
+      type="button"
+      class="bgm-btn"
+      id="bgmBtn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="bgmPanel"
+    >
+      <span class="bgm-btn__icon" aria-hidden="true">🎵</span>
+      <span class="bgm-btn__text">BGM</span>
+    </button>
+
+    <section class="bgm-panel" id="bgmPanel" aria-label="배경음악 목록" hidden>
+      <div class="bgm-panel__head">
+        <strong class="bgm-panel__title">배경음악</strong>
+        <button type="button" class="bgm-panel__toggle" id="bgmPlayToggleBtn">
+          재생/일시정지
+        </button>
+      </div>
+
+      <p class="bgm-panel__desc" id="bgmPanelDesc">
+        배경음악을 불러오는 중이야.
+      </p>
+
+      <div class="bgm-panel__list" id="bgmList">
+        <div class="bgm-empty">등록된 배경음악을 확인하는 중이야.</div>
+      </div>
+    </section>
+  </div>
+
   <div class="container header-inner">
     <a class="logo" href="__BASE__index.html" aria-label="홈으로">
       <img

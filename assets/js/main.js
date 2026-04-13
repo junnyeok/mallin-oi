@@ -20,6 +20,7 @@ function getPostsAllBaseUrl() {
 
 async function initApp() {
   let notificationsModule;
+  let bgmPlayerModule;
   let siteVersionModule;
   let updateBannerModule;
   let cursorBuddyModule;
@@ -76,6 +77,7 @@ async function initApp() {
       storeModule,
       dailyAttendancePopupModule,
       notificationsModule,
+      bgmPlayerModule,
     ] = await Promise.all([
       import(withModuleVersion('./modules/site-version.js')),
       import(withModuleVersion('./modules/update-banner.js')),
@@ -104,6 +106,7 @@ async function initApp() {
       import(withModuleVersion('./modules/store.js')),
       import(withModuleVersion('./modules/daily-attendance-popup.js')),
       import(withModuleVersion('./modules/notifications.js')),
+      import(withModuleVersion('./modules/bgm-player.js')),
     ]);
   } catch (error) {
     console.error('[main] core module load failed:', error);
@@ -143,6 +146,7 @@ async function initApp() {
   const { initStore } = storeModule;
   const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
+  const { initBgmPlayer } = bgmPlayerModule;
 
   document
     .querySelectorAll(
@@ -329,6 +333,12 @@ async function initApp() {
     await initNotifications();
   } catch (e) {
     console.error('[main] notifications module failed:', e);
+  }
+
+  try {
+    await initBgmPlayer();
+  } catch (e) {
+    console.error('[main] bgm player module failed:', e);
   }
 
   const y = document.querySelector('#year');
