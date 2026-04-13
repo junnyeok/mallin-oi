@@ -106,6 +106,15 @@ export const CUCUMBER_GIRL_CHARACTER_PREVIEW = [
   },
 ];
 
+export const CUCUMBER_GIRL_POLICE_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-girl-police',
+    label: '오이소녀 경찰스킨',
+    imagePath: withAssetVersion('./images/skins/cucumbergirl-police.png'),
+    displayOrder: 1,
+  },
+];
+
 export const FAT_AVOCADO_CHARACTER_PREVIEW = [
   {
     code: 'char-fat-avocado-basic',
@@ -291,6 +300,21 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'skin-cucumbergirl-01',
+    name: '오이소녀 경찰스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '👮🏻‍♀️',
+    thumbImagePath: withAssetVersion('./images/skins/cucumbergirl-police.png'),
+    price: 923,
+    state: '판매 중',
+    description: '경찰제복을 입은 오이소녀 스킨.',
+    detailDescription:
+      '오이소녀 캐릭터 전용 경찰스킨이야. 구매하면 내프로필의 오이소녀 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: CUCUMBER_GIRL_POLICE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
     id: 'profile-bg-02',
     name: '프로필 배경 - 야간 순찰',
     category: 'profile',
@@ -405,6 +429,14 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/cucumbergirl.png'),
     display_order: 101,
     store_item_id: 'skin-cucumbergirl',
+  },
+  {
+    character_code: 'char-cucumber-girl',
+    skin_code: 'char-cucumber-girl-police',
+    skin_name: '오이소녀 경찰스킨',
+    image_path: withAssetVersion('./images/skins/cucumbergirl-police.png'),
+    display_order: 102,
+    store_item_id: 'skin-cucumbergirl-01',
   },
   {
     character_code: 'char-teto-carrot',
