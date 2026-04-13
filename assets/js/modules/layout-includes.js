@@ -35,6 +35,7 @@ async function injectPartial(whereEl, fileName, base) {
     `${base}partials/${fileName}`,
     window.location.href,
   ).toString();
+
   let html = await fetchPartial(url);
   html = html.replaceAll('__BASE__', base);
   whereEl.innerHTML = html;
@@ -62,6 +63,8 @@ function getLogoSrcByPage(page, base) {
     'find-password': `${base}images/logo-home.png`,
     'reset-password': `${base}images/logo-home.png`,
     'profile-history': `${base}images/logo-home.png`,
+    store: `${base}images/logo-home.png`,
+    'store-item': `${base}images/logo-home.png`,
   };
 
   return map[page] || `${base}images/logo-home.png`;
@@ -122,7 +125,24 @@ function applyCurrentNav(base) {
   });
 }
 
-/* ================= init ================= */
+function applyYear() {
+  const year = document.getElementById('year');
+  if (year) year.textContent = String(new Date().getFullYear());
+}
+
+export async function refreshLayoutState() {
+  const base = detectBasePath();
+
+  if (document.body) {
+    document.body.dataset.base = base;
+  }
+
+  applyPageLogos(base);
+  applyCurrentNav(base);
+  applyYear();
+}
+
+let layoutInjected = false;
 
 export async function initLayoutIncludes() {
   const base = detectBasePath();
@@ -134,29 +154,32 @@ export async function initLayoutIncludes() {
   const headerHost = document.querySelector('[data-include="header"]');
   const footerHost = document.querySelector('[data-include="footer"]');
 
-  if (!headerHost && !footerHost) return;
-
-  if (headerHost) {
-    try {
-      await injectPartial(headerHost, 'header.html', base);
-    } catch (err) {
-      console.error('[layout-includes] header inject error:', err);
-      headerHost.innerHTML = '';
-    }
+  if (!headerHost && !footerHost) {
+    await refreshLayoutState();
+    return;
   }
 
-  if (footerHost) {
-    try {
-      await injectPartial(footerHost, 'footer.html', base);
-    } catch (err) {
-      console.error('[layout-includes] footer inject error:', err);
-      footerHost.innerHTML = '';
+  if (!layoutInjected) {
+    if (headerHost) {
+      try {
+        await injectPartial(headerHost, 'header.html', base);
+      } catch (err) {
+        console.error('[layout-includes] header inject error:', err);
+        headerHost.innerHTML = '';
+      }
     }
+
+    if (footerHost) {
+      try {
+        await injectPartial(footerHost, 'footer.html', base);
+      } catch (err) {
+        console.error('[layout-includes] footer inject error:', err);
+        footerHost.innerHTML = '';
+      }
+    }
+
+    layoutInjected = true;
   }
 
-  applyPageLogos(base);
-  applyCurrentNav(base);
-
-  const year = document.getElementById('year');
-  if (year) year.textContent = String(new Date().getFullYear());
+  await refreshLayoutState();
 }
