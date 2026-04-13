@@ -70,6 +70,18 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function navigateWithPjax(url) {
+  const href = String(url || '').trim();
+  if (!href) return;
+
+  const tempLink = document.createElement('a');
+  tempLink.href = href;
+  tempLink.style.display = 'none';
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  tempLink.remove();
+}
+
 function escapeHtml(str) {
   return String(str || '')
     .replaceAll('&', '&amp;')
@@ -93,7 +105,7 @@ function emitPostAccessState(post, secretPassword = '') {
 }
 
 /* =========================
-   THEME SYNC
+  THEME SYNC
 ========================= */
 
 function normalizeCategory(category) {
@@ -708,7 +720,7 @@ async function bindOwnerActions(post) {
       editBtn.hidden = false;
       editBtn.disabled = false;
       editBtn.onclick = () => {
-        window.location.href = `./write.html?edit=${encodeURIComponent(post.id)}`;
+        navigateWithPjax(`./write.html?edit=${encodeURIComponent(post.id)}`);
       };
     }
 
@@ -744,9 +756,11 @@ async function bindOwnerActions(post) {
 
         const category = normalizeCategory(post.category);
         if (category === 'home') {
-          window.location.href = './posts-all.html';
+          navigateWithPjax('./posts-all.html');
         } else {
-          window.location.href = `./posts-all.html?tab=${encodeURIComponent(category)}`;
+          navigateWithPjax(
+            `./posts-all.html?tab=${encodeURIComponent(category)}`,
+          );
         }
       };
     }

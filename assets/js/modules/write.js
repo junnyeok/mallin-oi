@@ -20,6 +20,18 @@ let removedStoragePaths = new Set();
 let savedSelectionRange = null;
 let activeEmbedId = '';
 
+function navigateWithPjax(url) {
+  const href = String(url || '').trim();
+  if (!href) return;
+
+  const tempLink = document.createElement('a');
+  tempLink.href = href;
+  tempLink.style.display = 'none';
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  tempLink.remove();
+}
+
 function $(selector) {
   return document.querySelector(selector);
 }
@@ -1645,7 +1657,7 @@ export async function initWrite() {
 
       if (!editablePost) {
         alert('수정할 게시물을 찾지 못했어.');
-        window.location.href = './posts-all.html';
+        navigateWithPjax(`./post.html?id=${editPostId}`);
         return;
       }
 
@@ -1653,7 +1665,7 @@ export async function initWrite() {
     } catch (error) {
       console.error('[write] load editable post failed:', error);
       alert('수정 데이터를 불러오지 못했어.');
-      window.location.href = './posts-all.html';
+      navigateWithPjax(`./post.html?id=${editPostId}`);
       return;
     }
   }
@@ -1736,7 +1748,7 @@ export async function initWrite() {
         if (note) note.textContent = '수정 완료! 상세 페이지로 이동할게.';
 
         setTimeout(() => {
-          window.location.href = `./post.html?id=${editPostId}`;
+          navigateWithPjax(`./post.html?id=${editPostId}`);
         }, 400);
 
         return;
@@ -1798,7 +1810,7 @@ export async function initWrite() {
       syncBodyFromEditor();
 
       setTimeout(() => {
-        window.location.href = `./post.html?id=${data.id}`;
+        navigateWithPjax(`./post.html?id=${data.id}`);
       }, 700);
     } catch (error) {
       console.error('[write] save failed:', error);
