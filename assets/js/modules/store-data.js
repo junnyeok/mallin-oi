@@ -77,6 +77,17 @@ export const HEART_EMOTICON_PACK = Array.from({ length: 11 }, (_, index) => {
   };
 });
 
+export const SAD_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `sad-${order}`,
+    label: `슬픈오이 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/sad-${order}.png`),
+    displayOrder: 700 + order,
+  };
+});
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -86,11 +97,11 @@ export const TETO_CARROT_CHARACTER_PREVIEW = [
   },
 ];
 
-export const CUCUMBER_GIRL_SKIN_PREVIEW = [
+export const CUCUMBER_GIRL_CHARACTER_PREVIEW = [
   {
     code: 'char-cucumber-girl',
-    label: '오이소녀 오이스킨',
-    imagePath: withAssetVersion('./images/skins/cucumbergirl.png'),
+    label: '오이소녀 캐릭터',
+    imagePath: withAssetVersion('./images/characters/cucumbergirl.png'),
     displayOrder: 1,
   },
 ];
@@ -221,17 +232,17 @@ export const STORE_ITEMS = [
   },
   {
     id: 'skin-cucumbergirl',
-    name: '오이소녀 오이스킨',
-    category: 'skin',
-    badge: '스킨',
+    name: '오이소녀 캐릭터',
+    category: 'character',
+    badge: '캐릭터',
     icon: '👒',
-    thumbImagePath: withAssetVersion('./images/skins/cucumbergirl.png'),
+    thumbImagePath: withAssetVersion('./images/characters/cucumbergirl.png'),
     price: 820,
     state: '판매 중',
-    description: '기본오이 캐릭터에 착용 가능한 오이소녀 스킨.',
+    description: '오이소녀 캐릭터를 사용할 수 있어.',
     detailDescription:
-      '기본오이 캐릭터 전용 오이명품백을 들고있는 오이소녀 스킨이야. 구매하면 내프로필의 기본오이 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
-    previewImages: CUCUMBER_GIRL_SKIN_PREVIEW,
+      '오이명품백을 들고 있는 오이소녀 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: CUCUMBER_GIRL_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
   {
@@ -265,17 +276,19 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'fashion-bag-01',
-    name: '미니 크로스백',
-    category: 'fashion',
-    badge: '꾸미기',
-    icon: '👜',
-    price: 280,
-    state: '장착 기능 예정',
-    description: '가볍게 메는 포인트 아이템.',
-    detailDescription: '캐릭터에 장착할 수 있는 크로스백 아이템이야.',
-    previewImages: [],
-    isPurchasable: false,
+    id: 'emo-sad-01',
+    name: '슬픈오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '😭',
+    thumbImagePath: withAssetVersion('./images/emoticons/sad-1.png'),
+    price: 210,
+    state: '판매 중',
+    description: '눈물을 흘리는 오이 이모티콘팩.',
+    detailDescription:
+      '슬퍼하는 오이 이모티콘 세트야. 구매하면 7개의 슬픈오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: SAD_EMOTICON_PACK,
+    isPurchasable: true,
   },
   {
     id: 'profile-bg-02',
@@ -341,11 +354,21 @@ export const CHARACTER_CATALOG = [
     store_item_id: null,
   },
   {
+    character_code: 'char-cucumber-girl',
+    character_name: '오이소녀 캐릭터',
+    base_image_path: withAssetVersion('./images/characters/cucumbergirl.png'),
+    preview_image_path: withAssetVersion(
+      './images/characters/cucumbergirl.png',
+    ),
+    display_order: 2,
+    store_item_id: 'skin-cucumbergirl',
+  },
+  {
     character_code: 'char-teto-carrot',
     character_name: '테토당근',
     base_image_path: withAssetVersion('./images/characters/teto-carrot.png'),
     preview_image_path: withAssetVersion('./images/characters/teto-carrot.png'),
-    display_order: 2,
+    display_order: 3,
     store_item_id: 'character-carrot-01',
   },
   {
@@ -353,7 +376,7 @@ export const CHARACTER_CATALOG = [
     character_name: '아보카도 캐릭터',
     base_image_path: withAssetVersion('./images/characters/fat-avocado.png'),
     preview_image_path: withAssetVersion('./images/characters/fat-avocado.png'),
-    display_order: 3,
+    display_order: 4,
     store_item_id: 'character-fat-avocado-01',
   },
   {
@@ -361,7 +384,7 @@ export const CHARACTER_CATALOG = [
     character_name: '구운계란 캐릭터',
     base_image_path: withAssetVersion('./images/characters/grilled-egg.png'),
     preview_image_path: withAssetVersion('./images/characters/grilled-egg.png'),
-    display_order: 4,
+    display_order: 5,
     store_item_id: 'character-grilled-egg-01',
   },
 ];
@@ -376,11 +399,11 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: null,
   },
   {
-    character_code: 'char-cucumber',
-    skin_code: 'char-cucumber-girl',
-    skin_name: '오이소녀',
-    image_path: withAssetVersion('./images/skins/cucumbergirl.png'),
-    display_order: 2,
+    character_code: 'char-cucumber-girl',
+    skin_code: 'char-cucumber-girl-basic',
+    skin_name: '오이소녀 캐릭터',
+    image_path: withAssetVersion('./images/characters/cucumbergirl.png'),
+    display_order: 101,
     store_item_id: 'skin-cucumbergirl',
   },
   {
