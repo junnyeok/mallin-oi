@@ -2,6 +2,7 @@ import { withAssetVersion } from './site-version.js';
 import { resolveSitePath } from './auth-store.js';
 
 const BGM_STORAGE_KEY = 'mallin_bgm_selected_v1';
+const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v2';
 
 const BGM_CATALOG = [
   {
@@ -24,6 +25,8 @@ let currentIndex = 0;
 let panelOpen = false;
 let playBlocked = false;
 let isPlaying = false;
+let currentTrackId = '';
+let saveStateTimer = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -57,6 +60,68 @@ function setPanelDesc(text) {
   if (desc) desc.textContent = text;
 }
 
+function getSavedPlaybackState() {
+  try {
+    const raw = sessionStorage.getItem(BGM_STATE_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    return {
+      trackId: String(parsed.trackId || ''),
+      index: Number.isFinite(Number(parsed.index)) ? Number(parsed.index) : 0,
+      currentTime: Number.isFinite(Number(parsed.currentTime))
+        ? Number(parsed.currentTime)
+        : 0,
+      wasPlaying: Boolean(parsed.wasPlaying),
+      savedAt: Number.isFinite(Number(parsed.savedAt))
+        ? Number(parsed.savedAt)
+        : Date.now(),
+    };
+  } catch (error) {
+    console.error('[bgm] failed to read playback state:', error);
+    return null;
+  }
+}
+
+function savePlaybackState() {
+  const track = getCurrentTrack();
+  const player = audio;
+
+  try {
+    const payload = {
+      trackId: track?.id || '',
+      index: currentIndex,
+      currentTime:
+        player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
+      wasPlaying: Boolean(isPlaying && player && !player.paused),
+      savedAt: Date.now(),
+    };
+
+    sessionStorage.setItem(BGM_STATE_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.error('[bgm] failed to save playback state:', error);
+  }
+}
+
+function scheduleSavePlaybackState() {
+  if (saveStateTimer) return;
+
+  saveStateTimer = window.setTimeout(() => {
+    saveStateTimer = null;
+    savePlaybackState();
+  }, 250);
+}
+
+function clearSavedPlaybackState() {
+  try {
+    sessionStorage.removeItem(BGM_STATE_STORAGE_KEY);
+  } catch (error) {
+    console.error('[bgm] failed to clear playback state:', error);
+  }
+}
+
 function ensureAudio() {
   if (audio) return audio;
 
@@ -66,14 +131,24 @@ function ensureAudio() {
 
   audio.addEventListener('play', () => {
     isPlaying = true;
+    scheduleSavePlaybackState();
     renderPlaylist();
     updatePanelDesc();
   });
 
   audio.addEventListener('pause', () => {
     isPlaying = false;
+    scheduleSavePlaybackState();
     renderPlaylist();
     updatePanelDesc();
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    scheduleSavePlaybackState();
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    scheduleSavePlaybackState();
   });
 
   audio.addEventListener('ended', () => {
@@ -84,6 +159,7 @@ function ensureAudio() {
 
   audio.addEventListener('error', () => {
     isPlaying = false;
+    scheduleSavePlaybackState();
     setPanelDesc('BGM 파일을 재생하지 못했어.');
     renderPlaylist();
   });
@@ -166,6 +242,84 @@ async function loadOwnedBgmList() {
   return BGM_CATALOG.filter((item) => item.isOwned);
 }
 
+function waitForSeekable(player) {
+  return new Promise((resolve) => {
+    if (player.readyState >= 1) {
+      resolve();
+      return;
+    }
+
+    const onReady = () => {
+      player.removeEventListener('loadedmetadata', onReady);
+      resolve();
+    };
+
+    player.addEventListener('loadedmetadata', onReady, { once: true });
+  });
+}
+
+async function setTrackSource(track) {
+  const player = ensureAudio();
+  if (!track) return;
+
+  const nextTrackId = String(track.id || '');
+
+  if (currentTrackId === nextTrackId && player.src) return;
+
+  currentTrackId = nextTrackId;
+  player.src = track.audioPath;
+  player.load();
+
+  await waitForSeekable(player);
+}
+
+async function restorePlaybackPosition() {
+  const player = ensureAudio();
+  const track = getCurrentTrack();
+  const savedState = getSavedPlaybackState();
+
+  if (!track || !savedState) return false;
+  if (savedState.trackId !== track.id) return false;
+
+  await setTrackSource(track);
+
+  const duration = Number.isFinite(player.duration) ? player.duration : 0;
+  const maxSeekTime = duration > 1 ? Math.max(0, duration - 0.35) : 0;
+  const safeTime =
+    maxSeekTime > 0
+      ? Math.min(Math.max(0, savedState.currentTime || 0), maxSeekTime)
+      : Math.max(0, savedState.currentTime || 0);
+
+  try {
+    if (safeTime > 0) {
+      player.currentTime = safeTime;
+    }
+  } catch (error) {
+    console.warn('[bgm] failed to restore currentTime:', error);
+  }
+
+  isPlaying = false;
+  playBlocked = false;
+  renderPlaylist();
+  updatePanelDesc();
+
+  if (savedState.wasPlaying) {
+    try {
+      await player.play();
+      isPlaying = true;
+      playBlocked = false;
+    } catch (error) {
+      isPlaying = false;
+      playBlocked = true;
+      console.warn('[bgm] autoplay blocked while restoring:', error);
+    }
+  }
+
+  renderPlaylist();
+  updatePanelDesc();
+  return true;
+}
+
 async function tryPlayCurrentTrack() {
   const player = ensureAudio();
   const track = getCurrentTrack();
@@ -173,14 +327,13 @@ async function tryPlayCurrentTrack() {
   if (!track) {
     isPlaying = false;
     playBlocked = false;
+    clearSavedPlaybackState();
     updatePanelDesc();
     renderPlaylist();
     return;
   }
 
-  if (player.src !== track.audioPath) {
-    player.src = track.audioPath;
-  }
+  await setTrackSource(track);
 
   try {
     await player.play();
@@ -192,18 +345,53 @@ async function tryPlayCurrentTrack() {
     console.warn('[bgm] autoplay blocked or failed:', error);
   }
 
+  savePlaybackState();
   updatePanelDesc();
   renderPlaylist();
 }
 
-async function playTrack(index = 0) {
+async function playTrack(index = 0, options = {}) {
   if (!playlist.length) return;
+
+  const { startTime = 0, autoPlay = true } = options;
 
   const safeIndex =
     index >= 0 && index < playlist.length ? index : Math.max(0, currentIndex);
 
   currentIndex = safeIndex;
   saveIndex(currentIndex);
+
+  const track = getCurrentTrack();
+  const player = ensureAudio();
+
+  await setTrackSource(track);
+
+  try {
+    if (startTime > 0) {
+      const duration = Number.isFinite(player.duration) ? player.duration : 0;
+      const maxSeekTime = duration > 1 ? Math.max(0, duration - 0.35) : 0;
+      const safeTime =
+        maxSeekTime > 0
+          ? Math.min(Math.max(0, startTime), maxSeekTime)
+          : Math.max(0, startTime);
+
+      player.currentTime = safeTime;
+    } else {
+      player.currentTime = 0;
+    }
+  } catch (error) {
+    console.warn('[bgm] failed to set currentTime:', error);
+  }
+
+  if (!autoPlay) {
+    player.pause();
+    isPlaying = false;
+    playBlocked = false;
+    savePlaybackState();
+    updatePanelDesc();
+    renderPlaylist();
+    return;
+  }
 
   await tryPlayCurrentTrack();
 }
@@ -212,6 +400,7 @@ function pauseTrack() {
   const player = ensureAudio();
   player.pause();
   isPlaying = false;
+  savePlaybackState();
   updatePanelDesc();
   renderPlaylist();
 }
@@ -223,7 +412,8 @@ async function playNextTrack() {
   currentIndex = nextIndex;
   saveIndex(currentIndex);
 
-  await tryPlayCurrentTrack();
+  clearSavedPlaybackState();
+  await playTrack(nextIndex, { startTime: 0, autoPlay: true });
 }
 
 async function togglePlayPause() {
@@ -275,6 +465,21 @@ function bindRetryOnUserGesture() {
   });
 }
 
+function bindPageLifecycleSave() {
+  const persist = () => {
+    savePlaybackState();
+  };
+
+  window.addEventListener('pagehide', persist);
+  window.addEventListener('beforeunload', persist);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      persist();
+    }
+  });
+}
+
 export async function initBgmPlayer() {
   const menu = $('bgmMenu');
   const btn = $('bgmBtn');
@@ -299,6 +504,7 @@ export async function initBgmPlayer() {
   renderPlaylist();
   updatePanelDesc();
   bindRetryOnUserGesture();
+  bindPageLifecycleSave();
 
   btn.addEventListener('click', () => {
     if (panel.hidden) {
@@ -325,7 +531,7 @@ export async function initBgmPlayer() {
       return;
     }
 
-    await playTrack(index);
+    await playTrack(index, { startTime: 0, autoPlay: true });
   });
 
   document.addEventListener('click', (event) => {
@@ -340,5 +546,9 @@ export async function initBgmPlayer() {
     }
   });
 
-  await tryPlayCurrentTrack();
+  const restored = await restorePlaybackPosition();
+
+  if (!restored) {
+    await tryPlayCurrentTrack();
+  }
 }
