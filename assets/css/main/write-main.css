@@ -677,7 +677,6 @@
   }
 
   .write-editor-tools {
-    padding: 10px 0;
     overflow-x: hidden;
   }
 
@@ -768,10 +767,6 @@
   .write-editor-tools .emoticon-picker__body,
   .write-editor-tools .emoticon-picker__pack-pane {
     overflow-x: hidden;
-  }
-
-  .write-editor-tools {
-    padding: 10px 0;
   }
 
   .write-editor-tools .emoticon-picker {

@@ -359,7 +359,7 @@ async function initGlobalModules(modules) {
   const { initCursorBuddy } = cursorBuddyModule;
   const { initSearchNav } = searchNavModule;
   const { initLayoutIncludes, refreshLayoutState } = layoutIncludesModule;
-  const { initAuthUI } = authStoreModule;
+  const { initAuthUI, updateAuthUI } = authStoreModule;
   const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
   const { initBgmPlayer } = bgmPlayerModule;
@@ -418,6 +418,7 @@ async function initGlobalModules(modules) {
       onAfterSwap: async () => {
         applyVersionToStaticLinks(withAssetVersion);
         await refreshLayoutState();
+        await updateAuthUI();
         await initPageModules(modules);
       },
     });
