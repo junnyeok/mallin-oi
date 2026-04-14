@@ -1,29 +1,12 @@
 import { supabase } from './supabase-client.js';
-import { withAssetVersion } from './site-version.js';
-import {
-  getCurrentUser,
-  loginHref,
-  resolveSitePath,
-  saveRedirect,
-} from './auth-store.js';
+import { getCurrentUser, loginHref, saveRedirect } from './auth-store.js';
+import { BGM_CATALOG } from './store-data.js';
 
 const BGM_STORAGE_KEY = 'mallin_bgm_selected_v1';
+const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
+const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
 const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v2';
-
-const BGM_CATALOG = [
-  {
-    id: 'mallin-oi-welcome',
-    title: '말린오이닷컴 환영 BGM',
-    artist: '말린오이닷컴',
-    audioPath: withAssetVersion(
-      resolveSitePath('assets/mp3/mallin_oi_welcome.mp3'),
-    ),
-    coverPath: withAssetVersion(
-      resolveSitePath('images/emoticons/heart-6.png'),
-    ),
-    isOwned: true,
-  },
-];
+const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
 
 let audio = null;
 let playlist = [];
@@ -37,6 +20,9 @@ let retryBinded = false;
 let lifecycleBinded = false;
 let panelEventsBinded = false;
 let authWatcherBinded = false;
+let selectionWatcherBinded = false;
+let storePreviewWatcherBinded = false;
+let storePreviewResumeState = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -51,14 +37,65 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function getSavedTrackId() {
+  return String(localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '').trim();
+}
+
+function getDefaultTrackId() {
+  return String(BGM_CATALOG.find((track) => track?.isDefault)?.id || '').trim();
+}
+
+function getSavedSelectedTrackIds() {
+  const raw = localStorage.getItem(BGM_TRACK_IDS_STORAGE_KEY);
+
+  if (raw !== null) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return new Set(
+          parsed.map((value) => String(value || '').trim()).filter(Boolean),
+        );
+      }
+    } catch (error) {
+      console.warn('[bgm] failed to parse selected bgm ids:', error);
+    }
+
+    return new Set();
+  }
+
+  const legacyTrackId = getSavedTrackId();
+  if (legacyTrackId) return new Set([legacyTrackId]);
+
+  const defaultTrackId = getDefaultTrackId();
+  return defaultTrackId ? new Set([defaultTrackId]) : new Set();
+}
+
 function getSavedIndex() {
   const raw = Number(localStorage.getItem(BGM_STORAGE_KEY) || 0);
   if (!Number.isFinite(raw) || raw < 0) return 0;
   return raw;
 }
 
+function getPreferredIndex() {
+  const savedTrackId = getSavedTrackId();
+
+  if (savedTrackId) {
+    const matchedIndex = playlist.findIndex(
+      (track) => track.id === savedTrackId,
+    );
+    if (matchedIndex >= 0) return matchedIndex;
+  }
+
+  return getSavedIndex();
+}
+
 function saveIndex(index) {
   localStorage.setItem(BGM_STORAGE_KEY, String(index));
+
+  const track = playlist[index];
+  if (track?.id) {
+    localStorage.setItem(BGM_TRACK_ID_STORAGE_KEY, track.id);
+  }
 }
 
 function getCurrentTrack() {
@@ -270,7 +307,7 @@ function updatePanelDesc() {
   const track = getCurrentTrack();
 
   if (!track) {
-    setPanelDesc('등록된 배경음악이 없어.');
+    setPanelDesc('선택한 배경음악이 없어. 프로필에서 BGM을 골라줘.');
     return;
   }
 
@@ -294,7 +331,7 @@ function renderPlaylist() {
   if (!list) return;
 
   if (!playlist.length) {
-    list.innerHTML = `<div class="bgm-empty">등록된 배경음악이 아직 없어.</div>`;
+    list.innerHTML = `<div class="bgm-empty">선택한 배경음악이 아직 없어.</div>`;
     return;
   }
 
@@ -337,8 +374,43 @@ function renderPlaylist() {
 }
 
 async function loadOwnedBgmList() {
-  // 나중에 상점/DB 연동할 때 여기서 구매한 BGM 목록을 합치면 됨
-  return BGM_CATALOG.filter((item) => item.isOwned);
+  const user = await getCurrentUser();
+  if (!user?.id) return [];
+
+  const { data, error } = await supabase
+    .from('user_store_items')
+    .select('item_id')
+    .eq('user_id', user.id);
+
+  const selectedTrackIds = getSavedSelectedTrackIds();
+
+  if (error) {
+    console.error('[bgm] load owned bgm failed:', error);
+
+    return BGM_CATALOG.filter(
+      (item) =>
+        item.isDefault && selectedTrackIds.has(String(item?.id || '').trim()),
+    );
+  }
+
+  const ownedStoreIds = new Set(
+    (data || []).map((row) => String(row?.item_id || '').trim()),
+  );
+
+  return [...BGM_CATALOG]
+    .filter((item) => {
+      const isOwned =
+        item?.isDefault ||
+        !item?.storeItemId ||
+        ownedStoreIds.has(item.storeItemId);
+
+      if (!isOwned) return false;
+
+      return selectedTrackIds.has(String(item?.id || '').trim());
+    })
+    .sort(
+      (a, b) => Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0),
+    );
 }
 
 function waitForSeekable(player) {
@@ -370,6 +442,51 @@ async function setTrackSource(track) {
   player.load();
 
   await waitForSeekable(player);
+}
+
+async function syncPlaylistWithSelection({ autoPlay = false } = {}) {
+  const nextPlaylist = await loadOwnedBgmList();
+  const nextTrackIds = new Set(
+    nextPlaylist.map((track) => String(track?.id || '').trim()).filter(Boolean),
+  );
+
+  const shouldResetTrack = !nextTrackIds.has(currentTrackId);
+
+  playlist = nextPlaylist;
+
+  if (!playlist.length) {
+    stopAndResetPlayback();
+    setPanelDesc('선택한 배경음악이 없어. 프로필에서 BGM을 골라줘.');
+    renderPlaylist();
+    return;
+  }
+
+  const preferredIndex = getPreferredIndex();
+  currentIndex =
+    preferredIndex >= 0 && preferredIndex < playlist.length
+      ? preferredIndex
+      : 0;
+
+  saveIndex(currentIndex);
+  renderPlaylist();
+  updatePanelDesc();
+
+  if (shouldResetTrack) {
+    clearSavedPlaybackState();
+
+    if (autoPlay) {
+      await playTrack(currentIndex, { startTime: 0, autoPlay: true });
+      return;
+    }
+
+    currentTrackId = '';
+    return;
+  }
+
+  if (autoPlay) {
+    clearSavedPlaybackState();
+    await playTrack(currentIndex, { startTime: 0, autoPlay: true });
+  }
 }
 
 async function restorePlaybackPosition() {
@@ -588,6 +705,101 @@ function bindPageLifecycleSave() {
   });
 }
 
+function bindSelectionWatcher() {
+  if (selectionWatcherBinded) return;
+  selectionWatcherBinded = true;
+
+  window.addEventListener('bgm-selection-changed', async () => {
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    const shouldKeepPlaying = Boolean(isPlaying && audio && !audio.paused);
+    await syncPlaylistWithSelection({ autoPlay: shouldKeepPlaying });
+  });
+}
+
+function bindStorePreviewWatcher() {
+  if (storePreviewWatcherBinded) return;
+  storePreviewWatcherBinded = true;
+
+  window.addEventListener(STORE_BGM_PREVIEW_EVENT, async (event) => {
+    const state = String(event?.detail?.state || '').trim();
+    const player = ensureAudio();
+
+    if (state === 'start') {
+      if (storePreviewResumeState) return;
+
+      const track = getCurrentTrack();
+      const shouldResume = Boolean(track && isPlaying && !player.paused);
+
+      storePreviewResumeState = {
+        shouldResume,
+        trackId: track?.id || '',
+        index: currentIndex,
+        currentTime:
+          Number.isFinite(player.currentTime) && player.currentTime > 0
+            ? player.currentTime
+            : 0,
+      };
+
+      if (shouldResume) {
+        pauseTrack();
+
+        try {
+          if (storePreviewResumeState.currentTime > 0) {
+            player.currentTime = storePreviewResumeState.currentTime;
+          }
+        } catch (error) {
+          console.warn(
+            '[bgm] failed to keep currentTime on preview start:',
+            error,
+          );
+        }
+
+        savePlaybackState();
+      }
+
+      return;
+    }
+
+    if (state === 'stop') {
+      const resumeState = storePreviewResumeState;
+      storePreviewResumeState = null;
+
+      if (!resumeState?.shouldResume) return;
+
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      if (!playlist.length) {
+        await syncPlaylistWithSelection({ autoPlay: false });
+      }
+
+      let nextIndex = Number.isFinite(resumeState.index)
+        ? resumeState.index
+        : currentIndex;
+
+      if (resumeState.trackId) {
+        const matchedIndex = playlist.findIndex(
+          (track) => track.id === resumeState.trackId,
+        );
+        if (matchedIndex >= 0) {
+          nextIndex = matchedIndex;
+        }
+      }
+
+      if (nextIndex < 0 || nextIndex >= playlist.length) {
+        nextIndex = 0;
+      }
+
+      await playTrack(nextIndex, {
+        startTime: Math.max(0, Number(resumeState.currentTime) || 0),
+        autoPlay: true,
+      });
+    }
+  });
+}
+
 export async function initBgmPlayer() {
   const menu = $('bgmMenu');
   const btn = $('bgmBtn');
@@ -601,6 +813,8 @@ export async function initBgmPlayer() {
   bindPageLifecycleSave();
   bindPanelGlobalEvents();
   bindAuthWatcher();
+  bindSelectionWatcher();
+  bindStorePreviewWatcher();
 
   const user = await getCurrentUser();
 
@@ -629,20 +843,13 @@ export async function initBgmPlayer() {
 
   toggleBtn.disabled = false;
 
-  playlist = await loadOwnedBgmList();
+  await syncPlaylistWithSelection({ autoPlay: false });
 
   if (!playlist.length) {
     setPanelDesc('등록된 배경음악이 없어.');
     renderPlaylist();
     return;
   }
-
-  const savedIndex = getSavedIndex();
-  currentIndex =
-    savedIndex >= 0 && savedIndex < playlist.length ? savedIndex : 0;
-
-  renderPlaylist();
-  updatePanelDesc();
 
   btn.onclick = () => {
     if (panel.hidden) {
@@ -675,6 +882,10 @@ export async function initBgmPlayer() {
   const restored = await restorePlaybackPosition();
 
   if (!restored) {
+    currentIndex = getPreferredIndex();
+    if (currentIndex < 0 || currentIndex >= playlist.length) {
+      currentIndex = 0;
+    }
     await tryPlayCurrentTrack();
   }
 }

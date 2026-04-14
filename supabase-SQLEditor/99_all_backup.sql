@@ -10721,6 +10721,11 @@ begin
     v_name := '오이소녀 경찰스킨';
     v_category := 'skin';
 
+      elsif p_item_id = 'bgm-tetocarrot-01' then
+    v_price := 420;
+    v_name := '테토당근 BGM';
+    v_category := 'bgm';
+
   else
     return query
     select
@@ -11122,6 +11127,9 @@ begin
     )
     on conflict (user_id, character_code) do nothing;
 
+  elsif p_item_id = 'bgm-tetocarrot-01' then
+    null;
+
     insert into public.user_character_skins (
       user_id,
       character_code,
@@ -11198,7 +11206,10 @@ begin
         then '슬픈오이 이모티콘팩 구매가 완료됐어. 210피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-cucumbergirl-01'
         then '오이소녀 경찰스킨 구매가 완료됐어. 923피클이 차감됐고 내프로필 오이소녀 스킨 인벤토리에서 착용할 수 있어.'
+              when p_item_id = 'bgm-tetocarrot-01'
+        then '테토당근 BGM 구매가 완료됐어. 420피클이 차감됐고 내프로필 BGM 인벤토리에서 장착할 수 있어.'
       else '구매가 완료됐어.'
+      
     end,
     coalesce(v_balance, 0);
 end;

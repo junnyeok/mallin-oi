@@ -2,6 +2,7 @@ import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 import { getCurrentUser, loginHref } from './auth-store.js';
 import {
+  BGM_CATALOG,
   CHARACTER_CATALOG,
   CHARACTER_SKIN_CATALOG,
   getStoreItemDetailHref,
@@ -15,6 +16,9 @@ const DEFAULT_CHARACTER_CODE = 'char-cucumber';
 const DEFAULT_CHARACTER_NAME = '기본오이';
 const DEFAULT_SKIN_CODE = 'char-cucumber-basic';
 const DEFAULT_SKIN_NAME = '기본오이';
+const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
+const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
+const DEFAULT_BGM_TRACK_ID = 'mallin-oi-welcome';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
@@ -323,6 +327,88 @@ async function loadCharacterInventory(userId) {
   return data || [];
 }
 
+async function loadOwnedStoreItemIdsByUserId(userId) {
+  const { data, error } = await supabase
+    .from('user_store_items')
+    .select('item_id')
+    .eq('user_id', userId);
+
+  if (error) throw error;
+
+  return new Set((data || []).map((row) => String(row?.item_id || '').trim()));
+}
+
+function getDefaultBgmTrackId() {
+  return (
+    String(
+      BGM_CATALOG.find((track) => track?.isDefault)?.id || DEFAULT_BGM_TRACK_ID,
+    ).trim() || DEFAULT_BGM_TRACK_ID
+  );
+}
+
+function getSavedBgmTrackId() {
+  return (
+    String(localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '').trim() ||
+    getDefaultBgmTrackId()
+  );
+}
+
+function getSavedBgmTrackIds() {
+  const raw = localStorage.getItem(BGM_TRACK_IDS_STORAGE_KEY);
+
+  if (raw !== null) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return new Set(
+          parsed.map((value) => String(value || '').trim()).filter(Boolean),
+        );
+      }
+    } catch (error) {
+      console.warn('[profile] failed to parse selected bgm ids:', error);
+    }
+
+    return new Set();
+  }
+
+  const legacyTrackId = String(
+    localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '',
+  ).trim();
+
+  if (legacyTrackId) {
+    return new Set([legacyTrackId]);
+  }
+
+  return new Set([getDefaultBgmTrackId()]);
+}
+
+function saveSelectedBgmTrackIds(trackIds = []) {
+  const safeTrackIds = [...new Set(trackIds)]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  localStorage.setItem(BGM_TRACK_IDS_STORAGE_KEY, JSON.stringify(safeTrackIds));
+}
+
+function syncCurrentBgmTrackSelection(trackIds = []) {
+  const safeTrackIds = [...new Set(trackIds)]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  const currentTrackId = String(
+    localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '',
+  ).trim();
+
+  if (safeTrackIds.includes(currentTrackId)) return;
+
+  if (safeTrackIds.length) {
+    localStorage.setItem(BGM_TRACK_ID_STORAGE_KEY, safeTrackIds[0]);
+    return;
+  }
+
+  localStorage.removeItem(BGM_TRACK_ID_STORAGE_KEY);
+}
+
 function normalizeCharacterCode(value) {
   return String(value || '').trim() || DEFAULT_CHARACTER_CODE;
 }
@@ -617,6 +703,135 @@ function renderCharacterInventoryItem(item, equippedImageUrl = '') {
       </div>
     </div>
   `;
+}
+
+function renderBgmCard(track, selectedTrackIds = new Set()) {
+  const isOwned = track?.is_owned !== false;
+  const isSelected = selectedTrackIds.has(String(track?.id || '').trim());
+  const detailHref = track?.storeItemId
+    ? getStoreItemDetailHref(track.storeItemId)
+    : '';
+
+  const metaText = isOwned
+    ? isSelected
+      ? '선택됨 · 클릭하면 제외'
+      : '클릭해서 선택'
+    : '미보유 · 클릭하면 구매페이지로 이동';
+
+  return `
+    <button
+      type="button"
+      class="profile-character-card profile-bgm-card ${isSelected ? 'is-selected' : ''} ${!isOwned ? 'is-locked' : ''}"
+      data-bgm-track-id="${escapeHtml(track?.id || '')}"
+      data-owned="${isOwned ? 'true' : 'false'}"
+      data-store-href="${escapeHtml(detailHref)}"
+    >
+      <div class="profile-bgm-card__thumb">
+        <img
+          class="profile-bgm-card__thumb-image"
+          src="${escapeHtml(track?.coverPath || '')}"
+          alt="${escapeHtml(track?.title || 'BGM')}"
+        />
+      </div>
+
+      <div class="profile-character-card__name">
+        ${escapeHtml(track?.title || 'BGM')}
+      </div>
+
+      <div class="profile-character-card__meta ${!isOwned ? 'is-locked' : ''}">
+        ${metaText}
+      </div>
+    </button>
+  `;
+}
+
+function renderBgmSection({
+  isOwnProfile = false,
+  ownedStoreItemIds = new Set(),
+}) {
+  const wrapEl = $('profileBgmWrap');
+  const listEl = $('profileBgmList');
+
+  if (!wrapEl || !listEl) return;
+
+  wrapEl.hidden = !isOwnProfile;
+  if (!isOwnProfile) return;
+
+  const bgmRows = [...BGM_CATALOG]
+    .map((track) => ({
+      ...track,
+      is_owned:
+        !!track?.isDefault ||
+        !track?.storeItemId ||
+        ownedStoreItemIds.has(track.storeItemId),
+    }))
+    .sort(
+      (a, b) => Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0),
+    );
+
+  const ownedTrackIdSet = new Set(
+    bgmRows
+      .filter((track) => track?.is_owned)
+      .map((track) => String(track?.id || '').trim())
+      .filter(Boolean),
+  );
+
+  function getNormalizedSelectedTrackIds() {
+    return new Set(
+      [...getSavedBgmTrackIds()].filter((trackId) =>
+        ownedTrackIdSet.has(trackId),
+      ),
+    );
+  }
+
+  function renderList() {
+    const selectedTrackIds = getNormalizedSelectedTrackIds();
+
+    listEl.innerHTML = bgmRows
+      .map((track) => renderBgmCard(track, selectedTrackIds))
+      .join('');
+
+    Array.from(listEl.querySelectorAll('[data-bgm-track-id]')).forEach(
+      (button) => {
+        button.addEventListener('click', () => {
+          const isOwned = button.dataset.owned === 'true';
+          const storeHref = String(button.dataset.storeHref || '').trim();
+          const trackId = String(button.dataset.bgmTrackId || '').trim();
+
+          if (!isOwned) {
+            if (storeHref) window.location.href = storeHref;
+            return;
+          }
+
+          if (!trackId) return;
+
+          const nextSelectedTrackIds = getNormalizedSelectedTrackIds();
+          const wasSelected = nextSelectedTrackIds.has(trackId);
+
+          if (wasSelected) {
+            nextSelectedTrackIds.delete(trackId);
+          } else {
+            nextSelectedTrackIds.add(trackId);
+          }
+
+          const nextIds = [...nextSelectedTrackIds];
+
+          saveSelectedBgmTrackIds(nextIds);
+          syncCurrentBgmTrackSelection(nextIds);
+          renderList();
+
+          setMsg(
+            wasSelected ? 'BGM 선택 해제 완료!' : 'BGM 선택 완료!',
+            'green',
+          );
+
+          window.dispatchEvent(new Event('bgm-selection-changed'));
+        });
+      },
+    );
+  }
+
+  renderList();
 }
 
 function renderCharacterSection({
@@ -1109,6 +1324,7 @@ export async function initProfile() {
 
   let characterRows = [];
   let characterSkinRows = [];
+  let ownedStoreItemIds = new Set();
 
   if (isOwnProfile) {
     try {
@@ -1122,6 +1338,12 @@ export async function initProfile() {
     } catch (error) {
       console.error('[profile] load character skins failed:', error);
     }
+
+    try {
+      ownedStoreItemIds = await loadOwnedStoreItemIdsByUserId(targetUserId);
+    } catch (error) {
+      console.error('[profile] load owned store items failed:', error);
+    }
   }
 
   renderCharacterSection({
@@ -1129,6 +1351,11 @@ export async function initProfile() {
     characterRows,
     skinRows: characterSkinRows,
     isOwnProfile,
+  });
+
+  renderBgmSection({
+    isOwnProfile,
+    ownedStoreItemIds,
   });
 
   if (isOwnProfile && nicknameInput) {

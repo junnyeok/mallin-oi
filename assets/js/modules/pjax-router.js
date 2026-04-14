@@ -294,6 +294,15 @@ export async function initPjaxRouter({
         window.history.pushState({ pjax: true }, '', nextUrl.toString());
       }
 
+      window.dispatchEvent(
+        new CustomEvent('mallin:before-pjax-swap', {
+          detail: {
+            from: window.location.href,
+            to: nextUrl.toString(),
+          },
+        }),
+      );
+
       currentMain.replaceWith(nextMain);
 
       if (scrollToTop) {

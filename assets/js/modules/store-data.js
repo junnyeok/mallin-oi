@@ -1,5 +1,46 @@
 import { withAssetVersion } from './site-version.js';
 
+export const WELCOME_BGM_PREVIEW = [
+  {
+    code: 'bgm-welcome',
+    label: '말린오이닷컴 환영 BGM',
+    imagePath: withAssetVersion('./images/emoticons/heart-6.png'),
+    displayOrder: 1,
+  },
+];
+
+export const TETO_CARROT_BGM_PREVIEW = [
+  {
+    code: 'bgm-tetocarrot',
+    label: '테토당근 BGM',
+    imagePath: withAssetVersion('./images/characters/teto-carrot.png'),
+    displayOrder: 1,
+  },
+];
+
+export const BGM_CATALOG = [
+  {
+    id: 'mallin-oi-welcome',
+    storeItemId: null,
+    title: '말린오이닷컴 환영 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin_oi_welcome.mp3'),
+    coverPath: withAssetVersion('./images/emoticons/heart-6.png'),
+    isDefault: true,
+    displayOrder: 1,
+  },
+  {
+    id: 'mallin-oi-tetocarrot',
+    storeItemId: 'bgm-tetocarrot-01',
+    title: '테토당근 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin_oi_tetocarrot.mp3'),
+    coverPath: withAssetVersion('./images/characters/teto-carrot.png'),
+    isDefault: false,
+    displayOrder: 2,
+  },
+];
+
 export const BASIC_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
   const order = index + 1;
 
@@ -315,6 +356,22 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'bgm-tetocarrot-01',
+    name: '테토당근 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥕🎵',
+    thumbImagePath: withAssetVersion('./images/characters/teto-carrot.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/mallin_oi_tetocarrot.mp3'),
+    price: 420,
+    state: '판매 중',
+    description: '테토당근에 어울리는 테토스러운 BGM.',
+    detailDescription:
+      '테토당근에 어울리는 테토스러운 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: TETO_CARROT_BGM_PREVIEW,
+    isPurchasable: true,
+  },
+  {
     id: 'profile-bg-02',
     name: '프로필 배경 - 야간 순찰',
     category: 'profile',
@@ -337,19 +394,6 @@ export const STORE_ITEMS = [
     state: '적용 기능 예정',
     description: '프로필을 더 눈에 띄게 보여주는 금빛 프레임.',
     detailDescription: '골드 배지 느낌의 프로필 프레임이야.',
-    previewImages: [],
-    isPurchasable: false,
-  },
-  {
-    id: 'fashion-headset-01',
-    name: '집중 헤드셋',
-    category: 'fashion',
-    badge: '꾸미기',
-    icon: '🎧',
-    price: 300,
-    state: '장착 기능 예정',
-    description: '집중 모드 느낌을 살려주는 헤드셋 아이템.',
-    detailDescription: '집중 테마 꾸미기 아이템이야.',
     previewImages: [],
     isPurchasable: false,
   },

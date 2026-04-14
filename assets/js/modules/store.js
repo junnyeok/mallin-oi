@@ -46,6 +46,12 @@ const HOME_STORE_MOBILE_BREAKPOINT = 768;
 const HOME_STORE_DESKTOP_VISIBLE = 5;
 const HOME_STORE_MOBILE_VISIBLE = 1;
 const HOME_STORE_AUTOPLAY_MS = 5000;
+let storeItemPreviewAudio = null;
+let storeItemPreviewCleanupController = null;
+let storeItemPreviewHasControl = false;
+
+const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
+const BEFORE_PJAX_SWAP_EVENT = 'mallin:before-pjax-swap';
 
 function $(selector) {
   return document.querySelector(selector);
@@ -59,16 +65,188 @@ function formatPrice(price) {
   return `${Number(price || 0).toLocaleString('ko-KR')} 🥒`;
 }
 
+function updateStoreItemBgmPreviewUi(isPlaying = false, itemName = 'BGM') {
+  const btn = $('#storeItemBgmPreviewBtn');
+  if (!btn) return;
+
+  const statusEl = btn.querySelector('.store-item-preview__bgm-status');
+
+  btn.classList.toggle('is-playing', isPlaying);
+  btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+  btn.setAttribute(
+    'aria-label',
+    isPlaying ? `${itemName} 미리듣기 정지` : `${itemName} 미리듣기 재생`,
+  );
+
+  if (statusEl) {
+    statusEl.textContent = isPlaying ? '재생 중' : '미리듣기';
+  }
+}
+
+function notifyStoreItemBgmPreview(state) {
+  if (state === 'start') {
+    if (storeItemPreviewHasControl) return;
+    storeItemPreviewHasControl = true;
+  } else {
+    if (!storeItemPreviewHasControl) return;
+    storeItemPreviewHasControl = false;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(STORE_BGM_PREVIEW_EVENT, {
+      detail: { state },
+    }),
+  );
+}
+
+function destroyStoreItemBgmPreview({ resetTime = true } = {}) {
+  if (storeItemPreviewCleanupController) {
+    storeItemPreviewCleanupController.abort();
+    storeItemPreviewCleanupController = null;
+  }
+
+  if (storeItemPreviewAudio) {
+    try {
+      storeItemPreviewAudio.pause();
+    } catch (error) {
+      console.warn('[store] bgm preview pause failed:', error);
+    }
+
+    if (resetTime) {
+      try {
+        storeItemPreviewAudio.currentTime = 0;
+      } catch (error) {
+        console.warn('[store] bgm preview currentTime reset failed:', error);
+      }
+    }
+
+    try {
+      storeItemPreviewAudio.removeAttribute('src');
+      storeItemPreviewAudio.load();
+    } catch (error) {
+      console.warn('[store] bgm preview unload failed:', error);
+    }
+
+    storeItemPreviewAudio = null;
+  }
+
+  notifyStoreItemBgmPreview('stop');
+  updateStoreItemBgmPreviewUi(false);
+}
+
+function bindStoreItemBgmPreview(item) {
+  destroyStoreItemBgmPreview();
+
+  const btn = $('#storeItemBgmPreviewBtn');
+  const audioPath = String(item?.previewAudioPath || '').trim();
+
+  if (!btn || item?.category !== 'bgm' || !audioPath) return;
+
+  const audio = new Audio(audioPath);
+  audio.preload = 'metadata';
+  storeItemPreviewAudio = audio;
+  storeItemPreviewHasControl = false;
+
+  const cleanupController = new AbortController();
+  const { signal } = cleanupController;
+  storeItemPreviewCleanupController = cleanupController;
+
+  const stopPreview = () => {
+    destroyStoreItemBgmPreview();
+  };
+
+  audio.addEventListener('play', () => {
+    updateStoreItemBgmPreviewUi(true, item.name);
+  });
+
+  audio.addEventListener('pause', () => {
+    updateStoreItemBgmPreviewUi(false, item.name);
+  });
+
+  audio.addEventListener('ended', () => {
+    try {
+      audio.currentTime = 0;
+    } catch (error) {
+      console.warn('[store] bgm preview ended reset failed:', error);
+    }
+
+    notifyStoreItemBgmPreview('stop');
+    updateStoreItemBgmPreviewUi(false, item.name);
+  });
+
+  btn.addEventListener(
+    'click',
+    async () => {
+      if (!storeItemPreviewAudio) return;
+
+      if (!audio.paused) {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch (error) {
+          console.warn('[store] bgm preview stop failed:', error);
+        }
+
+        notifyStoreItemBgmPreview('stop');
+        updateStoreItemBgmPreviewUi(false, item.name);
+        return;
+      }
+
+      notifyStoreItemBgmPreview('start');
+
+      try {
+        audio.currentTime = 0;
+        await audio.play();
+        updateStoreItemBgmPreviewUi(true, item.name);
+      } catch (error) {
+        console.error('[store] bgm preview play failed:', error);
+        notifyStoreItemBgmPreview('stop');
+        updateStoreItemBgmPreviewUi(false, item.name);
+      }
+    },
+    { signal },
+  );
+
+  window.addEventListener('pagehide', stopPreview, { signal });
+  window.addEventListener('beforeunload', stopPreview, { signal });
+  window.addEventListener('popstate', stopPreview, { signal });
+  window.addEventListener(BEFORE_PJAX_SWAP_EVENT, stopPreview, { signal });
+
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'hidden') {
+        stopPreview();
+      }
+    },
+    { signal },
+  );
+}
+
 function getCategoryLabel(category) {
   if (category === 'emoticon') return '이모티콘';
   if (category === 'character') return '캐릭터';
-  if (category === 'fashion') return '스킨';
+  if (category === 'skin') return '스킨';
+  if (category === 'bgm') return 'BGM';
   if (category === 'profile') return '프로필';
   return '기타';
 }
 
 function renderStoreThumb(item) {
   if (item.thumbImagePath) {
+    if (item.category === 'bgm') {
+      return `
+        <div class="store-bgm-thumb" aria-hidden="true">
+          <img
+            class="store-bgm-thumb__image"
+            src="${item.thumbImagePath}"
+            alt="${item.name}"
+            loading="lazy"
+          />
+        </div>
+      `;
+    }
+
     return `
       <img
         class="store-card__thumb-image"
@@ -364,12 +542,49 @@ function renderStoreItemPreview(item) {
   const previews = Array.isArray(item?.previewImages) ? item.previewImages : [];
   const isLargePreview =
     item?.category === 'character' || item?.category === 'skin';
+  const isBgmPreview = item?.category === 'bgm';
 
   if (!previews.length) {
     return `
       <div class="store-item-preview__empty">
         <div class="store-item-preview__icon">${item.icon}</div>
         <p>미리보기는 다음 단계에서 추가될 예정이야.</p>
+      </div>
+    `;
+  }
+
+  if (isBgmPreview) {
+    const preview = previews[0];
+    const hasPreviewAudio = !!String(item?.previewAudioPath || '').trim();
+
+    return `
+      <div class="store-item-preview__bgm">
+        <div class="store-item-preview__bgm-box">
+          <button
+            type="button"
+            class="store-item-preview__bgm-card ${hasPreviewAudio ? 'is-clickable' : 'is-disabled'}"
+            id="storeItemBgmPreviewBtn"
+            aria-pressed="false"
+            aria-label="${item.name} 미리듣기 재생"
+            ${hasPreviewAudio ? '' : 'disabled'}
+          >
+            <span class="store-item-preview__bgm-status">미리듣기</span>
+            <img
+              src="${preview.imagePath}"
+              alt="${preview.label}"
+              class="store-item-preview__bgm-img"
+              loading="lazy"
+            />
+          </button>
+
+          <p class="store-item-preview__bgm-help">
+            ${
+              hasPreviewAudio
+                ? 'LP를 클릭하면 미리듣기가 재생돼.'
+                : '이 BGM은 아직 미리듣기를 준비 중이야.'
+            }
+          </p>
+        </div>
       </div>
     `;
   }
@@ -455,6 +670,8 @@ async function initStoreItemPage() {
       actionDisabled = false;
     }
 
+    destroyStoreItemBgmPreview();
+
     root.innerHTML = `
       <div class="store-item-detail">
         <div class="store-item-detail__main">
@@ -472,48 +689,35 @@ async function initStoreItemPage() {
           </div>
 
           <section class="store-item-preview">
-            <div class="store-item-preview__head">
-              <h2>구성 미리보기</h2>
-            </div>
+            <h2 class="store-item-preview__title">구성 미리보기</h2>
             ${renderStoreItemPreview(item)}
           </section>
         </div>
 
         <aside class="store-item-detail__side">
-          <div class="store-item-purchase">
-            <p class="store-item-purchase__label">가격</p>
-            <p class="store-item-purchase__price">${formatPrice(item.price)}</p>
-
-            <p class="store-item-purchase__label">내 보유 피클</p>
-            <p class="store-item-purchase__balance">
-              ${myPickles === null ? '로그인 필요' : `${myPickles.toLocaleString('ko-KR')} 🥒`}
-            </p>
-
+          <div class="store-item-buybox">
+            <p class="store-item-buybox__label">가격</p>
+            <p class="store-item-buybox__price">${formatPrice(item.price)}</p>
+            <p class="store-item-buybox__label">내 보유 피클</p>
+            <p class="store-item-buybox__balance">${formatPrice(myPickles)}</p>
             <button
               type="button"
-              class="store-item-purchase__btn"
+              class="store-item-buybox__btn"
               id="storeItemBuyBtn"
               ${actionDisabled ? 'disabled' : ''}
             >
               ${actionLabel}
             </button>
-
-            <p class="store-item-purchase__msg" id="storeItemBuyMsg">
-              ${
-                message ||
-                (isOwned
-                  ? '이미 지급받은 품목이야.'
-                  : item.isPurchasable
-                    ? '피클이 있다면 구입 가능한 품목이야.'
-                    : '이 품목은 아직 판매 준비중이야.')
-              }
-            </p>
-
-            <a class="store-item-purchase__back" href="./store.html">← 상점으로 돌아가기</a>
+            <p class="store-item-buybox__msg" id="storeItemBuyMsg">${message}</p>
+            <a class="store-item-buybox__back" href="./store.html">← 상점으로 돌아가기</a>
           </div>
         </aside>
       </div>
     `;
+
+    if (item.category === 'bgm') {
+      bindStoreItemBgmPreview(item);
+    }
 
     const buyBtn = $('#storeItemBuyBtn');
     const msgEl = $('#storeItemBuyMsg');
@@ -547,6 +751,10 @@ async function initStoreItemPage() {
         String(row?.message || '').trim() || '지급이 완료됐어.';
 
       await renderDetail(nextMessage);
+
+      if (item.category === 'bgm') {
+        window.dispatchEvent(new Event('bgm-selection-changed'));
+      }
     });
   }
 
