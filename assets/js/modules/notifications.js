@@ -298,6 +298,13 @@ export async function initNotifications() {
     await refreshNotifications({ keepPanelOpen: true });
   });
 
+  panel.addEventListener('click', (event) => {
+    const notificationItem = event.target.closest('.notification-item[href]');
+    if (!notificationItem) return;
+
+    closePanel();
+  });
+
   document.addEventListener('click', (event) => {
     if (!panelOpen) return;
     if (menu.contains(event.target)) return;
