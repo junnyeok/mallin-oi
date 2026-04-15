@@ -1,6 +1,11 @@
 import { supabase } from './supabase-client.js';
 import { getCurrentSession, loginHref, saveRedirect } from './auth-store.js';
-import { BGM_CATALOG } from './store-data.js';
+
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const { BGM_CATALOG } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const BGM_STORAGE_KEY = 'mallin_bgm_selected_v1';
 const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
@@ -443,6 +448,31 @@ function waitForSeekable(player) {
   });
 }
 
+async function tryAutoplayWithMutedBootstrap(player) {
+  const originalMuted = player.muted;
+  const originalVolume = player.volume;
+
+  try {
+    player.muted = true;
+    player.volume = 0;
+
+    await player.play();
+
+    // 재생 시작 자체가 성공한 뒤 원래 상태 복구
+    // 약간의 지연을 줘야 브라우저가 재생 시작을 먼저 인정하는 경우가 있음
+    await new Promise((resolve) => window.setTimeout(resolve, 60));
+
+    player.muted = originalMuted;
+    player.volume = originalVolume;
+
+    return true;
+  } catch (error) {
+    player.muted = originalMuted;
+    player.volume = originalVolume;
+    throw error;
+  }
+}
+
 async function setTrackSource(track) {
   const player = ensureAudio();
   if (!track) return;
@@ -542,7 +572,7 @@ async function restorePlaybackPosition() {
 
   if (savedState.wasPlaying) {
     try {
-      await player.play();
+      await tryAutoplayWithMutedBootstrap(player);
       isPlaying = true;
       playBlocked = false;
     } catch (error) {
@@ -574,7 +604,7 @@ async function tryPlayCurrentTrack() {
   await setTrackSource(track);
 
   try {
-    await player.play();
+    await tryAutoplayWithMutedBootstrap(player);
     isPlaying = true;
     playBlocked = false;
   } catch (error) {

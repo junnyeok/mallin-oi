@@ -1,12 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 import { getCurrentUser, loginHref } from './auth-store.js';
-import {
-  BGM_CATALOG,
-  CHARACTER_CATALOG,
-  CHARACTER_SKIN_CATALOG,
-  getStoreItemDetailHref,
-} from './store-data.js';
 
 const PROFILE_BUCKET = 'profile-images';
 const PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -24,9 +18,18 @@ const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
 
-const { renderTextWithEmoticons } = await import(
-  `./emoticons.js?v=${MODULE_VERSION}`
-);
+const [
+  { renderTextWithEmoticons },
+  {
+    BGM_CATALOG,
+    CHARACTER_CATALOG,
+    CHARACTER_SKIN_CATALOG,
+    getStoreItemDetailHref,
+  },
+] = await Promise.all([
+  import(`./emoticons.js?v=${MODULE_VERSION}`),
+  import(`./store-data.js?v=${MODULE_VERSION}`),
+]);
 
 function $(id) {
   return document.getElementById(id);
