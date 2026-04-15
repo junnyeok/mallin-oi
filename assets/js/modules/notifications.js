@@ -1,13 +1,11 @@
 import { supabase } from './supabase-client.js';
-import {
-  getCurrentUser,
-  resolveSitePath,
-  showLoginRequiredPopup,
-} from './auth-store.js';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
+
+const { getCurrentUser, resolveSitePath, showLoginRequiredPopup } =
+  await import(`./auth-store.js?v=${MODULE_VERSION}`);
 
 const { renderTextWithEmoticons } = await import(
   `./emoticons.js?v=${MODULE_VERSION}`

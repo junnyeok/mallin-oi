@@ -1,5 +1,4 @@
 import { supabase } from './supabase-client.js';
-import { getCurrentSession, showLoginRequiredPopup } from './auth-store.js';
 import {
   getLocalSelectedBgmTrackIds,
   hydrateBgmPreferencesFromRemote,
@@ -8,6 +7,10 @@ import {
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const { getCurrentSession, showLoginRequiredPopup } = await import(
+  `./auth-store.js?v=${MODULE_VERSION}`
 );
 
 const { BGM_CATALOG } = await import(`./store-data.js?v=${MODULE_VERSION}`);
@@ -35,6 +38,7 @@ let authWatcherBinded = false;
 let selectionWatcherBinded = false;
 let storePreviewWatcherBinded = false;
 let storePreviewResumeState = null;
+let authenticatedUserId = '';
 
 function $(id) {
   return document.getElementById(id);
@@ -131,6 +135,14 @@ function getDefaultTrackId() {
 async function getSessionUser() {
   const session = await getCurrentSession();
   return session?.user || null;
+}
+
+function setAuthenticatedUser(user) {
+  authenticatedUserId = String(user?.id || '').trim();
+}
+
+function hasAuthenticatedUser() {
+  return !!authenticatedUserId;
 }
 
 function getSavedSelectedTrackIds() {
@@ -346,21 +358,33 @@ function bindAuthWatcher() {
   authWatcherBinded = true;
 
   supabase.auth.onAuthStateChange((event, session) => {
-    if (session?.user) return;
+    if (session?.user?.id) {
+      setAuthenticatedUser(session.user);
+      return;
+    }
 
+    setAuthenticatedUser(null);
     stopAndResetPlayback();
     closePanel();
     renderLoginRequiredState();
   });
 
   window.addEventListener('auth-changed', async () => {
-    const user = await getSessionUser();
+    try {
+      const user = await getSessionUser();
 
-    if (user) return;
+      if (user?.id) {
+        setAuthenticatedUser(user);
+        return;
+      }
 
-    stopAndResetPlayback();
-    closePanel();
-    renderLoginRequiredState();
+      setAuthenticatedUser(null);
+      stopAndResetPlayback();
+      closePanel();
+      renderLoginRequiredState();
+    } catch (error) {
+      console.error('[bgm] auth-changed sync failed:', error);
+    }
   });
 }
 
@@ -814,17 +838,13 @@ function bindRetryOnUserGesture() {
   if (retryBinded) return;
   retryBinded = true;
 
-  const retry = async () => {
+  const retry = () => {
     if (!playBlocked) return;
+    if (!hasAuthenticatedUser()) return;
 
-    try {
-      const user = await getSessionUser();
-      if (!user) return;
-
-      await tryPlayCurrentTrack();
-    } catch (error) {
+    tryPlayCurrentTrack().catch((error) => {
       console.error('[bgm] retry play failed:', error);
-    }
+    });
   };
 
   ['click', 'touchstart', 'keydown'].forEach((eventName) => {
@@ -849,17 +869,13 @@ function bindPageLifecycleSave() {
     }
   });
 
-  window.addEventListener('pageshow', async () => {
+  window.addEventListener('pageshow', () => {
     if (!playBlocked) return;
+    if (!hasAuthenticatedUser()) return;
 
-    try {
-      const user = await getSessionUser();
-      if (!user) return;
-
-      await tryPlayCurrentTrack();
-    } catch (error) {
+    tryPlayCurrentTrack().catch((error) => {
       console.error('[bgm] pageshow retry failed:', error);
-    }
+    });
   });
 }
 
@@ -976,8 +992,10 @@ export async function initBgmPlayer() {
   bindStorePreviewWatcher();
 
   const user = await getSessionUser();
+  setAuthenticatedUser(user);
 
   if (!user) {
+    setAuthenticatedUser(null);
     stopAndResetPlayback();
     closePanel();
     renderLoginRequiredState();
