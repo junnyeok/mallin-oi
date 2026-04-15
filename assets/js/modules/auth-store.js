@@ -183,6 +183,102 @@ export function resetPasswordHref() {
   return resolveSitePath('account/reset-password.html');
 }
 
+const LOGIN_REQUIRED_POPUP_ID = 'loginRequiredPopup';
+
+export function closeLoginRequiredPopup() {
+  const popup = document.getElementById(LOGIN_REQUIRED_POPUP_ID);
+  if (!popup) return;
+
+  const onKeydown = popup._onKeydown;
+  if (onKeydown) {
+    document.removeEventListener('keydown', onKeydown);
+  }
+
+  popup.classList.remove('is-open');
+
+  window.setTimeout(() => {
+    popup.remove();
+  }, 180);
+}
+
+export function showLoginRequiredPopup({
+  title = '로그인이 필요해',
+  message = '로그인 후 이용할 수 있어.',
+  confirmText = '로그인하러 가기',
+  cancelText = '닫기',
+} = {}) {
+  closeLoginRequiredPopup();
+
+  const overlay = document.createElement('div');
+  overlay.id = LOGIN_REQUIRED_POPUP_ID;
+  overlay.className = 'login-required-popup';
+  overlay.innerHTML = `
+    <div class="login-required-popup__backdrop"></div>
+    <section
+      class="login-required-popup__panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="loginRequiredPopupTitle"
+      aria-describedby="loginRequiredPopupDesc"
+    >
+      <strong class="login-required-popup__title" id="loginRequiredPopupTitle"></strong>
+      <p class="login-required-popup__desc" id="loginRequiredPopupDesc"></p>
+
+      <div class="login-required-popup__actions">
+        <button
+          type="button"
+          class="login-required-popup__btn login-required-popup__btn--ghost"
+          data-login-popup-close
+        ></button>
+        <button
+          type="button"
+          class="login-required-popup__btn login-required-popup__btn--primary"
+          data-login-popup-confirm
+        ></button>
+      </div>
+    </section>
+  `;
+
+  const titleEl = overlay.querySelector('#loginRequiredPopupTitle');
+  const descEl = overlay.querySelector('#loginRequiredPopupDesc');
+  const closeBtn = overlay.querySelector('[data-login-popup-close]');
+  const confirmBtn = overlay.querySelector('[data-login-popup-confirm]');
+  const backdrop = overlay.querySelector('.login-required-popup__backdrop');
+
+  if (titleEl) titleEl.textContent = title;
+  if (descEl) descEl.textContent = message;
+  if (closeBtn) closeBtn.textContent = cancelText;
+  if (confirmBtn) confirmBtn.textContent = confirmText;
+
+  const handleClose = () => {
+    closeLoginRequiredPopup();
+  };
+
+  const handleConfirm = () => {
+    saveRedirect();
+    window.location.href = loginHref();
+  };
+
+  const handleKeydown = (event) => {
+    if (event.key === 'Escape') {
+      handleClose();
+    }
+  };
+
+  overlay._onKeydown = handleKeydown;
+
+  closeBtn?.addEventListener('click', handleClose);
+  confirmBtn?.addEventListener('click', handleConfirm);
+  backdrop?.addEventListener('click', handleClose);
+  document.addEventListener('keydown', handleKeydown);
+
+  document.body.appendChild(overlay);
+
+  window.requestAnimationFrame(() => {
+    overlay.classList.add('is-open');
+  });
+}
+
 export function saveRedirect(url) {
   const next =
     url ||

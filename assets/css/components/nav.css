@@ -653,3 +653,106 @@ body[data-page='post'] .logo #siteLogoImg {
     line-height: 1.65;
   }
 }
+
+.login-required-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.login-required-popup.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.login-required-popup__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.login-required-popup__panel {
+  position: relative;
+  width: min(100%, 360px);
+  border-radius: 24px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  padding: 24px 20px 18px;
+  text-align: center;
+}
+
+.login-required-popup__title {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.login-required-popup__desc {
+  margin: 0;
+  color: var(--color-text-sub, #667085);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.login-required-popup__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.login-required-popup__btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 2px solid var(--color-border);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.login-required-popup__btn:hover {
+  transform: translateY(-1px);
+}
+
+.login-required-popup__btn--ghost {
+  background: #fff;
+  color: var(--color-text);
+}
+
+.login-required-popup__btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 640px) {
+  .login-required-popup {
+    padding: 16px;
+  }
+
+  .login-required-popup__panel {
+    width: min(100%, 340px);
+    padding: 22px 16px 16px;
+    border-radius: 20px;
+  }
+
+  .login-required-popup__actions {
+    flex-direction: column;
+  }
+}

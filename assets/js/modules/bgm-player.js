@@ -1,5 +1,5 @@
 import { supabase } from './supabase-client.js';
-import { getCurrentSession, loginHref, saveRedirect } from './auth-store.js';
+import { getCurrentSession, showLoginRequiredPopup } from './auth-store.js';
 import {
   getLocalSelectedBgmTrackIds,
   hydrateBgmPreferencesFromRemote,
@@ -315,8 +315,10 @@ function renderLoginRequiredState() {
 }
 
 function moveToLoginForBgm() {
-  saveRedirect();
-  window.location.href = loginHref();
+  showLoginRequiredPopup({
+    title: '로그인이 필요해',
+    message: 'BGM은 로그인 후 재생할 수 있어.',
+  });
 }
 
 function bindPanelGlobalEvents() {

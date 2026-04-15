@@ -1,9 +1,8 @@
 import { supabase } from './supabase-client.js';
 import {
   getCurrentUser,
-  loginHref,
   resolveSitePath,
-  saveRedirect,
+  showLoginRequiredPopup,
 } from './auth-store.js';
 
 const MODULE_VERSION = encodeURIComponent(
@@ -281,8 +280,10 @@ export async function initNotifications() {
     const user = await getCurrentUser();
 
     if (!user) {
-      saveRedirect();
-      window.location.href = loginHref();
+      showLoginRequiredPopup({
+        title: '로그인이 필요해',
+        message: '알림은 로그인 후 확인할 수 있어.',
+      });
       return;
     }
 
