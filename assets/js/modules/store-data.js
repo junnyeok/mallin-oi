@@ -18,6 +18,24 @@ export const TETO_CARROT_BGM_PREVIEW = [
   },
 ];
 
+export const GRILLED_EGG_BGM_PREVIEW = [
+  {
+    code: 'bgm-grilledegg',
+    label: '구운계란의 PT수업 BGM',
+    imagePath: withAssetVersion('./images/BGM/macho-grilled-egg.png'),
+    displayOrder: 1,
+  },
+];
+
+export const CUCUMBER_GIRL_BGM_PREVIEW = [
+  {
+    code: 'bgm-cucumbergirl',
+    label: '오이소녀의 데뷔 BGM',
+    imagePath: withAssetVersion('./images/BGM/cucumbergirl-debuet.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -38,6 +56,28 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/tetocarrot.png'),
     isDefault: false,
     displayOrder: 2,
+  },
+  {
+    id: 'mallin-oi-grilledegg',
+    storeItemId: 'bgm-grilledegg-01',
+    title: '구운계란의 PT수업 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin_oi_grilledegg-PT.mp3'),
+    coverPath: withAssetVersion('./images/BGM/macho-grilled-egg.png'),
+    isDefault: false,
+    displayOrder: 3,
+  },
+  {
+    id: 'mallin-oi-cucumbergirl-debuet',
+    storeItemId: 'bgm-cucumbergirl-01',
+    title: '오이소녀의 데뷔 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion(
+      './assets/mp3/mallin-oi_cucumbergirl-debuet.mp3',
+    ),
+    coverPath: withAssetVersion('./images/BGM/cucumbergirl-debuet.png'),
+    isDefault: false,
+    displayOrder: 4,
   },
 ];
 
@@ -369,6 +409,42 @@ export const STORE_ITEMS = [
     detailDescription:
       '테토당근에 어울리는 테토스러운 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
     previewImages: TETO_CARROT_BGM_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'bgm-grilledegg-01',
+    name: '구운계란의 PT수업 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥚🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/macho-grilled-egg.png'),
+    previewAudioPath: withAssetVersion(
+      './assets/mp3/mallin_oi_grilledegg-PT.mp3',
+    ),
+    price: 432,
+    state: '판매 중',
+    description: '구운계란형님의 PT수업 BGM.',
+    detailDescription:
+      '구운계란형님의 헬스 PT BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: GRILLED_EGG_BGM_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'bgm-cucumbergirl-01',
+    name: '오이소녀의 데뷔 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒👧🏻🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/cucumbergirl-debuet.png'),
+    previewAudioPath: withAssetVersion(
+      './assets/mp3/mallin-oi_cucumbergirl-debuet.mp3',
+    ),
+    price: 542,
+    state: '판매 중',
+    description: '오이소녀의 데뷔 BGM.',
+    detailDescription:
+      '오이소녀의 첫번째 데뷔곡 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: CUCUMBER_GIRL_BGM_PREVIEW,
     isPurchasable: true,
   },
   {

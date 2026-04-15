@@ -694,6 +694,8 @@ function renderBgmCard(track, selectedTrackIds = new Set()) {
 function renderBgmSection({
   isOwnProfile = false,
   ownedStoreItemIds = new Set(),
+  currentUser = null,
+  profileRow = null,
 }) {
   const wrapEl = $('profileBgmWrap');
   const listEl = $('profileBgmList');
@@ -721,6 +723,10 @@ function renderBgmSection({
       .map((track) => String(track?.id || '').trim())
       .filter(Boolean),
   );
+
+  const bgmPreferenceUserId = String(
+    currentUser?.id || profileRow?.id || '',
+  ).trim();
 
   function getNormalizedSelectedTrackIds() {
     return new Set(
@@ -764,7 +770,7 @@ function renderBgmSection({
           const nextCurrentTrackId = syncLocalCurrentBgmTrackSelection(nextIds);
 
           try {
-            await saveRemoteBgmPreferences(currentUser?.id || '', {
+            await saveRemoteBgmPreferences(bgmPreferenceUserId, {
               selectedTrackIds: nextIds,
               currentTrackId: nextCurrentTrackId,
             });
@@ -1319,6 +1325,8 @@ export async function initProfile() {
   renderBgmSection({
     isOwnProfile,
     ownedStoreItemIds,
+    currentUser,
+    profileRow,
   });
 
   if (isOwnProfile && nicknameInput) {

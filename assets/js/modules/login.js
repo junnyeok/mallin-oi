@@ -15,6 +15,32 @@ function isValidEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
 }
 
+function getFriendlyLoginError(error) {
+  const code = String(error?.code || '')
+    .trim()
+    .toLowerCase();
+  const message = String(error?.message || '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    code === 'email_not_confirmed' ||
+    message.includes('email not confirmed')
+  ) {
+    return '로그인에 실패했어. 이메일 인증을 완료했는지 확인해줘. 인증메일을 확인하지 않았다면 메일함을 확인해줘.';
+  }
+
+  if (
+    code === 'invalid_credentials' ||
+    message.includes('invalid login credentials') ||
+    message.includes('invalid credentials')
+  ) {
+    return '이메일 또는 비밀번호가 잘못됐어';
+  }
+
+  return '로그인에 실패했어. 잠시 후 다시 시도해줘.';
+}
+
 export function initLogin() {
   const form = $('loginForm');
   if (!form) return;
@@ -49,11 +75,7 @@ export function initLogin() {
 
     if (error) {
       console.error('[login] signInWithPassword error:', error);
-      setMsg(
-        msg,
-        '로그인에 실패했어. 이메일 인증을 완료했는지 확인해줘. 인증메일을 확인하지 않았다면 메일함을 확인해줘.',
-        'red',
-      );
+      setMsg(msg, getFriendlyLoginError(error), 'red');
       return;
     }
 
