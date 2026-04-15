@@ -36,6 +36,15 @@ export const CUCUMBER_GIRL_BGM_PREVIEW = [
   },
 ];
 
+export const AVOCADO_SUNSET_BGM_PREVIEW = [
+  {
+    code: 'bgm-avocado-sunset',
+    label: '아보카도의 산책 BGM',
+    imagePath: withAssetVersion('./images/BGM/avocado-sunset.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -78,6 +87,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/cucumbergirl-debuet.png'),
     isDefault: false,
     displayOrder: 4,
+  },
+  {
+    id: 'mallin-oi-avocado-sunset',
+    storeItemId: 'bgm-fat-avocado-01',
+    title: '아보카도의 산책 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin-oi_avocado-sunset.mp3'),
+    coverPath: withAssetVersion('./images/BGM/avocado-sunset.png'),
+    isDefault: false,
+    displayOrder: 5,
   },
 ];
 
@@ -169,6 +188,17 @@ export const SAD_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
   };
 });
 
+export const EAT_EMOTICON_PACK = Array.from({ length: 10 }, (_, index) => {
+  const order = index + 1;
+
+  return {
+    code: `eat-${order}`,
+    label: `먹방오이 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/eat-${order}.png`),
+    displayOrder: 800 + order,
+  };
+});
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -216,93 +246,21 @@ export const GRILLED_EGG_CHARACTER_PREVIEW = [
 
 export const STORE_ITEMS = [
   {
-    id: 'emo-basic-01',
-    name: '기본 말린오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '🥒',
-    thumbImagePath: withAssetVersion('./images/emoticons/free-7.png'),
-    price: 0,
-    state: '무료 지급',
-    description: '사이트 기본 지급용 이모티콘 7종 묶음.',
-    detailDescription:
-      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 게시물/댓글/답글 작성 시 사용할 수 있어.',
-    previewImages: BASIC_EMOTICON_PACK,
-    isPurchasable: true,
-  },
-  {
-    id: 'emo-cheer-01',
-    name: '응원오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '🎉',
-    thumbImagePath: withAssetVersion('./images/emoticons/cheer-1.png'),
-    price: 150,
+    id: 'bgm-fat-avocado-01',
+    name: '아보카도의 산책 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥑🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/avocado-sunset.png'),
+    previewAudioPath: withAssetVersion(
+      './assets/mp3/mallin-oi_avocado-sunset.mp3',
+    ),
+    price: 393,
     state: '판매 중',
-    description: '축하, 응원, 박수 반응용 이모티콘 세트.',
+    description: '아보카도의 산책 BGM.',
     detailDescription:
-      '응원, 축하, 박수 반응에 쓰기 좋은 응원 이모티콘팩이야. 구매하면 5개의 응원 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: CHEER_EMOTICON_PACK,
-    isPurchasable: true,
-  },
-  {
-    id: 'emo-police-01',
-    name: '경찰오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '🚓',
-    thumbImagePath: withAssetVersion('./images/emoticons/police-1.png'),
-    price: 230,
-    state: '판매 중',
-    description: '경찰 모자, 장비 등이 들어간 이모티콘 세트.',
-    detailDescription:
-      '경찰 테마 이모티콘팩이야. 경찰 모자, 장비, 순찰차 등을 넣어봤어. 구매하면 8개의 경찰 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: POLICE_EMOTICON_PACK,
-    isPurchasable: true,
-  },
-  {
-    id: 'emo-thanks-01',
-    name: '감사오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '🙇🏽‍♂️',
-    thumbImagePath: withAssetVersion('./images/emoticons/thanks-1.png'),
-    price: 150,
-    state: '판매 중',
-    description: '감사인사를 하는 오이 이모티콘 세트.',
-    detailDescription:
-      '오이 캐릭터가 감사인사를 하는 이모티콘 세트야. 구매하면 5개의 감사 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: THANKS_EMOTICON_PACK,
-    isPurchasable: true,
-  },
-  {
-    id: 'emo-sorry-01',
-    name: '사과오이 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '🍎',
-    thumbImagePath: withAssetVersion('./images/emoticons/sorry-1.png'),
-    price: 180,
-    state: '판매 중',
-    description: '사과를 하는 오이 이모티콘 세트.',
-    detailDescription:
-      '오이 캐릭터가 사과를 하는 이모티콘 세트야. 구매하면 6개의 사과 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: SORRY_EMOTICON_PACK,
-    isPurchasable: true,
-  },
-  {
-    id: 'emo-carrot-01',
-    name: '특별제작 당근 이모티콘팩',
-    category: 'emoticon',
-    badge: '이모티콘',
-    icon: '🥕',
-    thumbImagePath: withAssetVersion('./images/emoticons/carrot-1.png'),
-    price: 310,
-    state: '판매 중',
-    description: '특별제작한 당근을 이모티콘으로 사용할 수 있는 세트.',
-    detailDescription:
-      '특별제작한 당근 캐릭터를 이모티콘으로 사용할 수 있는 세트야. 구매하면 13개의 당근 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: CARROT_EMOTICON_PACK,
+      '아보카도의 산책 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: AVOCADO_SUNSET_BGM_PREVIEW,
     isPurchasable: true,
   },
   {
@@ -445,6 +403,111 @@ export const STORE_ITEMS = [
     detailDescription:
       '오이소녀의 첫번째 데뷔곡 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
     previewImages: CUCUMBER_GIRL_BGM_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-eat-01',
+    name: '먹방오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🍚',
+    thumbImagePath: withAssetVersion('./images/emoticons/eat-1.png'),
+    price: 220,
+    state: '판매 중',
+    description: '밥먹는 오이 이모티콘팩.',
+    detailDescription:
+      '밥먹는 오이 이모티콘 세트야. 구매하면 10개의 먹방오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: EAT_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-basic-01',
+    name: '기본 말린오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🥒',
+    thumbImagePath: withAssetVersion('./images/emoticons/free-7.png'),
+    price: 0,
+    state: '무료 지급',
+    description: '사이트 기본 지급용 이모티콘 7종 묶음.',
+    detailDescription:
+      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 게시물/댓글/답글 작성 시 사용할 수 있어.',
+    previewImages: BASIC_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-cheer-01',
+    name: '응원오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🎉',
+    thumbImagePath: withAssetVersion('./images/emoticons/cheer-1.png'),
+    price: 150,
+    state: '판매 중',
+    description: '축하, 응원, 박수 반응용 이모티콘 세트.',
+    detailDescription:
+      '응원, 축하, 박수 반응에 쓰기 좋은 응원 이모티콘팩이야. 구매하면 5개의 응원 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: CHEER_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-police-01',
+    name: '경찰오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🚓',
+    thumbImagePath: withAssetVersion('./images/emoticons/police-1.png'),
+    price: 230,
+    state: '판매 중',
+    description: '경찰 모자, 장비 등이 들어간 이모티콘 세트.',
+    detailDescription:
+      '경찰 테마 이모티콘팩이야. 경찰 모자, 장비, 순찰차 등을 넣어봤어. 구매하면 8개의 경찰 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: POLICE_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-thanks-01',
+    name: '감사오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🙇🏽‍♂️',
+    thumbImagePath: withAssetVersion('./images/emoticons/thanks-1.png'),
+    price: 150,
+    state: '판매 중',
+    description: '감사인사를 하는 오이 이모티콘 세트.',
+    detailDescription:
+      '오이 캐릭터가 감사인사를 하는 이모티콘 세트야. 구매하면 5개의 감사 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: THANKS_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-sorry-01',
+    name: '사과오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🍎',
+    thumbImagePath: withAssetVersion('./images/emoticons/sorry-1.png'),
+    price: 180,
+    state: '판매 중',
+    description: '사과를 하는 오이 이모티콘 세트.',
+    detailDescription:
+      '오이 캐릭터가 사과를 하는 이모티콘 세트야. 구매하면 6개의 사과 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: SORRY_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
+    id: 'emo-carrot-01',
+    name: '특별제작 당근 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🥕',
+    thumbImagePath: withAssetVersion('./images/emoticons/carrot-1.png'),
+    price: 310,
+    state: '판매 중',
+    description: '특별제작한 당근을 이모티콘으로 사용할 수 있는 세트.',
+    detailDescription:
+      '특별제작한 당근 캐릭터를 이모티콘으로 사용할 수 있는 세트야. 구매하면 13개의 당근 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: CARROT_EMOTICON_PACK,
     isPurchasable: true,
   },
   {

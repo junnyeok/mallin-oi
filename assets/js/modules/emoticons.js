@@ -14,6 +14,7 @@ const {
   CARROT_EMOTICON_PACK,
   HEART_EMOTICON_PACK,
   SAD_EMOTICON_PACK,
+  EAT_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -26,6 +27,7 @@ const EMOTICON_MAP = new Map(
     ...CARROT_EMOTICON_PACK,
     ...HEART_EMOTICON_PACK,
     ...SAD_EMOTICON_PACK,
+    ...EAT_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -87,6 +89,13 @@ const PACK_META = [
     label: '슬픔',
     iconPath: SAD_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'sad-',
+  },
+  {
+    key: 'eat',
+    itemId: 'emo-eat-01',
+    label: '먹방',
+    iconPath: EAT_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'eat-',
   },
 ];
 
@@ -166,6 +175,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-sad-01') {
     return SAD_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-eat-01') {
+    return EAT_EMOTICON_PACK;
   }
 
   return [];
