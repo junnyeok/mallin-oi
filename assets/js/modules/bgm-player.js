@@ -115,13 +115,33 @@ function maybeShowReloadResumeNotice(savedState) {
   showReloadResumeNotice();
 }
 
+function shouldUseReloadResumeFlow(savedState = getSavedPlaybackState()) {
+  if (!hasAuthenticatedUser()) return false;
+  if (!isReloadNavigation()) return false;
+  if (!savedState?.wasPlaying) return false;
+  return true;
+}
+
 function bindReloadResumeNoticeDismiss() {
-  const dismiss = () => {
-    removeReloadResumeNotice();
+  const dismiss = async () => {
+    const notice = getReloadResumeNotice();
+    if (!notice) return;
+    if (!hasAuthenticatedUser()) {
+      removeReloadResumeNotice();
+      return;
+    }
+
+    try {
+      await restorePlaybackPosition();
+    } catch (error) {
+      console.error('[bgm] reload resume restore failed:', error);
+    } finally {
+      removeReloadResumeNotice();
+    }
   };
 
   ['click', 'touchstart', 'keydown'].forEach((eventName) => {
-    document.addEventListener(eventName, dismiss, { passive: true });
+    document.addEventListener(eventName, dismiss);
   });
 }
 
@@ -166,6 +186,8 @@ async function playAfterWelcomeGesture() {
 
 function showWelcomePopup() {
   if (!hasAuthenticatedUser()) return;
+  if (shouldUseReloadResumeFlow()) return;
+  if (getReloadResumeNotice()) return;
   if (isPlaying && audio && !audio.paused) return;
   if (getWelcomePopup()) return;
 
@@ -1194,6 +1216,14 @@ export async function initBgmPlayer() {
   saveIndex(currentIndex);
   renderPlaylist();
   updatePanelDesc();
+
+  const savedState = getSavedPlaybackState();
+
+  if (shouldUseReloadResumeFlow(savedState)) {
+    showReloadResumeNotice();
+    return;
+  }
+
   removeReloadResumeNotice();
   showWelcomePopup();
 }
