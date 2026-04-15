@@ -209,7 +209,7 @@ function showWelcomePopup() {
         alt="하트 이모티콘"
       />
       <strong class="bgm-welcome-popup__title">말린오이닷컴에 온 걸 환영해!</strong>
-      <p class="bgm-welcome-popup__desc">팝업을 누르면 배경음악이 재생돼.<br> 재생이 안되면 BGM 버튼을 이용해줘!</p>
+      <p class="bgm-welcome-popup__desc">팝업을 누르면 배경음악이 재생돼.<br><b>재생이 안되면 BGM 버튼을 이용해줘!</b></p>
       <span class="bgm-welcome-popup__hint">화면 클릭 / 터치</span>
     </button>
   `;
