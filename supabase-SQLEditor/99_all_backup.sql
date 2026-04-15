@@ -11216,3 +11216,19 @@ end;
 $$;
 
 grant execute on function public.purchase_store_item(text) to authenticated;
+
+alter table public.profiles
+  add column if not exists bgm_selected_track_ids jsonb not null default '["mallin-oi-welcome"]'::jsonb,
+  add column if not exists bgm_current_track_id text;
+
+comment on column public.profiles.bgm_selected_track_ids is '프로필에서 선택한 BGM 트랙 ID 목록';
+comment on column public.profiles.bgm_current_track_id is '현재 대표 BGM 트랙 ID';
+
+update public.profiles
+set
+  bgm_selected_track_ids = coalesce(bgm_selected_track_ids, '["mallin-oi-welcome"]'::jsonb),
+  bgm_current_track_id = coalesce(nullif(trim(bgm_current_track_id), ''), 'mallin-oi-welcome')
+where
+  bgm_selected_track_ids is null
+  or bgm_current_track_id is null
+  or trim(coalesce(bgm_current_track_id, '')) = '';

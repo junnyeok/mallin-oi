@@ -1,5 +1,10 @@
 import { supabase } from './supabase-client.js';
 import { getCurrentSession, loginHref, saveRedirect } from './auth-store.js';
+import {
+  getLocalSelectedBgmTrackIds,
+  hydrateBgmPreferencesFromRemote,
+  saveRemoteBgmPreferences,
+} from './bgm-preferences.js';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
@@ -13,6 +18,7 @@ const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
 const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v3';
 const BGM_STATE_STORAGE_LEGACY_KEY = 'mallin_bgm_play_state_v2';
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
+const BGM_RELOAD_NOTICE_ID = 'bgmReloadResumeNotice';
 
 let audio = null;
 let playlist = [];
@@ -43,6 +49,77 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function isReloadNavigation() {
+  try {
+    const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+    if (navEntry && navEntry.type) {
+      return navEntry.type === 'reload';
+    }
+
+    if (performance.navigation) {
+      return performance.navigation.type === 1;
+    }
+  } catch (error) {
+    console.warn('[bgm] reload navigation detect failed:', error);
+  }
+
+  return false;
+}
+
+function getReloadResumeNotice() {
+  return document.getElementById(BGM_RELOAD_NOTICE_ID);
+}
+
+function removeReloadResumeNotice() {
+  const notice = getReloadResumeNotice();
+  if (notice) {
+    notice.remove();
+  }
+}
+
+function showReloadResumeNotice() {
+  if (getReloadResumeNotice()) return;
+
+  const notice = document.createElement('div');
+  notice.id = BGM_RELOAD_NOTICE_ID;
+  notice.className = 'bgm-reload-notice';
+  notice.setAttribute('role', 'dialog');
+  notice.setAttribute('aria-live', 'polite');
+  notice.setAttribute('aria-label', 'BGM 이어재생 안내');
+
+  notice.innerHTML = `
+    <div class="bgm-reload-notice__backdrop"></div>
+    <div class="bgm-reload-notice__panel">
+      <strong class="bgm-reload-notice__title">BGM이 일시정지됐어</strong>
+      <p class="bgm-reload-notice__text">
+        브라우저 정책 때문에 새로고침 후에는 자동으로 이어재생되지 않을 수 있어.
+        화면을 한 번 클릭하거나 터치하면 이어서 재생할게.
+      </p>
+      <p class="bgm-reload-notice__hint">화면 클릭 / 터치 시 닫힘</p>
+    </div>
+  `;
+
+  document.body.appendChild(notice);
+}
+
+function maybeShowReloadResumeNotice(savedState) {
+  if (!playBlocked) return;
+  if (!savedState?.wasPlaying) return;
+  if (!isReloadNavigation()) return;
+
+  showReloadResumeNotice();
+}
+
+function bindReloadResumeNoticeDismiss() {
+  const dismiss = () => {
+    removeReloadResumeNotice();
+  };
+
+  ['click', 'touchstart', 'keydown'].forEach((eventName) => {
+    document.addEventListener(eventName, dismiss, { passive: true });
+  });
+}
+
 function getSavedTrackId() {
   return String(localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '').trim();
 }
@@ -57,28 +134,7 @@ async function getSessionUser() {
 }
 
 function getSavedSelectedTrackIds() {
-  const raw = localStorage.getItem(BGM_TRACK_IDS_STORAGE_KEY);
-
-  if (raw !== null) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return new Set(
-          parsed.map((value) => String(value || '').trim()).filter(Boolean),
-        );
-      }
-    } catch (error) {
-      console.warn('[bgm] failed to parse selected bgm ids:', error);
-    }
-
-    return new Set();
-  }
-
-  const legacyTrackId = getSavedTrackId();
-  if (legacyTrackId) return new Set([legacyTrackId]);
-
-  const defaultTrackId = getDefaultTrackId();
-  return defaultTrackId ? new Set([defaultTrackId]) : new Set();
+  return getLocalSelectedBgmTrackIds();
 }
 
 function getSavedIndex() {
@@ -107,6 +163,8 @@ function saveIndex(index) {
   if (track?.id) {
     localStorage.setItem(BGM_TRACK_ID_STORAGE_KEY, track.id);
   }
+
+  scheduleRemotePreferenceSave();
 }
 
 function getCurrentTrack() {
@@ -187,6 +245,33 @@ function clearSavedPlaybackState() {
   }
 }
 
+let remotePreferenceSaveTimer = null;
+
+function scheduleRemotePreferenceSave() {
+  if (remotePreferenceSaveTimer) {
+    window.clearTimeout(remotePreferenceSaveTimer);
+  }
+
+  remotePreferenceSaveTimer = window.setTimeout(async () => {
+    remotePreferenceSaveTimer = null;
+
+    try {
+      const user = await getSessionUser();
+      if (!user?.id) return;
+
+      const selectedTrackIds = [...getSavedSelectedTrackIds()];
+      const track = getCurrentTrack();
+
+      await saveRemoteBgmPreferences(user.id, {
+        selectedTrackIds,
+        currentTrackId: track?.id || '',
+      });
+    } catch (error) {
+      console.error('[bgm] remote preference save failed:', error);
+    }
+  }, 150);
+}
+
 function stopAndResetPlayback() {
   if (audio) {
     try {
@@ -209,6 +294,7 @@ function stopAndResetPlayback() {
   playBlocked = false;
   currentTrackId = '';
   clearSavedPlaybackState();
+  removeReloadResumeNotice();
 }
 
 function renderLoginRequiredState() {
@@ -575,11 +661,15 @@ async function restorePlaybackPosition() {
       await tryAutoplayWithMutedBootstrap(player);
       isPlaying = true;
       playBlocked = false;
+      removeReloadResumeNotice();
     } catch (error) {
       isPlaying = false;
       playBlocked = true;
+      maybeShowReloadResumeNotice(savedState);
       console.warn('[bgm] autoplay blocked while restoring:', error);
     }
+  } else {
+    removeReloadResumeNotice();
   }
 
   savePlaybackState();
@@ -607,6 +697,7 @@ async function tryPlayCurrentTrack() {
     await tryAutoplayWithMutedBootstrap(player);
     isPlaying = true;
     playBlocked = false;
+    removeReloadResumeNotice();
   } catch (error) {
     isPlaying = false;
     playBlocked = true;
@@ -875,6 +966,7 @@ export async function initBgmPlayer() {
   if (!menu || !btn || !panel || !list || !toggleBtn) return;
 
   bindRetryOnUserGesture();
+  bindReloadResumeNoticeDismiss();
   bindPageLifecycleSave();
   bindPanelGlobalEvents();
   bindAuthWatcher();
@@ -907,6 +999,12 @@ export async function initBgmPlayer() {
   }
 
   toggleBtn.disabled = false;
+
+  try {
+    await hydrateBgmPreferencesFromRemote(user.id);
+  } catch (error) {
+    console.error('[bgm] hydrate remote preferences failed:', error);
+  }
 
   await syncPlaylistWithSelection({ autoPlay: false });
 

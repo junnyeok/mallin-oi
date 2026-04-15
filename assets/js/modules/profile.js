@@ -1,6 +1,14 @@
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 import { getCurrentUser, loginHref } from './auth-store.js';
+import {
+  applyBgmPreferencesToLocal,
+  getBgmPreferencesFromProfileRow,
+  getLocalCurrentBgmTrackId,
+  getLocalSelectedBgmTrackIds,
+  saveRemoteBgmPreferences,
+  syncLocalCurrentBgmTrackSelection,
+} from './bgm-preferences.js';
 
 const PROFILE_BUCKET = 'profile-images';
 const PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -10,8 +18,6 @@ const DEFAULT_CHARACTER_CODE = 'char-cucumber';
 const DEFAULT_CHARACTER_NAME = '기본오이';
 const DEFAULT_SKIN_CODE = 'char-cucumber-basic';
 const DEFAULT_SKIN_NAME = '기본오이';
-const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
-const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
 const DEFAULT_BGM_TRACK_ID = 'mallin-oi-welcome';
 
 const MODULE_VERSION = encodeURIComponent(
@@ -280,7 +286,7 @@ async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, nickname, email, profile_image_url, pickles, equipped_character_image_url',
+      'id, nickname, email, profile_image_url, pickles, equipped_character_image_url, bgm_selected_track_ids, bgm_current_track_id',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -347,69 +353,6 @@ function getDefaultBgmTrackId() {
       BGM_CATALOG.find((track) => track?.isDefault)?.id || DEFAULT_BGM_TRACK_ID,
     ).trim() || DEFAULT_BGM_TRACK_ID
   );
-}
-
-function getSavedBgmTrackId() {
-  return (
-    String(localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '').trim() ||
-    getDefaultBgmTrackId()
-  );
-}
-
-function getSavedBgmTrackIds() {
-  const raw = localStorage.getItem(BGM_TRACK_IDS_STORAGE_KEY);
-
-  if (raw !== null) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return new Set(
-          parsed.map((value) => String(value || '').trim()).filter(Boolean),
-        );
-      }
-    } catch (error) {
-      console.warn('[profile] failed to parse selected bgm ids:', error);
-    }
-
-    return new Set();
-  }
-
-  const legacyTrackId = String(
-    localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '',
-  ).trim();
-
-  if (legacyTrackId) {
-    return new Set([legacyTrackId]);
-  }
-
-  return new Set([getDefaultBgmTrackId()]);
-}
-
-function saveSelectedBgmTrackIds(trackIds = []) {
-  const safeTrackIds = [...new Set(trackIds)]
-    .map((value) => String(value || '').trim())
-    .filter(Boolean);
-
-  localStorage.setItem(BGM_TRACK_IDS_STORAGE_KEY, JSON.stringify(safeTrackIds));
-}
-
-function syncCurrentBgmTrackSelection(trackIds = []) {
-  const safeTrackIds = [...new Set(trackIds)]
-    .map((value) => String(value || '').trim())
-    .filter(Boolean);
-
-  const currentTrackId = String(
-    localStorage.getItem(BGM_TRACK_ID_STORAGE_KEY) || '',
-  ).trim();
-
-  if (safeTrackIds.includes(currentTrackId)) return;
-
-  if (safeTrackIds.length) {
-    localStorage.setItem(BGM_TRACK_ID_STORAGE_KEY, safeTrackIds[0]);
-    return;
-  }
-
-  localStorage.removeItem(BGM_TRACK_ID_STORAGE_KEY);
 }
 
 function normalizeCharacterCode(value) {
@@ -781,7 +724,7 @@ function renderBgmSection({
 
   function getNormalizedSelectedTrackIds() {
     return new Set(
-      [...getSavedBgmTrackIds()].filter((trackId) =>
+      [...getLocalSelectedBgmTrackIds()].filter((trackId) =>
         ownedTrackIdSet.has(trackId),
       ),
     );
@@ -796,7 +739,7 @@ function renderBgmSection({
 
     Array.from(listEl.querySelectorAll('[data-bgm-track-id]')).forEach(
       (button) => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
           const isOwned = button.dataset.owned === 'true';
           const storeHref = String(button.dataset.storeHref || '').trim();
           const trackId = String(button.dataset.bgmTrackId || '').trim();
@@ -818,17 +761,26 @@ function renderBgmSection({
           }
 
           const nextIds = [...nextSelectedTrackIds];
+          const nextCurrentTrackId = syncLocalCurrentBgmTrackSelection(nextIds);
 
-          saveSelectedBgmTrackIds(nextIds);
-          syncCurrentBgmTrackSelection(nextIds);
-          renderList();
+          try {
+            await saveRemoteBgmPreferences(currentUser?.id || '', {
+              selectedTrackIds: nextIds,
+              currentTrackId: nextCurrentTrackId,
+            });
 
-          setMsg(
-            wasSelected ? 'BGM 선택 해제 완료!' : 'BGM 선택 완료!',
-            'green',
-          );
+            renderList();
 
-          window.dispatchEvent(new Event('bgm-selection-changed'));
+            setMsg(
+              wasSelected ? 'BGM 선택 해제 완료!' : 'BGM 선택 완료!',
+              'green',
+            );
+
+            window.dispatchEvent(new Event('bgm-selection-changed'));
+          } catch (error) {
+            console.error('[profile] save bgm preferences failed:', error);
+            setMsg('BGM 선택 저장 중 오류가 발생했어.', 'red');
+          }
         });
       },
     );
@@ -1310,6 +1262,14 @@ export async function initProfile() {
   if (!profileRow) {
     renderProfileNotFound();
     return;
+  }
+
+  if (isOwnProfile) {
+    try {
+      applyBgmPreferencesToLocal(getBgmPreferencesFromProfileRow(profileRow));
+    } catch (error) {
+      console.error('[profile] apply remote bgm preferences failed:', error);
+    }
   }
 
   const currentNickname =

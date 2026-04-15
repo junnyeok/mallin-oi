@@ -4,7 +4,7 @@ export const WELCOME_BGM_PREVIEW = [
   {
     code: 'bgm-welcome',
     label: '말린오이닷컴 환영 BGM',
-    imagePath: withAssetVersion('./images/emoticons/heart-6.png'),
+    imagePath: withAssetVersion('./images/BGM/welcome.png'),
     displayOrder: 1,
   },
 ];
@@ -13,7 +13,7 @@ export const TETO_CARROT_BGM_PREVIEW = [
   {
     code: 'bgm-tetocarrot',
     label: '테토당근 BGM',
-    imagePath: withAssetVersion('./images/characters/teto-carrot.png'),
+    imagePath: withAssetVersion('./images/BGM/tetocarrot.png'),
     displayOrder: 1,
   },
 ];
@@ -25,7 +25,7 @@ export const BGM_CATALOG = [
     title: '말린오이닷컴 환영 BGM',
     artist: '말린오이닷컴',
     audioPath: withAssetVersion('./assets/mp3/mallin_oi_welcome.mp3'),
-    coverPath: withAssetVersion('./images/emoticons/heart-6.png'),
+    coverPath: withAssetVersion('./images/BGM/welcome.png'),
     isDefault: true,
     displayOrder: 1,
   },
@@ -35,7 +35,7 @@ export const BGM_CATALOG = [
     title: '테토당근 BGM',
     artist: '말린오이닷컴',
     audioPath: withAssetVersion('./assets/mp3/mallin_oi_tetocarrot.mp3'),
-    coverPath: withAssetVersion('./images/characters/teto-carrot.png'),
+    coverPath: withAssetVersion('./images/BGM/tetocarrot.png'),
     isDefault: false,
     displayOrder: 2,
   },
@@ -361,7 +361,7 @@ export const STORE_ITEMS = [
     category: 'bgm',
     badge: 'BGM',
     icon: '🥕🎵',
-    thumbImagePath: withAssetVersion('./images/characters/teto-carrot.png'),
+    thumbImagePath: withAssetVersion('./images/BGM/tetocarrot.png'),
     previewAudioPath: withAssetVersion('./assets/mp3/mallin_oi_tetocarrot.mp3'),
     price: 420,
     state: '판매 중',

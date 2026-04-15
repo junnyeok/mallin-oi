@@ -578,3 +578,78 @@ body[data-page='post'] .logo #siteLogoImg {
     justify-self: end;
   }
 }
+
+/* =========================
+  BGM RELOAD NOTICE
+========================= */
+
+.bgm-reload-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.bgm-reload-notice__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 22, 15, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.bgm-reload-notice__panel {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+  padding: 22px 20px 18px;
+  border: 2px solid var(--color-border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fffef8 0%, #f6ffe8 100%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+.bgm-reload-notice__title {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.bgm-reload-notice__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text);
+  word-break: keep-all;
+}
+
+.bgm-reload-notice__hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-sub);
+}
+
+@media (max-width: 700px) {
+  .bgm-reload-notice {
+    padding: 16px;
+  }
+
+  .bgm-reload-notice__panel {
+    width: min(360px, calc(100vw - 24px));
+    padding: 20px 16px 16px;
+    border-radius: 18px;
+  }
+
+  .bgm-reload-notice__title {
+    font-size: 17px;
+  }
+
+  .bgm-reload-notice__text {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+}
