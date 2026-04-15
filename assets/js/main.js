@@ -383,6 +383,12 @@ async function initGlobalModules(modules) {
     await initLayoutIncludes();
   });
 
+  // BGM은 최대한 빨리 초기화해서
+  // 새로고침 직후 자동 재생 복구 시도를 앞당긴다.
+  await runSafe('bgm player module', async () => {
+    await initBgmPlayer();
+  });
+
   await runSafe('auth ui', async () => {
     await initAuthUI();
   });
@@ -406,10 +412,6 @@ async function initGlobalModules(modules) {
 
   await runSafe('notifications module', async () => {
     await initNotifications();
-  });
-
-  await runSafe('bgm player module', async () => {
-    await initBgmPlayer();
   });
 
   await runSafe('pjax router', async () => {

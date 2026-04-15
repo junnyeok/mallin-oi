@@ -1,11 +1,12 @@
 import { supabase } from './supabase-client.js';
-import { getCurrentUser, loginHref, saveRedirect } from './auth-store.js';
+import { getCurrentSession, loginHref, saveRedirect } from './auth-store.js';
 import { BGM_CATALOG } from './store-data.js';
 
 const BGM_STORAGE_KEY = 'mallin_bgm_selected_v1';
 const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
 const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
-const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v2';
+const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v3';
+const BGM_STATE_STORAGE_LEGACY_KEY = 'mallin_bgm_play_state_v2';
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
 
 let audio = null;
@@ -43,6 +44,11 @@ function getSavedTrackId() {
 
 function getDefaultTrackId() {
   return String(BGM_CATALOG.find((track) => track?.isDefault)?.id || '').trim();
+}
+
+async function getSessionUser() {
+  const session = await getCurrentSession();
+  return session?.user || null;
 }
 
 function getSavedSelectedTrackIds() {
@@ -109,7 +115,11 @@ function setPanelDesc(text) {
 
 function getSavedPlaybackState() {
   try {
-    const raw = sessionStorage.getItem(BGM_STATE_STORAGE_KEY);
+    const raw =
+      localStorage.getItem(BGM_STATE_STORAGE_KEY) ||
+      sessionStorage.getItem(BGM_STATE_STORAGE_KEY) ||
+      sessionStorage.getItem(BGM_STATE_STORAGE_LEGACY_KEY);
+
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
@@ -146,6 +156,7 @@ function savePlaybackState() {
       savedAt: Date.now(),
     };
 
+    localStorage.setItem(BGM_STATE_STORAGE_KEY, JSON.stringify(payload));
     sessionStorage.setItem(BGM_STATE_STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
     console.error('[bgm] failed to save playback state:', error);
@@ -163,7 +174,9 @@ function scheduleSavePlaybackState() {
 
 function clearSavedPlaybackState() {
   try {
+    localStorage.removeItem(BGM_STATE_STORAGE_KEY);
     sessionStorage.removeItem(BGM_STATE_STORAGE_KEY);
+    sessionStorage.removeItem(BGM_STATE_STORAGE_LEGACY_KEY);
   } catch (error) {
     console.error('[bgm] failed to clear playback state:', error);
   }
@@ -248,7 +261,7 @@ function bindAuthWatcher() {
   });
 
   window.addEventListener('auth-changed', async () => {
-    const user = await getCurrentUser();
+    const user = await getSessionUser();
 
     if (user) return;
 
@@ -264,6 +277,7 @@ function ensureAudio() {
   audio = new Audio();
   audio.preload = 'auto';
   audio.volume = 1;
+  audio.playsInline = true;
 
   audio.addEventListener('play', () => {
     isPlaying = true;
@@ -374,7 +388,7 @@ function renderPlaylist() {
 }
 
 async function loadOwnedBgmList() {
-  const user = await getCurrentUser();
+  const user = await getSessionUser();
   if (!user?.id) return [];
 
   const { data, error } = await supabase
@@ -450,7 +464,14 @@ async function syncPlaylistWithSelection({ autoPlay = false } = {}) {
     nextPlaylist.map((track) => String(track?.id || '').trim()).filter(Boolean),
   );
 
-  const shouldResetTrack = !nextTrackIds.has(currentTrackId);
+  const savedState = getSavedPlaybackState();
+  const restoreTargetTrackId = String(
+    currentTrackId || savedState?.trackId || '',
+  ).trim();
+
+  const shouldResetTrack = restoreTargetTrackId
+    ? !nextTrackIds.has(restoreTargetTrackId)
+    : false;
 
   playlist = nextPlaylist;
 
@@ -531,6 +552,7 @@ async function restorePlaybackPosition() {
     }
   }
 
+  savePlaybackState();
   renderPlaylist();
   updatePanelDesc();
   return true;
@@ -673,7 +695,7 @@ function bindRetryOnUserGesture() {
     if (!playBlocked) return;
 
     try {
-      const user = await getCurrentUser();
+      const user = await getSessionUser();
       if (!user) return;
 
       await tryPlayCurrentTrack();
@@ -703,6 +725,19 @@ function bindPageLifecycleSave() {
       persist();
     }
   });
+
+  window.addEventListener('pageshow', async () => {
+    if (!playBlocked) return;
+
+    try {
+      const user = await getSessionUser();
+      if (!user) return;
+
+      await tryPlayCurrentTrack();
+    } catch (error) {
+      console.error('[bgm] pageshow retry failed:', error);
+    }
+  });
 }
 
 function bindSelectionWatcher() {
@@ -710,7 +745,7 @@ function bindSelectionWatcher() {
   selectionWatcherBinded = true;
 
   window.addEventListener('bgm-selection-changed', async () => {
-    const user = await getCurrentUser();
+    const user = await getSessionUser();
     if (!user) return;
 
     const shouldKeepPlaying = Boolean(isPlaying && audio && !audio.paused);
@@ -768,7 +803,7 @@ function bindStorePreviewWatcher() {
 
       if (!resumeState?.shouldResume) return;
 
-      const user = await getCurrentUser();
+      const user = await getSessionUser();
       if (!user) return;
 
       if (!playlist.length) {
@@ -816,7 +851,7 @@ export async function initBgmPlayer() {
   bindSelectionWatcher();
   bindStorePreviewWatcher();
 
-  const user = await getCurrentUser();
+  const user = await getSessionUser();
 
   if (!user) {
     stopAndResetPlayback();
