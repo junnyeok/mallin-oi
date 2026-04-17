@@ -22,7 +22,6 @@ const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v3';
 const BGM_STATE_STORAGE_LEGACY_KEY = 'mallin_bgm_play_state_v2';
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
 const BGM_RELOAD_NOTICE_ID = 'bgmReloadResumeNotice';
-const BGM_WELCOME_POPUP_ID = 'bgmWelcomePopup';
 
 let audio = null;
 let playlist = [];
@@ -142,119 +141,6 @@ function bindReloadResumeNoticeDismiss() {
 
   ['click', 'touchstart', 'keydown'].forEach((eventName) => {
     document.addEventListener(eventName, dismiss);
-  });
-}
-
-function getBasePath() {
-  return String(document.body?.dataset?.base || './').trim() || './';
-}
-
-function getWelcomePopup() {
-  return document.getElementById(BGM_WELCOME_POPUP_ID);
-}
-
-function closeWelcomePopup() {
-  const popup = getWelcomePopup();
-  if (!popup) return;
-
-  const onKeydown = popup._onKeydown;
-  if (onKeydown) {
-    document.removeEventListener('keydown', onKeydown);
-  }
-
-  popup.remove();
-}
-
-async function playAfterWelcomeGesture() {
-  if (!hasAuthenticatedUser()) return;
-
-  const restored = await restorePlaybackPosition();
-  if (restored) return;
-
-  if (!playlist.length) {
-    await syncPlaylistWithSelection({ autoPlay: false });
-  }
-
-  if (!playlist.length) {
-    updatePanelDesc();
-    renderPlaylist();
-    return;
-  }
-
-  await playTrack(currentIndex, { startTime: 0, autoPlay: true });
-}
-
-function showWelcomePopup() {
-  if (!hasAuthenticatedUser()) return;
-  if (shouldUseReloadResumeFlow()) return;
-  if (getReloadResumeNotice()) return;
-  if (isPlaying && audio && !audio.paused) return;
-  if (getWelcomePopup()) return;
-
-  const base = getBasePath();
-
-  const overlay = document.createElement('div');
-  overlay.id = BGM_WELCOME_POPUP_ID;
-  overlay.className = 'bgm-welcome-popup';
-  overlay.innerHTML = `
-    <div class="bgm-welcome-popup__backdrop"></div>
-    <button
-      type="button"
-      class="bgm-welcome-popup__panel"
-      aria-label="말린오이닷컴 환영 팝업 닫기"
-    >
-      <img
-        class="bgm-welcome-popup__image"
-        src="${base}images/emoticons/heart-4.png"
-        alt="하트 이모티콘"
-      />
-      <strong class="bgm-welcome-popup__title">말린오이닷컴에 온 걸 환영해!</strong>
-      <p class="bgm-welcome-popup__desc">팝업을 누르면 배경음악이 재생돼.<br><b>재생이 안되면 BGM 버튼을 이용해줘!</b></p>
-      <span class="bgm-welcome-popup__hint">화면 클릭 / 터치</span>
-    </button>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const panel = overlay.querySelector('.bgm-welcome-popup__panel');
-  const backdrop = overlay.querySelector('.bgm-welcome-popup__backdrop');
-
-  const dismissAndPlay = async () => {
-    try {
-      await playAfterWelcomeGesture();
-    } catch (error) {
-      console.error('[bgm] welcome popup play failed:', error);
-    } finally {
-      closeWelcomePopup();
-    }
-  };
-
-  panel?.addEventListener('click', () => {
-    dismissAndPlay();
-  });
-
-  backdrop?.addEventListener('click', () => {
-    dismissAndPlay();
-  });
-
-  const onKeydown = (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      dismissAndPlay();
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      dismissAndPlay();
-    }
-  };
-
-  overlay._onKeydown = onKeydown;
-  document.addEventListener('keydown', onKeydown);
-
-  requestAnimationFrame(() => {
-    overlay.classList.add('is-open');
   });
 }
 
@@ -494,15 +380,9 @@ function bindAuthWatcher() {
   supabase.auth.onAuthStateChange((event, session) => {
     if (session?.user?.id) {
       setAuthenticatedUser(session.user);
-
-      if (!getWelcomePopup() && (!audio || audio.paused)) {
-        showWelcomePopup();
-      }
-
       return;
     }
 
-    closeWelcomePopup();
     setAuthenticatedUser(null);
     stopAndResetPlayback();
     closePanel();
@@ -515,15 +395,9 @@ function bindAuthWatcher() {
 
       if (user?.id) {
         setAuthenticatedUser(user);
-
-        if (!getWelcomePopup() && (!audio || audio.paused)) {
-          showWelcomePopup();
-        }
-
         return;
       }
 
-      closeWelcomePopup();
       setAuthenticatedUser(null);
       stopAndResetPlayback();
       closePanel();
@@ -1014,15 +888,6 @@ function bindPageLifecycleSave() {
       persist();
     }
   });
-
-  window.addEventListener('pageshow', () => {
-    if (!playBlocked) return;
-    if (!hasAuthenticatedUser()) return;
-
-    tryPlayCurrentTrack().catch((error) => {
-      console.error('[bgm] pageshow retry failed:', error);
-    });
-  });
 }
 
 function bindSelectionWatcher() {
@@ -1225,5 +1090,4 @@ export async function initBgmPlayer() {
   }
 
   removeReloadResumeNotice();
-  showWelcomePopup();
 }
