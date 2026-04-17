@@ -1,4 +1,4 @@
-create function public.purchase_store_item(p_item_id text)
+create or replace public.purchase_store_item(p_item_id text)
 returns table(success boolean, message text, balance integer)
 language plpgsql
 security definer
@@ -99,9 +99,14 @@ begin
     v_name := '오이소녀의 데뷔 BGM';
     v_category := 'bgm';
 
-  elsif p_item_id = 'bgm-fat-avocado-01' then
+    elsif p_item_id = 'bgm-fat-avocado-01' then
     v_price := 393;
     v_name := '아보카도의 산책 BGM';
+    v_category := 'bgm';
+
+    elsif p_item_id = 'bgm-cucumber-01' then
+    v_price := 382;
+    v_name := '로피 말린오이 BGM';
     v_category := 'bgm';
 
   elsif p_item_id = 'emo-eat-01' then
@@ -552,7 +557,10 @@ begin
   elsif p_item_id = 'bgm-cucumbergirl-01' then
     null;
 
-  elsif p_item_id = 'bgm-fat-avocado-01' then
+    elsif p_item_id = 'bgm-fat-avocado-01' then
+    null;
+
+  elsif p_item_id = 'bgm-cucumber-01' then
     null;
 
   elsif p_item_id = 'emo-eat-01' then
@@ -640,6 +648,8 @@ begin
         then '오이소녀의 데뷔 BGM 구매가 완료됐어. 542피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-fat-avocado-01'
         then '아보카도의 산책 BGM 구매가 완료됐어. 393피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-cucumber-01'
+        then '로피 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       else '구매가 완료됐어.'

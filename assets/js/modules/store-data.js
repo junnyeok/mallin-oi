@@ -45,6 +45,15 @@ export const AVOCADO_SUNSET_BGM_PREVIEW = [
   },
 ];
 
+export const LOFI_CUCUMBER_BGM_PREVIEW = [
+  {
+    code: 'bgm-lofi-cucumber',
+    label: '로피 말린오이 BGM',
+    imagePath: withAssetVersion('./images/BGM/lofi-cucumber.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -57,6 +66,16 @@ export const BGM_CATALOG = [
     displayOrder: 1,
   },
   {
+    id: 'mallin-oi-lofi-cucumber',
+    storeItemId: 'bgm-cucumber-01',
+    title: '로피 말린오이 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin-oi_lofi-cucumber.mp3'),
+    coverPath: withAssetVersion('./images/BGM/lofi-cucumber.png'),
+    isDefault: false,
+    displayOrder: 2,
+  },
+  {
     id: 'mallin-oi-tetocarrot',
     storeItemId: 'bgm-tetocarrot-01',
     title: '테토당근 BGM',
@@ -64,7 +83,7 @@ export const BGM_CATALOG = [
     audioPath: withAssetVersion('./assets/mp3/mallin_oi_tetocarrot.mp3'),
     coverPath: withAssetVersion('./images/BGM/tetocarrot.png'),
     isDefault: false,
-    displayOrder: 2,
+    displayOrder: 3,
   },
   {
     id: 'mallin-oi-grilledegg',
@@ -74,7 +93,7 @@ export const BGM_CATALOG = [
     audioPath: withAssetVersion('./assets/mp3/mallin_oi_grilledegg-PT.mp3'),
     coverPath: withAssetVersion('./images/BGM/macho-grilled-egg.png'),
     isDefault: false,
-    displayOrder: 3,
+    displayOrder: 4,
   },
   {
     id: 'mallin-oi-cucumbergirl-debuet',
@@ -86,7 +105,7 @@ export const BGM_CATALOG = [
     ),
     coverPath: withAssetVersion('./images/BGM/cucumbergirl-debuet.png'),
     isDefault: false,
-    displayOrder: 4,
+    displayOrder: 5,
   },
   {
     id: 'mallin-oi-avocado-sunset',
@@ -96,7 +115,7 @@ export const BGM_CATALOG = [
     audioPath: withAssetVersion('./assets/mp3/mallin-oi_avocado-sunset.mp3'),
     coverPath: withAssetVersion('./images/BGM/avocado-sunset.png'),
     isDefault: false,
-    displayOrder: 5,
+    displayOrder: 6,
   },
 ];
 
@@ -245,6 +264,24 @@ export const GRILLED_EGG_CHARACTER_PREVIEW = [
 ];
 
 export const STORE_ITEMS = [
+  {
+    id: 'bgm-cucumber-01',
+    name: '로피 말린오이 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/lofi-cucumber.png'),
+    previewAudioPath: withAssetVersion(
+      './assets/mp3/mallin-oi_lofi-cucumber.mp3',
+    ),
+    price: 382,
+    state: '판매 중',
+    description: '로피 말린오이 BGM.',
+    detailDescription:
+      '로피 말린오이 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: LOFI_CUCUMBER_BGM_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'bgm-fat-avocado-01',
     name: '아보카도의 산책 BGM',
