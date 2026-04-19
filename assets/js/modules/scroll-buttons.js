@@ -39,6 +39,8 @@ function getPageType() {
   if (path.includes('write.html')) return 'write';
   if (path.includes('mypage.html')) return 'mypage';
   if (path.includes('profile-history.html')) return 'profile-history';
+  if (path.includes('profile-setting.html')) return 'profile';
+  if (path.includes('inventory.html')) return 'profile';
   if (path.includes('profile.html')) return 'profile';
   if (path.includes('store.html')) return 'store';
 
@@ -50,7 +52,13 @@ function getPageType() {
   if (page === 'write') return 'write';
   if (page === 'mypage') return 'mypage';
   if (page === 'profile-history') return 'profile-history';
-  if (page === 'profile') return 'profile';
+  if (
+    page === 'profile' ||
+    page === 'profile-setting' ||
+    page === 'inventory'
+  ) {
+    return 'profile';
+  }
   if (page === 'store') return 'store';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';

@@ -1,0 +1,38 @@
+.inventory-main {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.inventory-card {
+  max-width: 860px;
+}
+
+.inventory-intro {
+  margin-bottom: var(--space-12);
+}
+
+.inventory-title {
+  text-align: center;
+  padding-bottom: 0;
+}
+
+.inventory-desc {
+  text-align: center;
+  margin-top: var(--space-12);
+}
+
+.inventory-msg {
+  margin-top: var(--space-12);
+  margin-bottom: var(--space-16);
+}
+
+.inventory-main .profile-character-preview {
+  margin-bottom: var(--space-12);
+}
+
+@media (max-width: 700px) {
+  .inventory-card {
+    padding: var(--space-24);
+  }
+}

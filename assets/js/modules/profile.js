@@ -1123,11 +1123,14 @@ async function updateProfileRow(userId, patch) {
 }
 
 function applyProfileModeUI({
+  pageName = 'profile',
   isOwnProfile,
   nickname,
   currentUser,
   profileRow,
 }) {
+  const isSettingPage = pageName === 'profile-setting';
+
   const eyebrowEl = $('profileEyebrow');
   const nicknameText = $('profileNicknameText');
   const emailText = $('profileEmailText');
@@ -1141,6 +1144,9 @@ function applyProfileModeUI({
   const pickleSection = $('profilePickleSection');
   const characterSection = $('profileCharacterSection');
   const inventoryWrap = $('profileCharacterInventoryWrap');
+  const profileSettingLink = $('profileSettingLink');
+  const profileHistoryLink = $('profileHistoryLink');
+  const profileInventoryLink = $('profileInventoryLink');
 
   if (heroPickleEl) {
     heroPickleEl.hidden = !isOwnProfile;
@@ -1159,7 +1165,11 @@ function applyProfileModeUI({
   }
 
   if (eyebrowEl) {
-    eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
+    if (isSettingPage) {
+      eyebrowEl.textContent = '프로필 설정';
+    } else {
+      eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
+    }
   }
 
   if (nicknameText) {
@@ -1169,13 +1179,22 @@ function applyProfileModeUI({
   if (emailText) {
     emailText.textContent = isOwnProfile
       ? currentUser?.email || profileRow?.email || '-'
-      : '다른 이용자의 공개 프로필이야.';
+      : '';
+    emailText.hidden = !isOwnProfile;
   }
 
   if (descEl) {
-    descEl.textContent = isOwnProfile
-      ? '여기서는 프로필 사진, 닉네임, 내가 쓴 글/댓글을 한 번에 볼 수 있어.'
-      : '여기서는 이 이용자가 작성한 글과 댓글을 볼 수 있어.';
+    if (isSettingPage) {
+      descEl.textContent = '여기서 프로필 사진과 닉네임을 변경할 수 있어.';
+      descEl.hidden = false;
+    } else if (isOwnProfile) {
+      descEl.textContent =
+        '여기서는 프로필 사진, 닉네임, 보유 피클, 내 캐릭터를 볼 수 있어.';
+      descEl.hidden = false;
+    } else {
+      descEl.textContent = '';
+      descEl.hidden = true;
+    }
   }
 
   if (form) {
@@ -1198,6 +1217,18 @@ function applyProfileModeUI({
 
   if (avatar) {
     avatar.src = getProfileImageSrc(profileRow?.profile_image_url);
+  }
+
+  if (profileSettingLink) {
+    profileSettingLink.hidden = !isOwnProfile || isSettingPage;
+  }
+
+  if (profileHistoryLink) {
+    profileHistoryLink.hidden = !isOwnProfile || isSettingPage;
+  }
+
+  if (profileInventoryLink) {
+    profileInventoryLink.hidden = !isOwnProfile || isSettingPage;
   }
 }
 
@@ -1233,17 +1264,34 @@ function renderProfileNotFound() {
 }
 
 export async function initProfile() {
-  if (document.body?.dataset?.page !== 'profile') return;
+  const pageName = String(document.body?.dataset?.page || '')
+    .trim()
+    .toLowerCase();
+
+  const isInventoryPage = pageName === 'inventory';
+  const isProfileSettingPage = pageName === 'profile-setting';
+
+  if (!['profile', 'profile-setting', 'inventory'].includes(pageName)) return;
 
   const currentUser = await getCurrentUser();
-  const targetUserIdFromUrl = getTargetUserIdFromUrl();
+  const targetUserIdFromUrl =
+    isInventoryPage || isProfileSettingPage ? '' : getTargetUserIdFromUrl();
 
   if (!targetUserIdFromUrl && !currentUser) {
     window.location.href = loginHref();
     return;
   }
 
-  const targetUserId = targetUserIdFromUrl || currentUser?.id || '';
+  if ((isInventoryPage || isProfileSettingPage) && !currentUser) {
+    window.location.href = loginHref();
+    return;
+  }
+
+  const targetUserId =
+    isInventoryPage || isProfileSettingPage
+      ? currentUser?.id || ''
+      : targetUserIdFromUrl || currentUser?.id || '';
+
   const isOwnProfile =
     !!currentUser &&
     !!targetUserId &&
@@ -1285,6 +1333,7 @@ export async function initProfile() {
     (currentUser?.email ? currentUser.email.split('@')[0] : '회원');
 
   applyProfileModeUI({
+    pageName,
     isOwnProfile,
     nickname: currentNickname,
     currentUser,
@@ -1333,6 +1382,10 @@ export async function initProfile() {
     nicknameInput.value = currentNickname;
   }
   updatePickleSummary(profileRow?.pickles || 0, isOwnProfile);
+
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
 
   if (isOwnProfile) {
     resetImageBtn?.addEventListener('click', () => {
@@ -1443,88 +1496,6 @@ export async function initProfile() {
         setMsg('프로필 저장 중 오류가 발생했어.', 'red');
       }
     });
-  }
-
-  const profilePostListEl = $('profilePostList');
-
-  const profileCommentListEl = $('profileCommentList');
-
-  const profilePickleListEl = $('profilePickleList');
-
-  if (isOwnProfile) {
-    try {
-      const pickleEntries = await loadPickleLedger(targetUserId);
-
-      updateTodayPickleStatus(pickleEntries);
-
-      renderPreviewList({
-        items: pickleEntries,
-        limit: 3,
-        listEl: profilePickleListEl,
-        emptyHtml: `<div class="empty">아직 받은 피클 내역이 없어.</div>`,
-        renderItem: renderPickleRow,
-      });
-    } catch (error) {
-      console.error('[profile] load pickle ledger failed:', error);
-
-      updateTodayPickleStatus([]);
-
-      if (profilePickleListEl) {
-        profilePickleListEl.innerHTML =
-          '<div class="empty">피클 내역을 불러오지 못했어.</div>';
-      }
-    }
-  }
-
-  try {
-    const posts = await loadPostsByAuthorId(targetUserId);
-
-    renderPreviewList({
-      items: posts,
-      limit: 3,
-      listEl: profilePostListEl,
-      emptyHtml: `<div class="empty">${
-        isOwnProfile ? '아직 작성한 글이 없어.' : '아직 작성한 글이 없어.'
-      }</div>`,
-      renderItem: renderMyPostRow,
-    });
-  } catch (error) {
-    console.error('[profile] load posts failed:', error);
-
-    if (profilePostListEl) {
-      profilePostListEl.innerHTML = `<div class="empty">${
-        isOwnProfile
-          ? '내 글 목록을 불러오지 못했어.'
-          : '작성한 글 목록을 불러오지 못했어.'
-      }</div>`;
-    }
-  }
-
-  try {
-    const { comments, postMap } =
-      await loadCommentsWithPostsByAuthorId(targetUserId);
-
-    renderPreviewList({
-      items: comments,
-      limit: 3,
-      listEl: profileCommentListEl,
-      emptyHtml: `<div class="empty">${
-        isOwnProfile
-          ? '아직 작성한 댓글/답글이 없어.'
-          : '아직 작성한 댓글/답글이 없어.'
-      }</div>`,
-      renderItem: (comment) => renderMyCommentRow(comment, postMap),
-    });
-  } catch (error) {
-    console.error('[profile] load comments failed:', error);
-
-    if (profileCommentListEl) {
-      profileCommentListEl.innerHTML = `<div class="empty">${
-        isOwnProfile
-          ? '내 댓글 목록을 불러오지 못했어.'
-          : '작성한 댓글 목록을 불러오지 못했어.'
-      }</div>`;
-    }
   }
 
   requestAnimationFrame(() => {

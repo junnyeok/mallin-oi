@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>내프로필 | 말린오이닷컴</title>
+    <title>인벤토리 | 말린오이닷컴</title>
 
     <link
       rel="apple-touch-icon"
@@ -28,6 +28,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+
     <link rel="stylesheet" href="./assets/css/00-reset.css" />
     <link rel="stylesheet" href="./assets/css/01-tokens.css" />
     <link rel="stylesheet" href="./assets/css/02-base.css" />
@@ -41,87 +42,99 @@
     <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
     <link rel="stylesheet" href="./assets/css/main/profile-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/inventory-main.css" />
     <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
   </head>
-  <body data-page="profile">
+  <body data-page="inventory">
     <div class="page">
       <div data-include="header"></div>
 
-      <main class="profile-main">
-        <div class="profile-card">
-          <section class="profile-hero">
-            <div class="profile-avatar-wrap">
-              <img
-                id="profileAvatar"
-                class="profile-avatar"
-                src="./images/logo-home.png"
-                alt="프로필 사진"
-              />
-            </div>
-
-            <div class="profile-hero__content">
-              <div class="profile-hero__top">
-                <div class="profile-hero__text">
-                  <p class="profile-hero__eyebrow" id="profileEyebrow">
-                    내프로필
-                  </p>
-                  <h1 class="profile-hero__nickname" id="profileNicknameText">
-                    -
-                  </h1>
-                  <p class="profile-hero__meta" id="profileEmailText">-</p>
-                  <p class="profile-hero__desc" id="profileDesc">
-                    여기서는 프로필 사진, 닉네임, 보유 피클, 내 캐릭터를 볼 수
-                    있어.
-                  </p>
-                </div>
-
-                <a
-                  id="profileSettingLink"
-                  class="profile-setting-link"
-                  href="./profile-setting.html"
-                >
-                  프로필 설정
-                </a>
-              </div>
-
-              <div class="profile-hero__summary-row">
-                <p class="profile-hero__pickle" id="profileHeroPickle" hidden>
-                  보유 피클 0 🥒
-                </p>
-
-                <a
-                  id="profileHistoryLink"
-                  class="profile-setting-link is-secondary profile-history-shortcut"
-                  href="./profile-history.html"
-                >
-                  피클 · 글 · 댓글 내역 보기
-                </a>
-              </div>
-            </div>
+      <main class="profile-main inventory-main">
+        <div class="profile-card inventory-card">
+          <section
+            class="profile-section inventory-intro"
+            aria-label="인벤토리 소개"
+          >
+            <p class="profile-hero__eyebrow">내 인벤토리</p>
+            <h1 class="profile-section-title inventory-title">
+              캐릭터 / 스킨 / BGM 관리
+            </h1>
+            <p class="profile-hero__desc inventory-desc">
+              여기서 현재 사용할 캐릭터, 스킨, BGM을 선택할 수 있어.
+            </p>
           </section>
 
           <section
             class="profile-section profile-character-section"
             id="profileCharacterSection"
-            aria-label="내 캐릭터"
+            aria-label="내 인벤토리"
           >
             <div class="profile-character-preview">
               <img
                 id="profileCharacterImage"
                 class="profile-character-image"
                 src="./images/characters/cucumber.png"
-                alt="기본 캐릭터"
+                alt="현재 캐릭터"
               />
             </div>
 
             <div class="profile-character-actions">
               <a
-                id="profileInventoryLink"
-                class="profile-inventory-link"
-                href="./inventory.html"
+                class="profile-inventory-link is-secondary"
+                href="./profile.html"
               >
-                인벤토리 관리
+                내프로필로 돌아가기
               </a>
+            </div>
+
+            <p class="profile-msg inventory-msg" id="profileMsg"></p>
+
+            <div
+              id="profileCharacterCharacterWrap"
+              class="profile-character-inventory"
+            >
+              <div class="profile-character-inventory__head">
+                <h3 class="profile-character-inventory__title">캐릭터</h3>
+
+                <label
+                  class="profile-character-toggle"
+                  for="profileOwnedOnlyToggle"
+                >
+                  <input type="checkbox" id="profileOwnedOnlyToggle" />
+                  <span>보유중</span>
+                </label>
+              </div>
+
+              <div
+                id="profileCharacterList"
+                class="profile-character-grid profile-character-grid--characters"
+              ></div>
+            </div>
+
+            <div
+              id="profileCharacterSkinWrap"
+              class="profile-character-inventory"
+            >
+              <h3
+                class="profile-character-inventory__title"
+                id="profileCharacterSkinTitle"
+              >
+                스킨
+              </h3>
+
+              <div
+                id="profileCharacterSkinList"
+                class="profile-character-grid profile-character-grid--skins"
+              ></div>
+            </div>
+
+            <div id="profileBgmWrap" class="profile-character-inventory">
+              <h3 class="profile-character-inventory__title">BGM 인벤토리</h3>
+
+              <div
+                id="profileBgmList"
+                class="profile-character-grid profile-character-grid--bgm"
+              ></div>
             </div>
           </section>
         </div>

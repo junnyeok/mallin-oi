@@ -306,6 +306,8 @@ async function initPageModules(modules) {
       break;
 
     case 'profile':
+    case 'profile-setting':
+    case 'inventory':
       await runSafe('profile module', async () => {
         await initProfile();
       });

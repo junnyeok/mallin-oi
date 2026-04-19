@@ -148,11 +148,6 @@ export function initSearchNav({
     return '/';
   }
 
-  if (page === 'posts-all') {
-    const sp = new URLSearchParams(window.location.search);
-    input.value = sp.get('q') || '';
-  }
-
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -170,6 +165,8 @@ export function initSearchNav({
     if (q) {
       params.set('q', q);
     }
+
+    input.value = '';
 
     const basePath = getSiteBasePath();
     window.location.href = `${basePath}${baseUrl}?${params.toString()}`;
