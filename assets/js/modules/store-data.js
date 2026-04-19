@@ -48,7 +48,7 @@ export const AVOCADO_SUNSET_BGM_PREVIEW = [
 export const LOFI_CUCUMBER_BGM_PREVIEW = [
   {
     code: 'bgm-lofi-cucumber',
-    label: '로피 말린오이 BGM',
+    label: 'lofi 말린오이 BGM',
     imagePath: withAssetVersion('./images/BGM/lofi-cucumber.png'),
     displayOrder: 1,
   },
@@ -68,7 +68,7 @@ export const BGM_CATALOG = [
   {
     id: 'mallin-oi-lofi-cucumber',
     storeItemId: 'bgm-cucumber-01',
-    title: '로피 말린오이 BGM',
+    title: 'lofi 말린오이 BGM',
     artist: '말린오이닷컴',
     audioPath: withAssetVersion('./assets/mp3/mallin-oi_lofi-cucumber.mp3'),
     coverPath: withAssetVersion('./images/BGM/lofi-cucumber.png'),
@@ -266,7 +266,7 @@ export const GRILLED_EGG_CHARACTER_PREVIEW = [
 export const STORE_ITEMS = [
   {
     id: 'bgm-cucumber-01',
-    name: '로피 말린오이 BGM',
+    name: 'lofi 말린오이 BGM',
     category: 'bgm',
     badge: 'BGM',
     icon: '🥒🎵',
@@ -276,7 +276,7 @@ export const STORE_ITEMS = [
     ),
     price: 382,
     state: '판매 중',
-    description: '로피 말린오이 BGM.',
+    description: 'lofi 말린오이 BGM.',
     detailDescription:
       '로피 말린오이 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
     previewImages: LOFI_CUCUMBER_BGM_PREVIEW,

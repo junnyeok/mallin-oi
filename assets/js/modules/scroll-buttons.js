@@ -164,13 +164,10 @@ function getMypageTargets() {
 }
 
 function getProfileTargets() {
-  const myPostsSection =
-    document.getElementById('profileMyPostsSection') || null;
-
   return {
-    commentSection: myPostsSection,
-    commentScrollEl: myPostsSection,
-    commentStateEl: myPostsSection,
+    commentSection: null,
+    commentScrollEl: null,
+    commentStateEl: null,
   };
 }
 
@@ -347,15 +344,6 @@ export function initScrollButtons(options = {}) {
     commentSection = profileTargets.commentSection;
     commentScrollEl = profileTargets.commentScrollEl;
     commentStateEl = profileTargets.commentStateEl;
-
-    if (commentSection && commentScrollEl) {
-      btnComment = createFabButton(
-        'comment',
-        'POST',
-        '📝',
-        '내가 쓴 글 영역으로 이동',
-      );
-    }
 
     btnBottom.setAttribute('aria-label', '하단으로 이동');
   }

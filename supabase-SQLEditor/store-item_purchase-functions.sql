@@ -106,7 +106,7 @@ begin
 
     elsif p_item_id = 'bgm-cucumber-01' then
     v_price := 382;
-    v_name := '로피 말린오이 BGM';
+    v_name := 'lofi 말린오이 BGM';
     v_category := 'bgm';
 
   elsif p_item_id = 'emo-eat-01' then
@@ -649,7 +649,7 @@ begin
       when p_item_id = 'bgm-fat-avocado-01'
         then '아보카도의 산책 BGM 구매가 완료됐어. 393피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-cucumber-01'
-        then '로피 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+        then 'lofi 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       else '구매가 완료됐어.'
