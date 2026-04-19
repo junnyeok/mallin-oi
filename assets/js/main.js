@@ -53,6 +53,7 @@ async function loadCoreModules() {
     dailyAttendancePopupModule,
     notificationsModule,
     bgmPlayerModule,
+    pickleStatusModule,
     pjaxRouterModule,
   ] = await Promise.all([
     import(withModuleVersion('./modules/site-version.js')),
@@ -83,6 +84,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/daily-attendance-popup.js')),
     import(withModuleVersion('./modules/notifications.js')),
     import(withModuleVersion('./modules/bgm-player.js')),
+    import(withModuleVersion('./modules/pickle-status.js')),
     import(withModuleVersion('./modules/pjax-router.js')),
   ]);
 
@@ -115,6 +117,7 @@ async function loadCoreModules() {
     dailyAttendancePopupModule,
     notificationsModule,
     bgmPlayerModule,
+    pickleStatusModule,
     pjaxRouterModule,
   };
 
@@ -347,6 +350,7 @@ async function initGlobalModules(modules) {
     dailyAttendancePopupModule,
     notificationsModule,
     bgmPlayerModule,
+    pickleStatusModule,
     pjaxRouterModule,
   } = modules;
 
@@ -365,6 +369,7 @@ async function initGlobalModules(modules) {
   const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
   const { initBgmPlayer } = bgmPlayerModule;
+  const { initPickleStatus } = pickleStatusModule;
   const { initPjaxRouter } = pjaxRouterModule;
 
   applyVersionToStaticLinks(withAssetVersion);
@@ -414,6 +419,10 @@ async function initGlobalModules(modules) {
 
   await runSafe('notifications module', async () => {
     await initNotifications();
+  });
+
+  await runSafe('pickle status module', async () => {
+    await initPickleStatus();
   });
 
   await runSafe('pjax router', async () => {

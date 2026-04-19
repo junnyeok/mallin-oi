@@ -182,18 +182,138 @@ function updateTodayPickleStatus(entries = []) {
   commentEl.textContent = `${todayCommentCount} / 20`;
 }
 
-function updatePickleSummary(balance = 0, isVisible = false) {
-  const heroPickleEl = $('profileHeroPickle');
-  const sectionEl = $('profilePickleSection');
-  const balanceEl = $('profilePickleBalance');
+function getTodayPicklePopupStats(entries = []) {
+  const todayKey = getSeoulDateKey();
+
+  const todayEntries = (entries || []).filter(
+    (entry) => String(entry?.awarded_on || '') === todayKey,
+  );
+
+  const attendanceDone = todayEntries.some(
+    (entry) =>
+      entry?.reason_code === 'attendance' && Number(entry?.amount || 0) > 0,
+  );
+
+  const postCount = todayEntries.filter(
+    (entry) =>
+      entry?.reason_code === 'post_create' && Number(entry?.amount || 0) > 0,
+  ).length;
+
+  const commentCount = todayEntries.filter(
+    (entry) =>
+      entry?.reason_code === 'comment_post' && Number(entry?.amount || 0) > 0,
+  ).length;
+
+  return {
+    attendanceDone,
+    postCount,
+    commentCount,
+  };
+}
+
+function closePicklePanel() {
+  const btn = $('pickleBtn');
+  const panel = $('picklePanel');
+
+  if (!btn || !panel) return;
+
+  panel.hidden = true;
+  btn.setAttribute('aria-expanded', 'false');
+}
+
+function openPicklePanel() {
+  const btn = $('pickleBtn');
+  const panel = $('picklePanel');
+
+  if (!btn || !panel) return;
+
+  panel.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+}
+
+function initPicklePopup({
+  pageName = '',
+  isOwnProfile = false,
+  balance = 0,
+  entries = [],
+} = {}) {
+  const menu = $('pickleMenu');
+  const btn = $('pickleBtn');
+  const panel = $('picklePanel');
+  const closeBtn = $('pickleCloseBtn');
+  const balanceEl = $('pickleBalanceValue');
+  const attendanceEl = $('pickleAttendanceStatus');
+  const postEl = $('picklePostStatus');
+  const commentEl = $('pickleCommentStatus');
+
+  if (!menu || !btn || !panel) return;
+
+  const shouldShow = pageName === 'profile' && isOwnProfile;
+
+  menu.hidden = !shouldShow;
+  if (!shouldShow) {
+    closePicklePanel();
+    return;
+  }
+
+  const { attendanceDone, postCount, commentCount } =
+    getTodayPicklePopupStats(entries);
 
   if (balanceEl) {
     balanceEl.textContent = formatPickleAmount(balance);
   }
 
-  if (heroPickleEl) {
-    heroPickleEl.hidden = !isVisible;
-    heroPickleEl.textContent = `보유 피클 ${formatPickleAmount(balance)}`;
+  if (attendanceEl) {
+    attendanceEl.textContent = attendanceDone ? '완료 ✅' : '미완료 ❌';
+  }
+
+  if (postEl) {
+    postEl.textContent = `${postCount} / 5`;
+  }
+
+  if (commentEl) {
+    commentEl.textContent = `${commentCount} / 20`;
+  }
+
+  btn.onclick = (event) => {
+    event.preventDefault();
+
+    const isOpen = !panel.hidden;
+    if (isOpen) {
+      closePicklePanel();
+      return;
+    }
+
+    openPicklePanel();
+  };
+
+  closeBtn?.addEventListener('click', () => {
+    closePicklePanel();
+  });
+
+  panel.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (panel.hidden) return;
+    if (menu.contains(event.target)) return;
+    closePicklePanel();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closePicklePanel();
+    }
+  });
+}
+
+function updatePickleSummary(balance = 0, isVisible = false) {
+  const balanceEl = $('profilePickleBalance');
+  const sectionEl = $('profilePickleSection');
+
+  if (balanceEl) {
+    balanceEl.textContent = formatPickleAmount(balance);
   }
 
   if (sectionEl) {
@@ -1158,21 +1278,11 @@ function applyProfileModeUI({
   const postsTitle = $('profilePostsTitle');
   const commentsTitle = $('profileCommentsTitle');
   const avatar = $('profileAvatar');
-  const heroPickleEl = $('profileHeroPickle');
-  const pickleSection = $('profilePickleSection');
   const characterSection = $('profileCharacterSection');
   const inventoryWrap = $('profileCharacterInventoryWrap');
   const profileSettingLink = $('profileSettingLink');
   const profileHistoryLink = $('profileHistoryLink');
   const profileInventoryLink = $('profileInventoryLink');
-
-  if (heroPickleEl) {
-    heroPickleEl.hidden = !isOwnProfile;
-  }
-
-  if (pickleSection) {
-    pickleSection.hidden = !isOwnProfile;
-  }
 
   if (characterSection) {
     characterSection.hidden = false;
@@ -1268,8 +1378,6 @@ function renderProfileNotFound() {
   const postList = $('profilePostList');
   const commentList = $('profileCommentList');
   const avatar = $('profileAvatar');
-  const heroPickleEl = $('profileHeroPickle');
-  const pickleSection = $('profilePickleSection');
   const characterSection = $('profileCharacterSection');
 
   if (nicknameText) nicknameText.textContent = '프로필을 찾을 수 없어';
@@ -1279,8 +1387,6 @@ function renderProfileNotFound() {
   }
   if (form) form.hidden = true;
   if (avatar) avatar.src = DEFAULT_PROFILE_IMAGE;
-  if (heroPickleEl) heroPickleEl.hidden = true;
-  if (pickleSection) pickleSection.hidden = true;
   if (characterSection) characterSection.hidden = true;
 
   if (postList) {
@@ -1332,6 +1438,7 @@ export async function initProfile() {
   const resetImageBtn = $('profileResetImageBtn');
 
   let profileRow = null;
+  let pickleEntries = [];
   let pendingDefaultImage = false;
 
   try {
@@ -1397,6 +1504,14 @@ export async function initProfile() {
     }
   }
 
+  if (isOwnProfile) {
+    try {
+      pickleEntries = await loadPickleLedger(targetUserId);
+    } catch (error) {
+      console.error('[profile] load pickle ledger failed:', error);
+    }
+  }
+
   renderCharacterSection({
     profileRow,
     characterRows,
@@ -1419,6 +1534,8 @@ export async function initProfile() {
     bioInput.value = currentBio;
   }
   updatePickleSummary(profileRow?.pickles || 0, isOwnProfile);
+
+  // 피클 버튼/팝업은 공통 헤더 모듈(pickle-status.js)에서 처리
 
   requestAnimationFrame(() => {
     window.dispatchEvent(new Event('resize'));

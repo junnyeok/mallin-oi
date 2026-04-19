@@ -73,6 +73,69 @@
     </section>
   </div>
 
+  <div class="pickle-menu" id="pickleMenu" hidden>
+    <button
+      type="button"
+      class="pickle-btn"
+      id="pickleBtn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="picklePanel"
+    >
+      <span class="pickle-btn__icon" aria-hidden="true">🥒</span>
+      <span class="pickle-btn__text">피클</span>
+    </button>
+
+    <section
+      class="pickle-panel"
+      id="picklePanel"
+      aria-label="피클 현황"
+      hidden
+    >
+      <div class="pickle-panel__head">
+        <strong class="pickle-panel__title">피클 현황</strong>
+        <button type="button" class="pickle-panel__close" id="pickleCloseBtn">
+          닫기
+        </button>
+      </div>
+
+      <div class="pickle-panel__body">
+        <div class="pickle-balance-card">
+          <span class="pickle-balance-card__label">보유 피클</span>
+          <strong class="pickle-balance-card__value" id="pickleBalanceValue">
+            0 🥒
+          </strong>
+        </div>
+
+        <div class="pickle-status-list">
+          <div class="pickle-status-item">
+            <span class="pickle-status-item__label">8시 출석 체크</span>
+            <strong
+              class="pickle-status-item__value"
+              id="pickleAttendanceStatus"
+            >
+              미완료 ❌
+            </strong>
+          </div>
+
+          <div class="pickle-status-item">
+            <span class="pickle-status-item__label">오늘 게시글</span>
+            <strong class="pickle-status-item__value" id="picklePostStatus">
+              0 / 5
+            </strong>
+          </div>
+
+          <div class="pickle-status-item">
+            <span class="pickle-status-item__label">댓글/답글</span>
+            <strong class="pickle-status-item__value" id="pickleCommentStatus">
+              0 / 20
+            </strong>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <div class="container header-inner">
     <a class="logo" href="__BASE__index.html" aria-label="홈으로">
       <img

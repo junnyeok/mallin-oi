@@ -746,7 +746,7 @@ button.profile-character-card:hover {
 .profile-hero__top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-16);
 }
 
@@ -755,15 +755,24 @@ button.profile-character-card:hover {
   flex: 1;
 }
 
-.profile-setting-link {
+.profile-hero__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-12);
+  flex-shrink: 0;
+}
+
+.profile-setting-link,
+.profile-inventory-link--hero {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 90px;
-  padding: 10px;
+  min-width: 100px;
+  min-height: 30px;
+  padding: 10px 10px;
   border-radius: 999px;
   border: 2px solid var(--color-border);
-  background: var(--color-primary);
   color: var(--color-text);
   text-decoration: none;
   font-size: var(--text-small);
@@ -771,19 +780,35 @@ button.profile-character-card:hover {
   white-space: nowrap;
   transition:
     transform 0.15s ease,
-    opacity 0.15s ease;
+    opacity 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.profile-setting-link:hover {
+.profile-setting-link {
+  background: var(--color-primary);
+}
+
+.profile-setting-link:hover,
+.profile-inventory-link--hero:hover {
   opacity: 0.92;
 }
 
-.profile-setting-link:active {
+.profile-setting-link:active,
+.profile-inventory-link--hero:active {
   transform: scale(0.98);
 }
 
 .profile-setting-link.is-secondary {
   background: var(--color-surface);
+}
+
+.profile-inventory-link--hero {
+  background: rgba(170, 208, 94, 0.16);
+}
+
+.profile-history-shortcut {
+  margin-left: 0;
 }
 
 @media (max-width: 768px) {
@@ -792,8 +817,15 @@ button.profile-character-card:hover {
     align-items: center;
   }
 
-  .profile-setting-link {
-    width: 30%;
+  .profile-hero__actions {
+    width: 100%;
+    align-items: center;
+  }
+
+  .profile-setting-link,
+  .profile-inventory-link--hero {
+    width: auto;
+    min-width: 100px;
   }
 }
 
