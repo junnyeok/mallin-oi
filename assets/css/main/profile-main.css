@@ -89,6 +89,32 @@
   gap: var(--space-8);
 }
 
+.profile-field textarea {
+  min-height: 120px;
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  border: 2px solid var(--color-border);
+  font-size: var(--text-body);
+  background: var(--color-surface);
+  color: var(--color-text);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.profile-field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.profile-hero__desc {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.profile-hero__desc:empty {
+  display: none;
+}
+
 .profile-field label {
   font-size: var(--text-body);
   color: var(--color-text);

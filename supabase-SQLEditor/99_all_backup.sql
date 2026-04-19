@@ -13918,3 +13918,32 @@ end;
 $$;
 
 grant execute on function public.purchase_store_item(text) to authenticated;
+
+alter table public.profiles
+  add column if not exists bio text;
+
+alter table public.profiles
+  drop constraint if exists profiles_bio_length_check;
+
+alter table public.profiles
+  add constraint profiles_bio_length_check
+  check (char_length(coalesce(bio, '')) <= 100);
+
+update public.profiles
+set bio = null
+where trim(coalesce(bio, '')) = '';
+
+drop view if exists public.public_profiles;
+
+create view public.public_profiles as
+select
+  id,
+  nickname,
+  profile_image_url,
+  bio,
+  created_at,
+  updated_at,
+  equipped_character_image_url
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;

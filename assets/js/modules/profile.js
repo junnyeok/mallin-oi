@@ -109,6 +109,23 @@ function isValidNickname(v) {
   return String(v || '').trim().length >= 2;
 }
 
+function normalizeProfileBio(value, { preserveLineBreaks = false } = {}) {
+  const raw = String(value ?? '');
+
+  const normalized = preserveLineBreaks
+    ? raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    : raw.replace(/\s+/g, ' ');
+
+  const trimmed = normalized.trim();
+  if (!trimmed) return '';
+
+  return trimmed.slice(0, 100);
+}
+
+function getOwnProfileBioPlaceholder() {
+  return '이 자리에 자기소개를 작성할 수 있어. 프로필 설정을 이용해!';
+}
+
 function setMsg(text, color = 'var(--color-text-sub)') {
   const el = $('profileMsg');
   if (!el) return;
@@ -286,7 +303,7 @@ async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, nickname, email, profile_image_url, pickles, equipped_character_image_url, bgm_selected_track_ids, bgm_current_track_id',
+      'id, nickname, email, bio, profile_image_url, pickles, equipped_character_image_url, bgm_selected_track_ids, bgm_current_track_id',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -299,7 +316,7 @@ async function loadPublicProfileRow(userId) {
   const { data, error } = await supabase
     .from('public_profiles')
     .select(
-      'id, nickname, profile_image_url, equipped_character_image_url, created_at, updated_at',
+      'id, nickname, bio, profile_image_url, equipped_character_image_url, created_at, updated_at',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -1126,6 +1143,7 @@ function applyProfileModeUI({
   pageName = 'profile',
   isOwnProfile,
   nickname,
+  bio = '',
   currentUser,
   profileRow,
 }) {
@@ -1164,11 +1182,15 @@ function applyProfileModeUI({
     inventoryWrap.hidden = !isOwnProfile;
   }
 
+  const safeBio = normalizeProfileBio(bio, { preserveLineBreaks: true });
+
   if (eyebrowEl) {
     if (isSettingPage) {
       eyebrowEl.textContent = '프로필 설정';
+      eyebrowEl.hidden = false;
     } else {
-      eyebrowEl.textContent = isOwnProfile ? '내프로필' : '이용자 프로필';
+      eyebrowEl.textContent = '';
+      eyebrowEl.hidden = true;
     }
   }
 
@@ -1177,19 +1199,25 @@ function applyProfileModeUI({
   }
 
   if (emailText) {
-    emailText.textContent = isOwnProfile
-      ? currentUser?.email || profileRow?.email || '-'
-      : '';
-    emailText.hidden = !isOwnProfile;
+    if (isSettingPage && isOwnProfile) {
+      emailText.textContent = currentUser?.email || profileRow?.email || '-';
+      emailText.hidden = false;
+    } else {
+      emailText.textContent = '';
+      emailText.hidden = true;
+    }
   }
 
   if (descEl) {
     if (isSettingPage) {
-      descEl.textContent = '여기서 프로필 사진과 닉네임을 변경할 수 있어.';
+      descEl.textContent =
+        '여기서 프로필 사진, 닉네임, 자기소개를 변경할 수 있어.';
       descEl.hidden = false;
     } else if (isOwnProfile) {
-      descEl.textContent =
-        '여기서는 프로필 사진, 닉네임, 보유 피클, 내 캐릭터를 볼 수 있어.';
+      descEl.textContent = safeBio || getOwnProfileBioPlaceholder();
+      descEl.hidden = false;
+    } else if (safeBio) {
+      descEl.textContent = safeBio;
       descEl.hidden = false;
     } else {
       descEl.textContent = '';
@@ -1298,6 +1326,7 @@ export async function initProfile() {
     String(currentUser.id) === String(targetUserId);
 
   const nicknameInput = $('profileNickname');
+  const bioInput = $('profileBio');
   const avatar = $('profileAvatar');
   const imageFileInput = $('profileImageFile');
   const resetImageBtn = $('profileResetImageBtn');
@@ -1332,14 +1361,18 @@ export async function initProfile() {
     currentUser?.user_metadata?.display_name ||
     (currentUser?.email ? currentUser.email.split('@')[0] : '회원');
 
+  const currentBio = normalizeProfileBio(profileRow?.bio, {
+    preserveLineBreaks: true,
+  });
+
   applyProfileModeUI({
     pageName,
     isOwnProfile,
     nickname: currentNickname,
+    bio: currentBio,
     currentUser,
     profileRow,
   });
-
   let characterRows = [];
   let characterSkinRows = [];
   let ownedStoreItemIds = new Set();
@@ -1380,6 +1413,10 @@ export async function initProfile() {
 
   if (isOwnProfile && nicknameInput) {
     nicknameInput.value = currentNickname;
+  }
+
+  if (isOwnProfile && bioInput) {
+    bioInput.value = currentBio;
   }
   updatePickleSummary(profileRow?.pickles || 0, isOwnProfile);
 
@@ -1428,6 +1465,9 @@ export async function initProfile() {
       e.preventDefault();
 
       const nickname = nicknameInput?.value?.trim() || '';
+      const bio = normalizeProfileBio(bioInput?.value, {
+        preserveLineBreaks: true,
+      });
       const file = imageFileInput?.files?.[0] || null;
 
       if (!isValidNickname(nickname)) {
@@ -1462,6 +1502,7 @@ export async function initProfile() {
 
         const patch = {
           nickname,
+          bio: bio || null,
           updated_at: new Date().toISOString(),
         };
 
@@ -1480,13 +1521,20 @@ export async function initProfile() {
         };
 
         applyProfileModeUI({
+          pageName,
           isOwnProfile: true,
           nickname,
+          bio: profileRow?.bio || '',
           currentUser,
           profileRow,
         });
 
         if (imageFileInput) imageFileInput.value = '';
+        if (bioInput) {
+          bioInput.value = normalizeProfileBio(profileRow?.bio, {
+            preserveLineBreaks: true,
+          });
+        }
         pendingDefaultImage = false;
 
         setMsg('프로필 저장 완료!', 'green');
