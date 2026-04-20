@@ -233,6 +233,18 @@
   flex-shrink: 0;
 }
 
+.panel--latest-wide {
+  width: 100%;
+}
+
+.home-section--suggestion-page .container {
+  max-width: 960px;
+}
+
+.suggestion-panel--page {
+  width: 100%;
+}
+
 /* ===== 건의사항 ===== */
 .suggestion-panel {
   min-height: auto;

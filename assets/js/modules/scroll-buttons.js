@@ -7,11 +7,8 @@
   - 댓글: 좋아요/댓글 영역
   - END: 다른 게시물 영역
 
-  [index / study / work / event / career]
-  - PC: TOP / END
-  - 모바일: TOP / 주요 / 건의 / END
-    - 주요: 주요업데이트 섹션
-    - 건의: 건의사항 패널
+    [index / study / work / event / career]
+  - PC / 모바일: TOP / END
     - END: 최신 업로드 패널
 
   [posts-all.html]
@@ -43,6 +40,7 @@ function getPageType() {
   if (path.includes('inventory.html')) return 'profile';
   if (path.includes('profile.html')) return 'profile';
   if (path.includes('store.html')) return 'store';
+  if (path.includes('suggestion.html')) return 'suggestion';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
@@ -60,6 +58,7 @@ function getPageType() {
     return 'profile';
   }
   if (page === 'store') return 'store';
+  if (page === 'suggestion') return 'suggestion';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }
@@ -85,26 +84,10 @@ function findLatestPanel() {
 }
 
 function getHomeLikeTargets() {
-  const featuredSection =
-    document.getElementById('featuredPostsSection') ||
-    document.querySelector('.home-section');
-
-  const suggestionSection =
-    document.getElementById('suggestionSection') ||
-    document.querySelector('.suggestion-panel');
-
   const latestPanel =
     document.getElementById('latestUploadSection') || findLatestPanel();
 
   return {
-    majorSection: featuredSection,
-    majorScrollEl: featuredSection,
-    majorStateEl: featuredSection,
-
-    commentSection: suggestionSection,
-    commentScrollEl: suggestionSection,
-    commentStateEl: suggestionSection,
-
     bottomScrollEl: latestPanel,
   };
 }
@@ -176,6 +159,17 @@ function getProfileTargets() {
     commentSection: null,
     commentScrollEl: null,
     commentStateEl: null,
+  };
+}
+
+function getSuggestionTargets() {
+  const bottomScrollEl =
+    document.getElementById('suggestionList') ||
+    document.getElementById('suggestionSection') ||
+    null;
+
+  return {
+    bottomScrollEl,
   };
 }
 
@@ -272,32 +266,10 @@ export function initScrollButtons(options = {}) {
   }
 
   if (pageType === 'home-like') {
-    const mobile = isMobileViewport();
     const homeTargets = getHomeLikeTargets();
-
-    majorScrollEl = homeTargets.majorScrollEl;
-    majorStateEl = homeTargets.majorStateEl;
-
-    commentSection = homeTargets.commentSection;
-    commentScrollEl = homeTargets.commentScrollEl;
-    commentStateEl = homeTargets.commentStateEl;
-
     bottomScrollEl = homeTargets.bottomScrollEl;
 
-    if (mobile && majorScrollEl) {
-      btnMajor = createFabButton('major', '주요', '🔥', '주요업데이트로 이동');
-    }
-
-    if (mobile && commentSection && commentScrollEl) {
-      btnComment = createFabButton(
-        'comment',
-        '건의',
-        '💬',
-        '건의사항으로 이동',
-      );
-    }
-
-    if (mobile && bottomScrollEl) {
+    if (bottomScrollEl) {
       btnBottom.setAttribute('aria-label', '최신 업로드로 이동');
     } else {
       btnBottom.setAttribute('aria-label', '하단으로 이동');
@@ -360,6 +332,17 @@ export function initScrollButtons(options = {}) {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 
+  if (pageType === 'suggestion') {
+    const suggestionTargets = getSuggestionTargets();
+    bottomScrollEl = suggestionTargets.bottomScrollEl;
+
+    if (bottomScrollEl) {
+      btnBottom.setAttribute('aria-label', '건의사항 목록으로 이동');
+    } else {
+      btnBottom.setAttribute('aria-label', '하단으로 이동');
+    }
+  }
+
   if (pageType === 'profile-history') {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
@@ -408,7 +391,13 @@ export function initScrollButtons(options = {}) {
       return;
     }
 
-    if (pageTypeNow === 'home-like' && mobile && bottomScrollEl) {
+    if (pageTypeNow === 'home-like' && bottomScrollEl) {
+      const targetTop = getAbsoluteTop(bottomScrollEl, 16);
+      window.scrollTo({ top: targetTop, behavior });
+      return;
+    }
+
+    if (pageTypeNow === 'suggestion' && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
       window.scrollTo({ top: targetTop, behavior });
       return;
@@ -509,7 +498,8 @@ export function initScrollButtons(options = {}) {
 
     if (
       (pageTypeNow === 'post' && bottomScrollEl) ||
-      (pageTypeNow === 'home-like' && mobile && bottomScrollEl) ||
+      (pageTypeNow === 'home-like' && bottomScrollEl) ||
+      (pageTypeNow === 'suggestion' && bottomScrollEl) ||
       (pageTypeNow === 'posts-all' && bottomScrollEl) ||
       (pageTypeNow === 'write' && bottomScrollEl)
     ) {

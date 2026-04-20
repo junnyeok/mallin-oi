@@ -219,11 +219,6 @@ async function initPageModules(modules) {
         await initStore();
       });
 
-      await runSafe('suggestions board', async () => {
-        await initSuggestionsBoard();
-      });
-      break;
-
     case 'posts-all':
       await runSafe('posts all', async () => {
         await initPostsAll();
@@ -267,11 +262,6 @@ async function initPageModules(modules) {
       await runSafe('back link', async () => {
         initBackLink();
       });
-
-      await runSafe('suggestions board', async () => {
-        await initSuggestionsBoard();
-      });
-      break;
 
     case 'write':
       await runSafe('write module', async () => {
@@ -329,6 +319,12 @@ async function initPageModules(modules) {
     case 'store-item':
       await runSafe('store module', async () => {
         await initStore();
+      });
+      break;
+
+    case 'suggestion':
+      await runSafe('suggestions board', async () => {
+        await initSuggestionsBoard();
       });
       break;
 

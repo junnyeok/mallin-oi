@@ -168,7 +168,7 @@
   position: absolute;
   top: calc(100% + 5px);
   right: 0;
-  width: min(380px, calc(100vw - 32px));
+  width: min(500px, calc(100vw - 32px));
   padding: 18px;
   border: 1px solid var(--color-border);
   border-radius: 24px;
@@ -237,7 +237,7 @@
 
 .service-menu__list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -330,7 +330,7 @@ body.service-menu-open {
     position: fixed;
     top: 180px;
     right: 12px;
-    width: min(240px, calc(100vw - 24px));
+    width: min(320px, calc(100vw - 24px));
     padding: 16px;
     border-radius: 22px;
 
@@ -361,7 +361,7 @@ body.service-menu-open {
   }
 
   .service-menu__list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 
