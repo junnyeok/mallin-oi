@@ -303,7 +303,6 @@ body.service-menu-open {
 @media (max-width: 700px) {
   .header-actions--corner {
     position: static;
-    margin-top: var(--space-8);
     width: 100%;
     justify-content: flex-end;
     gap: var(--space-8);
