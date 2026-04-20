@@ -43,6 +43,7 @@ async function loadCoreModules() {
     mypageModule,
     accountRecoveryModule,
     authStoreModule,
+    serviceMenuModule,
     postViewsModule,
     postCommentsModule,
     suggestionsBoardModule,
@@ -74,6 +75,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/mypage.js')),
     import(withModuleVersion('./modules/account-recovery.js')),
     import(withModuleVersion('./modules/auth-store.js')),
+    import(withModuleVersion('./modules/service-menu.js')),
     import(withModuleVersion('./modules/post-views.js')),
     import(withModuleVersion('./modules/post-comments.js')),
     import(withModuleVersion('./modules/suggestions-board.js')),
@@ -107,6 +109,7 @@ async function loadCoreModules() {
     mypageModule,
     accountRecoveryModule,
     authStoreModule,
+    serviceMenuModule,
     postViewsModule,
     postCommentsModule,
     suggestionsBoardModule,
@@ -347,6 +350,8 @@ async function initGlobalModules(modules) {
     searchNavModule,
     layoutIncludesModule,
     authStoreModule,
+    serviceMenuModule,
+
     dailyAttendancePopupModule,
     notificationsModule,
     bgmPlayerModule,
@@ -366,6 +371,7 @@ async function initGlobalModules(modules) {
   const { initSearchNav } = searchNavModule;
   const { initLayoutIncludes, refreshLayoutState } = layoutIncludesModule;
   const { initAuthUI, updateAuthUI } = authStoreModule;
+  const { initServiceMenu } = serviceMenuModule;
   const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
   const { initBgmPlayer } = bgmPlayerModule;
@@ -400,6 +406,10 @@ async function initGlobalModules(modules) {
     await initAuthUI();
   });
 
+  await runSafe('service menu', async () => {
+    initServiceMenu();
+  });
+
   await runSafe('daily attendance popup', async () => {
     await initDailyAttendancePopup();
   });
@@ -432,6 +442,7 @@ async function initGlobalModules(modules) {
         applyVersionToStaticLinks(withAssetVersion);
         await refreshLayoutState();
         await updateAuthUI();
+        initServiceMenu();
         await initPageModules(modules);
       },
     });

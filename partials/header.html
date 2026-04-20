@@ -250,33 +250,89 @@
     </form>
 
     <div class="header-actions header-actions--corner">
-      <a
-        class="write-btn write-btn--all write-btn--with-badge"
-        href="__BASE__posts-all.html"
-        aria-label="전체 게시물 보기"
-      >
-        📚 전체게시글
-        <span
-          class="write-btn__badge"
-          id="allPostsBadge"
-          aria-label="읽지 않은 새 게시글 수"
-          hidden
-          >0</span
+      <div class="service-menu" id="serviceMenu">
+        <button
+          type="button"
+          class="service-menu-btn"
+          id="serviceMenuBtn"
+          aria-label="전체서비스 열기"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls="serviceMenuPanel"
         >
-      </a>
+          <span class="sr-only">전체서비스</span>
+          <span class="service-menu-btn__dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
 
-      <a class="write-btn" href="__BASE__write.html" aria-label="새 글 쓰기">
-        ✍️ 새글쓰기
-      </a>
+        <button
+          type="button"
+          class="service-menu__backdrop"
+          id="serviceMenuBackdrop"
+          aria-hidden="true"
+          hidden
+        ></button>
 
-      <a
-        class="write-btn write-btn--profile"
-        data-profile-btn
-        href="__BASE__login.html"
-        aria-label="내 프로필 보기"
-      >
-        👤 내프로필
-      </a>
+        <section
+          class="service-menu__panel"
+          id="serviceMenuPanel"
+          aria-label="전체서비스"
+          hidden
+        >
+          <div class="service-menu__head">
+            <strong class="service-menu__title">전체서비스</strong>
+            <button
+              type="button"
+              class="service-menu__close"
+              id="serviceMenuCloseBtn"
+              aria-label="전체서비스 닫기"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="service-menu__list">
+            <a
+              class="service-menu__link write-btn write-btn--all write-btn--with-badge"
+              href="__BASE__posts-all.html"
+              aria-label="전체 게시물 보기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">📚</span>
+              <span class="service-menu__label">전체게시글</span>
+              <span
+                class="write-btn__badge"
+                id="allPostsBadge"
+                aria-label="읽지 않은 새 게시글 수"
+                hidden
+              >
+                0
+              </span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn"
+              href="__BASE__write.html"
+              aria-label="새 글 쓰기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">✍️</span>
+              <span class="service-menu__label">새글쓰기</span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn write-btn--profile"
+              data-profile-btn
+              href="__BASE__login.html"
+              aria-label="내 프로필 보기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">👤</span>
+              <span class="service-menu__label">내프로필</span>
+            </a>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 
