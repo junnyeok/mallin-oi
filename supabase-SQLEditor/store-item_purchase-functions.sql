@@ -1,4 +1,4 @@
-create or replace public.purchase_store_item(p_item_id text)
+create or replace function public.purchase_store_item(p_item_id text)
 returns table(success boolean, message text, balance integer)
 language plpgsql
 security definer
@@ -74,6 +74,16 @@ begin
     v_name := '구운계란 캐릭터';
     v_category := 'character';
 
+  elsif p_item_id = 'character-cucumberboy-01' then
+    v_price := 878;
+    v_name := '오이소년 캐릭터';
+    v_category := 'character';
+
+  elsif p_item_id = 'character-eggpotato-01' then
+    v_price := 532;
+    v_name := '알감자 캐릭터';
+    v_category := 'character';
+
   elsif p_item_id = 'emo-sad-01' then
     v_price := 210;
     v_name := '슬픈오이 이모티콘팩';
@@ -99,12 +109,12 @@ begin
     v_name := '오이소녀의 데뷔 BGM';
     v_category := 'bgm';
 
-    elsif p_item_id = 'bgm-fat-avocado-01' then
+  elsif p_item_id = 'bgm-fat-avocado-01' then
     v_price := 393;
     v_name := '아보카도의 산책 BGM';
     v_category := 'bgm';
 
-    elsif p_item_id = 'bgm-cucumber-01' then
+  elsif p_item_id = 'bgm-cucumber-01' then
     v_price := 382;
     v_name := 'lofi 말린오이 BGM';
     v_category := 'bgm';
@@ -123,13 +133,12 @@ begin
     return;
   end if;
 
-  select exists (
+    v_exists := exists (
     select 1
     from public.user_store_items
     where user_id = v_user_id
       and item_id = p_item_id
-  )
-  into v_exists;
+  );
 
   if v_exists then
     return query
@@ -141,8 +150,7 @@ begin
   end if;
 
   if v_price > 0 then
-    select public.is_auto_topup_admin_user(v_user_id)
-      into v_is_auto_topup_admin;
+    v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
 
     if coalesce(v_is_auto_topup_admin, false) then
       perform public.ensure_user_pickles(
@@ -303,13 +311,7 @@ begin
 
   elsif p_item_id = 'character-carrot-01' then
     insert into public.user_characters (
-      user_id,
-      character_code,
-      character_name,
-      base_image_path,
-      preview_image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -323,13 +325,7 @@ begin
     on conflict (user_id, character_code) do nothing;
 
     insert into public.user_character_skins (
-      user_id,
-      character_code,
-      skin_code,
-      skin_name,
-      image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -344,12 +340,7 @@ begin
 
   elsif p_item_id = 'emo-heart-01' then
     insert into public.user_emoticons (
-      user_id,
-      item_id,
-      emoticon_code,
-      emoticon_label,
-      image_path,
-      display_order
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
     )
     values
       (v_user_id, 'emo-heart-01', 'heart-1', '애정오이 이모티콘 1', './images/emoticons/heart-1.png', 601),
@@ -367,13 +358,7 @@ begin
 
   elsif p_item_id = 'skin-cucumbergirl' then
     insert into public.user_characters (
-      user_id,
-      character_code,
-      character_name,
-      base_image_path,
-      preview_image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -387,13 +372,7 @@ begin
     on conflict (user_id, character_code) do nothing;
 
     insert into public.user_character_skins (
-      user_id,
-      character_code,
-      skin_code,
-      skin_name,
-      image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -408,13 +387,7 @@ begin
 
   elsif p_item_id = 'character-fat-avocado-01' then
     insert into public.user_characters (
-      user_id,
-      character_code,
-      character_name,
-      base_image_path,
-      preview_image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -428,13 +401,7 @@ begin
     on conflict (user_id, character_code) do nothing;
 
     insert into public.user_character_skins (
-      user_id,
-      character_code,
-      skin_code,
-      skin_name,
-      image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -449,13 +416,7 @@ begin
 
   elsif p_item_id = 'character-grilled-egg-01' then
     insert into public.user_characters (
-      user_id,
-      character_code,
-      character_name,
-      base_image_path,
-      preview_image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -469,13 +430,7 @@ begin
     on conflict (user_id, character_code) do nothing;
 
     insert into public.user_character_skins (
-      user_id,
-      character_code,
-      skin_code,
-      skin_name,
-      image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -488,14 +443,67 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+  elsif p_item_id = 'character-cucumberboy-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber-boy',
+      '오이소년 캐릭터',
+      './images/characters/cucumberboy.png',
+      './images/characters/cucumberboy.png',
+      6,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber-boy',
+      'char-cucumber-boy-basic',
+      '오이소년 캐릭터',
+      './images/characters/cucumberboy.png',
+      501,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'character-eggpotato-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-egg-potato',
+      '알감자 캐릭터',
+      './images/characters/eggpotato.png',
+      './images/characters/eggpotato.png',
+      7,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-egg-potato',
+      'char-egg-potato-basic',
+      '알감자 캐릭터',
+      './images/characters/eggpotato.png',
+      601,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
   elsif p_item_id = 'emo-sad-01' then
     insert into public.user_emoticons (
-      user_id,
-      item_id,
-      emoticon_code,
-      emoticon_label,
-      image_path,
-      display_order
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
     )
     values
       (v_user_id, 'emo-sad-01', 'sad-1', '슬픈오이 이모티콘 1', './images/emoticons/sad-1.png', 701),
@@ -509,13 +517,7 @@ begin
 
   elsif p_item_id = 'skin-cucumbergirl-01' then
     insert into public.user_characters (
-      user_id,
-      character_code,
-      character_name,
-      base_image_path,
-      preview_image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -529,13 +531,7 @@ begin
     on conflict (user_id, character_code) do nothing;
 
     insert into public.user_character_skins (
-      user_id,
-      character_code,
-      skin_code,
-      skin_name,
-      image_path,
-      display_order,
-      acquired_reason
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
     values (
       v_user_id,
@@ -557,7 +553,7 @@ begin
   elsif p_item_id = 'bgm-cucumbergirl-01' then
     null;
 
-    elsif p_item_id = 'bgm-fat-avocado-01' then
+  elsif p_item_id = 'bgm-fat-avocado-01' then
     null;
 
   elsif p_item_id = 'bgm-cucumber-01' then
@@ -565,12 +561,7 @@ begin
 
   elsif p_item_id = 'emo-eat-01' then
     insert into public.user_emoticons (
-      user_id,
-      item_id,
-      emoticon_code,
-      emoticon_label,
-      image_path,
-      display_order
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
     )
     values
       (v_user_id, 'emo-eat-01', 'eat-1', '먹방오이 이모티콘 1', './images/emoticons/eat-1.png', 801),
@@ -605,10 +596,11 @@ begin
     );
   end if;
 
-  select coalesce(p.pickles, 0)
-    into v_balance
+  v_balance := coalesce((
+  select p.pickles
   from public.profiles p
-  where p.id = v_user_id;
+  where p.id = v_user_id
+), 0);
 
   return query
   select
@@ -627,15 +619,19 @@ begin
       when p_item_id = 'emo-carrot-01'
         then '특별제작 당근 이모티콘팩 구매가 완료됐어. 310피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'character-carrot-01'
-        then '테토당근 캐릭터 구매가 완료됐어. 530피클이 차감됐고 내프로필에서 착용할 수 있어.'
+        then '테토당근 캐릭터 구매가 완료됐어. 530피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'emo-heart-01'
         then '애정오이 이모티콘팩 구매가 완료됐어. 300피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-cucumbergirl'
-        then '오이소녀 캐릭터 구매가 완료됐어. 820피클이 차감됐고 내프로필 캐릭터 인벤토리에서 착용할 수 있어.'
+        then '오이소녀 캐릭터 구매가 완료됐어. 820피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-fat-avocado-01'
-        then '아보카도 캐릭터 구매가 완료됐어. 580피클이 차감됐고 내프로필에서 착용할 수 있어.'
+        then '아보카도 캐릭터 구매가 완료됐어. 580피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-grilled-egg-01'
-        then '구운계란 캐릭터 구매가 완료됐어. 640피클이 차감됐고 내프로필에서 착용할 수 있어.'
+        then '구운계란 캐릭터 구매가 완료됐어. 640피클이 차감됐고 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'character-cucumberboy-01'
+        then '오이소년 캐릭터 구매가 완료됐어. 878피클이 차감됐고 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'character-eggpotato-01'
+        then '알감자 캐릭터 구매가 완료됐어. 532피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'emo-sad-01'
         then '슬픈오이 이모티콘팩 구매가 완료됐어. 210피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-cucumbergirl-01'

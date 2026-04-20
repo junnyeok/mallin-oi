@@ -263,7 +263,55 @@ export const GRILLED_EGG_CHARACTER_PREVIEW = [
   },
 ];
 
+export const CUCUMBER_BOY_CHARACTER_PREVIEW = [
+  {
+    code: 'char-cucumber-boy-basic',
+    label: '오이소년 캐릭터',
+    imagePath: withAssetVersion('./images/characters/cucumberboy.png'),
+    displayOrder: 1,
+  },
+];
+
+export const EGG_POTATO_CHARACTER_PREVIEW = [
+  {
+    code: 'char-egg-potato-basic',
+    label: '알감자 캐릭터',
+    imagePath: withAssetVersion('./images/characters/eggpotato.png'),
+    displayOrder: 1,
+  },
+];
+
 export const STORE_ITEMS = [
+  {
+    id: 'character-cucumberboy-01',
+    name: '오이소년 캐릭터',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '👦',
+    thumbImagePath: withAssetVersion('./images/characters/cucumberboy.png'),
+    price: 878,
+    state: '판매 중',
+    description: '오이소녀에 이은 오이소년 캐릭터야.',
+    detailDescription:
+      '오이소년 캐릭터야. 구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, inventory.html에서 클릭해서 바로 착용할 수 있어.',
+    previewImages: CUCUMBER_BOY_CHARACTER_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'character-eggpotato-01',
+    name: '알감자 캐릭터',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🥔',
+    thumbImagePath: withAssetVersion('./images/characters/eggpotato.png'),
+    price: 532,
+    state: '판매 중',
+    description: '알감자 캐릭터를 사용할 수 있어.',
+    detailDescription:
+      '알감자 캐릭터야. 구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, inventory.html에서 클릭해서 바로 착용할 수 있어.',
+    previewImages: EGG_POTATO_CHARACTER_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'bgm-cucumber-01',
     name: 'lofi 말린오이 BGM',
@@ -631,6 +679,22 @@ export const CHARACTER_CATALOG = [
     display_order: 5,
     store_item_id: 'character-grilled-egg-01',
   },
+  {
+    character_code: 'char-cucumber-boy',
+    character_name: '오이소년 캐릭터',
+    base_image_path: withAssetVersion('./images/characters/cucumberboy.png'),
+    preview_image_path: withAssetVersion('./images/characters/cucumberboy.png'),
+    display_order: 6,
+    store_item_id: 'character-cucumberboy-01',
+  },
+  {
+    character_code: 'char-egg-potato',
+    character_name: '알감자 캐릭터',
+    base_image_path: withAssetVersion('./images/characters/eggpotato.png'),
+    preview_image_path: withAssetVersion('./images/characters/eggpotato.png'),
+    display_order: 7,
+    store_item_id: 'character-eggpotato-01',
+  },
 ];
 
 export const CHARACTER_SKIN_CATALOG = [
@@ -681,5 +745,21 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/grilled-egg.png'),
     display_order: 401,
     store_item_id: 'character-grilled-egg-01',
+  },
+  {
+    character_code: 'char-cucumber-boy',
+    skin_code: 'char-cucumber-boy-basic',
+    skin_name: '오이소년 캐릭터',
+    image_path: withAssetVersion('./images/characters/cucumberboy.png'),
+    display_order: 501,
+    store_item_id: 'character-cucumberboy-01',
+  },
+  {
+    character_code: 'char-egg-potato',
+    skin_code: 'char-egg-potato-basic',
+    skin_name: '알감자 캐릭터',
+    image_path: withAssetVersion('./images/characters/eggpotato.png'),
+    display_order: 601,
+    store_item_id: 'character-eggpotato-01',
   },
 ];

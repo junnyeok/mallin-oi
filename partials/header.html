@@ -119,14 +119,14 @@
           </div>
 
           <div class="pickle-status-item">
-            <span class="pickle-status-item__label">오늘 게시글</span>
+            <span class="pickle-status-item__label">게시글 지급</span>
             <strong class="pickle-status-item__value" id="picklePostStatus">
               0 / 5
             </strong>
           </div>
 
           <div class="pickle-status-item">
-            <span class="pickle-status-item__label">댓글/답글</span>
+            <span class="pickle-status-item__label">댓글/답글 지급</span>
             <strong class="pickle-status-item__value" id="pickleCommentStatus">
               0 / 20
             </strong>
@@ -251,11 +251,18 @@
 
     <div class="header-actions header-actions--corner">
       <a
-        class="write-btn write-btn--all"
+        class="write-btn write-btn--all write-btn--with-badge"
         href="__BASE__posts-all.html"
         aria-label="전체 게시물 보기"
       >
         📚 전체게시글
+        <span
+          class="write-btn__badge"
+          id="allPostsBadge"
+          aria-label="읽지 않은 새 게시글 수"
+          hidden
+          >0</span
+        >
       </a>
 
       <a class="write-btn" href="__BASE__write.html" aria-label="새 글 쓰기">
