@@ -54,7 +54,6 @@ async function loadCoreModules() {
     notificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
-    newPostBadgeModule,
     pjaxRouterModule,
   ] = await Promise.all([
     import(withModuleVersion('./modules/site-version.js')),
@@ -86,7 +85,6 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/notifications.js')),
     import(withModuleVersion('./modules/bgm-player.js')),
     import(withModuleVersion('./modules/pickle-status.js')),
-    import(withModuleVersion('./modules/new-post-badge.js')),
     import(withModuleVersion('./modules/pjax-router.js')),
   ]);
 
@@ -120,7 +118,6 @@ async function loadCoreModules() {
     notificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
-    newPostBadgeModule,
     pjaxRouterModule,
   };
 
@@ -354,7 +351,6 @@ async function initGlobalModules(modules) {
     notificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
-    newPostBadgeModule,
     pjaxRouterModule,
   } = modules;
 
@@ -374,7 +370,6 @@ async function initGlobalModules(modules) {
   const { initNotifications } = notificationsModule;
   const { initBgmPlayer } = bgmPlayerModule;
   const { initPickleStatus } = pickleStatusModule;
-  const { initNewPostBadge, refreshNewPostBadge } = newPostBadgeModule;
   const { initPjaxRouter } = pjaxRouterModule;
 
   applyVersionToStaticLinks(withAssetVersion);
@@ -426,10 +421,6 @@ async function initGlobalModules(modules) {
     await initNotifications();
   });
 
-  await runSafe('new post badge module', async () => {
-    await initNewPostBadge();
-  });
-
   await runSafe('pickle status module', async () => {
     await initPickleStatus();
   });
@@ -441,7 +432,6 @@ async function initGlobalModules(modules) {
         applyVersionToStaticLinks(withAssetVersion);
         await refreshLayoutState();
         await updateAuthUI();
-        await refreshNewPostBadge();
         await initPageModules(modules);
       },
     });
