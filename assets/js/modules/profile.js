@@ -31,6 +31,7 @@ const [
     CHARACTER_CATALOG,
     CHARACTER_SKIN_CATALOG,
     getStoreItemDetailHref,
+    getSkinParentRequirementBySkinCode,
   },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
@@ -496,7 +497,7 @@ function normalizeCharacterCode(value) {
   return String(value || '').trim() || DEFAULT_CHARACTER_CODE;
 }
 
-function getSafeCharacterRows(characterRows = [], skinRows = []) {
+function getSafeCharacterRows(characterRows = []) {
   const ownedMap = new Map(
     (characterRows || []).map((row) => [
       normalizeCharacterCode(row?.character_code),
@@ -535,31 +536,9 @@ function getSafeCharacterRows(characterRows = [], skinRows = []) {
       base_image_path: getCharacterImageSrc(item?.base_image_path),
       preview_image_path: getCharacterImageSrc(item?.preview_image_path),
       display_order: Number(item?.display_order || 999),
-      is_owned: code === DEFAULT_CHARACTER_CODE ? true : false,
+      is_owned: code === DEFAULT_CHARACTER_CODE,
       store_item_id: item?.store_item_id || null,
     };
-  });
-
-  (skinRows || []).forEach((row) => {
-    const code = normalizeCharacterCode(row?.character_code);
-    if (
-      merged.some(
-        (item) => normalizeCharacterCode(item.character_code) === code,
-      )
-    ) {
-      return;
-    }
-
-    merged.push({
-      character_code: code,
-      character_name:
-        code === DEFAULT_CHARACTER_CODE ? DEFAULT_CHARACTER_NAME : '캐릭터',
-      base_image_path: getCharacterImageSrc(row?.image_path),
-      preview_image_path: getCharacterImageSrc(row?.image_path),
-      display_order: 999,
-      is_owned: true,
-      store_item_id: null,
-    });
   });
 
   if (!merged.length) {
@@ -578,6 +557,7 @@ function getSafeCharacterRows(characterRows = [], skinRows = []) {
     const orderDiff =
       Number(a?.display_order || 999) - Number(b?.display_order || 999);
     if (orderDiff !== 0) return orderDiff;
+
     return String(a?.character_name || '').localeCompare(
       String(b?.character_name || ''),
       'ko',
@@ -585,24 +565,43 @@ function getSafeCharacterRows(characterRows = [], skinRows = []) {
   });
 }
 
-function getSafeSkinRows(skinRows = []) {
+function getSafeSkinRows(skinRows = [], characterRows = []) {
+  const ownedCharacterCodeSet = new Set(
+    (characterRows || [])
+      .filter((row) => row?.is_owned !== false)
+      .map((row) => normalizeCharacterCode(row?.character_code)),
+  );
+
   const ownedMap = new Map(
-    (skinRows || []).map((row) => [
-      String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE,
-      {
-        ...row,
-        character_code: normalizeCharacterCode(row?.character_code),
-        skin_code: String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE,
-        skin_name: String(row?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
-        image_path: getCharacterImageSrc(row?.image_path),
-        is_owned: true,
-        store_item_id: null,
-      },
-    ]),
+    (skinRows || []).map((row) => {
+      const skinCode = String(row?.skin_code || '').trim() || DEFAULT_SKIN_CODE;
+      const requirement = getSkinParentRequirementBySkinCode(skinCode);
+
+      return [
+        skinCode,
+        {
+          ...row,
+          character_code: normalizeCharacterCode(row?.character_code),
+          skin_code: skinCode,
+          skin_name: String(row?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
+          image_path: getCharacterImageSrc(row?.image_path),
+          is_owned: true,
+          is_parent_owned:
+            !requirement ||
+            ownedCharacterCodeSet.has(
+              normalizeCharacterCode(requirement.character_code),
+            ),
+          required_character_name: requirement?.character_name || '',
+          required_store_item_id: requirement?.parent_store_item_id || null,
+          store_item_id: null,
+        },
+      ];
+    }),
   );
 
   const merged = CHARACTER_SKIN_CATALOG.map((item) => {
     const skinCode = String(item?.skin_code || '').trim() || DEFAULT_SKIN_CODE;
+    const requirement = getSkinParentRequirementBySkinCode(skinCode);
     const owned = ownedMap.get(skinCode);
 
     if (owned) {
@@ -610,6 +609,13 @@ function getSafeSkinRows(skinRows = []) {
         ...item,
         ...owned,
         is_owned: true,
+        is_parent_owned:
+          !requirement ||
+          ownedCharacterCodeSet.has(
+            normalizeCharacterCode(requirement.character_code),
+          ),
+        required_character_name: requirement?.character_name || '',
+        required_store_item_id: requirement?.parent_store_item_id || null,
         store_item_id: item?.store_item_id || null,
       };
     }
@@ -620,7 +626,14 @@ function getSafeSkinRows(skinRows = []) {
       skin_name: String(item?.skin_name || '').trim() || DEFAULT_SKIN_NAME,
       image_path: getCharacterImageSrc(item?.image_path),
       display_order: Number(item?.display_order || 999),
-      is_owned: skinCode === DEFAULT_SKIN_CODE ? true : false,
+      is_owned: skinCode === DEFAULT_SKIN_CODE,
+      is_parent_owned:
+        !requirement ||
+        ownedCharacterCodeSet.has(
+          normalizeCharacterCode(requirement.character_code),
+        ),
+      required_character_name: requirement?.character_name || '',
+      required_store_item_id: requirement?.parent_store_item_id || null,
       store_item_id: item?.store_item_id || null,
     };
   });
@@ -633,6 +646,8 @@ function getSafeSkinRows(skinRows = []) {
       return;
     }
 
+    const requirement = getSkinParentRequirementBySkinCode(skinCode);
+
     merged.push({
       character_code: normalizeCharacterCode(row?.character_code),
       skin_code: skinCode,
@@ -640,6 +655,13 @@ function getSafeSkinRows(skinRows = []) {
       image_path: getCharacterImageSrc(row?.image_path),
       display_order: Number(row?.display_order || 999),
       is_owned: true,
+      is_parent_owned:
+        !requirement ||
+        ownedCharacterCodeSet.has(
+          normalizeCharacterCode(requirement.character_code),
+        ),
+      required_character_name: requirement?.character_name || '',
+      required_store_item_id: requirement?.parent_store_item_id || null,
       store_item_id: null,
     });
   });
@@ -652,6 +674,9 @@ function getSafeSkinRows(skinRows = []) {
       image_path: DEFAULT_CHARACTER_IMAGE,
       display_order: 1,
       is_owned: true,
+      is_parent_owned: true,
+      required_character_name: '',
+      required_store_item_id: null,
       store_item_id: null,
     });
   }
@@ -660,11 +685,49 @@ function getSafeSkinRows(skinRows = []) {
     const orderDiff =
       Number(a?.display_order || 999) - Number(b?.display_order || 999);
     if (orderDiff !== 0) return orderDiff;
+
     return String(a?.skin_name || '').localeCompare(
       String(b?.skin_name || ''),
       'ko',
     );
   });
+}
+
+function getNormalizedEquippedImageUrl({
+  characterRows = [],
+  skinRows = [],
+  equippedImageUrl = '',
+}) {
+  const safeEquippedImageUrl = getCharacterImageSrc(equippedImageUrl);
+
+  const usableOwnedSkin = (skinRows || []).find((row) => {
+    return (
+      row?.is_owned !== false &&
+      row?.is_parent_owned !== false &&
+      getCharacterImageSrc(row?.image_path) === safeEquippedImageUrl
+    );
+  });
+
+  if (usableOwnedSkin) {
+    return safeEquippedImageUrl;
+  }
+
+  const ownedCharacter = (characterRows || []).find((row) => {
+    if (row?.is_owned === false) return false;
+
+    return (
+      getCharacterImageSrc(row?.base_image_path) === safeEquippedImageUrl ||
+      getCharacterImageSrc(row?.preview_image_path) === safeEquippedImageUrl
+    );
+  });
+
+  if (ownedCharacter) {
+    return getCharacterImageSrc(
+      ownedCharacter?.preview_image_path || ownedCharacter?.base_image_path,
+    );
+  }
+
+  return DEFAULT_CHARACTER_IMAGE;
 }
 
 function getEquippedCharacterCode({
@@ -675,7 +738,10 @@ function getEquippedCharacterCode({
   const safeEquippedImageUrl = getCharacterImageSrc(equippedImageUrl);
 
   const matchedSkin = skinRows.find(
-    (row) => getCharacterImageSrc(row?.image_path) === safeEquippedImageUrl,
+    (row) =>
+      row?.is_owned !== false &&
+      row?.is_parent_owned !== false &&
+      getCharacterImageSrc(row?.image_path) === safeEquippedImageUrl,
   );
 
   if (matchedSkin) {
@@ -732,25 +798,46 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
   const imagePath = getCharacterImageSrc(item?.image_path);
   const isEquipped = imagePath === getCharacterImageSrc(equippedImageUrl);
   const isOwned = item?.is_owned !== false;
+  const canEquip = item?.is_parent_owned !== false;
+
   const storeItemId = String(item?.store_item_id || '').trim();
   const detailHref = storeItemId ? getStoreItemDetailHref(storeItemId) : '';
-  const metaText = isOwned
-    ? isEquipped
-      ? '현재 착용 중'
-      : '클릭해서 착용'
-    : '미보유 · 클릭하면 구매페이지로 이동';
-  const extraMetaClass = isOwned ? '' : ' is-locked';
+
+  const requiredCharacterName = String(
+    item?.required_character_name || '',
+  ).trim();
+  const requiredStoreItemId = String(item?.required_store_item_id || '').trim();
+  const requiredStoreHref = requiredStoreItemId
+    ? getStoreItemDetailHref(requiredStoreItemId)
+    : '';
+
+  let metaText = '클릭해서 착용';
+  if (!isOwned) {
+    metaText = '미보유 · 클릭하면 구매페이지로 이동';
+  } else if (!canEquip) {
+    metaText = requiredCharacterName
+      ? `${requiredCharacterName} 필요 · 클릭하면 구매페이지로 이동`
+      : '기본 캐릭터 필요';
+  } else if (isEquipped) {
+    metaText = '현재 착용 중';
+  }
+
+  const extraMetaClass = isOwned && canEquip ? '' : ' is-locked';
 
   return `
     <button
       type="button"
       class="profile-character-card ${isEquipped ? 'is-equipped' : ''} ${
-        !isOwned ? 'is-locked' : ''
+        !isOwned || !canEquip ? 'is-locked' : ''
       }"
+      data-skin-code="${escapeHtml(String(item?.skin_code || '').trim())}"
       data-skin-image-path="${escapeHtml(imagePath)}"
       data-skin-name="${escapeHtml(item?.skin_name || '스킨')}"
       data-owned="${isOwned ? 'true' : 'false'}"
+      data-can-equip="${canEquip ? 'true' : 'false'}"
       data-store-href="${escapeHtml(detailHref)}"
+      data-required-store-href="${escapeHtml(requiredStoreHref)}"
+      data-required-character-name="${escapeHtml(requiredCharacterName)}"
     >
       <img
         class="profile-character-card__thumb"
@@ -950,11 +1037,15 @@ function renderCharacterSection({
 
   if (!sectionEl || !previewEl) return;
 
-  const safeCharacterRows = getSafeCharacterRows(characterRows, skinRows);
-  const safeSkinRows = getSafeSkinRows(skinRows);
+  const safeCharacterRows = getSafeCharacterRows(characterRows);
+  const safeSkinRows = getSafeSkinRows(skinRows, safeCharacterRows);
 
   function getEquippedImageUrl() {
-    return getCharacterImageSrc(profileRow?.equipped_character_image_url);
+    return getNormalizedEquippedImageUrl({
+      characterRows: safeCharacterRows,
+      skinRows: safeSkinRows,
+      equippedImageUrl: profileRow?.equipped_character_image_url,
+    });
   }
 
   let selectedCharacterCode = getEquippedCharacterCode({
@@ -962,6 +1053,29 @@ function renderCharacterSection({
     skinRows: safeSkinRows,
     equippedImageUrl: getEquippedImageUrl(),
   });
+
+  const normalizedEquippedImageUrl = getEquippedImageUrl();
+
+  if (
+    isOwnProfile &&
+    profileRow?.id &&
+    getCharacterImageSrc(profileRow?.equipped_character_image_url) !==
+      normalizedEquippedImageUrl
+  ) {
+    updateProfileRow(profileRow.id, {
+      equipped_character_image_url: normalizedEquippedImageUrl,
+      updated_at: new Date().toISOString(),
+    })
+      .then(() => {
+        profileRow = {
+          ...profileRow,
+          equipped_character_image_url: normalizedEquippedImageUrl,
+        };
+      })
+      .catch((error) => {
+        console.error('[profile] normalize equipped character failed:', error);
+      });
+  }
 
   previewEl.src = getEquippedImageUrl();
   previewEl.alt = isOwnProfile ? '내 캐릭터' : '이용자 캐릭터';
@@ -1093,10 +1207,32 @@ function renderCharacterSection({
     buttons.forEach((button) => {
       button.addEventListener('click', async () => {
         const isOwned = button.dataset.owned === 'true';
+        const canEquip = button.dataset.canEquip === 'true';
         const storeHref = String(button.dataset.storeHref || '').trim();
+        const requiredStoreHref = String(
+          button.dataset.requiredStoreHref || '',
+        ).trim();
+        const requiredCharacterName = String(
+          button.dataset.requiredCharacterName || '',
+        ).trim();
 
         if (!isOwned) {
           if (storeHref) window.location.href = storeHref;
+          return;
+        }
+
+        if (!canEquip) {
+          if (requiredStoreHref) {
+            window.location.href = requiredStoreHref;
+            return;
+          }
+
+          setMsg(
+            requiredCharacterName
+              ? `${requiredCharacterName}를 먼저 구매해야 착용할 수 있어.`
+              : '기본 캐릭터를 먼저 구매해야 착용할 수 있어.',
+            'red',
+          );
           return;
         }
 

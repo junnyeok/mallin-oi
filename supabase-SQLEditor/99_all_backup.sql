@@ -14605,3 +14605,93 @@ end;
 $$;
 
 grant execute on function public.purchase_store_item(text) to authenticated;
+
+delete from public.user_characters uc
+where uc.character_code = 'char-grilled-egg'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-grilled-egg-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-fat-avocado'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-fat-avocado-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-teto-carrot'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-carrot-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-egg-potato'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-eggpotato-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-cucumber-girl'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'skin-cucumbergirl'
+  );
+
+  delete from public.user_characters uc
+where uc.character_code = 'char-grilled-egg'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-grilled-egg-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-fat-avocado'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-fat-avocado-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-teto-carrot'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-carrot-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-egg-potato'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'character-eggpotato-01'
+  );
+
+delete from public.user_characters uc
+where uc.character_code = 'char-cucumber-girl'
+  and not exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = uc.user_id
+      and usi.item_id = 'skin-cucumbergirl'
+  );

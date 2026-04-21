@@ -960,3 +960,48 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: 'skin-eggpotato-01',
   },
 ];
+
+export function getCharacterCatalogItemByCode(characterCode = '') {
+  const safeCode = String(characterCode || '').trim();
+  return (
+    CHARACTER_CATALOG.find(
+      (item) => String(item?.character_code || '').trim() === safeCode,
+    ) || null
+  );
+}
+
+export function getSkinCatalogItemBySkinCode(skinCode = '') {
+  const safeCode = String(skinCode || '').trim();
+  return (
+    CHARACTER_SKIN_CATALOG.find(
+      (item) => String(item?.skin_code || '').trim() === safeCode,
+    ) || null
+  );
+}
+
+export function getSkinParentRequirementBySkinCode(skinCode = '') {
+  const skin = getSkinCatalogItemBySkinCode(skinCode);
+  if (!skin) return null;
+
+  const parentCharacter = getCharacterCatalogItemByCode(skin.character_code);
+  if (!parentCharacter) return null;
+
+  return {
+    character_code: String(parentCharacter.character_code || '').trim(),
+    character_name:
+      String(parentCharacter.character_name || '').trim() || '기본 캐릭터',
+    parent_store_item_id:
+      String(parentCharacter.store_item_id || '').trim() || null,
+  };
+}
+
+export function getSkinParentRequirementByStoreItemId(storeItemId = '') {
+  const safeId = String(storeItemId || '').trim();
+
+  const skin = CHARACTER_SKIN_CATALOG.find(
+    (item) => String(item?.store_item_id || '').trim() === safeId,
+  );
+
+  if (!skin) return null;
+  return getSkinParentRequirementBySkinCode(skin.skin_code);
+}

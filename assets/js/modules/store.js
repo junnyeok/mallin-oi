@@ -5,6 +5,7 @@ let STORE_ITEMS;
 let getFeaturedStoreItems;
 let getStoreItemById;
 let getStoreItemDetailHref;
+let getSkinParentRequirementByStoreItemId;
 
 function getRuntimeVersion() {
   return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
@@ -40,6 +41,8 @@ async function ensureStoreDeps() {
   getFeaturedStoreItems = storeDataModule.getFeaturedStoreItems;
   getStoreItemById = storeDataModule.getStoreItemById;
   getStoreItemDetailHref = storeDataModule.getStoreItemDetailHref;
+  getSkinParentRequirementByStoreItemId =
+    storeDataModule.getSkinParentRequirementByStoreItemId;
 }
 
 const HOME_STORE_MOBILE_BREAKPOINT = 768;
@@ -478,6 +481,27 @@ async function loadOwnedItemIds() {
   return new Set((data || []).map((row) => String(row.item_id || '').trim()));
 }
 
+async function loadOwnedCharacterCodes() {
+  const user = await getCurrentUser();
+  if (!user?.id) return new Set();
+
+  const { data, error } = await supabase
+    .from('user_characters')
+    .select('character_code')
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('[store] loadOwnedCharacterCodes error:', error);
+    return new Set();
+  }
+
+  return new Set(
+    (data || [])
+      .map((row) => String(row?.character_code || '').trim())
+      .filter(Boolean),
+  );
+}
+
 function bindStoreFilter(renderByCategory) {
   const buttons = $all('[data-store-filter]');
   if (!buttons.length) return;
@@ -646,18 +670,38 @@ async function initStoreItemPage() {
   }
 
   async function renderDetail(message = '') {
-    const [user, myPickles, ownedIds] = await Promise.all([
+    const skinRequirement =
+      item.category === 'skin'
+        ? getSkinParentRequirementByStoreItemId(item.id)
+        : null;
+
+    const [user, myPickles, ownedIds, ownedCharacterCodes] = await Promise.all([
       getCurrentUser(),
       loadMyPickles(),
       loadOwnedItemIds(),
+      skinRequirement ? loadOwnedCharacterCodes() : Promise.resolve(new Set()),
     ]);
 
     const isLoggedIn = !!user?.id;
     const isOwned = ownedIds.has(item.id);
-    const canPurchase = item.isPurchasable && !isOwned;
+    const canPurchase =
+      item.isPurchasable &&
+      !isOwned &&
+      (!skinRequirement || hasRequiredCharacter);
+    const hasRequiredCharacter =
+      !skinRequirement ||
+      ownedCharacterCodes.has(
+        String(skinRequirement.character_code || '').trim(),
+      );
+
+    const requiredCharacterMessage =
+      skinRequirement && !hasRequiredCharacter
+        ? `${skinRequirement.character_name}를 먼저 구매해야 이 스킨을 구매할 수 있어.`
+        : '';
 
     let actionLabel = '준비중';
     let actionDisabled = true;
+    let resolvedMessage = message;
 
     if (!isLoggedIn) {
       actionLabel = '로그인 후 이용';
@@ -665,6 +709,10 @@ async function initStoreItemPage() {
     } else if (isOwned) {
       actionLabel = '지급 완료';
       actionDisabled = true;
+    } else if (skinRequirement && !hasRequiredCharacter) {
+      actionLabel = `${skinRequirement.character_name} 필요`;
+      actionDisabled = true;
+      resolvedMessage = resolvedMessage || requiredCharacterMessage;
     } else if (item.isPurchasable) {
       actionLabel = item.price === 0 ? '무료 받기' : '구매하기';
       actionDisabled = false;
@@ -708,8 +756,7 @@ async function initStoreItemPage() {
             >
               ${actionLabel}
             </button>
-            <p class="store-item-buybox__msg" id="storeItemBuyMsg">${message}</p>
-            <a class="store-item-buybox__back" href="./store.html">← 상점으로 돌아가기</a>
+            <p class="store-item-buybox__msg" id="storeItemBuyMsg">${resolvedMessage}</p>            <a class="store-item-buybox__back" href="./store.html">← 상점으로 돌아가기</a>
           </div>
         </aside>
       </div>

@@ -5,6 +5,8 @@ security definer
 set search_path = public
 as $$
 declare
+  v_required_character_code text := null;
+  v_required_character_name text := null;
   v_user_id uuid := auth.uid();
   v_price integer := 0;
   v_name text := '';
@@ -68,26 +70,43 @@ begin
     v_price := 466;
     v_name := '구운계란 트레이너 스킨';
     v_category := 'skin';
+    v_required_character_code := 'char-grilled-egg';
+    v_required_character_name := '구운계란 캐릭터';
 
   elsif p_item_id = 'skin-cucumber-01' then
     v_price := 389;
     v_name := '군인오이 스킨';
     v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
 
   elsif p_item_id = 'skin-avocado-01' then
     v_price := 423;
     v_name := '아보카도 카페사장 스킨';
     v_category := 'skin';
+    v_required_character_code := 'char-fat-avocado';
+    v_required_character_name := '아보카도 캐릭터';
 
   elsif p_item_id = 'skin-tetocarrot-01' then
     v_price := 445;
     v_name := '테토당근 락밴드 스킨';
     v_category := 'skin';
+    v_required_character_code := 'char-teto-carrot';
+    v_required_character_name := '테토당근';
 
   elsif p_item_id = 'skin-eggpotato-01' then
     v_price := 0;
     v_name := '찐감자 스킨';
     v_category := 'skin';
+    v_required_character_code := 'char-egg-potato';
+    v_required_character_name := '알감자 캐릭터';
+
+  elsif p_item_id = 'skin-cucumbergirl-01' then
+    v_price := 923;
+    v_name := '오이소녀 경찰스킨';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber-girl';
+    v_required_character_name := '오이소녀 캐릭터';
 
   elsif p_item_id = 'character-fat-avocado-01' then
     v_price := 580;
@@ -113,11 +132,6 @@ begin
     v_price := 210;
     v_name := '슬픈오이 이모티콘팩';
     v_category := 'emoticon';
-
-  elsif p_item_id = 'skin-cucumbergirl-01' then
-    v_price := 923;
-    v_name := '오이소녀 경찰스킨';
-    v_category := 'skin';
 
   elsif p_item_id = 'bgm-tetocarrot-01' then
     v_price := 420;
@@ -159,6 +173,24 @@ begin
     select
       false,
       '아직 구매 가능한 품목이 아니야.',
+      coalesce((select p.pickles from public.profiles p where p.id = v_user_id), 0);
+    return;
+  end if;
+
+  if v_category = 'skin'
+     and coalesce(trim(v_required_character_code), '') <> ''
+     and v_required_character_code <> 'char-cucumber'
+     and not exists (
+       select 1
+       from public.user_characters
+       where user_id = v_user_id
+         and character_code = v_required_character_code
+     )
+  then
+    return query
+    select
+      false,
+      coalesce(v_required_character_name, '기본 캐릭터') || '를 먼저 구매해야 해.',
       coalesce((select p.pickles from public.profiles p where p.id = v_user_id), 0);
     return;
   end if;
@@ -547,20 +579,6 @@ begin
     on conflict (user_id, emoticon_code) do nothing;
 
   elsif p_item_id = 'skin-cucumbergirl-01' then
-    insert into public.user_characters (
-      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
-    )
-    values (
-      v_user_id,
-      'char-cucumber-girl',
-      '오이소녀 캐릭터',
-      './images/characters/cucumbergirl.png',
-      './images/characters/cucumbergirl.png',
-      2,
-      'store_purchase'
-    )
-    on conflict (user_id, character_code) do nothing;
-
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -576,20 +594,6 @@ begin
     on conflict (user_id, skin_code) do nothing;
 
   elsif p_item_id = 'skin-grilledegg-01' then
-    insert into public.user_characters (
-      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
-    )
-    values (
-      v_user_id,
-      'char-grilled-egg',
-      '구운계란 캐릭터',
-      './images/characters/grilled-egg.png',
-      './images/characters/grilled-egg.png',
-      5,
-      'store_purchase'
-    )
-    on conflict (user_id, character_code) do nothing;
-
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -605,20 +609,6 @@ begin
     on conflict (user_id, skin_code) do nothing;
 
   elsif p_item_id = 'skin-cucumber-01' then
-    insert into public.user_characters (
-      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
-    )
-    values (
-      v_user_id,
-      'char-cucumber',
-      '기본오이',
-      './images/characters/cucumber.png',
-      './images/characters/cucumber.png',
-      1,
-      'store_purchase'
-    )
-    on conflict (user_id, character_code) do nothing;
-
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -634,20 +624,6 @@ begin
     on conflict (user_id, skin_code) do nothing;
 
   elsif p_item_id = 'skin-avocado-01' then
-    insert into public.user_characters (
-      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
-    )
-    values (
-      v_user_id,
-      'char-fat-avocado',
-      '아보카도 캐릭터',
-      './images/characters/fat-avocado.png',
-      './images/characters/fat-avocado.png',
-      4,
-      'store_purchase'
-    )
-    on conflict (user_id, character_code) do nothing;
-
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -663,20 +639,6 @@ begin
     on conflict (user_id, skin_code) do nothing;
 
   elsif p_item_id = 'skin-tetocarrot-01' then
-    insert into public.user_characters (
-      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
-    )
-    values (
-      v_user_id,
-      'char-teto-carrot',
-      '테토당근',
-      './images/characters/teto-carrot.png',
-      './images/characters/teto-carrot.png',
-      3,
-      'store_purchase'
-    )
-    on conflict (user_id, character_code) do nothing;
-
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -692,20 +654,6 @@ begin
     on conflict (user_id, skin_code) do nothing;
 
   elsif p_item_id = 'skin-eggpotato-01' then
-    insert into public.user_characters (
-      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
-    )
-    values (
-      v_user_id,
-      'char-egg-potato',
-      '알감자 캐릭터',
-      './images/characters/eggpotato.png',
-      './images/characters/eggpotato.png',
-      7,
-      'store_purchase'
-    )
-    on conflict (user_id, character_code) do nothing;
-
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -846,3 +794,81 @@ end;
 $$;
 
 grant execute on function public.purchase_store_item(text) to authenticated;
+
+update public.profiles p
+set equipped_character_image_url = './images/characters/cucumber.png',
+    updated_at = now()
+where coalesce(trim(p.equipped_character_image_url), '') in (
+  './images/skins/grilledegg-PT.png',
+  './images/skins/avocado-cafe.png',
+  './images/skins/tetocarrot-rock.png',
+  './images/skins/potato-hot.png',
+  './images/skins/cucumbergirl-police.png',
+  './images/characters/grilled-egg.png',
+  './images/characters/fat-avocado.png',
+  './images/characters/teto-carrot.png',
+  './images/characters/eggpotato.png',
+  './images/characters/cucumbergirl.png'
+)
+and not exists (
+  select 1
+  from public.user_character_skins s
+  join public.user_characters c
+    on c.user_id = s.user_id
+   and c.character_code = s.character_code
+  where s.user_id = p.id
+    and s.image_path = p.equipped_character_image_url
+);
+
+create or replace function public.enforce_equipped_character_ownership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(trim(new.equipped_character_image_url), '') = '' then
+    new.equipped_character_image_url := './images/characters/cucumber.png';
+    return new;
+  end if;
+
+  if new.equipped_character_image_url = './images/characters/cucumber.png' then
+    return new;
+  end if;
+
+  if exists (
+    select 1
+    from public.user_character_skins s
+    join public.user_characters c
+      on c.user_id = s.user_id
+     and c.character_code = s.character_code
+    where s.user_id = new.id
+      and s.image_path = new.equipped_character_image_url
+  ) then
+    return new;
+  end if;
+
+  if exists (
+    select 1
+    from public.user_characters c
+    where c.user_id = new.id
+      and (
+        c.base_image_path = new.equipped_character_image_url
+        or c.preview_image_path = new.equipped_character_image_url
+      )
+  ) then
+    return new;
+  end if;
+
+  new.equipped_character_image_url := './images/characters/cucumber.png';
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_equipped_character_ownership on public.profiles;
+
+create trigger trg_enforce_equipped_character_ownership
+before insert or update of equipped_character_image_url
+on public.profiles
+for each row
+execute function public.enforce_equipped_character_ownership();
