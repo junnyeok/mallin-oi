@@ -36,7 +36,7 @@ export function initSearchNav({
     const safeType = normalizeType(type);
     if (safeType === 'tag') return '태그';
     if (safeType === 'author') return '작성자';
-    return '제목';
+    return '제목/요약';
   }
 
   function getTabFromPage() {
@@ -148,7 +148,7 @@ export function initSearchNav({
     return '/';
   }
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const q = (input.value || '').trim();
@@ -169,6 +169,19 @@ export function initSearchNav({
     input.value = '';
 
     const basePath = getSiteBasePath();
-    window.location.href = `${basePath}${baseUrl}?${params.toString()}`;
+    const nextUrl = `${basePath}${baseUrl}?${params.toString()}`;
+
+    const pjaxNavigate = window.__mallinNavigate;
+
+    if (typeof pjaxNavigate === 'function') {
+      await pjaxNavigate(nextUrl, {
+        replace: false,
+        scrollToTop: true,
+        preserveHash: true,
+      });
+      return;
+    }
+
+    window.location.href = nextUrl;
   });
 }

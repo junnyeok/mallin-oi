@@ -242,6 +242,7 @@ function setLoading(isLoading) {
 }
 
 let isNavigating = false;
+const PJAX_NAVIGATE_GLOBAL_KEY = '__mallinNavigate';
 let currentNavToken = 0;
 
 export async function initPjaxRouter({
@@ -331,6 +332,8 @@ export async function initPjaxRouter({
       isNavigating = false;
     }
   }
+
+  window[PJAX_NAVIGATE_GLOBAL_KEY] = navigate;
 
   document.addEventListener('click', (event) => {
     const anchor = event.target.closest('a[href]');
