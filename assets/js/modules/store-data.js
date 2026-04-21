@@ -293,7 +293,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '오이소녀에 이은 오이소년 캐릭터야.',
     detailDescription:
-      '오이소년 캐릭터야. 구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, inventory.html에서 클릭해서 바로 착용할 수 있어.',
+      '오이소녀에 이은 오이소년 특별 캐릭터야. <br>(구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, 내프로필에 있는 인벤토리에서 클릭해서 바로 착용할 수 있어.)',
     previewImages: CUCUMBER_BOY_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -306,9 +306,9 @@ export const STORE_ITEMS = [
     thumbImagePath: withAssetVersion('./images/characters/eggpotato.png'),
     price: 532,
     state: '판매 중',
-    description: '알감자 캐릭터를 사용할 수 있어.',
+    description: '알감자 교수님 캐릭터를 사용할 수 있어.',
     detailDescription:
-      '알감자 캐릭터야. 구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, inventory.html에서 클릭해서 바로 착용할 수 있어.',
+      '알감자 교수님의 팔은 항상 붕대가 감겨있는데 아무도 알 수 없어.. <br>(구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, 내프로필에 있는 인벤토리에서 클릭해서 바로 착용할 수 있어.)',
     previewImages: EGG_POTATO_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -324,9 +324,9 @@ export const STORE_ITEMS = [
     ),
     price: 382,
     state: '판매 중',
-    description: 'lofi 말린오이 BGM.',
+    description: 'lofigirl 대신 lofi 말린오이 BGM.',
     detailDescription:
-      '로피 말린오이 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+      'lofi 말린오이 BGM이야. <br>(구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
     previewImages: LOFI_CUCUMBER_BGM_PREVIEW,
     isPurchasable: true,
   },
@@ -342,9 +342,9 @@ export const STORE_ITEMS = [
     ),
     price: 393,
     state: '판매 중',
-    description: '아보카도의 산책 BGM.',
+    description: '아보카도는 여유로운 산책을 좋아해.',
     detailDescription:
-      '아보카도의 산책 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+      '아보카도가 산책 중에 앉아서 남산타워를 구경하며 듣는 BGM이야. <br>(구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
     previewImages: AVOCADO_SUNSET_BGM_PREVIEW,
     isPurchasable: true,
   },
@@ -359,7 +359,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '내 캐릭터를 오이말고 당근으로도 설정할 수 있어!',
     detailDescription:
-      '프로필 캐릭터를 테토당근으로 설정할 수 있어. 구매하면 내프로필 인벤토리의 캐릭터 목록에 테토당근이 추가되고, 착용 시 게시물/댓글/답글 닉네임 오른쪽에 표시돼.',
+      '테토력이 넘처나는 테토당근이야. 락밴드의 기타리스트를 담당하고 있어. <br>(구매하면 내프로필 인벤토리의 캐릭터 목록에 테토당근이 추가되고, 착용 시 게시물/댓글/답글 닉네임 오른쪽에 표시돼.)',
     previewImages: TETO_CARROT_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -374,7 +374,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '오이소녀 캐릭터를 사용할 수 있어.',
     detailDescription:
-      '오이명품백을 들고 있는 오이소녀 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+      '오이명품백을 들고 있는 오이소녀 특별 캐릭터야. <br>(구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.)',
     previewImages: CUCUMBER_GIRL_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -387,9 +387,9 @@ export const STORE_ITEMS = [
     thumbImagePath: withAssetVersion('./images/characters/fat-avocado.png'),
     price: 580,
     state: '판매 중',
-    description: '아보카도 캐릭터를 사용할 수 있어.',
+    description: '무덤덤한 아보카도 캐릭터를 사용할 수 있어.',
     detailDescription:
-      '아보카도 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+      '아보카도의 표정은 불만이 있는 걸로 종종 오해를 받지만 무던하고 부드러운 성격이야. 취미는 독서이고 카페 사장님으로 일을 하고 있어. <br>(구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.)',
     previewImages: FAT_AVOCADO_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -404,7 +404,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '운동 후에 구운계란은 좋아.',
     detailDescription:
-      '태닝을 한 구운계란형님 캐릭터야. 구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+      '태닝을 한 구운계란형님 캐릭터야. 헬스트레이너로 일 하고 있고 구운계란형님을 등록한 회원은 도망칠 수 없다는 소문이 있어..<br>(구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.)',
     previewImages: GRILLED_EGG_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -434,7 +434,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '경찰제복을 입은 오이소녀 스킨.',
     detailDescription:
-      '오이소녀 캐릭터 전용 경찰스킨이야. 구매하면 내프로필의 오이소녀 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+      '오이소녀 특별 캐릭터 전용 경찰스킨이야. 말린오이닷컴의 치안을 담당하고 잇어. <br>(구매하면 내프로필의 오이소녀 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.>',
     previewImages: CUCUMBER_GIRL_POLICE_SKIN_PREVIEW,
     isPurchasable: true,
   },
@@ -450,7 +450,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '테토당근에 어울리는 테토스러운 BGM.',
     detailDescription:
-      '테토당근에 어울리는 테토스러운 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+      '락밴드의 기타리스트로 활동하는 테토당근의 BGM이야. <br>(구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
     previewImages: TETO_CARROT_BGM_PREVIEW,
     isPurchasable: true,
   },
@@ -468,7 +468,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '구운계란형님의 PT수업 BGM.',
     detailDescription:
-      '구운계란형님의 헬스 PT BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+      '구운계란형님의 헬스 PT BGM이야. <br>(구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
     previewImages: GRILLED_EGG_BGM_PREVIEW,
     isPurchasable: true,
   },
@@ -486,7 +486,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '오이소녀의 데뷔 BGM.',
     detailDescription:
-      '오이소녀의 첫번째 데뷔곡 BGM이야. 구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+      '오이소녀의 첫번째 데뷔곡 BGM이야. <br>(구매하면 내프로필의 BGM 인벤토리에 추가되고, 프로필에서 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
     previewImages: CUCUMBER_GIRL_BGM_PREVIEW,
     isPurchasable: true,
   },
