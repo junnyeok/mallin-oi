@@ -27,6 +27,15 @@ export const GRILLED_EGG_BGM_PREVIEW = [
   },
 ];
 
+export const EGGPOTATO_KARAOKE_BGM_PREVIEW = [
+  {
+    code: 'bgm-eggpotato-karaoke',
+    label: '알감자교수님의 찐 락발라드 BGM',
+    imagePath: withAssetVersion('./images/BGM/potato-karaoke.png'),
+    displayOrder: 1,
+  },
+];
+
 export const CUCUMBER_GIRL_BGM_PREVIEW = [
   {
     code: 'bgm-cucumbergirl',
@@ -96,6 +105,16 @@ export const BGM_CATALOG = [
     displayOrder: 4,
   },
   {
+    id: 'mallin-oi-eggpotato-karaoke',
+    storeItemId: 'bgm-eggpotato-01',
+    title: '알감자교수님의 찐 락발라드 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin-oi_potato-karaoke.mp3'),
+    coverPath: withAssetVersion('./images/BGM/potato-karaoke.png'),
+    isDefault: false,
+    displayOrder: 5,
+  },
+  {
     id: 'mallin-oi-cucumbergirl-debuet',
     storeItemId: 'bgm-cucumbergirl-01',
     title: '오이소녀의 데뷔 BGM',
@@ -105,7 +124,7 @@ export const BGM_CATALOG = [
     ),
     coverPath: withAssetVersion('./images/BGM/cucumbergirl-debuet.png'),
     isDefault: false,
-    displayOrder: 5,
+    displayOrder: 6,
   },
   {
     id: 'mallin-oi-avocado-sunset',
@@ -115,7 +134,7 @@ export const BGM_CATALOG = [
     audioPath: withAssetVersion('./assets/mp3/mallin-oi_avocado-sunset.mp3'),
     coverPath: withAssetVersion('./images/BGM/avocado-sunset.png'),
     isDefault: false,
-    displayOrder: 6,
+    displayOrder: 7,
   },
 ];
 
@@ -245,6 +264,51 @@ export const CUCUMBER_GIRL_POLICE_SKIN_PREVIEW = [
   },
 ];
 
+export const GRILLED_EGG_TRAINER_SKIN_PREVIEW = [
+  {
+    code: 'char-grilled-egg-trainer',
+    label: '구운계란 트레이너 스킨',
+    imagePath: withAssetVersion('./images/skins/grilledegg-PT.png'),
+    displayOrder: 1,
+  },
+];
+
+export const CUCUMBER_SOLDIER_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-soldier',
+    label: '군인오이 스킨',
+    imagePath: withAssetVersion('./images/skins/cucumber-soldier.png'),
+    displayOrder: 1,
+  },
+];
+
+export const AVOCADO_CAFE_SKIN_PREVIEW = [
+  {
+    code: 'char-fat-avocado-cafe',
+    label: '아보카도 카페사장 스킨',
+    imagePath: withAssetVersion('./images/skins/avocado-cafe.png'),
+    displayOrder: 1,
+  },
+];
+
+export const TETOCARROT_ROCK_SKIN_PREVIEW = [
+  {
+    code: 'char-teto-carrot-rock',
+    label: '테토당근 락밴드 스킨',
+    imagePath: withAssetVersion('./images/skins/tetocarrot-rock.png'),
+    displayOrder: 1,
+  },
+];
+
+export const EGGPOTATO_HOT_SKIN_PREVIEW = [
+  {
+    code: 'char-egg-potato-hot',
+    label: '찐감자 스킨',
+    imagePath: withAssetVersion('./images/skins/potato-hot.png'),
+    displayOrder: 1,
+  },
+];
+
 export const FAT_AVOCADO_CHARACTER_PREVIEW = [
   {
     code: 'char-fat-avocado-basic',
@@ -283,6 +347,99 @@ export const EGG_POTATO_CHARACTER_PREVIEW = [
 
 export const STORE_ITEMS = [
   {
+    id: 'bgm-eggpotato-01',
+    name: '알감자교수님의 찐 락발라드 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥔🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/potato-karaoke.png'),
+    previewAudioPath: withAssetVersion(
+      './assets/mp3/mallin-oi_potato-karaoke.mp3',
+    ),
+    price: 468,
+    state: '판매 중',
+    description: '알감자 교수님의 취미는 혼코노야.',
+    detailDescription:
+      '교수님은 비밀의 직업은 청산했지만 락발라드 만큼은 포기하지 못하셨어. <br>(구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
+    previewImages: EGGPOTATO_KARAOKE_BGM_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-grilledegg-01',
+    name: '구운계란 트레이너 스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '👮🏻‍♀️',
+    thumbImagePath: withAssetVersion('./images/skins/grilledegg-PT.png'),
+    price: 466,
+    state: '판매 중',
+    description: '누구보다 PT에 진심인 구운계란 형님이야.',
+    detailDescription:
+      '구운계란형님에게 등록한 회원은 도망갈 수 없다는 소문이 있어. <br>(구매하면 내프로필의 구운계란 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.>',
+    previewImages: GRILLED_EGG_TRAINER_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-cucumber-01',
+    name: '군인오이 스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '👮🏻‍♀️',
+    thumbImagePath: withAssetVersion('./images/skins/cucumber-soldier.png'),
+    price: 389,
+    state: '판매 중',
+    description: '전쟁터에 뛰어든 오이스킨.',
+    detailDescription:
+      '관리자는 총게임을 좋아해. 모바일배그 닉네임은 말오닷사장이고 클랜명은 말린오이닷컴이야. 친추 및 클랜신청 부탁해. <br>(구매하면 내프로필의 기본오이 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: CUCUMBER_SOLDIER_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-avocado-01',
+    name: '아보카도 카페사장 스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '👮🏻‍♀️',
+    thumbImagePath: withAssetVersion('./images/skins/avocado-cafe.png'),
+    price: 423,
+    state: '판매 중',
+    description: '본업을 하는 아보카도 스킨이야.',
+    detailDescription:
+      '아보카도는 카페 사장이야. 일하기 싫어보이지만 그건 오해야. 누구보다 묵묵히 일하고 있어. <br>(구매하면 내프로필의 아보카도 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.>',
+    previewImages: AVOCADO_CAFE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-tetocarrot-01',
+    name: '테토당근 락밴드 스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥕',
+    thumbImagePath: withAssetVersion('./images/skins/tetocarrot-rock.png'),
+    price: 445,
+    state: '판매 중',
+    description: '테토당근의 락밴드 스킨이야.',
+    detailDescription:
+      '테토당근은 락밴드의 기타리스트를 담당하고 있어. <br>(구매하면 내프로필의 테토당근 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.>',
+    previewImages: TETOCARROT_ROCK_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-eggpotato-01',
+    name: '찐감자 스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥔',
+    thumbImagePath: withAssetVersion('./images/skins/potato-hot.png'),
+    price: 0,
+    state: '판매 중',
+    description: '알감자 교수님이 화가나면 찐감자가 돼',
+    detailDescription:
+      '알감자 교수님은 평소 온화하고 화를 내지 않는 순한 성격을 가지고 있어. 그치만 알감자교수님의 과거는 꽤 무서워. 깡패생활을 청산한 건 일급비밀이야. 절대 그의 안경을 벗기지마!!<br>(구매하면 내프로필의 알감자 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.>',
+    previewImages: EGGPOTATO_HOT_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
     id: 'character-cucumberboy-01',
     name: '오이소년 캐릭터',
     category: 'character',
@@ -308,7 +465,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '알감자 교수님 캐릭터를 사용할 수 있어.',
     detailDescription:
-      '알감자 교수님의 팔은 항상 붕대가 감겨있는데 아무도 알 수 없어.. <br>(구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, 내프로필에 있는 인벤토리에서 클릭해서 바로 착용할 수 있어.)',
+      '알감자 교수님의 팔은 항상 붕대가 감겨있는데 아무도 알 수 없어.. 정 궁금하다면 스킨 상점을 확인해봐..! <br>(구매하면 내프로필 인벤토리의 캐릭터 목록에 추가되고, 내프로필에 있는 인벤토리에서 클릭해서 바로 착용할 수 있어.)',
     previewImages: EGG_POTATO_CHARACTER_PREVIEW,
     isPurchasable: true,
   },
@@ -761,5 +918,45 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/eggpotato.png'),
     display_order: 601,
     store_item_id: 'character-eggpotato-01',
+  },
+  {
+    character_code: 'char-grilled-egg',
+    skin_code: 'char-grilled-egg-trainer',
+    skin_name: '구운계란 트레이너 스킨',
+    image_path: withAssetVersion('./images/skins/grilledegg-PT.png'),
+    display_order: 402,
+    store_item_id: 'skin-grilledegg-01',
+  },
+  {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-soldier',
+    skin_name: '군인오이 스킨',
+    image_path: withAssetVersion('./images/skins/cucumber-soldier.png'),
+    display_order: 2,
+    store_item_id: 'skin-cucumber-01',
+  },
+  {
+    character_code: 'char-fat-avocado',
+    skin_code: 'char-fat-avocado-cafe',
+    skin_name: '아보카도 카페사장 스킨',
+    image_path: withAssetVersion('./images/skins/avocado-cafe.png'),
+    display_order: 302,
+    store_item_id: 'skin-avocado-01',
+  },
+  {
+    character_code: 'char-teto-carrot',
+    skin_code: 'char-teto-carrot-rock',
+    skin_name: '테토당근 락밴드 스킨',
+    image_path: withAssetVersion('./images/skins/tetocarrot-rock.png'),
+    display_order: 202,
+    store_item_id: 'skin-tetocarrot-01',
+  },
+  {
+    character_code: 'char-egg-potato',
+    skin_code: 'char-egg-potato-hot',
+    skin_name: '찐감자 스킨',
+    image_path: withAssetVersion('./images/skins/potato-hot.png'),
+    display_order: 602,
+    store_item_id: 'skin-eggpotato-01',
   },
 ];

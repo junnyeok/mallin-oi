@@ -64,6 +64,31 @@ begin
     v_name := '오이소녀 캐릭터';
     v_category := 'character';
 
+  elsif p_item_id = 'skin-grilledegg-01' then
+    v_price := 466;
+    v_name := '구운계란 트레이너 스킨';
+    v_category := 'skin';
+
+  elsif p_item_id = 'skin-cucumber-01' then
+    v_price := 389;
+    v_name := '군인오이 스킨';
+    v_category := 'skin';
+
+  elsif p_item_id = 'skin-avocado-01' then
+    v_price := 423;
+    v_name := '아보카도 카페사장 스킨';
+    v_category := 'skin';
+
+  elsif p_item_id = 'skin-tetocarrot-01' then
+    v_price := 445;
+    v_name := '테토당근 락밴드 스킨';
+    v_category := 'skin';
+
+  elsif p_item_id = 'skin-eggpotato-01' then
+    v_price := 0;
+    v_name := '찐감자 스킨';
+    v_category := 'skin';
+
   elsif p_item_id = 'character-fat-avocado-01' then
     v_price := 580;
     v_name := '아보카도 캐릭터';
@@ -102,6 +127,11 @@ begin
   elsif p_item_id = 'bgm-grilledegg-01' then
     v_price := 432;
     v_name := '구운계란의 PT수업 BGM';
+    v_category := 'bgm';
+
+  elsif p_item_id = 'bgm-eggpotato-01' then
+    v_price := 468;
+    v_name := '알감자교수님의 찐 락발라드 BGM';
     v_category := 'bgm';
 
   elsif p_item_id = 'bgm-cucumbergirl-01' then
@@ -385,6 +415,7 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+
   elsif p_item_id = 'character-fat-avocado-01' then
     insert into public.user_characters (
       user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
@@ -544,10 +575,158 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+  elsif p_item_id = 'skin-grilledegg-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-grilled-egg',
+      '구운계란 캐릭터',
+      './images/characters/grilled-egg.png',
+      './images/characters/grilled-egg.png',
+      5,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-grilled-egg',
+      'char-grilled-egg-trainer',
+      '구운계란 트레이너 스킨',
+      './images/skins/grilledegg-PT.png',
+      402,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-cucumber-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-soldier',
+      '군인오이 스킨',
+      './images/skins/cucumber-soldier.png',
+      2,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-avocado-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-fat-avocado',
+      '아보카도 캐릭터',
+      './images/characters/fat-avocado.png',
+      './images/characters/fat-avocado.png',
+      4,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-fat-avocado',
+      'char-fat-avocado-cafe',
+      '아보카도 카페사장 스킨',
+      './images/skins/avocado-cafe.png',
+      302,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-tetocarrot-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-teto-carrot',
+      '테토당근',
+      './images/characters/teto-carrot.png',
+      './images/characters/teto-carrot.png',
+      3,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-teto-carrot',
+      'char-teto-carrot-rock',
+      '테토당근 락밴드 스킨',
+      './images/skins/tetocarrot-rock.png',
+      202,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-eggpotato-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-egg-potato',
+      '알감자 캐릭터',
+      './images/characters/eggpotato.png',
+      './images/characters/eggpotato.png',
+      7,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-egg-potato',
+      'char-egg-potato-hot',
+      '찐감자 스킨',
+      './images/skins/potato-hot.png',
+      602,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
   elsif p_item_id = 'bgm-tetocarrot-01' then
     null;
 
   elsif p_item_id = 'bgm-grilledegg-01' then
+    null;
+
+  elsif p_item_id = 'bgm-eggpotato-01' then
     null;
 
   elsif p_item_id = 'bgm-cucumbergirl-01' then
@@ -640,6 +819,8 @@ begin
         then '테토당근 BGM 구매가 완료됐어. 420피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-grilledegg-01'
         then '구운계란의 PT수업 BGM 구매가 완료됐어. 432피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-eggpotato-01'
+        then '알감자교수님의 찐 락발라드 BGM 구매가 완료됐어. 468피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-cucumbergirl-01'
         then '오이소녀의 데뷔 BGM 구매가 완료됐어. 542피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-fat-avocado-01'
@@ -648,7 +829,17 @@ begin
         then 'lofi 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
-      else '구매가 완료됐어.'
+      when p_item_id = 'skin-grilledegg-01'
+        then '구운계란 트레이너 스킨 구매가 완료됐어. 466피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumber-01'
+        then '군인오이 스킨 구매가 완료됐어. 389피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-avocado-01'
+        then '아보카도 카페사장 스킨 구매가 완료됐어. 423피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-tetocarrot-01'
+        then '테토당근 락밴드 스킨 구매가 완료됐어. 445피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-eggpotato-01'
+        then '찐감자 스킨 구매가 완료됐어. 0피클 상품이라 바로 지급됐고 스킨 인벤토리에서 착용할 수 있어.'
+        else '구매가 완료됐어.'
     end,
     coalesce(v_balance, 0);
 end;
