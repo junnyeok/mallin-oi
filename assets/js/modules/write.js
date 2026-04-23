@@ -1350,10 +1350,14 @@ function bindAttachmentInputs(note) {
     isEditorComposing = true;
   });
 
+  editor.addEventListener('compositionstart', () => {
+    isEditorComposing = true;
+  });
+
   editor.addEventListener('compositionend', () => {
     isEditorComposing = false;
     saveCurrentSelectionRange();
-    syncBodyFromEditor();
+    syncBodyFromEditor({ normalize: false });
     refreshEditorToolbarState();
   });
 
@@ -1396,7 +1400,7 @@ function bindAttachmentInputs(note) {
   editor.addEventListener('keyup', (event) => {
     if (isEditorComposing || event.isComposing) return;
     saveCurrentSelectionRange();
-    syncBodyFromEditor();
+    syncBodyFromEditor({ normalize: false });
     refreshEditorToolbarState();
   });
 
@@ -1408,6 +1412,11 @@ function bindAttachmentInputs(note) {
   editor.addEventListener('input', (event) => {
     if (isEditorComposing || event.isComposing) return;
     saveCurrentSelectionRange();
+    syncBodyFromEditor({ normalize: false });
+    refreshEditorToolbarState();
+  });
+
+  editor.addEventListener('blur', () => {
     syncBodyFromEditor();
     refreshEditorToolbarState();
   });

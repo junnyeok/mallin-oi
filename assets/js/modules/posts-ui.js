@@ -19,13 +19,43 @@ function getTitle(post) {
   return `${post.isPrivate ? '🔒 ' : ''}${post.title}`;
 }
 
+function getAuthorNickname(post) {
+  return String(post?.authorNickname || '익명').trim() || '익명';
+}
+
+function getCommentCount(post) {
+  return Number(post?.commentCount || 0);
+}
+
+function getReactionCount(post) {
+  return Number(post?.totalReactionsCount || 0);
+}
+
+function getCategoryLabel(category) {
+  const map = {
+    study: 'study',
+    work: 'work',
+    event: 'event',
+    career: 'career',
+  };
+
+  return map[String(category || '').toLowerCase()] || 'study';
+}
+
 function renderLatestList(posts, listEl) {
   listEl.innerHTML = posts
     .map(
       (p) => `
-      <a class="mini__row" href="${p.url}" data-id="${p.id}" data-views="${getViews(p)}">
+      <a
+        class="mini__row"
+        href="${p.url}"
+        data-id="${p.id}"
+        data-views="${getViews(p)}"
+      >
         <span class="mini__title">${getTitle(p)}</span>
-        <span class="mini__date">${formatMMDD(p.date)}</span>
+        <span class="mini__meta">
+          ${formatMMDD(p.date)} · ${getAuthorNickname(p)} · 👀 ${getViews(p)} · 👍 ${getReactionCount(p)} · 💬 ${getCommentCount(p)} · ${getCategoryLabel(p.category)}
+        </span>
       </a>
     `,
     )

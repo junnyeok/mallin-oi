@@ -252,15 +252,13 @@
     <div class="header-actions header-actions--corner">
       <div class="service-menu" id="serviceMenu">
         <button
-          type="button"
           class="service-menu-btn"
           id="serviceMenuBtn"
+          type="button"
           aria-label="전체서비스 열기"
-          aria-haspopup="dialog"
           aria-expanded="false"
           aria-controls="serviceMenuPanel"
         >
-          <span class="sr-only">전체서비스</span>
           <span class="service-menu-btn__dots" aria-hidden="true">
             <span></span>
             <span></span>
@@ -269,28 +267,32 @@
         </button>
 
         <button
-          type="button"
           class="service-menu__backdrop"
           id="serviceMenuBackdrop"
-          aria-hidden="true"
+          type="button"
+          aria-label="전체서비스 닫기"
           hidden
         ></button>
 
-        <section
+        <div
           class="service-menu__panel"
           id="serviceMenuPanel"
-          aria-label="전체서비스"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="serviceMenuTitle"
           hidden
         >
           <div class="service-menu__head">
-            <strong class="service-menu__title">전체서비스</strong>
+            <h2 class="service-menu__title" id="serviceMenuTitle">
+              전체서비스
+            </h2>
             <button
-              type="button"
               class="service-menu__close"
               id="serviceMenuCloseBtn"
+              type="button"
               aria-label="전체서비스 닫기"
             >
-              ✕
+              ×
             </button>
           </div>
 
@@ -333,12 +335,22 @@
 
             <a
               class="service-menu__link write-btn"
+              href="__BASE__store.html"
+              aria-label="상점 페이지로 이동"
+            >
+              <span class="service-menu__icon" aria-hidden="true">🛍️</span>
+              <span class="service-menu__label">상점가기</span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn"
               href="__BASE__suggestion.html"
               aria-label="건의사항 페이지로 이동"
             >
               <span class="service-menu__icon" aria-hidden="true">💬</span>
               <span class="service-menu__label">건의사항</span>
             </a>
+
             <a
               class="service-menu__link write-btn"
               href="__BASE__qna.html"
@@ -348,7 +360,7 @@
               <span class="service-menu__label">Q&amp;A</span>
             </a>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   </div>

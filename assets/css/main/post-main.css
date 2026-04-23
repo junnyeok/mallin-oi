@@ -6,23 +6,6 @@
   padding: var(--space-24) 0 var(--space-32);
 }
 
-.post__top {
-  margin-bottom: var(--space-16);
-}
-
-.post__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text);
-  text-decoration: none;
-  font-size: var(--text-body);
-}
-
-.post__back:hover {
-  opacity: 0.8;
-}
-
 /* =========================
   POST CARD
 ========================= */

@@ -184,7 +184,7 @@ async function initPageModules(modules) {
   } = modules;
 
   const { initPostsUI } = postsUiModule;
-  const { initPostDetail, initBackLink } = postDetailModule;
+  const { initPostDetail } = postDetailModule;
   const { initPostsAll } = postsAllModule;
   const { initPostDetailList } = postDetailListModule;
   const { initPostPrevNext } = postPrevNextModule;
@@ -268,10 +268,6 @@ async function initPageModules(modules) {
 
       await runSafe('post comments', async () => {
         await initPostComments();
-      });
-
-      await runSafe('back link', async () => {
-        initBackLink();
       });
 
     case 'write':

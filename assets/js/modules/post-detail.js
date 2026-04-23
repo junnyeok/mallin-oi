@@ -82,6 +82,20 @@ function navigateWithPjax(url) {
   tempLink.remove();
 }
 
+function getPostListHref(category = 'home') {
+  const normalized = normalizeCategory(category);
+
+  if (normalized === 'home') {
+    return './posts-all.html';
+  }
+
+  return `./posts-all.html?tab=${encodeURIComponent(normalized)}`;
+}
+
+function redirectToPostList(category = 'home') {
+  window.location.replace(getPostListHref(category));
+}
+
 function escapeHtml(str) {
   return String(str || '')
     .replaceAll('&', '&amp;')
@@ -753,15 +767,7 @@ async function bindOwnerActions(post) {
         }
 
         alert('게시물이 삭제됐어.');
-
-        const category = normalizeCategory(post.category);
-        if (category === 'home') {
-          navigateWithPjax('./posts-all.html');
-        } else {
-          navigateWithPjax(
-            `./posts-all.html?tab=${encodeURIComponent(category)}`,
-          );
-        }
+        redirectToPostList(post.category);
       };
     }
   } catch (err) {
@@ -873,18 +879,16 @@ export async function initPostDetail() {
   const postId = sp.get('id');
 
   if (!postId) {
-    const titleEl = $('postTitle');
-    if (titleEl) titleEl.textContent = '잘못된 접근';
-    bodyEl.innerHTML = `<p class="post-body__hint">게시글 id가 없어.</p>`;
+    alert('잘못된 접근이야. 전체 게시물로 이동할게.');
+    redirectToPostList('home');
     return;
   }
 
   let post = await loadPostById(postId);
 
   if (!post) {
-    const titleEl = $('postTitle');
-    if (titleEl) titleEl.textContent = '게시물을 찾을 수 없음';
-    bodyEl.innerHTML = `<p class="post-body__hint">삭제됐거나 존재하지 않는 글이야.</p>`;
+    alert('삭제됐거나 존재하지 않는 글이야. 전체 게시물로 이동할게.');
+    redirectToPostList('home');
     return;
   }
 
@@ -938,20 +942,4 @@ export async function initPostDetail() {
       }
     });
   }
-}
-
-export function initBackLink() {
-  const backBtn = document.getElementById('postBack');
-  if (!backBtn) return;
-
-  backBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
-    window.location.href = './index.html';
-  });
 }
