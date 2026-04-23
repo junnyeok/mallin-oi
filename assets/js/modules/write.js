@@ -19,6 +19,7 @@ let attachmentState = [];
 let removedStoragePaths = new Set();
 let savedSelectionRange = null;
 let activeEmbedId = '';
+let isEditorComposing = false;
 
 function navigateWithPjax(url) {
   const href = String(url || '').trim();
@@ -746,12 +747,16 @@ function ensureEditorHasParagraph() {
   }
 }
 
-function syncBodyFromEditor() {
+function syncBodyFromEditor(options = {}) {
+  const { normalize = true } = options;
+
   const editor = getBodyEditor();
   const bodyField = getBodyField();
   if (!editor || !bodyField) return '';
 
-  normalizeEditorParagraphs(editor);
+  if (normalize && !isEditorComposing) {
+    normalizeEditorParagraphs(editor);
+  }
 
   const isEmpty = updateEditorEmptyState(editor);
   const html = isEmpty ? '' : editor.innerHTML.trim();
@@ -1341,6 +1346,17 @@ function bindAttachmentInputs(note) {
 
   if (!editor) return;
 
+  editor.addEventListener('compositionstart', () => {
+    isEditorComposing = true;
+  });
+
+  editor.addEventListener('compositionend', () => {
+    isEditorComposing = false;
+    saveCurrentSelectionRange();
+    syncBodyFromEditor();
+    refreshEditorToolbarState();
+  });
+
   editor.addEventListener('click', (e) => {
     const removeBtn = e.target.closest('[data-embed-remove]');
     if (removeBtn) {
@@ -1377,7 +1393,8 @@ function bindAttachmentInputs(note) {
     refreshEditorToolbarState();
   });
 
-  editor.addEventListener('keyup', () => {
+  editor.addEventListener('keyup', (event) => {
+    if (isEditorComposing || event.isComposing) return;
     saveCurrentSelectionRange();
     syncBodyFromEditor();
     refreshEditorToolbarState();
@@ -1388,15 +1405,17 @@ function bindAttachmentInputs(note) {
     refreshEditorToolbarState();
   });
 
-  editor.addEventListener('input', () => {
+  editor.addEventListener('input', (event) => {
+    if (isEditorComposing || event.isComposing) return;
     saveCurrentSelectionRange();
     syncBodyFromEditor();
     refreshEditorToolbarState();
   });
 
   editor.addEventListener('beforeinput', (event) => {
-    if (event.inputType !== 'insertParagraph') return;
     if (event.isComposing || event.nativeEvent?.isComposing) return;
+
+    if (event.inputType !== 'insertParagraph') return;
 
     event.preventDefault();
     insertSingleParagraphAtCaret();
@@ -1612,7 +1631,7 @@ function fillWriteForm(post, isAdmin) {
 
   if (editorEl) {
     editorEl.innerHTML = bodyToEditorHtml(post.body || '');
-    normalizeEditorParagraphs(editorEl);
+    normalizeEditorFontTags(editorEl);
     updateEditorEmptyState(editorEl);
   }
 
@@ -1650,7 +1669,7 @@ function fillWriteForm(post, isAdmin) {
   removedStoragePaths = new Set();
   renderAttachmentList();
   appendMissingExistingAttachmentsToEditor(attachmentState);
-  syncBodyFromEditor();
+  syncBodyFromEditor({ normalize: false });
   syncPrivatePasswordUi(true);
 }
 
