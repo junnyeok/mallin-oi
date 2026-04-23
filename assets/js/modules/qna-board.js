@@ -20,6 +20,6 @@ export async function initQnaBoard() {
     unlockButtonText: '열기',
     unlockFailText: '비밀번호가 일치하지 않아.',
     adminReplyPlaceholderText: '관리자 답변을 입력해줘.',
-    exampleRootId: 'qnaExampleChips',
+    exampleRootId: '',
   });
 }
