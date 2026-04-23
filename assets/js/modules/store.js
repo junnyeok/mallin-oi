@@ -684,15 +684,12 @@ async function initStoreItemPage() {
 
     const isLoggedIn = !!user?.id;
     const isOwned = ownedIds.has(item.id);
-    const canPurchase =
-      item.isPurchasable &&
-      !isOwned &&
-      (!skinRequirement || hasRequiredCharacter);
     const hasRequiredCharacter =
       !skinRequirement ||
       ownedCharacterCodes.has(
         String(skinRequirement.character_code || '').trim(),
       );
+    const canPurchase = item.isPurchasable && !isOwned && hasRequiredCharacter;
 
     const requiredCharacterMessage =
       skinRequirement && !hasRequiredCharacter
