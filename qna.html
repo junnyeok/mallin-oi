@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>건의사항 | 말린오이닷컴</title>
+    <title>Q&A | 말린오이닷컴</title>
 
     <link
       rel="apple-touch-icon"
@@ -45,7 +45,7 @@
     <link rel="stylesheet" href="./assets/css/main/main.css" />
   </head>
 
-  <body data-page="suggestion">
+  <body data-page="qna">
     <div class="page">
       <div data-include="header"></div>
 
@@ -54,13 +54,13 @@
           <div class="container">
             <div
               class="panel suggestion-panel suggestion-panel--page"
-              id="suggestionSection"
+              id="qnaSection"
             >
               <div class="panel__head">
                 <div>
-                  <h2 class="panel__title">💬 건의사항</h2>
+                  <h2 class="panel__title">❓ Q&amp;A</h2>
                   <p class="panel__desc">
-                    건의사항을 남겨주시면 답변해드립니다.
+                    궁금한 점을 남겨주시면 관리자가 답변해드립니다.
                   </p>
                 </div>
               </div>
@@ -70,17 +70,49 @@
                   작성자: 게스트
                 </div>
 
+                <div class="suggestion-example-chips" id="qnaExampleChips">
+                  <button
+                    type="button"
+                    class="suggestion-example-chip"
+                    data-example="피클은 어떻게 얻나요?"
+                  >
+                    피클은 어떻게 얻나요?
+                  </button>
+                  <button
+                    type="button"
+                    class="suggestion-example-chip"
+                    data-example="스킨은 어디서 착용하나요?"
+                  >
+                    스킨은 어디서 착용하나요?
+                  </button>
+                  <button
+                    type="button"
+                    class="suggestion-example-chip"
+                    data-example="BGM은 어디서 바꾸나요?"
+                  >
+                    BGM은 어디서 바꾸나요?
+                  </button>
+                  <button
+                    type="button"
+                    class="suggestion-example-chip"
+                    data-example="건의사항 답변은 어디서 확인하나요?"
+                  >
+                    건의사항 답변은 어디서 확인하나요?
+                  </button>
+                </div>
+
                 <textarea
                   id="suggestionBody"
                   class="suggestion-form__textarea"
                   rows="4"
                   maxlength="1000"
-                  placeholder="건의사항을 남겨줘."
+                  placeholder="질문을 입력해줘."
                 ></textarea>
+
                 <div class="suggestion-secret-box">
                   <label class="suggestion-secret-toggle">
                     <input type="checkbox" id="suggestionSecretToggle" />
-                    <span>비밀 건의사항</span>
+                    <span>비밀 질문</span>
                   </label>
 
                   <input
@@ -99,7 +131,7 @@
 
                 <div class="suggestion-form__bottom">
                   <p class="suggestion-form__hint" id="suggestionLoginHint">
-                    로그인 후 건의사항 작성이 가능해.
+                    로그인 후 질문 작성이 가능해.
                   </p>
 
                   <button
@@ -124,11 +156,9 @@
                 >
                   이전
                 </button>
-
                 <div class="suggestion-pager__info" id="suggestionPageInfo">
                   1 / 1
                 </div>
-
                 <button
                   type="button"
                   class="suggestion-btn"

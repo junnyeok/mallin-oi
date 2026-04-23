@@ -41,11 +41,13 @@ function getPageType() {
   if (path.includes('profile.html')) return 'profile';
   if (path.includes('store.html')) return 'store';
   if (path.includes('suggestion.html')) return 'suggestion';
+  if (path.includes('qna.html')) return 'qna';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
     .toLowerCase();
 
+  if (page === 'qna') return 'qna';
   if (page === 'post') return 'post';
   if (page === 'write') return 'write';
   if (page === 'mypage') return 'mypage';
@@ -166,6 +168,17 @@ function getSuggestionTargets() {
   const bottomScrollEl =
     document.getElementById('suggestionList') ||
     document.getElementById('suggestionSection') ||
+    null;
+
+  return {
+    bottomScrollEl,
+  };
+}
+
+function getQnaTargets() {
+  const bottomScrollEl =
+    document.getElementById('suggestionList') ||
+    document.getElementById('qnaSection') ||
     null;
 
   return {
@@ -335,6 +348,11 @@ export function initScrollButtons(options = {}) {
   if (pageType === 'suggestion') {
     const suggestionTargets = getSuggestionTargets();
     bottomScrollEl = suggestionTargets.bottomScrollEl;
+
+    if (pageType === 'qna') {
+      const qnaTargets = getQnaTargets();
+      bottomScrollEl = qnaTargets.bottomScrollEl;
+    }
 
     if (bottomScrollEl) {
       btnBottom.setAttribute('aria-label', '건의사항 목록으로 이동');

@@ -705,13 +705,44 @@ function focusEditor() {
   editor.focus();
 }
 
+function isEditorVisuallyEmpty(root) {
+  if (!root) return true;
+
+  const clone = root.cloneNode(true);
+  clone.querySelectorAll('.write-embed__remove').forEach((btn) => btn.remove());
+
+  const hasMeaningfulNode = !!clone.querySelector(
+    '.write-embed, [data-media-id], img.inline-emoticon, img[data-emoticon-code], iframe, video, a[href]',
+  );
+
+  const text = String(clone.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+
+  const html = String(clone.innerHTML || '')
+    .replace(/<p[^>]*>\s*(?:<br\s*\/?>|&nbsp;|\u00a0|\s)*<\/p>/gi, '')
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/&nbsp;/gi, '')
+    .trim();
+
+  return !hasMeaningfulNode && !text && !html;
+}
+
+function updateEditorEmptyState(root = getBodyEditor()) {
+  if (!root) return true;
+
+  const isEmpty = isEditorVisuallyEmpty(root);
+  root.classList.toggle('is-empty', isEmpty);
+  return isEmpty;
+}
+
 function ensureEditorHasParagraph() {
   const editor = getBodyEditor();
   if (!editor) return;
 
-  const text = editor.textContent?.trim() || '';
-  if (!text && !editor.querySelector('*')) {
-    editor.innerHTML = '<p><br></p>';
+  if (isEditorVisuallyEmpty(editor)) {
+    editor.innerHTML = '';
+    updateEditorEmptyState(editor);
   }
 }
 
@@ -720,16 +751,21 @@ function syncBodyFromEditor() {
   const bodyField = getBodyField();
   if (!editor || !bodyField) return '';
 
-  const html = editor.innerHTML.trim();
+  normalizeEditorParagraphs(editor);
+
+  const isEmpty = updateEditorEmptyState(editor);
+  const html = isEmpty ? '' : editor.innerHTML.trim();
+
   bodyField.value = html;
   return bodyField.value;
 }
 
 function plainTextToEditorHtml(text = '') {
-  const lines = String(text || '').split('\n');
-  if (!lines.length) return '<p><br></p>';
+  const normalized = String(text || '').replace(/\r\n?/g, '\n');
+  if (!normalized.trim()) return '';
 
-  return lines
+  return normalized
+    .split('\n')
     .map((line) => {
       const safe = escapeHtml(line);
       return safe ? `<p>${safe}</p>` : '<p><br></p>';
@@ -738,59 +774,70 @@ function plainTextToEditorHtml(text = '') {
 }
 
 function bodyToEditorHtml(body = '') {
-  const value = String(body || '').trim();
-  if (!value) return '<p><br></p>';
+  const raw = String(body || '').replace(/\r\n?/g, '\n');
+  const trimmed = raw.trim();
 
-  const looksLikeHtml = /<([a-z][a-z0-9]*)\b[^>]*>/i.test(value);
-  if (looksLikeHtml) return value;
+  if (!trimmed) return '';
 
-  return plainTextToEditorHtml(value);
+  const looksLikeHtml = /<([a-z][a-z0-9]*)\b[^>]*>/i.test(trimmed);
+  if (looksLikeHtml) return raw;
+
+  return plainTextToEditorHtml(raw);
 }
 
 function normalizeEditorParagraphs(root) {
   if (!root) return;
 
-  const blockSelector =
-    'p, div, blockquote, li, ul, ol, h1, h2, h3, h4, h5, h6';
+  Array.from(root.childNodes).forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const value = String(node.textContent || '').replace(/\u00a0/g, '');
+      if (!value.trim()) {
+        node.remove();
+        return;
+      }
+
+      const p = document.createElement('p');
+      p.textContent = value;
+      node.replaceWith(p);
+      return;
+    }
+
+    if (
+      node.nodeType === Node.ELEMENT_NODE &&
+      node.matches?.('div:not(.write-embed):not([data-media-id])')
+    ) {
+      const p = document.createElement('p');
+
+      while (node.firstChild) {
+        p.appendChild(node.firstChild);
+      }
+
+      node.replaceWith(p);
+    }
+  });
 
   root.querySelectorAll('p').forEach((p) => {
     if (!p || p.closest('.write-embed')) return;
-    if (p.querySelector('.write-embed')) return;
 
-    const hasNestedBlock = [...p.children].some((child) =>
-      child.matches?.(blockSelector),
+    const html = String(p.innerHTML || '').trim();
+    const text = String(p.textContent || '')
+      .replace(/\u00a0/g, ' ')
+      .trim();
+
+    const hasMeaningfulChild = !!p.querySelector(
+      '.write-embed, [data-media-id], img.inline-emoticon, img[data-emoticon-code], iframe, video, a[href]',
     );
-    if (hasNestedBlock) return;
 
-    const html = p.innerHTML;
-    if (!/<br\s*\/?>/i.test(html)) return;
-
-    const align = p.getAttribute('data-align') || 'left';
-    const parts = html.split(/<br\s*\/?>/gi);
-
-    if (parts.length <= 1) return;
-
-    const frag = document.createDocumentFragment();
-
-    parts.forEach((part) => {
-      const nextP = document.createElement('p');
-      nextP.setAttribute('data-align', align);
-
-      if (part.trim()) {
-        nextP.innerHTML = part;
-      } else {
-        nextP.innerHTML = '<br>';
-      }
-
-      frag.appendChild(nextP);
-    });
-
-    p.replaceWith(frag);
+    if (!html && !text && !hasMeaningfulChild) {
+      p.innerHTML = '<br>';
+    }
   });
 
-  if (!root.innerHTML.trim()) {
-    root.innerHTML = '<p><br></p>';
+  if (isEditorVisuallyEmpty(root)) {
+    root.innerHTML = '';
   }
+
+  updateEditorEmptyState(root);
 }
 
 function placeCaretAtEnd(el) {
@@ -1347,11 +1394,11 @@ function bindAttachmentInputs(note) {
     refreshEditorToolbarState();
   });
 
-  editor.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || e.shiftKey) return;
-    if (e.nativeEvent?.isComposing || e.isComposing) return;
+  editor.addEventListener('beforeinput', (event) => {
+    if (event.inputType !== 'insertParagraph') return;
+    if (event.isComposing || event.nativeEvent?.isComposing) return;
 
-    e.preventDefault();
+    event.preventDefault();
     insertSingleParagraphAtCaret();
   });
 }
@@ -1566,6 +1613,7 @@ function fillWriteForm(post, isAdmin) {
   if (editorEl) {
     editorEl.innerHTML = bodyToEditorHtml(post.body || '');
     normalizeEditorParagraphs(editorEl);
+    updateEditorEmptyState(editorEl);
   }
 
   if (categoryEl) categoryEl.value = normalizeCategory(post.category);
@@ -1617,8 +1665,9 @@ export async function initWrite() {
 
   setWriteModeUi(!!editPostId);
   if (editor) {
-    editor.innerHTML = '<p><br></p>';
+    editor.innerHTML = '';
     normalizeEditorParagraphs(editor);
+    updateEditorEmptyState(editor);
   }
   syncBodyFromEditor();
 
@@ -1801,7 +1850,9 @@ export async function initWrite() {
       removedStoragePaths = new Set();
 
       if (editor) {
-        editor.innerHTML = '<p><br></p>';
+        editor.innerHTML = '';
+        normalizeEditorParagraphs(editor);
+        updateEditorEmptyState(editor);
       }
 
       renderAttachmentList();

@@ -337,7 +337,7 @@
   outline-offset: 2px;
 }
 
-.write-editor:empty::before {
+.write-editor.is-empty::before {
   content: attr(data-placeholder);
   color: var(--color-text-sub);
   pointer-events: none;

@@ -56,6 +56,7 @@ async function loadCoreModules() {
     bgmPlayerModule,
     pickleStatusModule,
     pjaxRouterModule,
+    qnaBoardModule,
   ] = await Promise.all([
     import(withModuleVersion('./modules/site-version.js')),
     import(withModuleVersion('./modules/update-banner.js')),
@@ -88,6 +89,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/bgm-player.js')),
     import(withModuleVersion('./modules/pickle-status.js')),
     import(withModuleVersion('./modules/pjax-router.js')),
+    import(withModuleVersion('./modules/qna-board.js')),
   ]);
 
   coreModules = {
@@ -122,6 +124,7 @@ async function loadCoreModules() {
     bgmPlayerModule,
     pickleStatusModule,
     pjaxRouterModule,
+    qnaBoardModule,
   };
 
   return coreModules;
@@ -177,6 +180,7 @@ async function initPageModules(modules) {
     profileModule,
     profileHistoryModule,
     storeModule,
+    qnaBoardModule,
   } = modules;
 
   const { initPostsUI } = postsUiModule;
@@ -198,6 +202,7 @@ async function initPageModules(modules) {
   const { initProfile } = profileModule;
   const { initProfileHistory } = profileHistoryModule;
   const { initStore } = storeModule;
+  const { initQnaBoard } = qnaBoardModule;
 
   // 공통
   await runSafe('scroll buttons', async () => {
@@ -222,6 +227,12 @@ async function initPageModules(modules) {
     case 'posts-all':
       await runSafe('posts all', async () => {
         await initPostsAll();
+      });
+      break;
+
+    case 'qna':
+      await runSafe('qna board', async () => {
+        await initQnaBoard();
       });
       break;
 
