@@ -309,6 +309,36 @@ export const EGGPOTATO_HOT_SKIN_PREVIEW = [
   },
 ];
 
+export const CUCUMBER_HEART_CHARACTER_EFFECT_PREVIEW = [
+  {
+    code: 'cha-effect-cucumber-heart',
+    label: '말린오이테마 하트 캐릭터 효과',
+    imagePath: withAssetVersion(
+      './images/character-effects/cucumber-heart.png',
+    ),
+    displayOrder: 1,
+  },
+];
+
+export const CHARACTER_EFFECT_CATALOG = [
+  {
+    itemId: 'cha-effects-cucumberheart-01',
+    name: '말린오이테마 하트 캐릭터 효과',
+    imagePath: withAssetVersion(
+      './images/character-effects/cucumber-heart.png',
+    ),
+    displayOrder: 1,
+  },
+];
+
+export function getCharacterEffectByItemId(itemId = '') {
+  const safeItemId = String(itemId || '').trim();
+
+  return (
+    CHARACTER_EFFECT_CATALOG.find((item) => item.itemId === safeItemId) || null
+  );
+}
+
 export const FAT_AVOCADO_CHARACTER_PREVIEW = [
   {
     code: 'char-fat-avocado-basic',
@@ -346,6 +376,23 @@ export const EGG_POTATO_CHARACTER_PREVIEW = [
 ];
 
 export const STORE_ITEMS = [
+  {
+    id: 'cha-effects-cucumberheart-01',
+    name: '말린오이테마 하트 캐릭터 효과',
+    category: 'cha-effects',
+    badge: '캐릭터효과',
+    icon: '💚',
+    thumbImagePath: withAssetVersion(
+      './images/character-effects/cucumber-heart.png',
+    ),
+    price: 385,
+    state: '판매 중',
+    description: '말린오이닷컴 테마에 어울리는 하트야.',
+    detailDescription:
+      '말린오이닷컴 테마에 어울리는 하트 캐릭터 효과야.<br>구매하면 인벤토리의 캐릭터 효과 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: CUCUMBER_HEART_CHARACTER_EFFECT_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'bgm-eggpotato-01',
     name: '알감자교수님의 찐 락발라드 BGM',

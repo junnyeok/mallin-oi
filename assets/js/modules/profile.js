@@ -30,8 +30,10 @@ const [
     BGM_CATALOG,
     CHARACTER_CATALOG,
     CHARACTER_SKIN_CATALOG,
+    CHARACTER_EFFECT_CATALOG,
     getStoreItemDetailHref,
     getSkinParentRequirementBySkinCode,
+    getCharacterEffectByItemId,
   },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
@@ -424,7 +426,7 @@ async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, nickname, email, bio, profile_image_url, pickles, equipped_character_image_url, bgm_selected_track_ids, bgm_current_track_id',
+      'id, nickname, bio, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id, created_at, updated_at',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -483,6 +485,169 @@ async function loadOwnedStoreItemIdsByUserId(userId) {
   if (error) throw error;
 
   return new Set((data || []).map((row) => String(row?.item_id || '').trim()));
+}
+
+function renderCharacterEffectImage(effectItemId = '') {
+  const effect = getCharacterEffectByItemId(effectItemId);
+  if (!effect) return '';
+
+  return `
+    <img
+      class="character-effect-img character-effect-img--heart"
+      src="${escapeHtml(effect.imagePath)}"
+      alt=""
+      aria-hidden="true"
+    />
+  `;
+}
+
+function renderEquippedCharacterEffectOnPreview(effectItemId = '') {
+  const previewEl = $('profileCharacterImage');
+  if (!previewEl) return;
+
+  const wrapEl = previewEl.closest('.character-effect-wrap');
+  if (!wrapEl) return;
+
+  wrapEl
+    .querySelectorAll('.character-effect-img')
+    .forEach((node) => node.remove());
+
+  const effectHtml = renderCharacterEffectImage(effectItemId);
+  if (!effectHtml) return;
+
+  previewEl.insertAdjacentHTML('afterend', effectHtml);
+}
+
+function getOwnedCharacterEffectRows(ownedStoreItemIds = new Set()) {
+  return CHARACTER_EFFECT_CATALOG.map((item) => ({
+    ...item,
+    isOwned: ownedStoreItemIds.has(item.itemId),
+  })).sort(
+    (a, b) => Number(a?.displayOrder || 999) - Number(b?.displayOrder || 999),
+  );
+}
+
+function renderCharacterEffectCard(item, equippedEffectItemId = '') {
+  const isOwned = item?.isOwned === true;
+  const isEquipped =
+    String(item?.itemId || '').trim() ===
+    String(equippedEffectItemId || '').trim();
+
+  const detailHref = getStoreItemDetailHref(item.itemId);
+
+  const metaText = !isOwned
+    ? '미보유 · 클릭하면 구매페이지로 이동'
+    : isEquipped
+      ? '현재 장착 중 · 클릭하면 해제'
+      : '클릭해서 장착';
+
+  return `
+    <button
+      type="button"
+      class="profile-character-card profile-character-effect-card ${isEquipped ? 'is-equipped' : ''} ${!isOwned ? 'is-locked' : ''}"
+      data-character-effect-item-id="${escapeHtml(item.itemId)}"
+      data-owned="${isOwned ? 'true' : 'false'}"
+      data-store-href="${escapeHtml(detailHref)}"
+    >
+            <div class="profile-character-effect-card__thumb">
+        <img
+          class="profile-character-effect-card__image"
+          src="${escapeHtml(item.imagePath)}"
+          alt=""
+          aria-hidden="true"
+        />
+      </div>
+
+      <div class="profile-character-card__name">
+        ${escapeHtml(item.name)}
+      </div>
+
+      <div class="profile-character-card__meta ${!isOwned ? 'is-locked' : ''}">
+        ${metaText}
+      </div>
+    </button>
+  `;
+}
+
+function renderCharacterEffectSection({
+  isOwnProfile = false,
+  profileRow = null,
+  ownedStoreItemIds = new Set(),
+}) {
+  const wrapEl = $('profileCharacterEffectWrap');
+  const listEl = $('profileCharacterEffectList');
+
+  renderEquippedCharacterEffectOnPreview(
+    profileRow?.equipped_character_effect_item_id,
+  );
+
+  if (!wrapEl || !listEl) return;
+
+  wrapEl.hidden = !isOwnProfile;
+  if (!isOwnProfile) return;
+
+  const rows = getOwnedCharacterEffectRows(ownedStoreItemIds);
+  const equippedEffectItemId = String(
+    profileRow?.equipped_character_effect_item_id || '',
+  ).trim();
+
+  listEl.innerHTML = rows
+    .map((item) => renderCharacterEffectCard(item, equippedEffectItemId))
+    .join('');
+
+  Array.from(
+    listEl.querySelectorAll('[data-character-effect-item-id]'),
+  ).forEach((button) => {
+    button.addEventListener('click', async () => {
+      const isOwned = button.dataset.owned === 'true';
+      const storeHref = String(button.dataset.storeHref || '').trim();
+      const effectItemId = String(
+        button.dataset.characterEffectItemId || '',
+      ).trim();
+
+      if (!isOwned) {
+        if (storeHref) window.location.href = storeHref;
+        return;
+      }
+
+      const isEquipped =
+        effectItemId ===
+        String(profileRow?.equipped_character_effect_item_id || '').trim();
+
+      const nextEffectItemId = isEquipped ? null : effectItemId;
+
+      setMsg(isEquipped ? '캐릭터 효과 해제 중...' : '캐릭터 효과 장착 중...');
+
+      try {
+        await updateProfileRow(profileRow.id, {
+          equipped_character_effect_item_id: nextEffectItemId,
+          updated_at: new Date().toISOString(),
+        });
+
+        profileRow = {
+          ...profileRow,
+          equipped_character_effect_item_id: nextEffectItemId,
+        };
+
+        renderEquippedCharacterEffectOnPreview(nextEffectItemId);
+        renderCharacterEffectSection({
+          isOwnProfile,
+          profileRow,
+          ownedStoreItemIds,
+        });
+
+        setMsg(
+          isEquipped ? '캐릭터 효과 해제 완료!' : '캐릭터 효과 장착 완료!',
+          'green',
+        );
+
+        window.dispatchEvent(new Event('auth-changed'));
+      } catch (error) {
+        console.error('[profile] equip character effect failed:', error);
+        setMsg('캐릭터 효과 저장 중 오류가 발생했어.', 'red');
+      }
+    });
+  });
 }
 
 function getDefaultBgmTrackId() {
@@ -1653,6 +1818,12 @@ export async function initProfile() {
     characterRows,
     skinRows: characterSkinRows,
     isOwnProfile,
+  });
+
+  renderCharacterEffectSection({
+    isOwnProfile,
+    profileRow,
+    ownedStoreItemIds,
   });
 
   renderBgmSection({

@@ -13,6 +13,10 @@ const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
 
+const { getCharacterEffectByItemId } = await import(
+  `./store-data.js?v=${MODULE_VERSION}`
+);
+
 const {
   loadOwnedEmoticons,
   renderOwnedEmoticonPicker,
@@ -26,6 +30,7 @@ const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
 const commentProfileImageCache = new Map();
 const commentCharacterImageCache = new Map();
+const commentCharacterEffectCache = new Map();
 let ownedCommentEmoticons = [];
 let commentEmoticonDocumentBound = false;
 async function hasCommentPickleReward(userId, commentId) {
@@ -71,7 +76,9 @@ async function loadProfileAssetMap(authorIds = []) {
   if (missingIds.length) {
     const { data, error } = await supabase
       .from('public_profiles')
-      .select('id, profile_image_url, equipped_character_image_url')
+      .select(
+        'id, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id',
+      )
       .in('id', missingIds);
 
     if (error) {
@@ -97,12 +104,17 @@ async function loadProfileAssetMap(authorIds = []) {
           id,
           getCharacterImageSrc(row?.equipped_character_image_url),
         );
+        commentCharacterEffectCache.set(
+          id,
+          String(row?.equipped_character_effect_item_id || '').trim(),
+        );
       });
 
       missingIds.forEach((id) => {
         if (!foundIds.has(id)) {
           commentProfileImageCache.set(id, DEFAULT_PROFILE_IMAGE);
           commentCharacterImageCache.set(id, DEFAULT_CHARACTER_IMAGE);
+          commentCharacterEffectCache.set(id, '');
         }
       });
     }
@@ -115,6 +127,7 @@ async function loadProfileAssetMap(authorIds = []) {
         commentProfileImageCache.get(id) || DEFAULT_PROFILE_IMAGE,
       characterImageUrl:
         commentCharacterImageCache.get(id) || DEFAULT_CHARACTER_IMAGE,
+      characterEffectItemId: commentCharacterEffectCache.get(id) || '',
     });
   });
 
@@ -152,12 +165,36 @@ function renderAuthorProfileLink(
   authorNickname,
   profileImageUrl = '',
   characterImageUrl = '',
+  characterEffectItemId = '',
   className = '',
 ) {
   const nickname = escapeHtml(authorNickname || '익명');
   const safeAuthorId = String(authorId || '').trim();
   const avatarSrc = escapeHtml(getProfileImageSrc(profileImageUrl));
   const characterSrc = escapeHtml(getCharacterImageSrc(characterImageUrl));
+
+  const effect = getCharacterEffectByItemId(characterEffectItemId);
+  const characterEffectHtml = effect
+    ? `
+      <img
+        class="character-effect-img character-effect-img--heart"
+        src="${escapeHtml(effect.imagePath)}"
+        alt=""
+        aria-hidden="true"
+      />
+    `
+    : '';
+
+  const characterHtml = `
+  <span class="character-effect-wrap comment-author-character-effect-wrap">
+    <img
+      class="comment-author-character"
+      src="${characterSrc}"
+      alt="${nickname} 캐릭터"
+    />
+    ${characterEffectHtml}
+  </span>
+`;
 
   if (!safeAuthorId) {
     return `
@@ -168,11 +205,7 @@ function renderAuthorProfileLink(
           alt="${nickname} 프로필 사진"
         />
         <strong class="${className}">${nickname}</strong>
-        <img
-          class="comment-author-character"
-          src="${characterSrc}"
-          alt="${nickname} 캐릭터"
-        />
+        ${characterHtml}
       </span>
     `;
   }
@@ -194,11 +227,7 @@ function renderAuthorProfileLink(
         class="${className} comment-author-link"
         href="${publicProfileHref(safeAuthorId)}"
       >${nickname}</a>
-      <img
-        class="comment-author-character"
-        src="${characterSrc}"
-        alt="${nickname} 캐릭터"
-      />
+      ${characterHtml}
     </span>
   `;
 }
@@ -524,6 +553,11 @@ function renderReplyItem(
                           String(reply.author_id || '').trim(),
                         ) || {}
                       ).characterImageUrl || DEFAULT_CHARACTER_IMAGE,
+                      (
+                        profileImageMap.get(
+                          String(reply.author_id || '').trim(),
+                        ) || {}
+                      ).characterEffectItemId || '',
                       'comment-reply-item__author',
                     )}
           <div class="comment-meta-inline">
@@ -594,6 +628,11 @@ function renderCommentItem(
                           String(comment.author_id || '').trim(),
                         ) || {}
                       ).characterImageUrl || DEFAULT_CHARACTER_IMAGE,
+                      (
+                        profileImageMap.get(
+                          String(comment.author_id || '').trim(),
+                        ) || {}
+                      ).characterEffectItemId || '',
                       'comment-item__author',
                     )}
           <div class="comment-meta-inline">

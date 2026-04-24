@@ -7,6 +7,14 @@ const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
 const profileImageCache = new Map();
 const characterImageCache = new Map();
+const characterEffectCache = new Map();
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const { getCharacterEffectByItemId } = await import(
+  `./store-data.js?v=${MODULE_VERSION}`
+);
 
 function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
@@ -64,6 +72,48 @@ async function loadCharacterImageUrl(userId) {
   const imageUrl = getCharacterImageSrc(data?.equipped_character_image_url);
   characterImageCache.set(safeUserId, imageUrl);
   return imageUrl;
+}
+
+async function loadCharacterEffectItemId(userId) {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId) return '';
+
+  if (characterEffectCache.has(safeUserId)) {
+    return characterEffectCache.get(safeUserId);
+  }
+
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('id, equipped_character_effect_item_id')
+    .eq('id', safeUserId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[post-detail] load character effect failed:', error);
+    characterEffectCache.set(safeUserId, '');
+    return '';
+  }
+
+  const effectItemId = String(
+    data?.equipped_character_effect_item_id || '',
+  ).trim();
+
+  characterEffectCache.set(safeUserId, effectItemId);
+  return effectItemId;
+}
+
+function renderCharacterEffectImg(effectItemId = '') {
+  const effect = getCharacterEffectByItemId(effectItemId);
+  if (!effect) return '';
+
+  return `
+    <img
+      class="character-effect-img character-effect-img--heart"
+      src="${escapeHtml(effect.imagePath)}"
+      alt=""
+      aria-hidden="true"
+    />
+  `;
 }
 
 function $(id) {
@@ -237,8 +287,14 @@ async function renderAuthor(post) {
     : '';
 
   if (post.authorId) {
-    const profileImageUrl = await loadProfileImageUrl(post.authorId);
-    const characterImageUrl = await loadCharacterImageUrl(post.authorId);
+    const [profileImageUrl, characterImageUrl, characterEffectItemId] =
+      await Promise.all([
+        loadProfileImageUrl(post.authorId),
+        loadCharacterImageUrl(post.authorId),
+        loadCharacterEffectItemId(post.authorId),
+      ]);
+
+    const characterEffectHtml = renderCharacterEffectImg(characterEffectItemId);
     authorEl.innerHTML = `
   <span class="post-author__label">작성자 :</span>
   <span class="post-author__value">
@@ -257,15 +313,20 @@ async function renderAuthor(post) {
       class="post-author__link"
       href="${publicProfileHref(post.authorId)}"
     >${nickname}</a>${privateMark}
-    <img
-      class="post-author__character"
-      src="${escapeHtml(characterImageUrl)}"
-      alt="${nickname} 캐릭터"
-    />
+    <span class="character-effect-wrap post-author__character-effect-wrap">
+  <img
+    class="post-author__character"
+    src="${escapeHtml(characterImageUrl)}"
+    alt="${nickname} 캐릭터"
+  />
+  ${characterEffectHtml}
+</span>
   </span>
 `;
     return;
   }
+
+  const characterEffectHtml = '';
 
   authorEl.innerHTML = `
   <span class="post-author__label">작성자 :</span>
@@ -276,11 +337,14 @@ async function renderAuthor(post) {
       alt="${nickname} 프로필 사진"
     />
     <span>${nickname}</span>${privateMark}
-    <img
-      class="post-author__character"
-      src="${escapeHtml(DEFAULT_CHARACTER_IMAGE)}"
-      alt="${nickname} 캐릭터"
-    />
+    <span class="character-effect-wrap post-author__character-effect-wrap">
+  <img
+    class="post-author__character"
+    src="${escapeHtml(DEFAULT_CHARACTER_IMAGE)}"
+    alt="${nickname} 캐릭터"
+  />
+  ${characterEffectHtml}
+</span>
   </span>
 `;
 }

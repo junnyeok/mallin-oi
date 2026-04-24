@@ -16037,3 +16037,26 @@ drop function if exists public.update_qna_thread(bigint, text);
 drop function if exists public.update_suggestion_thread(bigint, text);
 
 commit;
+
+--누적본 쿼리 파일 4/23
+
+alter table public.profiles
+add column if not exists equipped_character_effect_item_id text;
+
+drop view if exists public.public_profiles;
+
+create or replace view public.public_profiles as
+select
+  id,
+  nickname,
+  bio,
+  profile_image_url,
+  equipped_character_image_url,
+  equipped_character_effect_item_id,
+  created_at,
+  updated_at
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;
+
+--누적본 쿼리 2026/4/24

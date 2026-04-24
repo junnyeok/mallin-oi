@@ -231,6 +231,7 @@ function getCategoryLabel(category) {
   if (category === 'character') return '캐릭터';
   if (category === 'skin') return '스킨';
   if (category === 'bgm') return 'BGM';
+  if (category === 'cha-effects') return '캐릭터효과';
   if (category === 'profile') return '프로필';
   return '기타';
 }
@@ -502,6 +503,27 @@ async function loadOwnedCharacterCodes() {
   );
 }
 
+async function loadMyEquippedCharacterImageUrl() {
+  const user = await getCurrentUser();
+  if (!user?.id) return './images/characters/cucumber.png';
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('equipped_character_image_url')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[store] load equipped character failed:', error);
+    return './images/characters/cucumber.png';
+  }
+
+  return (
+    String(data?.equipped_character_image_url || '').trim() ||
+    './images/characters/cucumber.png'
+  );
+}
+
 function bindStoreFilter(renderByCategory) {
   const buttons = $all('[data-store-filter]');
   if (!buttons.length) return;
@@ -562,11 +584,43 @@ async function initStorePage() {
   }
 }
 
-function renderStoreItemPreview(item) {
+function renderStoreItemPreview(item, options = {}) {
   const previews = Array.isArray(item?.previewImages) ? item.previewImages : [];
   const isLargePreview =
     item?.category === 'character' || item?.category === 'skin';
   const isBgmPreview = item?.category === 'bgm';
+  const isCharacterEffectPreview = item?.category === 'cha-effects';
+
+  if (isCharacterEffectPreview) {
+    const preview = previews[0];
+    const characterImagePath =
+      String(options?.effectPreviewCharacterImage || '').trim() ||
+      './images/characters/cucumber.png';
+
+    return `
+      <div class="store-item-preview__character-effect">
+        <figure class="store-item-preview__character-effect-card">
+          <span class="character-effect-wrap store-item-preview__effect-wrap">
+            <img
+              src="${characterImagePath}"
+              alt="현재 착용 캐릭터"
+              class="store-item-preview__character-img"
+              loading="lazy"
+            />
+            <img
+              class="character-effect-img character-effect-img--heart"
+              src="${preview?.imagePath || './images/character-effects/cucumber-heart.png'}"
+              alt=""
+              aria-hidden="true"
+            />
+          </span>
+        </figure>
+        <p class="store-item-preview__effect-help">
+          현재 착용 중인 캐릭터 위에 적용되는 모습을 미리 보여주는 거야.
+        </p>
+      </div>
+    `;
+  }
 
   if (!previews.length) {
     return `
@@ -717,6 +771,11 @@ async function initStoreItemPage() {
 
     destroyStoreItemBgmPreview();
 
+    const effectPreviewCharacterImage =
+      item.category === 'cha-effects'
+        ? await loadMyEquippedCharacterImageUrl()
+        : '';
+
     root.innerHTML = `
       <div class="store-item-detail">
         <div class="store-item-detail__main">
@@ -735,8 +794,7 @@ async function initStoreItemPage() {
 
           <section class="store-item-preview">
             <h2 class="store-item-preview__title">구성 미리보기</h2>
-            ${renderStoreItemPreview(item)}
-          </section>
+${renderStoreItemPreview(item, { effectPreviewCharacterImage })}          </section>
         </div>
 
         <aside class="store-item-detail__side">

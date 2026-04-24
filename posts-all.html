@@ -111,6 +111,42 @@
               </button>
             </nav>
 
+            <!-- 주요게시물 탭 -->
+            <nav class="posts-all__featured-tabs" aria-label="주요게시물 탭">
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="best"
+                aria-selected="false"
+              >
+                베스트
+              </button>
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="month"
+                aria-selected="false"
+              >
+                월간
+              </button>
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="week"
+                aria-selected="false"
+              >
+                주간
+              </button>
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="day"
+                aria-selected="false"
+              >
+                일일
+              </button>
+            </nav>
+
             <!-- 게시물 목록 -->
             <section class="posts-all__list" aria-label="전체 게시물 목록">
               <div class="posts-all__rows" id="postsAllRows"></div>
@@ -120,26 +156,24 @@
             <nav class="posts-all__pager" aria-label="페이지 이동">
               <button
                 type="button"
-                class="weekly-nav__btn"
+                class="posts-all__pager-btn"
                 id="postsAllPrevBtn"
-                aria-label="이전 페이지"
+                aria-label="이전 5개 페이지"
               >
                 ←
               </button>
 
-              <span
-                class="pager-info weekly-nav__label"
-                id="postsAllPageInfo"
-                aria-live="polite"
-              >
-                1 / 1
-              </span>
+              <div
+                class="posts-all__pager-pages"
+                id="postsAllPageNumbers"
+                aria-label="페이지 번호"
+              ></div>
 
               <button
                 type="button"
-                class="weekly-nav__btn"
+                class="posts-all__pager-btn"
                 id="postsAllNextBtn"
-                aria-label="다음 페이지"
+                aria-label="다음 5개 페이지"
               >
                 →
               </button>

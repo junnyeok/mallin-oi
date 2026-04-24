@@ -148,6 +148,11 @@ begin
     v_name := '알감자교수님의 찐 락발라드 BGM';
     v_category := 'bgm';
 
+  elsif p_item_id = 'cha-effects-cucumberheart-01' then
+    v_price := 385;
+    v_name := '말린오이테마 하트 캐릭터 효과';
+    v_category := 'cha-effects';
+
   elsif p_item_id = 'bgm-cucumbergirl-01' then
     v_price := 542;
     v_name := '오이소녀의 데뷔 BGM';
@@ -686,6 +691,10 @@ begin
   elsif p_item_id = 'bgm-cucumber-01' then
     null;
 
+  elsif p_item_id = 'cha-effects-cucumberheart-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'emo-eat-01' then
     insert into public.user_emoticons (
       user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
@@ -775,6 +784,8 @@ begin
         then '아보카도의 산책 BGM 구매가 완료됐어. 393피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-cucumber-01'
         then 'lofi 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'cha-effects-cucumberheart-01'
+        then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'

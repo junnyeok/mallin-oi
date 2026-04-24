@@ -241,34 +241,6 @@ function paginateItems(items, page, pageSize = PAGE_SIZE) {
   };
 }
 
-function getPagerNumbers(totalPages, currentPage) {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-
-  if (currentPage <= 4) {
-    return [1, 2, 3, 4, 5];
-  }
-
-  if (currentPage >= totalPages - 3) {
-    return [
-      totalPages - 4,
-      totalPages - 3,
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    ];
-  }
-
-  return [
-    currentPage - 2,
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    currentPage + 2,
-  ];
-}
-
 function getOrCreatePager(listEl, type) {
   if (!listEl) return null;
 
@@ -294,6 +266,26 @@ function renderEmpty(listEl, pagerEl, emptyText) {
   }
 }
 
+const PAGE_GROUP_SIZE = 5;
+
+function getPageGroup(currentPage) {
+  const groupIndex = Math.floor((currentPage - 1) / PAGE_GROUP_SIZE);
+  const startPage = groupIndex * PAGE_GROUP_SIZE + 1;
+  const endPage = startPage + PAGE_GROUP_SIZE - 1;
+
+  return { startPage, endPage };
+}
+
+function getPagerNumbers(totalPages, currentPage) {
+  const { startPage, endPage } = getPageGroup(currentPage);
+  const visibleEndPage = Math.min(endPage, totalPages);
+
+  return Array.from(
+    { length: visibleEndPage - startPage + 1 },
+    (_, i) => startPage + i,
+  );
+}
+
 function renderPager(pagerEl, currentPage, totalPages, onPageChange) {
   if (!pagerEl) return;
 
@@ -303,6 +295,8 @@ function renderPager(pagerEl, currentPage, totalPages, onPageChange) {
     return;
   }
 
+  const { startPage, endPage } = getPageGroup(currentPage);
+  const visibleEndPage = Math.min(endPage, totalPages);
   const pageNumbers = getPagerNumbers(totalPages, currentPage);
 
   pagerEl.hidden = false;
@@ -311,7 +305,7 @@ function renderPager(pagerEl, currentPage, totalPages, onPageChange) {
       type="button"
       class="history-pager__btn"
       data-history-page-action="prev"
-      ${currentPage <= 1 ? 'disabled' : ''}
+      ${startPage <= 1 ? 'disabled' : ''}
     >
       이전
     </button>
@@ -339,7 +333,7 @@ function renderPager(pagerEl, currentPage, totalPages, onPageChange) {
       type="button"
       class="history-pager__btn"
       data-history-page-action="next"
-      ${currentPage >= totalPages ? 'disabled' : ''}
+      ${visibleEndPage >= totalPages ? 'disabled' : ''}
     >
       다음
     </button>
@@ -347,11 +341,15 @@ function renderPager(pagerEl, currentPage, totalPages, onPageChange) {
 
   pagerEl
     .querySelector('[data-history-page-action="prev"]')
-    ?.addEventListener('click', () => onPageChange(currentPage - 1));
+    ?.addEventListener('click', () => {
+      onPageChange(Math.max(1, startPage - 1));
+    });
 
   pagerEl
     .querySelector('[data-history-page-action="next"]')
-    ?.addEventListener('click', () => onPageChange(currentPage + 1));
+    ?.addEventListener('click', () => {
+      onPageChange(Math.min(totalPages, endPage + 1));
+    });
 
   pagerEl.querySelectorAll('[data-history-page-no]').forEach((btn) => {
     btn.addEventListener('click', () => {

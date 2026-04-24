@@ -41,6 +41,10 @@
     <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/components/character-effects.css"
+    />
     <link rel="stylesheet" href="./assets/css/main/profile-main.css" />
     <link rel="stylesheet" href="./assets/css/main/inventory-main.css" />
     <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
@@ -69,7 +73,7 @@
             id="profileCharacterSection"
             aria-label="내 인벤토리"
           >
-            <div class="profile-character-preview">
+            <div class="profile-character-preview character-effect-wrap">
               <img
                 id="profileCharacterImage"
                 class="profile-character-image"
@@ -125,6 +129,20 @@
               <div
                 id="profileCharacterSkinList"
                 class="profile-character-grid profile-character-grid--skins"
+              ></div>
+            </div>
+
+            <div
+              id="profileCharacterEffectWrap"
+              class="profile-character-inventory"
+            >
+              <h3 class="profile-character-inventory__title">
+                캐릭터 효과 인벤토리
+              </h3>
+
+              <div
+                id="profileCharacterEffectList"
+                class="profile-character-grid profile-character-grid--effects"
               ></div>
             </div>
 
