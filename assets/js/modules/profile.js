@@ -426,7 +426,18 @@ async function loadProfileRow(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, nickname, bio, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id, created_at, updated_at',
+      [
+        'id',
+        'nickname',
+        'bio',
+        'profile_image_url',
+        'equipped_character_image_url',
+        'equipped_character_effect_item_id',
+        'bgm_selected_track_ids',
+        'bgm_current_track_id',
+        'created_at',
+        'updated_at',
+      ].join(', '),
     )
     .eq('id', userId)
     .maybeSingle();
@@ -439,7 +450,7 @@ async function loadPublicProfileRow(userId) {
   const { data, error } = await supabase
     .from('public_profiles')
     .select(
-      'id, nickname, bio, profile_image_url, equipped_character_image_url, created_at, updated_at',
+      'id, nickname, bio, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id, created_at, updated_at',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -1204,6 +1215,33 @@ function renderCharacterSection({
 
   const safeCharacterRows = getSafeCharacterRows(characterRows);
   const safeSkinRows = getSafeSkinRows(skinRows, safeCharacterRows);
+
+  if (!isOwnProfile) {
+    const publicEquippedImageUrl = getCharacterImageSrc(
+      profileRow?.equipped_character_image_url,
+    );
+
+    previewEl.src = publicEquippedImageUrl;
+    previewEl.alt = '이용자 캐릭터';
+
+    if (titleEl) {
+      titleEl.textContent = '캐릭터';
+    }
+
+    if (characterWrapEl) {
+      characterWrapEl.hidden = true;
+    }
+
+    if (skinWrapEl) {
+      skinWrapEl.hidden = true;
+    }
+
+    renderEquippedCharacterEffectOnPreview(
+      profileRow?.equipped_character_effect_item_id,
+    );
+
+    return;
+  }
 
   function getEquippedImageUrl() {
     return getNormalizedEquippedImageUrl({

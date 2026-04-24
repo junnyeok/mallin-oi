@@ -256,11 +256,9 @@ function syncThemeByCategory(category) {
 
   const listBtn = document.getElementById('postListBtn');
   if (listBtn) {
-    if (normalized === 'home') {
-      listBtn.href = `${base}posts-all.html`;
-    } else {
-      listBtn.href = `${base}posts-all.html?tab=${encodeURIComponent(normalized)}`;
-    }
+    // 게시물 상세 페이지의 "목록" 버튼은 게시물 카테고리와 상관없이
+    // 항상 전체게시물 페이지의 "전체" 탭으로 이동시킨다.
+    listBtn.href = `${base}posts-all.html`;
   }
 }
 

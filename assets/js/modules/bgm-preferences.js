@@ -107,10 +107,50 @@ export function syncLocalCurrentBgmTrackSelection(trackIds = []) {
 }
 
 export function getBgmPreferencesFromProfileRow(profileRow = null) {
+  const hasSelectedColumn = Object.prototype.hasOwnProperty.call(
+    profileRow || {},
+    'bgm_selected_track_ids',
+  );
+
+  const hasCurrentColumn = Object.prototype.hasOwnProperty.call(
+    profileRow || {},
+    'bgm_current_track_id',
+  );
+
+  // 방어 코드:
+  // profileRow 조회 쿼리에서 BGM 컬럼이 빠진 경우에는
+  // 기본값으로 덮어쓰지 말고 현재 localStorage 값을 유지한다.
+  if (!hasSelectedColumn && !hasCurrentColumn) {
+    const localSelectedTrackIds = [...getLocalSelectedBgmTrackIds()];
+    const localCurrentTrackId = getLocalCurrentBgmTrackId();
+
+    return {
+      selectedTrackIds: localSelectedTrackIds,
+      currentTrackId:
+        localCurrentTrackId || localSelectedTrackIds[0] || DEFAULT_BGM_TRACK_ID,
+    };
+  }
+
   const rawSelected = profileRow?.bgm_selected_track_ids;
-  const selectedTrackIds = Array.isArray(rawSelected)
-    ? normalizeTrackIds(rawSelected)
-    : [DEFAULT_BGM_TRACK_ID];
+
+  let selectedTrackIds = [];
+
+  if (Array.isArray(rawSelected)) {
+    selectedTrackIds = normalizeTrackIds(rawSelected);
+  } else if (typeof rawSelected === 'string') {
+    try {
+      const parsed = JSON.parse(rawSelected);
+      selectedTrackIds = Array.isArray(parsed)
+        ? normalizeTrackIds(parsed)
+        : normalizeTrackIds([rawSelected]);
+    } catch (error) {
+      selectedTrackIds = normalizeTrackIds([rawSelected]);
+    }
+  }
+
+  if (!selectedTrackIds.length) {
+    selectedTrackIds = [DEFAULT_BGM_TRACK_ID];
+  }
 
   const currentTrackId = String(
     profileRow?.bgm_current_track_id ||
