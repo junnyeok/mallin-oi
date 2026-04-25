@@ -790,6 +790,17 @@ function bodyToEditorHtml(body = '') {
   return plainTextToEditorHtml(raw);
 }
 
+function isMobileRichEditorInputDevice() {
+  const ua = String(navigator.userAgent || '');
+
+  const isMobileUa = /iPhone|iPad|iPod|Android|Mobile/i.test(ua);
+  const isCoarsePointer =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches;
+
+  return isMobileUa || isCoarsePointer;
+}
+
 function normalizeEditorParagraphs(root) {
   if (!root) return;
 
@@ -1350,10 +1361,6 @@ function bindAttachmentInputs(note) {
     isEditorComposing = true;
   });
 
-  editor.addEventListener('compositionstart', () => {
-    isEditorComposing = true;
-  });
-
   editor.addEventListener('compositionend', () => {
     isEditorComposing = false;
     saveCurrentSelectionRange();
@@ -1424,7 +1431,37 @@ function bindAttachmentInputs(note) {
   editor.addEventListener('beforeinput', (event) => {
     if (event.isComposing || event.nativeEvent?.isComposing) return;
 
-    if (event.inputType !== 'insertParagraph') return;
+    const inputType = String(event.inputType || '');
+
+    if (inputType !== 'insertParagraph' && inputType !== 'insertLineBreak') {
+      return;
+    }
+
+    /*
+      모바일 Safari/모바일 브라우저의 contenteditable 엔터 처리는
+      insertParagraph, insertLineBreak, div, br 처리가 브라우저 내부에서 다르게 들어올 수 있다.
+
+      기존처럼 모바일에서도 preventDefault() 후 직접 p를 쪼개면
+      모바일 기본 줄바꿈 처리와 충돌해서 Enter 1회가 두 줄처럼 보일 수 있다.
+
+      그래서 모바일 입력 환경에서는 브라우저 기본 줄바꿈을 그대로 사용하고,
+      저장용 textarea 동기화만 다음 프레임에서 처리한다.
+    */
+    if (isMobileRichEditorInputDevice()) {
+      window.requestAnimationFrame(() => {
+        saveCurrentSelectionRange();
+        syncBodyFromEditor({ normalize: false });
+        refreshEditorToolbarState();
+      });
+      return;
+    }
+
+    /*
+      PC에서는 기존 정상 동작을 유지한다.
+      데스크톱 contenteditable의 Enter는 직접 p 단위로 나누어
+      저장/수정/불러오기 구조와 맞춘다.
+    */
+    if (inputType !== 'insertParagraph') return;
 
     event.preventDefault();
     insertSingleParagraphAtCaret();
