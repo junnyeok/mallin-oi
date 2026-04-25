@@ -597,19 +597,23 @@ function renderStoreItemPreview(item, options = {}) {
       String(options?.effectPreviewCharacterImage || '').trim() ||
       './images/characters/cucumber.png';
 
+    const effectImagePath =
+      String(preview?.imagePath || '').trim() ||
+      './images/character-effects/cucumber-heart.png';
+
     return `
       <div class="store-item-preview__character-effect">
         <figure class="store-item-preview__character-effect-card">
-          <span class="character-effect-wrap store-item-preview__effect-wrap">
+          <span class="character-effect-wrap store-item-preview__effect-stage">
             <img
               src="${characterImagePath}"
               alt="현재 착용 캐릭터"
-              class="store-item-preview__character-img"
+              class="store-item-preview__effect-character"
               loading="lazy"
             />
             <img
-              class="character-effect-img character-effect-img--heart"
-              src="${preview?.imagePath || './images/character-effects/cucumber-heart.png'}"
+              class="character-effect-img character-effect-img--heart store-item-preview__effect-img"
+              src="${effectImagePath}"
               alt=""
               aria-hidden="true"
             />

@@ -82,10 +82,6 @@
   }
 }
 
-.store-item-preview__effect-wrap {
-  --character-effect-size: 72px;
-}
-
 .store-item-preview__character-effect {
   display: flex;
   flex-direction: column;
@@ -99,6 +95,36 @@
   justify-content: center;
   min-height: 260px;
   padding: 32px;
+  margin: 0;
+  overflow: visible;
+}
+
+.store-item-preview__effect-stage {
+  --character-effect-size: 72px;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 220px;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.store-item-preview__effect-character {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  max-height: 220px;
+  height: auto;
+  object-fit: contain;
+}
+
+.store-item-preview__effect-img {
+  left: 50%;
+  top: 0;
 }
 
 .store-item-preview__effect-help {
@@ -113,8 +139,15 @@
 }
 
 @media (max-width: 700px) {
-  .store-item-preview__effect-wrap {
+  .store-item-preview__effect-stage {
     --character-effect-size: 58px;
+
+    width: 160px;
+  }
+
+  .store-item-preview__effect-character {
+    max-width: 160px;
+    max-height: 160px;
   }
 
   .store-item-preview__character-effect-card {

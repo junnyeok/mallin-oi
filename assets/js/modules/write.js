@@ -868,6 +868,49 @@ function placeCaretAtEnd(el) {
   sel.addRange(range);
 }
 
+function wrapRootTextNodeSelectionIntoParagraph(editor, range) {
+  if (!editor || !range) return range;
+
+  const startContainer = range.startContainer;
+
+  if (
+    startContainer.nodeType !== Node.TEXT_NODE ||
+    startContainer.parentNode !== editor
+  ) {
+    return range;
+  }
+
+  const textNode = startContainer;
+  const startOffset = Math.min(range.startOffset, textNode.textContent.length);
+  const endOffset =
+    range.endContainer === textNode
+      ? Math.min(range.endOffset, textNode.textContent.length)
+      : startOffset;
+
+  const p = document.createElement('p');
+  p.setAttribute('data-align', 'left');
+
+  editor.insertBefore(p, textNode);
+  p.appendChild(textNode);
+
+  const nextRange = document.createRange();
+  nextRange.setStart(textNode, startOffset);
+
+  if (range.collapsed || range.endContainer !== textNode) {
+    nextRange.collapse(true);
+  } else {
+    nextRange.setEnd(textNode, endOffset);
+  }
+
+  const sel = window.getSelection();
+  if (sel) {
+    sel.removeAllRanges();
+    sel.addRange(nextRange);
+  }
+
+  return nextRange;
+}
+
 function insertSingleParagraphAtCaret() {
   const editor = getBodyEditor();
   if (!editor) return;
@@ -900,7 +943,23 @@ function insertSingleParagraphAtCaret() {
     range.deleteContents();
     safeSel.removeAllRanges();
     safeSel.addRange(range);
+    range = safeSel.getRangeAt(0);
   }
+
+  /*
+    첫 줄 입력 직후에는 브라우저가 본문을 <p>가 아니라
+    bodyEditor 바로 아래 텍스트 노드로 만들 수 있다.
+
+    예:
+    <div id="bodyEditor">안녕하세요</div>
+
+    이 상태에서 Enter를 직접 분할하면 현재 줄을 p 블록으로 못 잡아서
+    빈 줄이 하나 더 생긴 것처럼 보인다.
+
+    따라서 Enter 처리 전에 루트 텍스트 노드를 p로 감싼 뒤
+    기존 문단 분할 로직을 태운다.
+  */
+  range = wrapRootTextNodeSelectionIntoParagraph(editor, range);
 
   let block = findClosestEditableBlock(range.startContainer);
 
@@ -910,6 +969,14 @@ function insertSingleParagraphAtCaret() {
     p.innerHTML = '<br>';
     editor.appendChild(p);
     block = p;
+
+    const fallbackRange = document.createRange();
+    fallbackRange.selectNodeContents(block);
+    fallbackRange.collapse(true);
+
+    safeSel.removeAllRanges();
+    safeSel.addRange(fallbackRange);
+    range = fallbackRange;
   }
 
   const align = block.getAttribute('data-align') || 'left';
@@ -918,6 +985,7 @@ function insertSingleParagraphAtCaret() {
 
   const splitRange = range.cloneRange();
   splitRange.setEndAfter(block.lastChild || block);
+
   const moved = splitRange.extractContents();
 
   if (moved.childNodes.length) {
@@ -1438,31 +1506,15 @@ function bindAttachmentInputs(note) {
     }
 
     /*
-      모바일 Safari/모바일 브라우저의 contenteditable 엔터 처리는
-      insertParagraph, insertLineBreak, div, br 처리가 브라우저 내부에서 다르게 들어올 수 있다.
+      Enter/Return 줄바꿈은 PC와 모바일 모두 같은 로직으로 처리한다.
 
-      기존처럼 모바일에서도 preventDefault() 후 직접 p를 쪼개면
-      모바일 기본 줄바꿈 처리와 충돌해서 Enter 1회가 두 줄처럼 보일 수 있다.
+      브라우저 기본 contenteditable Enter 처리를 그대로 두면
+      환경에 따라 div, p, br이 섞이고,
+      첫 줄이 루트 텍스트 노드인 경우 빈 줄이 하나 더 생긴 것처럼 보일 수 있다.
 
-      그래서 모바일 입력 환경에서는 브라우저 기본 줄바꿈을 그대로 사용하고,
-      저장용 textarea 동기화만 다음 프레임에서 처리한다.
+      preventDefault() 후 직접 p 단위로 한 번만 분할해서
+      Enter 1회 = 줄바꿈 1회로 고정한다.
     */
-    if (isMobileRichEditorInputDevice()) {
-      window.requestAnimationFrame(() => {
-        saveCurrentSelectionRange();
-        syncBodyFromEditor({ normalize: false });
-        refreshEditorToolbarState();
-      });
-      return;
-    }
-
-    /*
-      PC에서는 기존 정상 동작을 유지한다.
-      데스크톱 contenteditable의 Enter는 직접 p 단위로 나누어
-      저장/수정/불러오기 구조와 맞춘다.
-    */
-    if (inputType !== 'insertParagraph') return;
-
     event.preventDefault();
     insertSingleParagraphAtCaret();
   });
