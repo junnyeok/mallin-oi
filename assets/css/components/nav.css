@@ -393,6 +393,51 @@ body[data-page='post'] .logo #siteLogoImg {
   color: var(--color-text-sub);
 }
 
+.bgm-panel__quick-link,
+.pickle-panel__quick-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: #fff;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.bgm-panel__quick-link:hover,
+.pickle-panel__quick-link:hover {
+  transform: translateY(-1px);
+  border-color: #8bc34a;
+  background: #f8fff0;
+}
+
+.bgm-panel__quick-link {
+  margin: 10px 14px 0;
+}
+
+.pickle-panel__quick-link {
+  margin: var(--space-8);
+}
+
+@media (max-width: 700px) {
+  .bgm-panel__quick-link,
+  .pickle-panel__quick-link {
+    min-height: 44px;
+    font-size: 13px;
+  }
+}
+
 .bgm-panel__list {
   display: flex;
   flex-direction: column;
