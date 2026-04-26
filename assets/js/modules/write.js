@@ -1506,14 +1506,32 @@ function bindAttachmentInputs(note) {
     }
 
     /*
-      Enter/Return 줄바꿈은 PC와 모바일 모두 같은 로직으로 처리한다.
+      모바일 Safari/iOS contenteditable에서는
+      beforeinput에서 preventDefault() 후 직접 selection/caret을 옮기면
+      실제 DOM은 바뀌어도 파란 커서 위치가 바로 갱신되지 않는 경우가 있다.
+
+      그래서 모바일에서는 브라우저 기본 Enter 동작을 그대로 허용한다.
+      이후 input 이벤트와 아래 requestAnimationFrame에서 본문 textarea 동기화만 한다.
+
+      PC는 기존처럼 직접 p 단위로 한 번만 분할해서
+      기존 정상 동작을 유지한다.
+    */
+    if (isMobileRichEditorInputDevice()) {
+      requestAnimationFrame(() => {
+        saveCurrentSelectionRange();
+        syncBodyFromEditor({ normalize: false });
+        refreshEditorToolbarState();
+      });
+
+      return;
+    }
+
+    /*
+      PC Enter/Return 줄바꿈은 기존 로직 유지.
 
       브라우저 기본 contenteditable Enter 처리를 그대로 두면
-      환경에 따라 div, p, br이 섞이고,
-      첫 줄이 루트 텍스트 노드인 경우 빈 줄이 하나 더 생긴 것처럼 보일 수 있다.
-
-      preventDefault() 후 직접 p 단위로 한 번만 분할해서
-      Enter 1회 = 줄바꿈 1회로 고정한다.
+      환경에 따라 div, p, br이 섞일 수 있으므로,
+      PC에서는 preventDefault() 후 직접 p 단위로 한 번만 분할한다.
     */
     event.preventDefault();
     insertSingleParagraphAtCaret();
