@@ -602,9 +602,20 @@ function renderCharacterEffectSection({
     profileRow?.equipped_character_effect_item_id || '',
   ).trim();
 
-  listEl.innerHTML = rows
+  const sortedRows = sortEquippedItemFirst(
+    rows,
+    (item) =>
+      String(item?.itemId || '').trim() === String(equippedEffectItemId).trim(),
+  );
+
+  listEl.innerHTML = sortedRows
     .map((item) => renderCharacterEffectCard(item, equippedEffectItemId))
     .join('');
+
+  applyInventoryLimitByIds(
+    'profileCharacterEffectWrap',
+    'profileCharacterEffectList',
+  );
 
   Array.from(
     listEl.querySelectorAll('[data-character-effect-item-id]'),
@@ -866,6 +877,209 @@ function getSafeSkinRows(skinRows = [], characterRows = []) {
       String(b?.skin_name || ''),
       'ko',
     );
+  });
+}
+
+const INVENTORY_MOBILE_QUERY = '(max-width: 700px)';
+
+const INVENTORY_LIMIT_TARGETS = [
+  {
+    wrapId: 'profileCharacterCharacterWrap',
+    listId: 'profileCharacterList',
+  },
+  {
+    wrapId: 'profileCharacterSkinWrap',
+    listId: 'profileCharacterSkinList',
+  },
+  {
+    wrapId: 'profileCharacterEffectWrap',
+    listId: 'profileCharacterEffectList',
+  },
+  {
+    wrapId: 'profileBgmWrap',
+    listId: 'profileBgmList',
+  },
+];
+
+const INVENTORY_HASH_TARGET_MAP = {
+  'character-inventory': 'profileCharacterCharacterWrap',
+  'skin-inventory': 'profileCharacterSkinWrap',
+  'character-effect-inventory': 'profileCharacterEffectWrap',
+  'bgm-inventory': 'profileBgmWrap',
+};
+
+let inventoryResizeTimer = null;
+let inventoryLimitResizeBound = false;
+let inventoryInitialHashScrolled = false;
+
+function sortEquippedItemFirst(items = [], isEquippedFn) {
+  return [...items]
+    .map((item, index) => ({
+      item,
+      index,
+      isEquipped: !!isEquippedFn?.(item),
+    }))
+    .sort((a, b) => {
+      if (a.isEquipped !== b.isEquipped) {
+        return a.isEquipped ? -1 : 1;
+      }
+
+      return a.index - b.index;
+    })
+    .map((entry) => entry.item);
+}
+
+function getInventoryGridColumnCount(listEl) {
+  if (!listEl) return 0;
+
+  const gridTemplateColumns = window
+    .getComputedStyle(listEl)
+    .gridTemplateColumns.trim();
+
+  if (!gridTemplateColumns || gridTemplateColumns === 'none') {
+    return 0;
+  }
+
+  return gridTemplateColumns.split(/\s+/).filter(Boolean).length;
+}
+
+function getInventoryVisibleLimitByViewport(listEl) {
+  const isMobile = window.matchMedia(INVENTORY_MOBILE_QUERY).matches;
+
+  if (isMobile) {
+    return 4;
+  }
+
+  const columnCount = getInventoryGridColumnCount(listEl);
+
+  if (columnCount > 0) {
+    return Math.max(columnCount * 2, 4);
+  }
+
+  if (listEl?.classList?.contains('profile-character-grid--bgm')) {
+    return 8;
+  }
+
+  return 6;
+}
+
+function removeInventoryMoreButton(wrapEl) {
+  wrapEl
+    ?.querySelectorAll(':scope > .inventory-more-area')
+    .forEach((node) => node.remove());
+}
+
+function applyInventoryLimit({ wrapEl, listEl } = {}) {
+  if (!wrapEl || !listEl) return;
+
+  bindInventoryLimitResize();
+
+  const cards = Array.from(listEl.children).filter((node) =>
+    node.classList.contains('profile-character-card'),
+  );
+
+  removeInventoryMoreButton(wrapEl);
+
+  cards.forEach((card) => {
+    card.classList.remove('inventory-item-hidden');
+  });
+
+  if (!cards.length) return;
+
+  const visibleLimit = getInventoryVisibleLimitByViewport(listEl);
+  const needsMoreButton = cards.length > visibleLimit;
+  const isExpanded = wrapEl.dataset.inventoryExpanded === 'true';
+
+  if (!needsMoreButton) {
+    wrapEl.dataset.inventoryExpanded = 'false';
+    return;
+  }
+
+  cards.forEach((card, index) => {
+    card.classList.toggle(
+      'inventory-item-hidden',
+      !isExpanded && index >= visibleLimit,
+    );
+  });
+
+  const hiddenCount = Math.max(cards.length - visibleLimit, 0);
+  const moreArea = document.createElement('div');
+  moreArea.className = 'inventory-more-area';
+
+  const moreButton = document.createElement('button');
+  moreButton.type = 'button';
+  moreButton.className = 'inventory-more-btn';
+  moreButton.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+  moreButton.textContent = isExpanded ? '접기' : `더보기 ${hiddenCount}개`;
+
+  moreButton.addEventListener('click', () => {
+    const nextExpanded = wrapEl.dataset.inventoryExpanded !== 'true';
+    wrapEl.dataset.inventoryExpanded = nextExpanded ? 'true' : 'false';
+    applyInventoryLimit({ wrapEl, listEl });
+  });
+
+  moreArea.appendChild(moreButton);
+  wrapEl.appendChild(moreArea);
+}
+
+function applyInventoryLimitByIds(wrapId, listId) {
+  applyInventoryLimit({
+    wrapEl: $(wrapId),
+    listEl: $(listId),
+  });
+}
+
+function refreshInventoryLimits() {
+  INVENTORY_LIMIT_TARGETS.forEach(({ wrapId, listId }) => {
+    applyInventoryLimitByIds(wrapId, listId);
+  });
+}
+
+function bindInventoryLimitResize() {
+  if (inventoryLimitResizeBound) return;
+
+  inventoryLimitResizeBound = true;
+
+  window.addEventListener('resize', () => {
+    window.clearTimeout(inventoryResizeTimer);
+
+    inventoryResizeTimer = window.setTimeout(() => {
+      refreshInventoryLimits();
+    }, 120);
+  });
+}
+
+function getInventoryHashTargetElement() {
+  const rawHash = decodeURIComponent(
+    String(window.location.hash || '')
+      .replace(/^#/, '')
+      .trim(),
+  );
+
+  if (!rawHash) return null;
+
+  return (
+    document.getElementById(rawHash) ||
+    document.getElementById(INVENTORY_HASH_TARGET_MAP[rawHash] || '')
+  );
+}
+
+function scrollInventoryHashTargetOnce() {
+  if (inventoryInitialHashScrolled) return;
+  if (String(document.body?.dataset?.page || '') !== 'inventory') return;
+
+  const targetEl = getInventoryHashTargetElement();
+  if (!targetEl) return;
+
+  inventoryInitialHashScrolled = true;
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      targetEl.scrollIntoView({
+        block: 'start',
+        behavior: 'auto',
+      });
+    });
   });
 }
 
@@ -1139,9 +1353,19 @@ function renderBgmSection({
   function renderList() {
     const selectedTrackIds = getNormalizedSelectedTrackIds();
 
-    listEl.innerHTML = bgmRows
+    const currentTrackId = String(getLocalCurrentBgmTrackId() || '').trim();
+
+    const sortedBgmRows = sortEquippedItemFirst(bgmRows, (track) => {
+      const trackId = String(track?.id || '').trim();
+
+      return trackId === currentTrackId || selectedTrackIds.has(trackId);
+    });
+
+    listEl.innerHTML = sortedBgmRows
       .map((track) => renderBgmCard(track, selectedTrackIds))
       .join('');
+
+    applyInventoryLimitByIds('profileBgmWrap', 'profileBgmList');
 
     Array.from(listEl.querySelectorAll('[data-bgm-track-id]')).forEach(
       (button) => {
@@ -1193,6 +1417,41 @@ function renderBgmSection({
   }
 
   renderList();
+}
+
+function shouldAutoScrollToBgmInventory() {
+  const hash = decodeURIComponent(
+    String(window.location.hash || '').replace('#', ''),
+  );
+  const params = new URLSearchParams(window.location.search);
+  const section = String(params.get('section') || '')
+    .trim()
+    .toLowerCase();
+
+  return (
+    hash === 'bgm-inventory' || section === 'bgm' || section === 'bgm-inventory'
+  );
+}
+
+function scrollToBgmInventorySection() {
+  const target =
+    document.getElementById('bgm-inventory') ||
+    document.getElementById('profileBgmWrap');
+
+  if (!target) return;
+
+  const scroll = () => {
+    target.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
+
+  requestAnimationFrame(() => {
+    window.setTimeout(scroll, 80);
+  });
+
+  window.setTimeout(scroll, 350);
 }
 
 function renderCharacterSection({
@@ -1483,7 +1742,13 @@ function renderCharacterSection({
       );
     }
 
-    characterListEl.innerHTML = visibleCharacterRows
+    const sortedCharacterRows = sortEquippedItemFirst(
+      visibleCharacterRows,
+      (item) =>
+        normalizeCharacterCode(item?.character_code) === equippedCharacterCode,
+    );
+
+    characterListEl.innerHTML = sortedCharacterRows
       .map((item) =>
         renderOwnedCharacterCard(item, {
           isSelected:
@@ -1495,6 +1760,11 @@ function renderCharacterSection({
         }),
       )
       .join('');
+
+    applyInventoryLimitByIds(
+      'profileCharacterCharacterWrap',
+      'profileCharacterList',
+    );
 
     const filteredSkins = safeSkinRows.filter((item) => {
       const isSameCharacter =
@@ -1520,10 +1790,22 @@ function renderCharacterSection({
     </div>
   `;
     } else {
-      skinListEl.innerHTML = filteredSkins
+      const sortedSkins = sortEquippedItemFirst(
+        filteredSkins,
+        (item) =>
+          getCharacterImageSrc(item?.image_path) ===
+          getCharacterImageSrc(equippedImageUrl),
+      );
+
+      skinListEl.innerHTML = sortedSkins
         .map((item) => renderCharacterSkinCard(item, equippedImageUrl))
         .join('');
     }
+
+    applyInventoryLimitByIds(
+      'profileCharacterSkinWrap',
+      'profileCharacterSkinList',
+    );
 
     bindCharacterEvents();
     bindSkinEvents();
@@ -1870,6 +2152,13 @@ export async function initProfile() {
     currentUser,
     profileRow,
   });
+
+  refreshInventoryLimits();
+  scrollInventoryHashTargetOnce();
+
+  if (isInventoryPage && shouldAutoScrollToBgmInventory()) {
+    scrollToBgmInventorySection();
+  }
 
   if (isOwnProfile && nicknameInput) {
     nicknameInput.value = currentNickname;

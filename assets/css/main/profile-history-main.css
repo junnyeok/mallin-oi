@@ -10,10 +10,7 @@
   width: 100%;
   max-width: 900px;
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-card);
   padding: var(--space-32);
-  box-shadow: var(--shadow-card);
 }
 
 .history-hero {

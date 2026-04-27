@@ -106,11 +106,6 @@
   border-color: var(--color-primary);
 }
 
-.profile-hero__desc {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 .profile-hero__desc:empty {
   display: none;
 }
@@ -859,5 +854,32 @@ button.profile-character-card:hover {
   .profile-history-shortcut {
     margin-left: 0;
     width: auto;
+  }
+}
+@media (max-width: 768px) {
+  .profile-hero__actions {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .profile-hero__actions .profile-setting-link,
+  .profile-hero__actions .profile-inventory-link {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100px;
+    min-height: 44px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.2;
   }
 }

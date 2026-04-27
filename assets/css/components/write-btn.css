@@ -330,7 +330,7 @@ body.service-menu-open {
     position: fixed;
     top: 180px;
     right: 12px;
-    width: min(200px, calc(100vw - 24px));
+    width: min(300px, calc(100vw - 24px));
     padding: 16px;
     border-radius: 22px;
 
@@ -361,7 +361,7 @@ body.service-menu-open {
   }
 
   .service-menu__list {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 

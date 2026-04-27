@@ -206,15 +206,12 @@ function getAbsoluteTop(el, extraOffset = 16) {
 }
 
 function updateSectionButtonState(btn, stateEl, activeOffset) {
-  if (!btn || !stateEl) return;
+  if (!btn) return;
 
-  const rect = stateEl.getBoundingClientRect();
-
-  const isNear = rect.top <= activeOffset && rect.bottom > activeOffset;
-
-  const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
-
-  btn.disabled = isNear || isVisible;
+  btn.disabled = false;
+  btn.removeAttribute('disabled');
+  btn.removeAttribute('aria-disabled');
+  btn.classList.remove('is-disabled');
 }
 
 export function initScrollButtons(options = {}) {
@@ -373,12 +370,11 @@ export function initScrollButtons(options = {}) {
   document.body.appendChild(wrap);
 
   function scrollToTop() {
-    if (btnTop.disabled) return;
     window.scrollTo({ top: 0, behavior });
   }
 
   function scrollToMajorTarget() {
-    if (!btnMajor || btnMajor.disabled || !majorScrollEl) return;
+    if (!btnMajor || !majorScrollEl) return;
 
     const targetTop = getAbsoluteTop(majorScrollEl, 16);
     window.scrollTo({
@@ -388,7 +384,7 @@ export function initScrollButtons(options = {}) {
   }
 
   function scrollToCommentTarget() {
-    if (!btnComment || btnComment.disabled || !commentScrollEl) return;
+    if (!btnComment || !commentScrollEl) return;
 
     const targetTop = getAbsoluteTop(commentScrollEl, 16);
     window.scrollTo({
@@ -398,10 +394,7 @@ export function initScrollButtons(options = {}) {
   }
 
   function scrollToBottomTarget() {
-    if (btnBottom.disabled) return;
-
     const pageTypeNow = getPageType();
-    const mobile = isMobileViewport();
 
     if (pageTypeNow === 'post' && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
@@ -463,79 +456,23 @@ export function initScrollButtons(options = {}) {
   btnBottom.addEventListener('click', scrollToBottomTarget);
 
   function updateCommentButtonState() {
-    if (!btnComment || !commentStateEl) return;
+    if (!btnComment) return;
 
-    const rect = commentStateEl.getBoundingClientRect();
-    const pageTypeNow = getPageType();
-
-    if (pageTypeNow === 'post') {
-      const isNearComment =
-        rect.top <= 80 &&
-        rect.bottom > Math.min(window.innerHeight * 0.25, 180);
-
-      const isInsideCommentArea =
-        rect.top < window.innerHeight * 0.35 &&
-        rect.bottom > Math.max(window.innerHeight * 0.2, 120);
-
-      btnComment.disabled = isNearComment || isInsideCommentArea;
-      return;
-    }
-
-    updateSectionButtonState(btnComment, commentStateEl, sectionActiveOffset);
+    btnComment.disabled = false;
+    btnComment.removeAttribute('disabled');
+    btnComment.removeAttribute('aria-disabled');
+    btnComment.classList.remove('is-disabled');
   }
 
   function updateState() {
-    const doc = document.documentElement;
+    const buttons = [btnTop, btnMajor, btnComment, btnBottom].filter(Boolean);
 
-    const scrollTop = doc.scrollTop || document.body.scrollTop || 0;
-    const scrollHeight = doc.scrollHeight || document.body.scrollHeight || 0;
-    const clientHeight = doc.clientHeight || window.innerHeight || 0;
-
-    const canScroll = scrollHeight > clientHeight + 10;
-    const nearTop = scrollTop <= topOffset;
-
-    btnTop.disabled = !canScroll || nearTop;
-
-    if (!canScroll) {
-      if (btnMajor) btnMajor.disabled = true;
-      if (btnComment) btnComment.disabled = true;
-      btnBottom.disabled = true;
-      return;
-    }
-
-    if (btnMajor) {
-      updateSectionButtonState(btnMajor, majorStateEl, sectionActiveOffset);
-    }
-
-    if (btnComment) {
-      updateCommentButtonState();
-    }
-
-    const pageTypeNow = getPageType();
-    const mobile = isMobileViewport();
-
-    if (
-      (pageTypeNow === 'post' && bottomScrollEl) ||
-      (pageTypeNow === 'home-like' && bottomScrollEl) ||
-      (pageTypeNow === 'suggestion' && bottomScrollEl) ||
-      (pageTypeNow === 'posts-all' && bottomScrollEl) ||
-      (pageTypeNow === 'write' && bottomScrollEl)
-    ) {
-      const bottomRect = bottomScrollEl.getBoundingClientRect();
-
-      const isNearBottomTarget =
-        bottomRect.top <= bottomActiveOffset &&
-        bottomRect.bottom > bottomActiveOffset;
-
-      const isBottomTargetVisible =
-        bottomRect.top < window.innerHeight * 0.85 && bottomRect.bottom > 0;
-
-      btnBottom.disabled = isNearBottomTarget || isBottomTargetVisible;
-      return;
-    }
-
-    const nearBottom = scrollHeight - (scrollTop + clientHeight) < bottomOffset;
-    btnBottom.disabled = nearBottom;
+    buttons.forEach((btn) => {
+      btn.disabled = false;
+      btn.removeAttribute('disabled');
+      btn.removeAttribute('aria-disabled');
+      btn.classList.remove('is-disabled');
+    });
   }
 
   let rafId = null;

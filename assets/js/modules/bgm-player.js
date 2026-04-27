@@ -854,6 +854,29 @@ function closePanel() {
   panelOpen = false;
 }
 
+function bindBgmSettingsQuickLink() {
+  const link = document.querySelector('.bgm-panel__quick-link');
+  if (!link || link.dataset.bgmSettingsBound === 'true') return;
+
+  link.dataset.bgmSettingsBound = 'true';
+
+  try {
+    const url = new URL(
+      link.getAttribute('href') || './inventory.html',
+      window.location.href,
+    );
+    url.hash = 'bgm-inventory';
+    link.href = url.href;
+  } catch (error) {
+    console.warn('[bgm] failed to normalize settings link:', error);
+    link.setAttribute('href', './inventory.html#bgm-inventory');
+  }
+
+  link.addEventListener('click', () => {
+    closePanel();
+  });
+}
+
 function bindRetryOnUserGesture() {
   if (retryBinded) return;
   retryBinded = true;
@@ -993,6 +1016,8 @@ export async function initBgmPlayer() {
   const toggleBtn = $('bgmPlayToggleBtn');
 
   if (!menu || !btn || !panel || !list || !toggleBtn) return;
+
+  bindBgmSettingsQuickLink();
 
   bindRetryOnUserGesture();
   bindReloadResumeNoticeDismiss();
