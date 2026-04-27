@@ -330,7 +330,7 @@ body.service-menu-open {
     position: fixed;
     top: 180px;
     right: 12px;
-    width: min(300px, calc(100vw - 24px));
+    width: min(350px, calc(100vw - 24px));
     padding: 16px;
     border-radius: 22px;
 
