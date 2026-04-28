@@ -44,10 +44,7 @@
     <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
     <link rel="stylesheet" href="./assets/css/main/main.css" />
     <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
-    <link
-      rel="stylesheet"
-      href="./assets/css/main/posts-all-main.css?v=20260325-fix2"
-    />
+    <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
   </head>
 
   <body data-page="posts-all">
@@ -57,8 +54,16 @@
       <main class="site-main">
         <section class="home-section">
           <div class="container">
-            <div class="home-section__head">
-              <h2 class="home-section__title">📚 전체보기</h2>
+            <div class="home-section__head posts-all__head">
+              <h2 class="home-section__title">📚 전체게시글</h2>
+
+              <a
+                class="posts-all__history-link"
+                href="./profile-history.html"
+                aria-label="내가 쓴 글, 댓글, 답글 내역 페이지로 이동"
+              >
+                내가 쓴 글/댓글/답글 내역
+              </a>
             </div>
 
             <!-- 고정 -->

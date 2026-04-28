@@ -620,7 +620,7 @@ function renderStoreItemPreview(item, options = {}) {
           </span>
         </figure>
         <p class="store-item-preview__effect-help">
-          현재 착용 중인 캐릭터 위에 적용되는 모습을 미리 보여주는 거야.
+          현재 착용 중인 캐릭터에 적용되는 모습을 미리 보여주는 거야.
         </p>
       </div>
     `;

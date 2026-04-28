@@ -328,21 +328,27 @@ body.service-menu-open {
 
   .service-menu__panel {
     position: fixed;
-    top: 180px;
-    right: 12px;
+    top: var(--service-menu-panel-top, 180px);
+    right: var(--service-menu-panel-right, 8px);
     width: min(350px, calc(100vw - 24px));
+    max-height: calc(100dvh - var(--service-menu-panel-top, 180px) - 8px);
+    overflow-y: auto;
     padding: 16px;
     border-radius: 22px;
 
-    opacity: 1;
-    transform: translateX(calc(100% + 24px));
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top right;
     pointer-events: none;
 
-    transition: transform 220ms ease;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
   }
 
   .service-menu.is-open .service-menu__panel {
-    transform: translateX(0);
+    opacity: 1;
+    transform: translateY(0) scale(1);
     pointer-events: auto;
   }
 
