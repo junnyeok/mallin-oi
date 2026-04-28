@@ -309,6 +309,15 @@ export const EGGPOTATO_HOT_SKIN_PREVIEW = [
   },
 ];
 
+export const EGGPOTATO_POLICE_SKIN_PREVIEW = [
+  {
+    code: 'char-egg-potato-police',
+    label: '경찰학교 알감자교수님 스킨',
+    imagePath: withAssetVersion('./images/skins/eggpotato-police.png'),
+    displayOrder: 1,
+  },
+];
+
 export const CUCUMBER_HEART_CHARACTER_EFFECT_PREVIEW = [
   {
     code: 'cha-effect-cucumber-heart',
@@ -376,6 +385,21 @@ export const EGG_POTATO_CHARACTER_PREVIEW = [
 ];
 
 export const STORE_ITEMS = [
+  {
+    id: 'skin-eggpotato-02',
+    name: '경찰학교 알감자교수님 스킨',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥔👮🏽‍♂️',
+    thumbImagePath: withAssetVersion('./images/skins/eggpotato-police.png'),
+    price: 578,
+    state: '판매 중',
+    description: '중앙경찰학교로 파견간 알감자 교수님이야.',
+    detailDescription:
+      '중앙경찰학교로 파견간 알감자 교수님이야.<br>구매하면 인벤토리의 스킨 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: EGGPOTATO_POLICE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'cha-effects-cucumberheart-01',
     name: '말린오이테마 하트 캐릭터 효과',
@@ -1005,6 +1029,14 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/skins/potato-hot.png'),
     display_order: 602,
     store_item_id: 'skin-eggpotato-01',
+  },
+  {
+    character_code: 'char-egg-potato',
+    skin_code: 'char-egg-potato-police',
+    skin_name: '경찰학교 알감자교수님 스킨',
+    image_path: withAssetVersion('./images/skins/eggpotato-police.png'),
+    display_order: 603,
+    store_item_id: 'skin-eggpotato-02',
   },
 ];
 

@@ -101,6 +101,15 @@ begin
     v_required_character_code := 'char-egg-potato';
     v_required_character_name := '알감자 캐릭터';
 
+  elsif p_item_id = 'skin-eggpotato-02' then
+    v_price := 578;
+    v_name := '경찰학교 알감자교수님 스킨';
+    v_category := 'skin';
+    v_required_character_code := 'char-egg-potato';
+    v_required_character_name := '알감자 캐릭터';
+
+  elsif p_item_id = 'skin-cucumbergirl-01' then
+
   elsif p_item_id = 'skin-cucumbergirl-01' then
     v_price := 923;
     v_name := '오이소녀 경찰스킨';
@@ -673,6 +682,21 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+  elsif p_item_id = 'skin-eggpotato-02' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-egg-potato',
+      'char-egg-potato-police',
+      '경찰학교 알감자교수님 스킨',
+      './images/skins/eggpotato-police.png',
+      603,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
   elsif p_item_id = 'bgm-tetocarrot-01' then
     null;
 
@@ -798,6 +822,8 @@ begin
         then '테토당근 락밴드 스킨 구매가 완료됐어. 445피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-eggpotato-01'
         then '찐감자 스킨 구매가 완료됐어. 0피클 상품이라 바로 지급됐고 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-eggpotato-02'
+        then '경찰학교 알감자교수님 스킨 구매가 완료됐어. 578피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
         else '구매가 완료됐어.'
     end,
     coalesce(v_balance, 0);
