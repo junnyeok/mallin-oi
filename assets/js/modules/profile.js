@@ -1636,13 +1636,70 @@ function renderCharacterSection({
     }
   }
 
+  function getDefaultSkinForCharacter(characterCode) {
+    const safeCode = normalizeCharacterCode(characterCode);
+
+    const sameCharacterSkins = safeSkinRows.filter(
+      (item) => normalizeCharacterCode(item?.character_code) === safeCode,
+    );
+
+    const ownedEquippableSkins = sameCharacterSkins.filter(
+      (item) => item?.is_owned !== false && item?.is_parent_owned !== false,
+    );
+
+    if (!ownedEquippableSkins.length) return null;
+
+    const exactDefaultSkin =
+      safeCode === DEFAULT_CHARACTER_CODE
+        ? ownedEquippableSkins.find(
+            (item) =>
+              String(item?.skin_code || '').trim() === DEFAULT_SKIN_CODE,
+          )
+        : null;
+
+    const basicSkin = ownedEquippableSkins.find((item) =>
+      String(item?.skin_code || '')
+        .trim()
+        .endsWith('-basic'),
+    );
+
+    return exactDefaultSkin || basicSkin || ownedEquippableSkins[0] || null;
+  }
+
+  async function equipDefaultSkinForCharacter(characterCode) {
+    const safeCode = normalizeCharacterCode(characterCode);
+
+    selectedCharacterCode = safeCode;
+
+    const selectedCharacter =
+      safeCharacterRows.find(
+        (row) => normalizeCharacterCode(row?.character_code) === safeCode,
+      ) || safeCharacterRows[0];
+
+    const selectedCharacterName =
+      selectedCharacter?.character_name || DEFAULT_CHARACTER_NAME;
+
+    const defaultSkin = getDefaultSkinForCharacter(safeCode);
+
+    if (!defaultSkin) {
+      renderOwnCharacterInventory();
+      setMsg(`${selectedCharacterName}의 보유 중인 기본 스킨이 없어.`);
+      return;
+    }
+
+    await equipCharacterSkin(
+      defaultSkin.image_path,
+      defaultSkin.skin_name || selectedCharacterName,
+    );
+  }
+
   function bindCharacterEvents() {
     const buttons = Array.from(
       characterListEl.querySelectorAll('[data-character-code]'),
     );
 
     buttons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', async () => {
         const isOwned = button.dataset.owned === 'true';
         const storeHref = String(button.dataset.storeHref || '').trim();
 
@@ -1653,10 +1710,7 @@ function renderCharacterSection({
 
         const nextCode = normalizeCharacterCode(button.dataset.characterCode);
 
-        if (nextCode === selectedCharacterCode) return;
-
-        selectedCharacterCode = nextCode;
-        renderOwnCharacterInventory();
+        await equipDefaultSkinForCharacter(nextCode);
       });
     });
   }
