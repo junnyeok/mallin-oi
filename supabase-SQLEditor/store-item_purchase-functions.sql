@@ -108,7 +108,15 @@ begin
     v_required_character_code := 'char-egg-potato';
     v_required_character_name := '알감자 캐릭터';
 
-  elsif p_item_id = 'skin-cucumbergirl-01' then
+  elsif p_item_id = 'BG-01' then
+    v_price := 438;
+    v_name := '중앙경찰학교 카툰배경';
+    v_category := 'profile';
+
+  elsif p_item_id = 'BG-02' then
+    v_price := 382;
+    v_name := '야간 순찰 배경';
+    v_category := 'profile';
 
   elsif p_item_id = 'skin-cucumbergirl-01' then
     v_price := 923;
@@ -719,6 +727,14 @@ begin
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'BG-01' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+  elsif p_item_id = 'BG-02' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'emo-eat-01' then
     insert into public.user_emoticons (
       user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
@@ -810,6 +826,10 @@ begin
         then 'lofi 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-01'
+        then '중앙경찰학교 카툰배경 구매가 완료됐어. 438피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-02'
+        then '야간 순찰 배경 구매가 완료됐어. 382피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'

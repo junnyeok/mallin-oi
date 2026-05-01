@@ -708,6 +708,7 @@
   .store-item-buybox {
     position: static;
     margin-left: 0;
+    margin-top: var(--space-8);
   }
 
   .store-item-preview__grid {
@@ -991,5 +992,221 @@
 @media (max-width: 700px) {
   .store-item-preview__profile-background {
     grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+  STORE PAGE PAGINATION
+========================= */
+
+.store-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+  margin-top: var(--space-24);
+}
+
+.store-pager[hidden] {
+  display: none;
+}
+
+.store-pager__pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.store-pager__btn {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 14px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.store-pager__btn:hover {
+  opacity: 1;
+  border-color: var(--color-primary);
+  background: rgba(170, 208, 94, 0.12);
+}
+
+.store-pager__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.store-pager__btn--page {
+  min-width: 44px;
+  padding: 0 12px;
+}
+
+.store-pager__btn--page.is-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* =========================
+  STORE PAGE MOBILE COMPACT CARDS
+========================= */
+
+@media (max-width: 768px) {
+  body[data-page='store'] .store-hero {
+    padding: var(--space-16) 0 var(--space-12);
+  }
+
+  body[data-page='store'] .store-hero__card {
+    gap: var(--space-12);
+    padding: var(--space-16);
+  }
+
+  body[data-page='store'] .store-hero__title {
+    margin-bottom: var(--space-8);
+    font-size: 24px;
+  }
+
+  body[data-page='store'] .store-hero__desc {
+    font-size: 14px;
+  }
+
+  body[data-page='store'] .store-balance {
+    padding: var(--space-12);
+  }
+
+  body[data-page='store'] .store-balance__value {
+    font-size: 22px;
+  }
+
+  body[data-page='store'] .store-section__head {
+    margin-bottom: var(--space-12);
+  }
+
+  body[data-page='store'] .store-section__title {
+    font-size: 20px;
+  }
+
+  body[data-page='store'] .store-filter {
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
+  }
+
+  body[data-page='store'] .store-filter__btn {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  body[data-page='store'] .store-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+
+  body[data-page='store'] .store-grid .store-card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    min-height: 132px;
+  }
+
+  body[data-page='store'] .store-grid .store-card__thumb {
+    min-height: 100%;
+    padding: var(--space-8);
+    font-size: 34px;
+  }
+
+  body[data-page='store'] .store-grid .store-card__thumb-image {
+    width: 54px;
+    max-height: 72px;
+  }
+
+  body[data-page='store'] .store-grid .store-bgm-thumb {
+    width: 58px;
+    height: 58px;
+  }
+
+  body[data-page='store'] .store-grid .store-card__body {
+    gap: var(--space-6);
+    padding: var(--space-12);
+  }
+
+  body[data-page='store'] .store-grid .store-card__top {
+    gap: var(--space-6);
+  }
+
+  body[data-page='store'] .store-grid .store-card__badge {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  body[data-page='store'] .store-grid .store-card__state {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  body[data-page='store'] .store-grid .store-card__title {
+    min-height: 0;
+    font-size: 14px;
+    line-height: 1.35;
+    -webkit-line-clamp: 1;
+  }
+
+  body[data-page='store'] .store-grid .store-card__desc {
+    min-height: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    -webkit-line-clamp: 1;
+  }
+
+  body[data-page='store'] .store-grid .store-card__meta {
+    min-height: 0;
+    gap: var(--space-6);
+  }
+
+  body[data-page='store'] .store-grid .store-card__id-chip {
+    display: none;
+  }
+
+  body[data-page='store'] .store-grid .chip {
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  body[data-page='store'] .store-grid .store-card__price {
+    margin-top: 0;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  body[data-page='store'] .store-grid .store-card__btn {
+    min-height: 30px;
+    font-size: 12px;
+  }
+
+  body[data-page='store'] .store-pager {
+    gap: var(--space-8);
+    margin-top: var(--space-16);
+  }
+
+  body[data-page='store'] .store-pager__pages {
+    gap: var(--space-6);
+  }
+
+  body[data-page='store'] .store-pager__btn {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
   }
 }

@@ -279,13 +279,8 @@ function renderStoreCard(item, { compact = false } = {}) {
           <span class="store-card__state">${item.state}</span>
         </div>
 
-        <h3 class="store-card__title">${item.name}</h3>
+                <h3 class="store-card__title">${item.name}</h3>
         <p class="store-card__desc">${item.description}</p>
-
-        <div class="store-card__meta">
-          <span class="chip chip--muted">${getCategoryLabel(item.category)}</span>
-          <span class="chip chip--muted">ID ${item.id}</span>
-        </div>
 
         <p class="store-card__price">${formatPrice(item.price)}</p>
 
@@ -550,19 +545,165 @@ async function initStorePage() {
   const emptyEl = $('#storeEmpty');
   const balanceValueEl = $('#storeBalanceValue');
   const balanceHintEl = $('#storeBalanceHint');
+  const pagerEl = $('#storePagination');
+  const pagerPagesEl = $('#storePaginationPages');
 
-  function render(category = 'all') {
-    const filtered =
-      category === 'all'
-        ? STORE_ITEMS
-        : STORE_ITEMS.filter((item) => item.category === category);
+  const STORE_PAGE_SIZE = 8;
+  const STORE_PAGER_VISIBLE_COUNT = 5;
 
-    gridEl.innerHTML = filtered.map((item) => renderStoreCard(item)).join('');
-    if (emptyEl) emptyEl.hidden = filtered.length > 0;
+  let currentCategory = 'all';
+  let currentPage = 1;
+
+  function getFilteredItems(category = currentCategory) {
+    return category === 'all'
+      ? STORE_ITEMS
+      : STORE_ITEMS.filter((item) => item.category === category);
   }
 
-  bindStoreFilter(render);
-  render('all');
+  function getTotalPages(items) {
+    return Math.max(1, Math.ceil(items.length / STORE_PAGE_SIZE));
+  }
+
+  function getVisiblePageNumbers(current, total) {
+    const visibleCount = Math.min(STORE_PAGER_VISIBLE_COUNT, total);
+    let start = Math.max(1, current - Math.floor(visibleCount / 2));
+    let end = start + visibleCount - 1;
+
+    if (end > total) {
+      end = total;
+      start = Math.max(1, end - visibleCount + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }
+
+  function renderPagination(totalPages) {
+    if (!pagerEl || !pagerPagesEl) return;
+
+    if (totalPages <= 1) {
+      pagerEl.hidden = true;
+      pagerPagesEl.innerHTML = '';
+      return;
+    }
+
+    pagerEl.hidden = false;
+
+    const prevBtn = pagerEl.querySelector('[data-store-page-action="prev"]');
+    const nextBtn = pagerEl.querySelector('[data-store-page-action="next"]');
+
+    if (prevBtn) {
+      prevBtn.disabled = currentPage <= 1;
+    }
+
+    if (nextBtn) {
+      nextBtn.disabled = currentPage >= totalPages;
+    }
+
+    pagerPagesEl.innerHTML = getVisiblePageNumbers(currentPage, totalPages)
+      .map(
+        (pageNumber) => `
+          <button
+            type="button"
+            class="store-pager__btn store-pager__btn--page ${pageNumber === currentPage ? 'is-active' : ''}"
+            data-store-page="${pageNumber}"
+            aria-current="${pageNumber === currentPage ? 'page' : 'false'}"
+          >
+            ${pageNumber}
+          </button>
+        `,
+      )
+      .join('');
+  }
+
+  function scrollToStoreSection() {
+    const sectionHead = document.querySelector('.store-section__head');
+
+    if (!sectionHead) return;
+
+    sectionHead.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }
+
+  function render(category = 'all', options = {}) {
+    const { page = 1, shouldScroll = false } = options;
+
+    currentCategory = category;
+
+    const filtered = getFilteredItems(category);
+    const totalPages = getTotalPages(filtered);
+
+    currentPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
+
+    const startIndex = (currentPage - 1) * STORE_PAGE_SIZE;
+    const pageItems = filtered.slice(startIndex, startIndex + STORE_PAGE_SIZE);
+
+    gridEl.innerHTML = pageItems.map((item) => renderStoreCard(item)).join('');
+
+    if (emptyEl) {
+      emptyEl.hidden = filtered.length > 0;
+    }
+
+    renderPagination(totalPages);
+
+    if (shouldScroll) {
+      scrollToStoreSection();
+    }
+  }
+
+  if (pagerEl) {
+    pagerEl.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button || button.disabled) return;
+
+      const pageAction = button.dataset.storePageAction;
+      const pageNumber = button.dataset.storePage;
+
+      const filtered = getFilteredItems(currentCategory);
+      const totalPages = getTotalPages(filtered);
+
+      if (pageAction === 'prev') {
+        render(currentCategory, {
+          page: currentPage - 1,
+          shouldScroll: true,
+        });
+        return;
+      }
+
+      if (pageAction === 'next') {
+        render(currentCategory, {
+          page: currentPage + 1,
+          shouldScroll: true,
+        });
+        return;
+      }
+
+      if (pageNumber) {
+        const nextPage = Math.min(
+          Math.max(1, Number(pageNumber) || 1),
+          totalPages,
+        );
+
+        render(currentCategory, {
+          page: nextPage,
+          shouldScroll: true,
+        });
+      }
+    });
+  }
+
+  bindStoreFilter((nextCategory) => {
+    render(nextCategory, {
+      page: 1,
+      shouldScroll: false,
+    });
+  });
+
+  render('all', {
+    page: 1,
+    shouldScroll: false,
+  });
 
   const myPickles = await loadMyPickles();
 
@@ -813,13 +954,8 @@ async function initStoreItemPage() {
             <span class="store-card__state">${item.state}</span>
           </div>
 
-          <h1 class="store-item-detail__title">${item.name}</h1>
+                    <h1 class="store-item-detail__title">${item.name}</h1>
           <p class="store-item-detail__desc">${item.detailDescription}</p>
-
-          <div class="store-item-detail__chips">
-            <span class="store-chip">${getCategoryLabel(item.category)}</span>
-            <span class="store-chip">ID ${item.id}</span>
-          </div>
 
           <section class="store-item-preview">
             <h2 class="store-item-preview__title">구성 미리보기</h2>

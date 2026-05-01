@@ -146,6 +146,30 @@
             <div class="store-empty" id="storeEmpty" hidden>
               해당 분류에 표시할 품목이 아직 없어.
             </div>
+            <nav
+              class="store-pager"
+              id="storePagination"
+              aria-label="상점 품목 페이지"
+              hidden
+            >
+              <button
+                type="button"
+                class="store-pager__btn"
+                data-store-page-action="prev"
+              >
+                이전
+              </button>
+
+              <div class="store-pager__pages" id="storePaginationPages"></div>
+
+              <button
+                type="button"
+                class="store-pager__btn"
+                data-store-page-action="next"
+              >
+                다음
+              </button>
+            </nav>
           </div>
         </section>
       </main>
