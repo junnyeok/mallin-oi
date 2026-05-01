@@ -232,7 +232,7 @@ function getCategoryLabel(category) {
   if (category === 'skin') return '스킨';
   if (category === 'bgm') return 'BGM';
   if (category === 'cha-effects') return '캐릭터효과';
-  if (category === 'profile') return '프로필';
+  if (category === 'profile') return '프로필배경';
   return '기타';
 }
 
@@ -590,6 +590,7 @@ function renderStoreItemPreview(item, options = {}) {
     item?.category === 'character' || item?.category === 'skin';
   const isBgmPreview = item?.category === 'bgm';
   const isCharacterEffectPreview = item?.category === 'cha-effects';
+  const isProfileBackgroundPreview = item?.itemType === 'profile-background';
 
   if (isCharacterEffectPreview) {
     const preview = previews[0];
@@ -667,6 +668,30 @@ function renderStoreItemPreview(item, options = {}) {
             }
           </p>
         </div>
+      </div>
+    `;
+  }
+
+  if (isProfileBackgroundPreview) {
+    return `
+      <div class="store-item-preview__profile-background">
+        ${previews
+          .map(
+            (preview) => `
+              <figure class="store-item-preview__profile-background-card">
+                <figcaption class="store-item-preview__profile-background-label">
+                  ${preview.label}
+                </figcaption>
+                <img
+                  src="${preview.imagePath}"
+                  alt="${preview.label}"
+                  class="store-item-preview__profile-background-img"
+                  loading="lazy"
+                />
+              </figure>
+            `,
+          )
+          .join('')}
       </div>
     `;
   }

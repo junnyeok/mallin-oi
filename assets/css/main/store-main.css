@@ -954,3 +954,42 @@
     }
   }
 }
+
+/* =========================
+  PROFILE BACKGROUND PREVIEW
+========================= */
+.store-item-preview__profile-background {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.store-item-preview__profile-background-card {
+  overflow: hidden;
+  margin: 0;
+  padding: var(--space-12);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.store-item-preview__profile-background-label {
+  margin-bottom: var(--space-8);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 800;
+  text-align: center;
+}
+
+.store-item-preview__profile-background-img {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-card);
+  object-fit: cover;
+}
+
+@media (max-width: 700px) {
+  .store-item-preview__profile-background {
+    grid-template-columns: 1fr;
+  }
+}

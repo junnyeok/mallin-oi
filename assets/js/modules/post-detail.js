@@ -16,6 +16,10 @@ const { getCharacterEffectByItemId } = await import(
   `./store-data.js?v=${MODULE_VERSION}`
 );
 
+const { listenEquipmentChanged } = await import(
+  `./equipment-events.js?v=${MODULE_VERSION}`
+);
+
 function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
 }
@@ -72,6 +76,28 @@ async function loadCharacterImageUrl(userId) {
   const imageUrl = getCharacterImageSrc(data?.equipped_character_image_url);
   characterImageCache.set(safeUserId, imageUrl);
   return imageUrl;
+}
+
+function clearProfileAssetCache(userId) {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId) return;
+
+  profileImageCache.delete(safeUserId);
+  characterImageCache.delete(safeUserId);
+  characterEffectCache.delete(safeUserId);
+}
+
+async function refreshAuthorEquipmentIfMine(post) {
+  if (!post?.authorId) return;
+
+  const user = await getCurrentUser();
+  const currentUserId = String(user?.id || '').trim();
+  const authorId = String(post.authorId || '').trim();
+
+  if (!currentUserId || currentUserId !== authorId) return;
+
+  clearProfileAssetCache(currentUserId);
+  await renderAuthor(post);
 }
 
 async function loadCharacterEffectItemId(userId) {
@@ -947,6 +973,7 @@ export async function initPostDetail() {
   }
 
   let post = await loadPostById(postId);
+  let activePost = post;
 
   if (!post) {
     alert('삭제됐거나 존재하지 않는 글이야. 전체 게시물로 이동할게.');
@@ -960,7 +987,19 @@ export async function initPostDetail() {
   }
 
   await applyPost(post);
+  activePost = post;
   emitPostAccessState(post, '');
+
+  listenEquipmentChanged(async (detail = {}) => {
+    const user = await getCurrentUser();
+    const currentUserId = String(user?.id || '').trim();
+    const changedUserId = String(detail?.userId || '').trim();
+
+    if (!currentUserId) return;
+    if (changedUserId && changedUserId !== currentUserId) return;
+
+    await refreshAuthorEquipmentIfMine(activePost);
+  });
 
   const secretForm = $('postSecretForm');
   const secretInput = $('postSecretPassword');
@@ -996,6 +1035,7 @@ export async function initPostDetail() {
 
         secretInput.value = '';
         setSecretMessage('');
+        activePost = unlockedPost;
         await applyPost(unlockedPost);
         emitPostAccessState(unlockedPost, pw);
       } catch (error) {

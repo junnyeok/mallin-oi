@@ -16076,3 +16076,123 @@ from public.profiles;
 grant select on public.public_profiles to anon, authenticated;
 
 --누적본 쿼리 2026/4/24
+
+-- 1) 프로필배경 장착 컬럼 추가
+alter table public.profiles
+add column if not exists equipped_profile_background_item_id text;
+
+comment on column public.profiles.equipped_profile_background_item_id
+is '현재 장착한 프로필배경 상점 아이템 ID';
+
+-- 2) public profile view에 프로필배경 컬럼 공개
+drop view if exists public.public_profiles;
+
+create view public.public_profiles as
+select
+  id,
+  nickname,
+  bio,
+  profile_image_url,
+  equipped_character_image_url,
+  equipped_character_effect_item_id,
+  equipped_profile_background_item_id,
+  created_at,
+  updated_at
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;
+
+-- 3) 프로필배경 장착 소유권 강제
+create or replace function public.enforce_equipped_profile_background_ownership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(trim(new.equipped_profile_background_item_id), '') = '' then
+    new.equipped_profile_background_item_id := null;
+    return new;
+  end if;
+
+  if exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = new.id
+      and usi.item_id = new.equipped_profile_background_item_id
+      and usi.item_category = 'profile'
+  ) then
+    return new;
+  end if;
+
+  new.equipped_profile_background_item_id := null;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_equipped_profile_background_ownership
+on public.profiles;
+
+create trigger trg_enforce_equipped_profile_background_ownership
+before insert or update of equipped_profile_background_item_id
+on public.profiles
+for each row
+execute function public.enforce_equipped_profile_background_ownership();
+
+-- 4) 기존 purchase_store_item 함수에 BG-01 / BG-02 구매 분기 자동 삽입
+do $$
+declare
+  v_sql text;
+begin
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+  into v_sql;
+
+  if position('p_item_id = ''BG-01''' in v_sql) = 0 then
+    v_sql := replace(
+      v_sql,
+      '  elsif p_item_id = ''skin-eggpotato-02'' then
+    v_price := 578;
+    v_name := ''경찰학교 알감자교수님 스킨'';
+    v_category := ''skin'';
+    v_required_character_code := ''char-egg-potato'';
+    v_required_character_name := ''알감자 캐릭터'';',
+      '  elsif p_item_id = ''skin-eggpotato-02'' then
+    v_price := 578;
+    v_name := ''경찰학교 알감자교수님 스킨'';
+    v_category := ''skin'';
+    v_required_character_code := ''char-egg-potato'';
+    v_required_character_name := ''알감자 캐릭터'';
+
+  elsif p_item_id = ''BG-01'' then
+    v_price := 438;
+    v_name := ''중앙경찰학교 카툰배경'';
+    v_category := ''profile'';
+
+  elsif p_item_id = ''BG-02'' then
+    v_price := 382;
+    v_name := ''야간 순찰 배경'';
+    v_category := ''profile'';'
+    );
+
+    v_sql := replace(
+      v_sql,
+      '      when p_item_id = ''skin-eggpotato-02''
+        then ''경찰학교 알감자교수님 스킨 구매가 완료됐어. 578피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.''
+        else ''구매가 완료됐어.''',
+      '      when p_item_id = ''skin-eggpotato-02''
+        then ''경찰학교 알감자교수님 스킨 구매가 완료됐어. 578피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.''
+      when p_item_id = ''BG-01''
+        then ''중앙경찰학교 카툰배경 구매가 완료됐어. 438피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.''
+      when p_item_id = ''BG-02''
+        then ''야간 순찰 배경 구매가 완료됐어. 382피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.''
+        else ''구매가 완료됐어.''')
+    ;
+
+    execute v_sql;
+  end if;
+end;
+$$;
+
+grant execute on function public.purchase_store_item(text) to authenticated;
+
+--누적본 쿼리 5/1

@@ -4,8 +4,15 @@
   align-items: flex-start;
 }
 
+/* 인벤토리 전체 카드는 흰색 표면으로 유지 */
 .inventory-card {
-  max-width: 860px;
+  max-width: 920px;
+  background: var(--color-surface);
+}
+
+/* profile-main.css의 .profile-card::before 배경이 inventory-card에 깔리는 문제 차단 */
+.inventory-card::before {
+  display: none;
 }
 
 .inventory-intro {
@@ -22,21 +29,150 @@
   margin-top: var(--space-12);
 }
 
-.inventory-msg {
-  margin-top: var(--space-12);
-  margin-bottom: var(--space-16);
+.inventory-card .profile-section + .profile-section {
+  margin-top: var(--space-20);
+  padding-top: 0;
+  border-top: 0;
 }
 
-.inventory-main .profile-character-preview {
+/* =========================
+  INVENTORY PROFILE PREVIEW
+  - 배경 이미지는 여기 안에만 들어감
+========================= */
+.inventory-profile-preview {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  max-width: 760px;
+  min-height: 520px;
+  margin: 0 auto var(--space-24);
+  padding: var(--space-24);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.inventory-profile-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--profile-bg-desktop, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.inventory-profile-preview.has-profile-background::before {
+  opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .profile-card::before {
+    background-image: var(--profile-bg-mobile, var(--profile-bg-desktop, none));
+  }
+}
+
+.inventory-profile-preview__content {
+  position: relative;
+  z-index: 1;
+  min-height: 472px;
+}
+
+/* profile-main.css의 .profile-character-preview 중앙정렬을 인벤토리 미리보기 안에서만 무력화 */
+.inventory-profile-preview .inventory-character-preview {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  width: auto;
+  margin: 0;
+  display: inline-flex;
+  transform: translateX(-50%);
+}
+
+.inventory-profile-preview .inventory-preview-actions {
+  position: absolute;
+  left: 50%;
+  bottom: -15px;
+  width: auto;
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.inventory-profile-preview .profile-character-image {
+  width: 180px;
+}
+
+.inventory-profile-preview .profile-inventory-link {
+  white-space: nowrap;
+}
+
+.inventory-msg {
+  min-height: 1.5em;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* =========================
+  INVENTORY LIST AREA
+  - 캐릭터/스킨/효과/BGM 영역은 흰색 카드로 분리
+========================= */
+.inventory-main .profile-character-inventory {
+  width: 100%;
+  padding: var(--space-20);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.inventory-main .profile-character-inventory .profile-character-preview {
   margin-bottom: var(--space-12);
 }
 
 @media (max-width: 700px) {
   .inventory-card {
-    padding: var(--space-24);
+    margin-top: var(--space-24);
+    margin-left: var(--space-12);
+    margin-right: var(--space-12);
+  }
+
+  .inventory-profile-preview {
+    max-width: 100%;
+    min-height: 560px;
+    padding: var(--space-20);
+  }
+
+  .inventory-profile-preview::before {
+    background-image: var(--profile-bg-mobile, var(--profile-bg-desktop, none));
+    background-position: center;
+  }
+
+  .inventory-profile-preview__content {
+    min-height: 520px;
+  }
+
+  .inventory-profile-preview .inventory-character-preview {
+    bottom: 40px;
+  }
+
+  .inventory-profile-preview .profile-character-image {
+    width: 120px;
+  }
+
+  .inventory-profile-preview .inventory-preview-actions {
+    bottom: -10px;
+  }
+  .inventory-main .profile-character-inventory {
+    padding: 0 var(--space-16);
   }
 }
 
+/* =========================
+  EFFECT INVENTORY
+========================= */
 .profile-character-grid--effects {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
@@ -67,6 +203,9 @@
   }
 }
 
+/* =========================
+  INVENTORY ANCHOR / BGM SCROLL
+========================= */
 #bgm-inventory {
   scroll-margin-top: 140px;
 }
@@ -91,6 +230,9 @@
   display: none !important;
 }
 
+/* =========================
+  MORE BUTTON
+========================= */
 .inventory-more-area {
   display: flex;
   justify-content: center;
@@ -136,5 +278,34 @@
   .inventory-more-btn {
     width: 100%;
     min-height: 48px;
+  }
+}
+
+/* =========================
+  PROFILE BACKGROUND INVENTORY
+========================= */
+.profile-character-grid--profile-background {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-background-card__thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: #f5f5f5;
+}
+
+.profile-background-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 700px) {
+  .profile-character-grid--profile-background {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

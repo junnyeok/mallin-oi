@@ -74,25 +74,36 @@
             id="profileCharacterSection"
             aria-label="내 인벤토리"
           >
-            <div class="profile-character-preview character-effect-wrap">
-              <img
-                id="profileCharacterImage"
-                class="profile-character-image"
-                src="./images/characters/cucumber.png"
-                alt="현재 캐릭터"
-              />
-            </div>
+            <div
+              class="inventory-profile-preview"
+              aria-label="프로필카드 미리보기"
+            >
+              <div class="inventory-profile-preview__content">
+                <div
+                  class="profile-character-preview character-effect-wrap inventory-character-preview"
+                >
+                  <img
+                    id="profileCharacterImage"
+                    class="profile-character-image"
+                    src="./images/characters/cucumber.png"
+                    alt="현재 캐릭터"
+                  />
+                </div>
 
-            <div class="profile-character-actions">
-              <a
-                class="profile-inventory-link is-secondary"
-                href="./profile.html"
-              >
-                내프로필로 돌아가기
-              </a>
-            </div>
+                <div
+                  class="profile-character-actions inventory-preview-actions"
+                >
+                  <a
+                    class="profile-inventory-link is-secondary"
+                    href="./profile.html"
+                  >
+                    내프로필로 돌아가기
+                  </a>
+                </div>
 
-            <p class="profile-msg inventory-msg" id="profileMsg"></p>
+                <p class="profile-msg inventory-msg" id="profileMsg"></p>
+              </div>
+            </div>
 
             <div
               id="profileCharacterCharacterWrap"
@@ -162,6 +173,23 @@
               <div
                 id="profileCharacterEffectList"
                 class="profile-character-grid profile-character-grid--effects"
+              ></div>
+            </div>
+
+            <div id="profileBackgroundWrap" class="profile-character-inventory">
+              <span
+                id="profile-background-inventory"
+                class="inventory-anchor"
+                aria-hidden="true"
+              ></span>
+
+              <h3 class="profile-character-inventory__title">
+                프로필배경 인벤토리
+              </h3>
+
+              <div
+                id="profileBackgroundList"
+                class="profile-character-grid profile-character-grid--profile-background"
               ></div>
             </div>
 

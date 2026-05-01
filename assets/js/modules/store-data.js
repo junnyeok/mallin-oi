@@ -384,7 +384,109 @@ export const EGG_POTATO_CHARACTER_PREVIEW = [
   },
 ];
 
+export const PROFILE_BACKGROUND_CATALOG = [
+  {
+    itemId: 'BG-01',
+    name: '중앙경찰학교 카툰배경',
+    pcImagePath: withAssetVersion('./images/profile-background/CPA.png'),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/CPA-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion('./images/profile-background/CPA.png'),
+    displayOrder: 1,
+  },
+  {
+    itemId: 'BG-02',
+    name: '야간 순찰 배경',
+    pcImagePath: withAssetVersion('./images/profile-background/nightwork.png'),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/nightwork-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/nightwork.png',
+    ),
+    displayOrder: 2,
+  },
+];
+
+export function getProfileBackgroundByItemId(itemId = '') {
+  const safeItemId = String(itemId || '').trim();
+
+  return (
+    PROFILE_BACKGROUND_CATALOG.find(
+      (item) => String(item?.itemId || '').trim() === safeItemId,
+    ) || null
+  );
+}
+
 export const STORE_ITEMS = [
+  {
+    id: 'BG-01',
+    name: '중앙경찰학교 카툰배경',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '👮🏽‍♂️',
+    thumbImagePath: withAssetVersion('./images/profile-background/CPA.png'),
+    price: 438,
+    state: '판매 중',
+    description: '경찰관들의 추억의 장소야.',
+    detailDescription:
+      '중앙경찰학교에 간 경찰관들은 한번쯤은 꼭 이 장소에서 사진을 찍었어.<br>구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-01-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion('./images/profile-background/CPA.png'),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-01-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/CPA-mobile.png',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    isPurchasable: true,
+  },
+  {
+    id: 'BG-02',
+    name: '야간 순찰 배경',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '🌃',
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/nightwork.png',
+    ),
+    price: 382,
+    state: '판매 중',
+    description:
+      '도심지를 야간 순찰하며 잠시 한적한 곳에서 야경을 바라보는 풍경이야.',
+    detailDescription:
+      '도시를 야간 순찰하는 배경이야.<br>구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-02-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/nightwork.png',
+        ),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-02-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/nightwork-mobile.png',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    isPurchasable: true,
+  },
   {
     id: 'skin-eggpotato-02',
     name: '경찰학교 알감자교수님 스킨',
@@ -822,32 +924,6 @@ export const STORE_ITEMS = [
       '특별제작한 당근 캐릭터를 이모티콘으로 사용할 수 있는 세트야. 구매하면 13개의 당근 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
     previewImages: CARROT_EMOTICON_PACK,
     isPurchasable: true,
-  },
-  {
-    id: 'profile-bg-02',
-    name: '프로필 배경 - 야간 순찰',
-    category: 'profile',
-    badge: '테마',
-    icon: '🌃',
-    price: 520,
-    state: '적용 기능 예정',
-    description: '어두운 톤의 야간 감성 배경 테마.',
-    detailDescription: '야간 감성 프로필 배경 테마야.',
-    previewImages: [],
-    isPurchasable: false,
-  },
-  {
-    id: 'profile-frame-02',
-    name: '프로필 테두리 - 골드 배지',
-    category: 'profile',
-    badge: '한정',
-    icon: '🏅',
-    price: 560,
-    state: '적용 기능 예정',
-    description: '프로필을 더 눈에 띄게 보여주는 금빛 프레임.',
-    detailDescription: '골드 배지 느낌의 프로필 프레임이야.',
-    previewImages: [],
-    isPurchasable: false,
   },
 ];
 

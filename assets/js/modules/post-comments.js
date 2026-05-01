@@ -17,6 +17,10 @@ const { getCharacterEffectByItemId } = await import(
   `./store-data.js?v=${MODULE_VERSION}`
 );
 
+const { listenEquipmentChanged } = await import(
+  `./equipment-events.js?v=${MODULE_VERSION}`
+);
+
 const {
   loadOwnedEmoticons,
   renderOwnedEmoticonPicker,
@@ -132,6 +136,15 @@ async function loadProfileAssetMap(authorIds = []) {
   });
 
   return map;
+}
+
+function clearCommentProfileAssetCache(userId) {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId) return;
+
+  commentProfileImageCache.delete(safeUserId);
+  commentCharacterImageCache.delete(safeUserId);
+  commentCharacterEffectCache.delete(safeUserId);
 }
 
 function $(id) {
@@ -1704,5 +1717,20 @@ export async function initPostComments() {
 
     await syncCommentAccess(postId, String(detail.secretPassword || ''));
     await syncOwnedCommentEmoticons();
+  });
+
+  listenEquipmentChanged(async (detail = {}) => {
+    const user = await getCurrentUser();
+    const currentUserId = String(user?.id || '').trim();
+    const changedUserId = String(detail?.userId || '').trim();
+
+    if (!currentUserId) return;
+    if (changedUserId && changedUserId !== currentUserId) return;
+
+    clearCommentProfileAssetCache(currentUserId);
+
+    if (isPrivatePostLocked) return;
+
+    await renderComments(postId, currentSecretPassword);
   });
 }
