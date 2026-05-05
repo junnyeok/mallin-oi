@@ -237,6 +237,18 @@ export const EAT_EMOTICON_PACK = Array.from({ length: 10 }, (_, index) => {
   };
 });
 
+export const MOVED_EMOTICON_PACK = Array.from({ length: 11 }, (_, index) => {
+  const order = index + 1;
+  const paddedOrder = String(order).padStart(2, '0');
+
+  return {
+    code: `moved-${paddedOrder}`,
+    label: `감동/감격오이 이모티콘 ${order}`,
+    imagePath: withAssetVersion(`./images/emoticons/moved-${paddedOrder}.png`),
+    displayOrder: 900 + order,
+  };
+});
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -432,7 +444,7 @@ export const STORE_ITEMS = [
     description: '감동/감격 받은 오이 이모티콘팩.',
     detailDescription:
       '감동/감격 받은 오이 이모티콘팩야. 구매하면 11개의 감동/감격오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
-    previewImages: SAD_EMOTICON_PACK,
+    previewImages: MOVED_EMOTICON_PACK,
     isPurchasable: true,
   },
   {

@@ -190,6 +190,11 @@ begin
     v_name := '먹방오이 이모티콘팩';
     v_category := 'emoticon';
 
+  elsif p_item_id = 'emo-moved-01' then
+    v_price := 260;
+    v_name := '감동/감격오이 이모티콘팩';
+    v_category := 'emoticon';
+
   else
     return query
     select
@@ -751,6 +756,24 @@ begin
       (v_user_id, 'emo-eat-01', 'eat-9', '먹방오이 이모티콘 9', './images/emoticons/eat-9.png', 809),
       (v_user_id, 'emo-eat-01', 'eat-10', '먹방오이 이모티콘 10', './images/emoticons/eat-10.png', 810)
     on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-moved-01' then
+    insert into public.user_emoticons (
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
+    )
+    values
+      (v_user_id, 'emo-moved-01', 'moved-01', '감동/감격오이 이모티콘 1', './images/emoticons/moved-01.png', 901),
+      (v_user_id, 'emo-moved-01', 'moved-02', '감동/감격오이 이모티콘 2', './images/emoticons/moved-02.png', 902),
+      (v_user_id, 'emo-moved-01', 'moved-03', '감동/감격오이 이모티콘 3', './images/emoticons/moved-03.png', 903),
+      (v_user_id, 'emo-moved-01', 'moved-04', '감동/감격오이 이모티콘 4', './images/emoticons/moved-04.png', 904),
+      (v_user_id, 'emo-moved-01', 'moved-05', '감동/감격오이 이모티콘 5', './images/emoticons/moved-05.png', 905),
+      (v_user_id, 'emo-moved-01', 'moved-06', '감동/감격오이 이모티콘 6', './images/emoticons/moved-06.png', 906),
+      (v_user_id, 'emo-moved-01', 'moved-07', '감동/감격오이 이모티콘 7', './images/emoticons/moved-07.png', 907),
+      (v_user_id, 'emo-moved-01', 'moved-08', '감동/감격오이 이모티콘 8', './images/emoticons/moved-08.png', 908),
+      (v_user_id, 'emo-moved-01', 'moved-09', '감동/감격오이 이모티콘 9', './images/emoticons/moved-09.png', 909),
+      (v_user_id, 'emo-moved-01', 'moved-10', '감동/감격오이 이모티콘 10', './images/emoticons/moved-10.png', 910),
+      (v_user_id, 'emo-moved-01', 'moved-11', '감동/감격오이 이모티콘 11', './images/emoticons/moved-11.png', 911)
+    on conflict (user_id, emoticon_code) do nothing;
   end if;
 
   if v_price > 0 then
@@ -832,6 +855,8 @@ begin
         then '야간 순찰 배경 구매가 완료됐어. 382피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-moved-01'
+        then '감동/감격오이 이모티콘팩 구매가 완료됐어. 260피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'
         then '구운계란 트레이너 스킨 구매가 완료됐어. 466피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-01'
@@ -898,7 +923,7 @@ begin
     from public.user_character_skins s
     join public.user_characters c
       on c.user_id = s.user_id
-     and c.character_code = s.character_code
+      and c.character_code = s.character_code
     where s.user_id = new.id
       and s.image_path = new.equipped_character_image_url
   ) then

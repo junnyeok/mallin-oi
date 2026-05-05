@@ -15,6 +15,7 @@ const {
   HEART_EMOTICON_PACK,
   SAD_EMOTICON_PACK,
   EAT_EMOTICON_PACK,
+  MOVED_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -28,6 +29,7 @@ const EMOTICON_MAP = new Map(
     ...HEART_EMOTICON_PACK,
     ...SAD_EMOTICON_PACK,
     ...EAT_EMOTICON_PACK,
+    ...MOVED_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -96,6 +98,13 @@ const PACK_META = [
     label: '먹방',
     iconPath: EAT_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'eat-',
+  },
+  {
+    key: 'moved',
+    itemId: 'emo-moved-01',
+    label: '감동/감격',
+    iconPath: MOVED_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'moved-',
   },
 ];
 
@@ -179,6 +188,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-eat-01') {
     return EAT_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-moved-01') {
+    return MOVED_EMOTICON_PACK;
   }
 
   return [];
