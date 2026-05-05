@@ -1,0 +1,481 @@
+/* assets/css/main/calendar-study-main.css */
+
+/* =========================
+   Study Calendar Preview
+========================= */
+
+.study-calendar-preview {
+  margin-bottom: var(--space-16);
+}
+
+.study-calendar-preview__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.study-calendar-preview__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.study-calendar-preview__more {
+  flex-shrink: 0;
+  font-size: var(--text-small);
+  font-weight: 800;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.study-calendar-mini {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.study-calendar-mini__month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-8);
+}
+
+.study-calendar-mini__month-title {
+  font-size: var(--text-body);
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.study-calendar-mini__hint {
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+}
+
+.study-calendar-mini__empty {
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.study-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.study-calendar-weekday {
+  padding: var(--space-8) var(--space-4);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.study-calendar-day {
+  position: relative;
+  min-height: 64px;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.study-calendar-day--button {
+  width: 100%;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.study-calendar-day--button:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  transform: translateY(-1px);
+}
+
+.study-calendar-day--muted {
+  color: var(--color-text-sub);
+  background: #f7f7f7;
+}
+
+.study-calendar-day--today {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.study-calendar-day--selected {
+  background: var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.study-calendar-day__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  font-weight: 900;
+}
+
+.study-calendar-day--today .study-calendar-day__number {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.study-calendar-day__dot {
+  position: absolute;
+  right: var(--space-8);
+  bottom: var(--space-8);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+
+.study-calendar-day__count {
+  position: absolute;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 22px;
+  text-align: center;
+}
+
+/* =========================
+   Study Calendar Page
+========================= */
+
+.study-calendar-page__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
+}
+
+.study-calendar-page__title {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-h1);
+  color: var(--color-text);
+}
+
+.study-calendar-page__desc {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
+.study-calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+.study-calendar-main-panel,
+.study-calendar-todo-panel {
+  min-width: 0;
+}
+
+.study-calendar-toolbar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.study-calendar-nav-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 28px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.study-calendar-nav-btn:hover {
+  background: var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.study-calendar-month {
+  margin: 0;
+  font-size: var(--text-h2);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.study-calendar-grid--page .study-calendar-day {
+  min-height: 92px;
+}
+
+.study-calendar-selected {
+  margin-bottom: var(--space-16);
+}
+
+.study-calendar-selected__label {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+}
+
+.study-calendar-selected__date {
+  margin: 0;
+  font-size: var(--text-h2);
+  color: var(--color-text);
+}
+
+.study-todo-form {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.study-todo-form__select,
+.study-todo-form__input {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+}
+
+.study-todo-form__select {
+  padding: 0 var(--space-8);
+}
+
+.study-todo-form__input {
+  min-width: 0;
+  padding: 0 var(--space-12);
+}
+
+.study-todo-form__select:focus,
+.study-todo-form__input:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.study-todo-form__button {
+  min-height: 42px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.study-todo-form__button:hover {
+  opacity: 0.82;
+}
+
+.study-todo-list {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.study-todo-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-8);
+  align-items: center;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+}
+
+.study-todo-item.is-done {
+  background: #f7f7f7;
+}
+
+.study-todo-item__check {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+}
+
+.study-todo-item__body {
+  min-width: 0;
+}
+
+.study-todo-item__text {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  word-break: break-word;
+}
+
+.study-todo-item.is-done .study-todo-item__text {
+  color: var(--color-text-sub);
+  text-decoration: line-through;
+}
+
+.study-todo-item__type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.study-todo-item__delete {
+  min-width: 40px;
+  min-height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.study-todo-item__delete:hover {
+  color: var(--color-text);
+  background: var(--color-primary-sub);
+}
+
+.study-todo-empty {
+  margin: var(--space-16) 0 0;
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 900px) {
+  .study-calendar-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .study-calendar-preview__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .study-calendar-preview__more {
+    font-size: 13px;
+  }
+
+  .study-calendar-mini__month {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .study-calendar-grid {
+    gap: var(--space-4);
+  }
+
+  .study-calendar-weekday {
+    padding: var(--space-6) var(--space-4);
+    font-size: 11px;
+  }
+
+  .study-calendar-day {
+    min-height: 46px;
+    padding: var(--space-6);
+  }
+
+  .study-calendar-grid--page .study-calendar-day {
+    min-height: 58px;
+  }
+
+  .study-calendar-day__number {
+    min-width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+
+  .study-calendar-day__count {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 var(--space-4);
+    font-size: 11px;
+    line-height: 18px;
+  }
+
+  .study-calendar-page__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .study-calendar-page__title {
+    font-size: var(--text-h2);
+  }
+
+  .study-calendar-page__back {
+    width: 100%;
+  }
+
+  .study-calendar-toolbar {
+    grid-template-columns: 40px 1fr 40px;
+  }
+
+  .study-calendar-nav-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+
+  .study-calendar-month {
+    font-size: var(--text-body);
+  }
+
+  .study-todo-form {
+    grid-template-columns: 1fr;
+  }
+
+  .study-todo-form__select,
+  .study-todo-form__input,
+  .study-todo-form__button {
+    width: 100%;
+  }
+}

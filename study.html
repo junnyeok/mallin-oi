@@ -44,6 +44,7 @@
 
     <!-- main -->
     <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/calendar-study-main.css" />
   </head>
 
   <body class="theme-study" data-page="study">
@@ -53,6 +54,38 @@
       <main class="site-main">
         <section class="home-section">
           <div class="container">
+            <section
+              class="panel panel--latest-wide study-calendar-preview"
+              aria-labelledby="studyCalendarPreviewTitle"
+            >
+              <a
+                class="study-calendar-preview__link"
+                href="./calendar-study.html"
+                id="studyCalendarPreviewLink"
+                aria-label="자기개발 캘린더 상세 페이지로 이동"
+              >
+                <div class="panel__head study-calendar-preview__head">
+                  <div>
+                    <h2 class="panel__title" id="studyCalendarPreviewTitle">
+                      🗓️ 이번달 자기개발 캘린더
+                    </h2>
+                    <p class="panel__desc">
+                      공부, 운동, 자기관리 할 일을 날짜별로 기록해봐!
+                    </p>
+                  </div>
+                  <span class="study-calendar-preview__more"
+                    >자세히 보기 →</span
+                  >
+                </div>
+
+                <div class="study-calendar-mini" id="studyCalendarPreview">
+                  <div class="study-calendar-mini__empty">
+                    이번달 캘린더를 불러오는 중입니다.
+                  </div>
+                </div>
+              </a>
+            </section>
+
             <div class="panel panel--latest-wide" id="latestUploadSection">
               <div class="panel__head panel__head--with-more">
                 <h2 class="panel__title">🆕 최신 업로드</h2>

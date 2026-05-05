@@ -57,6 +57,7 @@ async function loadCoreModules() {
     pickleStatusModule,
     pjaxRouterModule,
     qnaBoardModule,
+    studyCalendarModule,
   ] = await Promise.all([
     import(withModuleVersion('./modules/site-version.js')),
     import(withModuleVersion('./modules/update-banner.js')),
@@ -90,6 +91,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/pickle-status.js')),
     import(withModuleVersion('./modules/pjax-router.js')),
     import(withModuleVersion('./modules/qna-board.js')),
+    import(withModuleVersion('./modules/study-calendar.js')),
   ]);
 
   coreModules = {
@@ -125,6 +127,7 @@ async function loadCoreModules() {
     pickleStatusModule,
     pjaxRouterModule,
     qnaBoardModule,
+    studyCalendarModule,
   };
 
   return coreModules;
@@ -181,6 +184,7 @@ async function initPageModules(modules) {
     profileHistoryModule,
     storeModule,
     qnaBoardModule,
+    studyCalendarModule,
   } = modules;
 
   const { initPostsUI } = postsUiModule;
@@ -203,6 +207,7 @@ async function initPageModules(modules) {
   const { initProfileHistory } = profileHistoryModule;
   const { initStore } = storeModule;
   const { initQnaBoard } = qnaBoardModule;
+  const { initStudyCalendar } = studyCalendarModule;
 
   // 공통
   await runSafe('scroll buttons', async () => {
@@ -222,6 +227,10 @@ async function initPageModules(modules) {
 
       await runSafe('store module', async () => {
         await initStore();
+      });
+
+      await runSafe('study calendar', async () => {
+        initStudyCalendar();
       });
 
     case 'posts-all':
