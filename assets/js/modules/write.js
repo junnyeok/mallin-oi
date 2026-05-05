@@ -382,12 +382,12 @@ async function initWriteEmoticonPicker(user) {
     restoreSavedSelectionRange();
 
     const node = createInlineEmoticonNode(emoticon);
-    insertNodeAtCaret(node);
-    insertNodeAtCaret(document.createTextNode(' '));
-    syncBodyFromEditor();
+    insertInlineNodeAtCaret(node, {
+      appendSpace: true,
+      sync: true,
+    });
 
     panel.hidden = true;
-    saveCurrentSelectionRange();
   });
 
   document.addEventListener('click', (event) => {
@@ -1009,6 +1009,86 @@ function insertSingleParagraphAtCaret() {
 
   saveCurrentSelectionRange();
   syncBodyFromEditor();
+  refreshEditorToolbarState();
+}
+
+function insertInlineNodeAtCaret(node, options = {}) {
+  const { appendSpace = true, sync = true } = options;
+
+  const editor = getBodyEditor();
+  if (!editor || !node) return;
+
+  editor.focus();
+
+  if (!restoreSavedSelectionRange()) {
+    placeCaretAtEnd(editor);
+  }
+
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  let range = sel.getRangeAt(0);
+
+  if (!editor.contains(range.commonAncestorContainer)) {
+    placeCaretAtEnd(editor);
+
+    const fallbackSel = window.getSelection();
+    if (!fallbackSel || !fallbackSel.rangeCount) return;
+
+    range = fallbackSel.getRangeAt(0);
+  }
+
+  if (!range.collapsed) {
+    range.deleteContents();
+  }
+
+  /*
+    본문이 완전히 비어 있을 때 이모티콘을 넣으면
+    일부 브라우저에서 bodyEditor 바로 아래에 img가 들어가며
+    이후 normalizeEditorParagraphs() 과정에서 커서 위치가 흔들릴 수 있다.
+
+    그래서 빈 에디터에서는 먼저 <p>를 만들고,
+    그 안에 이모티콘을 inline으로 넣는다.
+  */
+  if (range.startContainer === editor) {
+    const p = document.createElement('p');
+    p.setAttribute('data-align', 'left');
+
+    if (!editor.childNodes.length) {
+      editor.appendChild(p);
+    } else {
+      const insertIndex = Math.min(range.startOffset, editor.childNodes.length);
+      editor.insertBefore(p, editor.childNodes[insertIndex] || null);
+    }
+
+    range = document.createRange();
+    range.selectNodeContents(p);
+    range.collapse(true);
+  }
+
+  range.insertNode(node);
+
+  let lastInsertedNode = node;
+
+  if (appendSpace) {
+    const spaceNode = document.createTextNode('\u00a0');
+    node.after(spaceNode);
+    lastInsertedNode = spaceNode;
+  }
+
+  const nextRange = document.createRange();
+  nextRange.setStartAfter(lastInsertedNode);
+  nextRange.collapse(true);
+
+  sel.removeAllRanges();
+  sel.addRange(nextRange);
+
+  savedSelectionRange = nextRange.cloneRange();
+
+  if (sync) {
+    syncBodyFromEditor({ normalize: false });
+  }
+
   refreshEditorToolbarState();
 }
 

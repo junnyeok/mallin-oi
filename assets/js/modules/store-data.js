@@ -421,6 +421,21 @@ export function getProfileBackgroundByItemId(itemId = '') {
 
 export const STORE_ITEMS = [
   {
+    id: 'emo-moved-01',
+    name: '감동/감격오이 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🤩',
+    thumbImagePath: withAssetVersion('./images/emoticons/moved-01.png'),
+    price: 260,
+    state: '판매 중',
+    description: '감동/감격 받은 오이 이모티콘팩.',
+    detailDescription:
+      '감동/감격 받은 오이 이모티콘팩야. 구매하면 11개의 감동/감격오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: SAD_EMOTICON_PACK,
+    isPurchasable: true,
+  },
+  {
     id: 'BG-01',
     name: '중앙경찰학교 카툰배경',
     category: 'profile',
