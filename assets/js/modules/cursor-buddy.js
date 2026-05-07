@@ -13,9 +13,19 @@ export function initCursorBuddy(options = {}) {
   const buddy = document.querySelector(selector);
   if (!buddy) return;
 
+  const shouldDisableOnMobile =
+    window.matchMedia?.('(hover: none) and (pointer: coarse)').matches ||
+    window.matchMedia?.('(max-width: 700px)').matches;
+
+  if (shouldDisableOnMobile) {
+    buddy.classList.remove('is-visible');
+    buddy.setAttribute('aria-hidden', 'true');
+    return;
+  }
+
   // ✅ PC(마우스)인지 모바일(터치)인지 판별
   const isDesktopLike = window.matchMedia(
-    '(hover: hover) and (pointer: fine)'
+    '(hover: hover) and (pointer: fine)',
   ).matches;
 
   let lastX = null;
@@ -139,7 +149,7 @@ export function initCursorBuddy(options = {}) {
       activePointerId = null;
       setVisible(false);
     },
-    { passive: true }
+    { passive: true },
   );
 
   document.addEventListener(
@@ -150,6 +160,6 @@ export function initCursorBuddy(options = {}) {
         setVisible(false);
       }
     },
-    { passive: true }
+    { passive: true },
   );
 }

@@ -36,3 +36,10 @@
     transition: none;
   }
 }
+
+/* 모바일 안정화: 터치 환경에서는 커서 오이 효과 비활성화 */
+@media (hover: none), (pointer: coarse), (max-width: 700px) {
+  .cursor-buddy {
+    display: none;
+  }
+}

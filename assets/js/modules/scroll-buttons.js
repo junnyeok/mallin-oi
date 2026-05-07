@@ -24,8 +24,20 @@
   - TOP / END
 ================================================= */
 
+let scrollFabCleanup = null;
+
+function cleanupScrollFabEvents() {
+  if (typeof scrollFabCleanup === 'function') {
+    scrollFabCleanup();
+    scrollFabCleanup = null;
+  }
+}
+
 function isMobileViewport() {
-  return window.innerWidth <= 700;
+  return (
+    window.matchMedia?.('(max-width: 700px)').matches ||
+    window.matchMedia?.('(hover: none) and (pointer: coarse)').matches
+  );
 }
 
 function getPageType() {
@@ -215,6 +227,8 @@ function updateSectionButtonState(btn, stateEl, activeOffset) {
 }
 
 export function initScrollButtons(options = {}) {
+  cleanupScrollFabEvents();
+
   const {
     topOffset = 60,
     bottomOffset = 240,
@@ -422,14 +436,23 @@ export function initScrollButtons(options = {}) {
 
     if (pageTypeNow === 'write' && bottomScrollEl) {
       const submitBtn = document.getElementById('writeSubmitBtn');
-      const targetEl = submitBtn || bottomScrollEl;
+      const writeNote = document.getElementById('writeNote');
 
-      const rect = targetEl.getBoundingClientRect();
-      const absoluteTop = window.pageYOffset + rect.top;
+      const targetEl = submitBtn || bottomScrollEl;
+      const targetRect = targetEl.getBoundingClientRect();
+
+      const noteRect = writeNote?.getBoundingClientRect?.() || null;
+      const contentBottom = noteRect
+        ? Math.max(targetRect.bottom, noteRect.bottom)
+        : targetRect.bottom;
+
+      const absoluteBottom = window.pageYOffset + contentBottom;
+
+      const extraBottomSpace = isMobileViewport() ? 96 : 64;
 
       const targetTop = Math.max(
         0,
-        absoluteTop - (window.innerHeight - rect.height - 24),
+        absoluteBottom - window.innerHeight + extraBottomSpace,
       );
 
       window.scrollTo({
@@ -485,16 +508,45 @@ export function initScrollButtons(options = {}) {
   }
 
   let resizeTimer = null;
+  let lastViewportWidth = window.innerWidth;
+
   function onResize() {
     if (resizeTimer) clearTimeout(resizeTimer);
 
     resizeTimer = setTimeout(() => {
+      const nextWidth = window.innerWidth;
+      const widthChanged = Math.abs(nextWidth - lastViewportWidth) > 40;
+
+      lastViewportWidth = nextWidth;
+
+      // 모바일 Safari/Chrome은 주소창 접힘/펼침만으로 resize가 자주 발생함.
+      // 폭 변화가 거의 없으면 버튼 재생성을 하지 않고 상태만 갱신한다.
+      if (isMobileViewport() && !widthChanged) {
+        updateState();
+        return;
+      }
+
       initScrollButtons(options);
-    }, 80);
+    }, 160);
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onResize);
+  window.addEventListener('resize', onResize, { passive: true });
+
+  scrollFabCleanup = () => {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    if (resizeTimer) {
+      clearTimeout(resizeTimer);
+      resizeTimer = null;
+    }
+
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResize);
+  };
 
   updateState();
 }

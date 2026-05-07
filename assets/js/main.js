@@ -25,6 +25,7 @@ async function loadCoreModules() {
   if (coreModules) return coreModules;
 
   const [
+    mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
     cursorBuddyModule,
@@ -59,6 +60,7 @@ async function loadCoreModules() {
     qnaBoardModule,
     studyCalendarModule,
   ] = await Promise.all([
+    import(withModuleVersion('./modules/mobile-stability.js')),
     import(withModuleVersion('./modules/site-version.js')),
     import(withModuleVersion('./modules/update-banner.js')),
     import(withModuleVersion('./modules/cursor-buddy.js')),
@@ -95,6 +97,7 @@ async function loadCoreModules() {
   ]);
 
   coreModules = {
+    mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
     cursorBuddyModule,
@@ -232,6 +235,7 @@ async function initPageModules(modules) {
       await runSafe('study calendar', async () => {
         initStudyCalendar();
       });
+      break;
 
     case 'posts-all':
       await runSafe('posts all', async () => {
@@ -278,13 +282,13 @@ async function initPageModules(modules) {
       await runSafe('post comments', async () => {
         await initPostComments();
       });
+      break;
 
     case 'write':
       await runSafe('write module', async () => {
         await initWrite();
       });
       break;
-
     case 'login':
       await runSafe('login module', async () => {
         initLogin();
@@ -356,6 +360,7 @@ async function initGlobalModules(modules) {
   if (globalInitialized) return;
 
   const {
+    mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
     cursorBuddyModule,
@@ -370,6 +375,8 @@ async function initGlobalModules(modules) {
     pickleStatusModule,
     pjaxRouterModule,
   } = modules;
+
+  const { initMobileStability } = mobileStabilityModule;
 
   const {
     getVersionChangeInfo,
@@ -391,6 +398,9 @@ async function initGlobalModules(modules) {
   const { initPjaxRouter } = pjaxRouterModule;
 
   applyVersionToStaticLinks(withAssetVersion);
+  await runSafe('mobile stability', async () => {
+    initMobileStability();
+  });
 
   await runSafe('site version check', async () => {
     const versionInfo = getVersionChangeInfo();
@@ -452,10 +462,12 @@ async function initGlobalModules(modules) {
       mainSelector: 'main',
       onAfterSwap: async () => {
         applyVersionToStaticLinks(withAssetVersion);
+        initMobileStability();
         await refreshLayoutState();
         await updateAuthUI();
         initServiceMenu();
         await initPageModules(modules);
+        initMobileStability();
       },
     });
   });
