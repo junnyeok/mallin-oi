@@ -44,30 +44,26 @@ function getTypeLabel(type) {
   return map[type] || '기타';
 }
 
-function getTypeCounts(todos = []) {
-  return todos.reduce(
-    (acc, todo) => {
-      const type = todo.type || 'etc';
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    },
-    { study: 0, workout: 0, etc: 0 },
-  );
-}
-
 function appendTypeBadges(root, todos = []) {
-  const counts = getTypeCounts(todos);
-
   const wrap = document.createElement('div');
   wrap.className = 'study-calendar-day__badges';
 
-  ['study', 'workout', 'etc'].forEach((type) => {
-    const count = counts[type] || 0;
-    if (count <= 0) return;
+  todos.forEach((todo) => {
+    const type = todo.type || 'etc';
+    const title = String(todo.text || '').trim();
+
+    if (!title) return;
 
     const badge = document.createElement('span');
     badge.className = `study-calendar-day__badge study-calendar-day__badge--${type}`;
-    badge.textContent = `${getTypeLabel(type)} ${count}`;
+
+    if (todo.done) {
+      badge.classList.add('is-done');
+    }
+
+    badge.textContent = title;
+    badge.title = title;
+
     wrap.append(badge);
   });
 
@@ -153,6 +149,30 @@ async function updateTodoDone({ todoId, done }) {
 
   if (error) {
     console.error('[study-calendar] updateTodoDone error:', error.message);
+    throw error;
+  }
+}
+
+async function updateTodoMemo({ todoId, memo }) {
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({ memo: memo || '' })
+    .eq('id', todoId);
+
+  if (error) {
+    console.error('[study-calendar] updateTodoMemo error:', error.message);
+    throw error;
+  }
+}
+
+async function updateTodoText({ todoId, text }) {
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({ todo_text: text })
+    .eq('id', todoId);
+
+  if (error) {
+    console.error('[study-calendar] updateTodoText error:', error.message);
     throw error;
   }
 }
@@ -344,7 +364,14 @@ function createDayButton({
   return button;
 }
 
-function renderTodoList({ selectedDateKey, store, onToggle, onDelete }) {
+function renderTodoList({
+  selectedDateKey,
+  store,
+  onToggle,
+  onDelete,
+  onTextChange,
+  onMemoChange,
+}) {
   const list = document.getElementById('studyTodoList');
   const empty = document.getElementById('studyTodoEmpty');
   const selectedDate = document.getElementById('studySelectedDate');
@@ -376,45 +403,6 @@ function renderTodoList({ selectedDateKey, store, onToggle, onDelete }) {
       onToggle(todo.id);
     });
 
-    const body = document.createElement('div');
-    body.className = 'study-todo-item__body';
-
-    const type = document.createElement('span');
-    type.className = 'study-todo-item__type';
-    type.textContent = getTypeLabel(todo.type);
-
-    const text = document.createElement('span');
-    text.className = 'study-todo-item__text';
-    text.textContent = todo.text;
-
-    body.append(type, text);
-
-    const memo = String(todo.memo || '').trim();
-
-    if (memo) {
-      const memoBox = document.createElement('div');
-      memoBox.className = 'study-todo-item__memo';
-
-      const memoText = document.createElement('p');
-      memoText.className = 'study-todo-item__memo-text';
-      memoText.textContent = memo;
-
-      const memoToggle = document.createElement('button');
-      memoToggle.type = 'button';
-      memoToggle.className = 'study-todo-item__memo-toggle';
-      memoToggle.textContent = '더보기';
-      memoToggle.setAttribute('aria-expanded', 'false');
-
-      memoToggle.addEventListener('click', () => {
-        const isExpanded = memoBox.classList.toggle('is-expanded');
-        memoToggle.textContent = isExpanded ? '접기' : '더보기';
-        memoToggle.setAttribute('aria-expanded', String(isExpanded));
-      });
-
-      memoBox.append(memoText, memoToggle);
-      body.append(memoBox);
-    }
-
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'study-todo-item__delete';
@@ -424,6 +412,138 @@ function renderTodoList({ selectedDateKey, store, onToggle, onDelete }) {
     deleteButton.addEventListener('click', () => {
       onDelete(todo.id);
     });
+
+    const body = document.createElement('div');
+    body.className = 'study-todo-item__body';
+
+    const type = document.createElement('span');
+    type.className = 'study-todo-item__type';
+    type.textContent = getTypeLabel(todo.type);
+
+    const text = document.createElement('input');
+    text.className = 'study-todo-item__text-input';
+    text.type = 'text';
+    text.value = todo.text;
+    text.setAttribute('aria-label', '할 일 제목 수정');
+
+    let textSaveTimer = null;
+    let lastSavedText = todo.text;
+
+    text.addEventListener('input', () => {
+      const nextText = text.value.trim();
+
+      window.clearTimeout(textSaveTimer);
+
+      textSaveTimer = window.setTimeout(async () => {
+        if (!nextText || nextText === lastSavedText) return;
+
+        try {
+          await onTextChange(todo.id, nextText);
+
+          lastSavedText = nextText;
+          todo.text = nextText;
+
+          checkbox.setAttribute('aria-label', `${nextText} 완료 처리`);
+          deleteButton.setAttribute('aria-label', `${nextText} 삭제`);
+        } catch (error) {
+          alert('제목 수정에 실패했어. 잠시 후 다시 시도해줘.');
+          text.value = lastSavedText;
+        }
+      }, 500);
+    });
+
+    text.addEventListener('blur', async () => {
+      window.clearTimeout(textSaveTimer);
+
+      const nextText = text.value.trim();
+
+      if (!nextText) {
+        text.value = lastSavedText;
+        return;
+      }
+
+      if (nextText === lastSavedText) return;
+
+      try {
+        await onTextChange(todo.id, nextText);
+
+        lastSavedText = nextText;
+        todo.text = nextText;
+
+        checkbox.setAttribute('aria-label', `${nextText} 완료 처리`);
+        deleteButton.setAttribute('aria-label', `${nextText} 삭제`);
+      } catch (error) {
+        alert('제목 수정에 실패했어. 잠시 후 다시 시도해줘.');
+        text.value = lastSavedText;
+      }
+    });
+
+    const memoBox = document.createElement('div');
+    memoBox.className = 'study-todo-item__memo';
+
+    const memoLabel = document.createElement('label');
+    memoLabel.className = 'study-todo-item__memo-label';
+    memoLabel.setAttribute('for', `studyTodoMemo-${todo.id}`);
+    memoLabel.textContent = '메모';
+
+    const memoInput = document.createElement('textarea');
+    memoInput.className = 'study-todo-item__memo-input';
+    memoInput.id = `studyTodoMemo-${todo.id}`;
+    memoInput.rows = 2;
+    memoInput.placeholder = '이 항목의 메모를 입력하세요.';
+    memoInput.value = todo.memo || '';
+
+    const memoStatus = document.createElement('span');
+    memoStatus.className = 'study-todo-item__memo-status';
+    memoStatus.setAttribute('aria-live', 'polite');
+
+    let memoSaveTimer = null;
+
+    memoInput.addEventListener('input', () => {
+      const nextMemo = memoInput.value;
+
+      todo.memo = nextMemo;
+      memoStatus.textContent = '저장 중...';
+
+      window.clearTimeout(memoSaveTimer);
+
+      memoSaveTimer = window.setTimeout(async () => {
+        try {
+          await onMemoChange(todo.id, nextMemo);
+          memoStatus.textContent = '저장됨';
+
+          window.setTimeout(() => {
+            if (memoStatus.textContent === '저장됨') {
+              memoStatus.textContent = '';
+            }
+          }, 1200);
+        } catch (error) {
+          memoStatus.textContent = '저장 실패';
+        }
+      }, 500);
+    });
+
+    memoInput.addEventListener('blur', async () => {
+      window.clearTimeout(memoSaveTimer);
+
+      const nextMemo = memoInput.value;
+
+      try {
+        await onMemoChange(todo.id, nextMemo);
+        memoStatus.textContent = nextMemo.trim() ? '저장됨' : '';
+
+        window.setTimeout(() => {
+          if (memoStatus.textContent === '저장됨') {
+            memoStatus.textContent = '';
+          }
+        }, 1200);
+      } catch (error) {
+        memoStatus.textContent = '저장 실패';
+      }
+    });
+
+    memoBox.append(memoLabel, memoInput, memoStatus);
+    body.append(type, text, memoBox);
 
     item.append(checkbox, body, deleteButton);
     list.append(item);
@@ -545,6 +665,8 @@ async function initPageCalendar() {
       store: state.store,
       onToggle: toggleTodo,
       onDelete: deleteTodo,
+      onTextChange: changeTodoText,
+      onMemoChange: changeTodoMemo,
     });
   }
 
@@ -599,6 +721,42 @@ async function initPageCalendar() {
     } catch (error) {
       alert('할 일 삭제에 실패했어. 잠시 후 다시 시도해줘.');
     }
+  }
+
+  async function changeTodoText(todoId, text) {
+    const todos = state.store[state.selectedDateKey] || [];
+    const target = todos.find((todo) => todo.id === todoId);
+
+    if (!target) return;
+
+    const nextText = String(text || '').trim();
+
+    if (!nextText) return;
+
+    await updateTodoText({
+      todoId,
+      text: nextText,
+    });
+
+    target.text = nextText;
+
+    renderPageCalendar(state);
+  }
+
+  async function changeTodoMemo(todoId, memo) {
+    const todos = state.store[state.selectedDateKey] || [];
+    const target = todos.find((todo) => todo.id === todoId);
+
+    if (!target) return;
+
+    const nextMemo = String(memo || '');
+
+    await updateTodoMemo({
+      todoId,
+      memo: nextMemo,
+    });
+
+    target.memo = nextMemo;
   }
 
   state.onSelect = selectDate;
