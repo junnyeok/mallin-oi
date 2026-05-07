@@ -67,6 +67,16 @@
                 <input type="date" id="historyDate" />
               </div>
 
+              <div class="history-search__field history-search__field--keyword">
+                <label for="historyKeyword">검색어</label>
+                <input
+                  type="search"
+                  id="historyKeyword"
+                  placeholder="게시물 제목, 댓글/답글 검색"
+                  autocomplete="off"
+                />
+              </div>
+
               <div class="history-search__actions">
                 <button
                   type="button"
@@ -86,42 +96,52 @@
             </p>
           </section>
 
-          <section class="history-tabs" aria-label="내역 구분">
-            <button
-              type="button"
-              class="history-tab is-active"
-              data-history-tab="all"
-            >
-              전체
-            </button>
-            <button type="button" class="history-tab" data-history-tab="pickle">
-              피클 내역
-            </button>
-            <button type="button" class="history-tab" data-history-tab="post">
-              내가 쓴 글
-            </button>
-            <button
-              type="button"
-              class="history-tab"
-              data-history-tab="comment"
-            >
-              내가 쓴 댓글/답글
-            </button>
-          </section>
-
-          <section
-            class="history-section"
-            data-history-panel="pickle"
-            id="historyPickleSection"
-          >
-            <div class="history-section__head">
-              <h2 class="history-section__title">피클 내역</h2>
-              <span class="history-section__count" id="historyPickleCount"
-                >0건</span
+          <div class="history-tabs-wrap">
+            <section class="history-tabs" aria-label="내역 구분">
+              <button
+                type="button"
+                class="history-tab is-active"
+                data-history-tab="all"
               >
-            </div>
-            <div id="historyPickleList" class="history-list"></div>
-          </section>
+                전체
+              </button>
+              <button
+                type="button"
+                class="history-tab"
+                data-history-tab="pickle"
+              >
+                피클 내역
+              </button>
+              <button type="button" class="history-tab" data-history-tab="post">
+                내가 쓴 글
+              </button>
+              <button
+                type="button"
+                class="history-tab"
+                data-history-tab="comment"
+              >
+                내가 쓴 댓글/답글
+              </button>
+            </section>
+
+            <section class="history-delete-bar" id="historyDeleteBar">
+              <div class="history-delete-bar__info">
+                <strong>선택 삭제</strong>
+                <span id="historySelectedCount">0개 선택됨</span>
+              </div>
+
+              <div class="history-delete-bar__actions">
+                <button
+                  type="button"
+                  class="history-btn history-btn--danger"
+                  id="historyDeleteSelectedBtn"
+                  disabled
+                >
+                  선택 삭제
+                </button>
+              </div>
+            </section>
+          </div>
 
           <section
             class="history-section"
@@ -149,6 +169,20 @@
               >
             </div>
             <div id="historyCommentList" class="history-list"></div>
+          </section>
+
+          <section
+            class="history-section"
+            data-history-panel="pickle"
+            id="historyPickleSection"
+          >
+            <div class="history-section__head">
+              <h2 class="history-section__title">피클 내역</h2>
+              <span class="history-section__count" id="historyPickleCount"
+                >0건</span
+              >
+            </div>
+            <div id="historyPickleList" class="history-list"></div>
           </section>
         </div>
       </main>

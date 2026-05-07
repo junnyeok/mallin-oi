@@ -1,7 +1,7 @@
 /* assets/css/main/calendar-study-main.css */
 
 /* =========================
-   Study Calendar Preview
+  Study Calendar Preview
 ========================= */
 
 .study-calendar-preview {
@@ -163,7 +163,7 @@
 }
 
 /* =========================
-   Study Calendar Page
+  Study Calendar Page
 ========================= */
 
 .study-calendar-page__head {
@@ -197,6 +197,7 @@
 .study-calendar-main-panel,
 .study-calendar-todo-panel {
   min-width: 0;
+  padding: var(--space-6);
 }
 
 .study-calendar-toolbar {
