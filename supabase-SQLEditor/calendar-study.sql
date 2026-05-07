@@ -9,6 +9,7 @@ create table if not exists public.study_calendar_todos (
   todo_date date not null,
   todo_type text not null default 'study',
   todo_text text not null,
+  memo text not null default '',
   is_done boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

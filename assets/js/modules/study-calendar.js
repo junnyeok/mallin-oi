@@ -44,10 +44,43 @@ function getTypeLabel(type) {
   return map[type] || '기타';
 }
 
+function getTypeCounts(todos = []) {
+  return todos.reduce(
+    (acc, todo) => {
+      const type = todo.type || 'etc';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    },
+    { study: 0, workout: 0, etc: 0 },
+  );
+}
+
+function appendTypeBadges(root, todos = []) {
+  const counts = getTypeCounts(todos);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'study-calendar-day__badges';
+
+  ['study', 'workout', 'etc'].forEach((type) => {
+    const count = counts[type] || 0;
+    if (count <= 0) return;
+
+    const badge = document.createElement('span');
+    badge.className = `study-calendar-day__badge study-calendar-day__badge--${type}`;
+    badge.textContent = `${getTypeLabel(type)} ${count}`;
+    wrap.append(badge);
+  });
+
+  if (wrap.children.length > 0) {
+    root.append(wrap);
+  }
+}
+
 function normalizeTodo(row) {
   return {
     id: row.id,
     text: row.todo_text,
+    memo: row.memo || '',
     done: Boolean(row.is_done),
     type: row.todo_type || 'etc',
     date: row.todo_date,
@@ -73,7 +106,9 @@ async function fetchUserTodos(userId) {
 
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select('id, user_id, todo_date, todo_type, todo_text, is_done, created_at')
+    .select(
+      'id, user_id, todo_date, todo_type, todo_text, memo, is_done, created_at',
+    )
     .eq('user_id', userId)
     .order('todo_date', { ascending: true })
     .order('created_at', { ascending: true });
@@ -86,7 +121,7 @@ async function fetchUserTodos(userId) {
   return groupTodosByDate(data || []);
 }
 
-async function insertTodo({ userId, dateKey, text, type }) {
+async function insertTodo({ userId, dateKey, text, memo, type }) {
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .insert({
@@ -94,9 +129,12 @@ async function insertTodo({ userId, dateKey, text, type }) {
       todo_date: dateKey,
       todo_type: type,
       todo_text: text,
+      memo: memo || '',
       is_done: false,
     })
-    .select('id, user_id, todo_date, todo_type, todo_text, is_done, created_at')
+    .select(
+      'id, user_id, todo_date, todo_type, todo_text, memo, is_done, created_at',
+    )
     .single();
 
   if (error) {
@@ -256,13 +294,7 @@ async function renderPreviewCalendar() {
     number.textContent = String(item.date.getDate());
 
     dayEl.append(number);
-
-    if (todos.length > 0) {
-      const dot = document.createElement('span');
-      dot.className = 'study-calendar-day__dot';
-      dot.setAttribute('aria-label', `할 일 ${todos.length}개 있음`);
-      dayEl.append(dot);
-    }
+    appendTypeBadges(dayEl, todos);
 
     grid.append(dayEl);
   });
@@ -303,13 +335,7 @@ function createDayButton({
   number.textContent = String(date.getDate());
 
   button.append(number);
-
-  if (todos.length > 0) {
-    const count = document.createElement('span');
-    count.className = 'study-calendar-day__count';
-    count.textContent = String(todos.length);
-    button.append(count);
-  }
+  appendTypeBadges(button, todos);
 
   button.addEventListener('click', () => {
     onSelect(dateKey);
@@ -363,6 +389,32 @@ function renderTodoList({ selectedDateKey, store, onToggle, onDelete }) {
 
     body.append(type, text);
 
+    const memo = String(todo.memo || '').trim();
+
+    if (memo) {
+      const memoBox = document.createElement('div');
+      memoBox.className = 'study-todo-item__memo';
+
+      const memoText = document.createElement('p');
+      memoText.className = 'study-todo-item__memo-text';
+      memoText.textContent = memo;
+
+      const memoToggle = document.createElement('button');
+      memoToggle.type = 'button';
+      memoToggle.className = 'study-todo-item__memo-toggle';
+      memoToggle.textContent = '더보기';
+      memoToggle.setAttribute('aria-expanded', 'false');
+
+      memoToggle.addEventListener('click', () => {
+        const isExpanded = memoBox.classList.toggle('is-expanded');
+        memoToggle.textContent = isExpanded ? '접기' : '더보기';
+        memoToggle.setAttribute('aria-expanded', String(isExpanded));
+      });
+
+      memoBox.append(memoText, memoToggle);
+      body.append(memoBox);
+    }
+
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'study-todo-item__delete';
@@ -414,9 +466,11 @@ function renderPageLoginRequired() {
   const monthLabel = document.getElementById('studyCalendarMonthLabel');
 
   if (todoForm) {
-    todoForm.querySelectorAll('input, select, button').forEach((el) => {
-      el.disabled = true;
-    });
+    todoForm
+      .querySelectorAll('input, select, textarea, button')
+      .forEach((el) => {
+        el.disabled = true;
+      });
   }
 
   if (todoList) {
@@ -468,8 +522,11 @@ async function initPageCalendar() {
   const form = document.getElementById('studyTodoForm');
   const input = document.getElementById('studyTodoInput');
   const typeSelect = document.getElementById('studyTodoType');
+  const memoInput = document.getElementById('studyTodoMemo');
 
-  if (!prevBtn || !nextBtn || !form || !input || !typeSelect) return;
+  if (!prevBtn || !nextBtn || !form || !input || !typeSelect || !memoInput) {
+    return;
+  }
 
   const today = new Date();
 
@@ -570,6 +627,7 @@ async function initPageCalendar() {
     event.preventDefault();
 
     const text = input.value.trim();
+    const memo = memoInput.value.trim();
     const type = typeSelect.value || 'etc';
 
     if (!text) {
@@ -582,6 +640,7 @@ async function initPageCalendar() {
         userId: state.userId,
         dateKey: state.selectedDateKey,
         text,
+        memo,
         type,
       });
 
@@ -589,6 +648,7 @@ async function initPageCalendar() {
       state.store[state.selectedDateKey] = [...currentTodos, nextTodo];
 
       input.value = '';
+      memoInput.value = '';
       input.focus();
 
       renderAll();
@@ -618,6 +678,9 @@ function bindPreviewLinkLoginGuard() {
       confirmText: '로그인하러 가기',
       cancelText: '닫기',
     });
+
+    saveRedirect(window.location.pathname + window.location.search);
+    window.location.href = loginHref();
   });
 }
 

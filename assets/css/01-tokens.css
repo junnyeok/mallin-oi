@@ -32,6 +32,14 @@ var()로 쓴다. */
   --color-text-sub: #666666;
   --color-border: #d9d9d9;
 
+  /* Study Calendar Category Colors */
+  --study-category-study-bg: #e7f6ff;
+  --study-category-study-text: #23637f;
+  --study-category-workout-bg: #eaffd7;
+  --study-category-workout-text: #3e6f1f;
+  --study-category-etc-bg: #fff1d1;
+  --study-category-etc-text: #8a5a00;
+
   /* Default Theme = home */
   --color-primary: var(--theme-home);
   --color-primary-sub: var(--theme-home-sub);
