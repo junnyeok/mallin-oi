@@ -185,6 +185,11 @@ begin
     v_name := 'lofi 말린오이 BGM';
     v_category := 'bgm';
 
+  elsif p_item_id = 'bgm-reggae-01' then
+    v_price := 326;
+    v_name := '레게 말린오이 BGM';
+    v_category := 'bgm';
+
   elsif p_item_id = 'emo-eat-01' then
     v_price := 220;
     v_name := '먹방오이 이모티콘팩';
@@ -728,6 +733,9 @@ begin
   elsif p_item_id = 'bgm-cucumber-01' then
     null;
 
+  elsif p_item_id = 'bgm-reggae-01' then
+    null;
+
   elsif p_item_id = 'cha-effects-cucumberheart-01' then
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -847,6 +855,8 @@ begin
         then '아보카도의 산책 BGM 구매가 완료됐어. 393피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-cucumber-01'
         then 'lofi 말린오이 BGM 구매가 완료됐어. 382피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-reggae-01'
+        then '레게 말린오이 BGM 구매가 완료됐어. 326피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-01'

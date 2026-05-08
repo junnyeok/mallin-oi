@@ -54,6 +54,15 @@ export const AVOCADO_SUNSET_BGM_PREVIEW = [
   },
 ];
 
+export const REGGAE_CUCUMBER_BGM_PREVIEW = [
+  {
+    code: 'bgm-reggae',
+    label: '레게 말린오이 BGM',
+    imagePath: withAssetVersion('./images/BGM/reggae-cucumber.png'),
+    displayOrder: 1,
+  },
+];
+
 export const LOFI_CUCUMBER_BGM_PREVIEW = [
   {
     code: 'bgm-lofi-cucumber',
@@ -135,6 +144,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/avocado-sunset.png'),
     isDefault: false,
     displayOrder: 7,
+  },
+  {
+    id: 'mallin-oi-reggae',
+    storeItemId: 'bgm-reggae-01',
+    title: '레게 말린오이 BGM',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/mallin-oi_reggae.mp3'),
+    coverPath: withAssetVersion('./images/BGM/reggae-cucumber.png'),
+    isDefault: false,
+    displayOrder: 8,
   },
 ];
 
@@ -432,6 +451,22 @@ export function getProfileBackgroundByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'bgm-reggae-01',
+    name: '레게 말린오이 BGM',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🇯🇲🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/reggae-cucumber.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/mallin-oi_reggae.mp3'),
+    price: 326,
+    state: '판매 중',
+    description: '주인장은 레게도 좋아해.',
+    detailDescription:
+      '쌈바레게 BGM이야. <br>(구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
+    previewImages: REGGAE_CUCUMBER_BGM_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'emo-moved-01',
     name: '감동/감격오이 이모티콘팩',
