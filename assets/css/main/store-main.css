@@ -1209,4 +1209,24 @@
     height: 40px;
     padding: 0 12px;
   }
+
+  .study-todo-form__select {
+    order: 1;
+  }
+
+  .study-todo-form__input {
+    order: 2;
+  }
+
+  .study-todo-form__memo {
+    order: 3;
+  }
+
+  .study-todo-form__close {
+    order: 4;
+  }
+
+  .study-todo-form__button {
+    order: 5;
+  }
 }

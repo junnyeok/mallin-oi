@@ -478,8 +478,15 @@ function renderTodoList({
       }
     });
 
+    const memoToggle = document.createElement('button');
+    memoToggle.type = 'button';
+    memoToggle.className = 'study-todo-item__memo-toggle';
+    memoToggle.textContent = '펼치기';
+    memoToggle.setAttribute('aria-expanded', 'false');
+
     const memoBox = document.createElement('div');
     memoBox.className = 'study-todo-item__memo';
+    memoBox.hidden = true;
 
     const memoLabel = document.createElement('label');
     memoLabel.className = 'study-todo-item__memo-label';
@@ -496,6 +503,18 @@ function renderTodoList({
     const memoStatus = document.createElement('span');
     memoStatus.className = 'study-todo-item__memo-status';
     memoStatus.setAttribute('aria-live', 'polite');
+
+    memoToggle.addEventListener('click', () => {
+      const willOpen = memoBox.hidden;
+
+      memoBox.hidden = !willOpen;
+      memoToggle.textContent = willOpen ? '접기' : '펼치기';
+      memoToggle.setAttribute('aria-expanded', String(willOpen));
+
+      if (willOpen) {
+        memoInput.focus();
+      }
+    });
 
     let memoSaveTimer = null;
 
@@ -543,7 +562,7 @@ function renderTodoList({
     });
 
     memoBox.append(memoLabel, memoInput, memoStatus);
-    body.append(type, text, memoBox);
+    body.append(type, text, memoToggle, memoBox);
 
     item.append(checkbox, body, deleteButton);
     list.append(item);
@@ -648,6 +667,51 @@ async function initPageCalendar() {
     return;
   }
 
+  const mobileTodoFormQuery = window.matchMedia('(max-width: 640px)');
+
+  const formToggleButton = document.createElement('button');
+  formToggleButton.type = 'button';
+  formToggleButton.className = 'study-todo-form-toggle';
+  formToggleButton.textContent = '할 일 추가';
+  formToggleButton.setAttribute('aria-expanded', 'false');
+  formToggleButton.setAttribute('aria-controls', 'studyTodoForm');
+
+  form.before(formToggleButton);
+
+  const formCloseButton = document.createElement('button');
+  formCloseButton.type = 'button';
+  formCloseButton.className = 'study-todo-form__close';
+  formCloseButton.textContent = '접기';
+
+  form.append(formCloseButton);
+
+  function openMobileTodoForm() {
+    form.classList.add('is-open');
+    formToggleButton.setAttribute('aria-expanded', 'true');
+
+    window.setTimeout(() => {
+      input.focus();
+    }, 0);
+  }
+
+  function closeMobileTodoForm() {
+    form.classList.remove('is-open');
+    formToggleButton.setAttribute('aria-expanded', 'false');
+  }
+
+  formToggleButton.addEventListener('click', () => {
+    if (form.classList.contains('is-open')) {
+      closeMobileTodoForm();
+      return;
+    }
+
+    openMobileTodoForm();
+  });
+
+  formCloseButton.addEventListener('click', () => {
+    closeMobileTodoForm();
+  });
+
   const today = new Date();
 
   const state = {
@@ -677,6 +741,10 @@ async function initPageCalendar() {
     state.viewDate = new Date(year, month - 1, 1);
 
     renderAll();
+
+    if (mobileTodoFormQuery.matches) {
+      closeMobileTodoForm();
+    }
   }
 
   async function toggleTodo(todoId) {
@@ -807,9 +875,14 @@ async function initPageCalendar() {
 
       input.value = '';
       memoInput.value = '';
-      input.focus();
 
       renderAll();
+
+      if (mobileTodoFormQuery.matches) {
+        closeMobileTodoForm();
+      } else {
+        input.focus();
+      }
     } catch (error) {
       alert('할 일 추가에 실패했어. 잠시 후 다시 시도해줘.');
     }

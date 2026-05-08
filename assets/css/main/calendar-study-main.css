@@ -670,7 +670,7 @@
 
 .study-todo-item__memo-input {
   width: 100%;
-  min-height: 100px;
+  min-height: 150px;
   max-height: 350px;
 }
 
@@ -738,7 +738,137 @@
 
   .study-todo-item__memo-input {
     width: 100%;
-    min-height: 70px;
+    min-height: 150px;
     max-height: 250px;
+  }
+}
+
+/* =========================
+   Study Calendar Mobile UX Patch
+   - 모바일 일정 제목 말줄임표 제거
+   - 모바일 할 일 추가 폼 접힘
+   - 할 일 메모 기본 접힘
+========================= */
+
+.study-todo-form-toggle {
+  display: none;
+}
+
+.study-todo-form__close {
+  display: none;
+}
+
+.study-todo-item__memo-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin-top: var(--space-8);
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.study-todo-item__memo-toggle:hover {
+  background: var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.study-todo-item__memo[hidden] {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .study-calendar-grid--page .study-calendar-day__badge {
+    text-overflow: clip;
+  }
+
+  .study-todo-form-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    margin: var(--space-12) 0 var(--space-12);
+    padding: 0 var(--space-16);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-btn);
+    background: var(--color-primary);
+    color: var(--color-surface);
+    font-size: var(--text-small);
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .study-todo-form-toggle:hover {
+    opacity: 0.82;
+  }
+
+  .study-todo-form {
+    display: none;
+  }
+
+  .study-todo-form.is-open {
+    display: grid;
+  }
+
+  .study-todo-form__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    grid-column: 1 / -1;
+    padding: 0 var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-btn);
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    font-size: var(--text-small);
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .study-todo-form__close:hover {
+    color: var(--color-text);
+    background: var(--color-primary-sub);
+  }
+
+  .study-todo-list {
+    gap: var(--space-8);
+  }
+
+  .study-todo-item__memo-toggle {
+    width: 100%;
+  }
+
+  .study-todo-item__memo-input {
+    min-height: 90px;
+    max-height: 220px;
+  }
+
+  .study-todo-form__select {
+    order: 1;
+  }
+
+  .study-todo-form__input {
+    order: 2;
+  }
+
+  .study-todo-form__memo {
+    order: 3;
+  }
+
+  .study-todo-form__button {
+    order: 4;
+  }
+
+  .study-todo-form__close {
+    order: 5;
   }
 }
