@@ -9,7 +9,7 @@
 .profile-card {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
   max-width: 760px;
   background: var(--color-surface);
@@ -28,6 +28,7 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  border-radius: inherit;
   pointer-events: none;
   opacity: 0;
 }
@@ -39,6 +40,47 @@
 .profile-card > * {
   position: relative;
   z-index: 1;
+}
+
+/* =========================
+  PROFILE FRAME
+  - 장착한 계정에게만 표시
+========================= */
+
+body[data-page='profile'] .profile-card.has-profile-frame {
+  --profile-frame-top: -6%;
+  --profile-frame-right: -8%;
+  --profile-frame-bottom: -5.5%;
+  --profile-frame-left: -8%;
+}
+
+body[data-page='profile'] .profile-card.has-profile-frame::after {
+  content: '';
+  position: absolute;
+  top: var(--profile-frame-top);
+  right: var(--profile-frame-right);
+  bottom: var(--profile-frame-bottom);
+  left: var(--profile-frame-left);
+  z-index: 3;
+  background-image: var(--profile-frame-desktop);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@media (max-width: 700px) {
+  body[data-page='profile'] .profile-card.has-profile-frame {
+    --profile-frame-top: -7.8%;
+    --profile-frame-right: -23.3%;
+    --profile-frame-bottom: -7%;
+    --profile-frame-left: -23.3%;
+  }
+
+  body[data-page='profile'] .profile-card.has-profile-frame::after {
+    background-image: var(--profile-frame-mobile, var(--profile-frame-desktop));
+  }
 }
 
 .profile-hero {

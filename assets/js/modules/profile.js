@@ -36,6 +36,8 @@ const [
     getSkinParentRequirementBySkinCode,
     getCharacterEffectByItemId,
     getProfileBackgroundByItemId,
+    PROFILE_FRAME_CATALOG,
+    getProfileFrameByItemId,
   },
   { emitEquipmentChanged },
 ] = await Promise.all([
@@ -442,6 +444,7 @@ async function loadProfileRow(userId) {
         'created_at',
         'updated_at',
         'equipped_profile_background_item_id',
+        'equipped_profile_frame_item_id',
       ].join(', '),
     )
     .eq('id', userId)
@@ -455,7 +458,7 @@ async function loadPublicProfileRow(userId) {
   const { data, error } = await supabase
     .from('public_profiles')
     .select(
-      'id, nickname, bio, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id, equipped_profile_background_item_id, created_at, updated_at',
+      'id, nickname, bio, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id, equipped_profile_background_item_id, equipped_profile_frame_item_id, created_at, updated_at',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -1465,6 +1468,189 @@ function renderProfileBackgroundSection({
   });
 }
 
+function setProfileFrameStyle(targetEl, frameItemId = '') {
+  if (!targetEl) return;
+
+  const frame = getProfileFrameByItemId(frameItemId);
+
+  if (!frame) {
+    targetEl.classList.remove('has-profile-frame');
+    targetEl.style.removeProperty('--profile-frame-desktop');
+    targetEl.style.removeProperty('--profile-frame-mobile');
+    return;
+  }
+
+  targetEl.classList.add('has-profile-frame');
+  targetEl.style.setProperty(
+    '--profile-frame-desktop',
+    `url("${frame.pcImagePath}")`,
+  );
+  targetEl.style.setProperty(
+    '--profile-frame-mobile',
+    `url("${frame.mobileImagePath || frame.pcImagePath}")`,
+  );
+}
+
+function applyProfileFrame(profileRow = {}) {
+  const equippedFrameItemId = String(
+    profileRow?.equipped_profile_frame_item_id || '',
+  ).trim();
+
+  document.querySelectorAll('.profile-card').forEach((cardEl) => {
+    if (cardEl.classList.contains('inventory-card')) return;
+    setProfileFrameStyle(cardEl, equippedFrameItemId);
+  });
+
+  document
+    .querySelectorAll('.inventory-profile-preview')
+    .forEach((previewEl) => {
+      setProfileFrameStyle(previewEl, equippedFrameItemId);
+    });
+}
+
+function renderProfileFrameCard(item, equippedFrameItemId = '') {
+  const isOwned = item?.isOwned === true;
+  const isEquipped =
+    String(item?.itemId || '').trim() ===
+    String(equippedFrameItemId || '').trim();
+
+  const detailHref = getStoreItemDetailHref(item.itemId);
+
+  const metaText = !isOwned
+    ? '미보유 · 클릭하면 구매페이지로 이동'
+    : isEquipped
+      ? '현재 장착 중 · 클릭하면 해제'
+      : '클릭해서 장착';
+
+  return `
+    <button
+      type="button"
+      class="profile-character-card profile-frame-card ${isEquipped ? 'is-equipped' : ''} ${!isOwned ? 'is-locked' : ''}"
+      data-profile-frame-item-id="${escapeHtml(item.itemId)}"
+      data-owned="${isOwned ? 'true' : 'false'}"
+      data-store-href="${escapeHtml(detailHref)}"
+    >
+      <div class="profile-background-card__thumb">
+        <img
+          class="profile-background-card__image"
+          src="${escapeHtml(item.thumbImagePath || item.pcImagePath || '')}"
+          alt="${escapeHtml(item.name || '프로필테두리')}"
+        />
+      </div>
+
+      <div class="profile-character-card__name">
+        ${escapeHtml(item.name || '프로필테두리')}
+      </div>
+
+      <div class="profile-character-card__meta ${!isOwned ? 'is-locked' : ''}">
+        ${metaText}
+      </div>
+    </button>
+  `;
+}
+
+function renderProfileFrameSection({
+  isOwnProfile = false,
+  profileRow = null,
+  ownedStoreItemIds = new Set(),
+}) {
+  applyProfileFrame(profileRow);
+
+  const wrapEl = $('profileFrameWrap');
+  const listEl = $('profileFrameList');
+
+  if (!wrapEl || !listEl) return;
+
+  wrapEl.hidden = !isOwnProfile;
+  if (!isOwnProfile) return;
+
+  const equippedFrameItemId = String(
+    profileRow?.equipped_profile_frame_item_id || '',
+  ).trim();
+
+  const rows = PROFILE_FRAME_CATALOG.map((item) => ({
+    ...item,
+    isOwned: ownedStoreItemIds.has(item.itemId),
+  })).sort(
+    (a, b) => Number(a?.displayOrder || 999) - Number(b?.displayOrder || 999),
+  );
+
+  const sortedRows = sortEquippedItemFirst(
+    rows,
+    (item) =>
+      String(item?.itemId || '').trim() === String(equippedFrameItemId).trim(),
+  );
+
+  listEl.innerHTML = sortedRows
+    .map((item) => renderProfileFrameCard(item, equippedFrameItemId))
+    .join('');
+
+  applyInventoryLimitByIds('profileFrameWrap', 'profileFrameList');
+
+  Array.from(listEl.querySelectorAll('[data-profile-frame-item-id]')).forEach(
+    (button) => {
+      button.addEventListener('click', async () => {
+        const isOwned = button.dataset.owned === 'true';
+        const storeHref = String(button.dataset.storeHref || '').trim();
+        const frameItemId = String(
+          button.dataset.profileFrameItemId || '',
+        ).trim();
+
+        if (!isOwned) {
+          if (storeHref) window.location.href = storeHref;
+          return;
+        }
+
+        const isEquipped =
+          frameItemId ===
+          String(profileRow?.equipped_profile_frame_item_id || '').trim();
+
+        const nextFrameItemId = isEquipped ? null : frameItemId;
+
+        setMsg(
+          isEquipped ? '프로필테두리 해제 중...' : '프로필테두리 장착 중...',
+        );
+
+        try {
+          await updateProfileRow(profileRow.id, {
+            equipped_profile_frame_item_id: nextFrameItemId,
+            updated_at: new Date().toISOString(),
+          });
+
+          profileRow = {
+            ...profileRow,
+            equipped_profile_frame_item_id: nextFrameItemId,
+          };
+
+          applyProfileFrame(profileRow);
+
+          renderProfileFrameSection({
+            isOwnProfile,
+            profileRow,
+            ownedStoreItemIds,
+          });
+
+          setMsg(
+            isEquipped ? '프로필테두리 해제 완료!' : '프로필테두리 장착 완료!',
+            'green',
+          );
+
+          emitEquipmentChanged({
+            userId: profileRow.id,
+            source: 'profile-frame',
+            changed: ['profileFrame'],
+          });
+
+          window.dispatchEvent(new Event('auth-changed'));
+        } catch (error) {
+          console.error('[profile] equip profile frame failed:', error);
+          setMsg('프로필테두리 저장 중 오류가 발생했어.', 'red');
+        }
+      });
+    },
+  );
+}
+
 function renderBgmCard(track, selectedTrackIds = new Set()) {
   const isOwned = track?.is_owned !== false;
   const isSelected = selectedTrackIds.has(String(track?.id || '').trim());
@@ -2414,6 +2600,12 @@ export async function initProfile() {
   });
 
   renderProfileBackgroundSection({
+    isOwnProfile,
+    profileRow,
+    ownedStoreItemIds,
+  });
+
+  renderProfileFrameSection({
     isOwnProfile,
     profileRow,
     ownedStoreItemIds,

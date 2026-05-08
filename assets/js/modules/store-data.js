@@ -450,7 +450,61 @@ export function getProfileBackgroundByItemId(itemId = '') {
   );
 }
 
+export const PROFILE_FRAME_RAINBOW_PREVIEW = [
+  {
+    code: 'BF-01-pc',
+    label: 'PC 버전 미리보기',
+    imagePath: withAssetVersion('./images/profile-frame/rainbow.png'),
+    displayOrder: 1,
+  },
+  {
+    code: 'BF-01-mobile',
+    label: '모바일 버전 미리보기',
+    imagePath: withAssetVersion('./images/profile-frame/rainbow-mobile.png'),
+    displayOrder: 2,
+  },
+];
+
+export const PROFILE_FRAME_CATALOG = [
+  {
+    itemId: 'BF-01',
+    name: '무지개 프로필 테두리',
+    pcImagePath: withAssetVersion('./images/profile-frame/rainbow.png'),
+    mobileImagePath: withAssetVersion(
+      './images/profile-frame/rainbow-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion('./images/profile-frame/rainbow.png'),
+    displayOrder: 1,
+  },
+];
+
+export function getProfileFrameByItemId(itemId = '') {
+  const safeItemId = String(itemId || '').trim();
+
+  return (
+    PROFILE_FRAME_CATALOG.find(
+      (item) => String(item?.itemId || '').trim() === safeItemId,
+    ) || null
+  );
+}
+
 export const STORE_ITEMS = [
+  {
+    id: 'BF-01',
+    name: '무지개 프로필 테두리',
+    category: 'profile',
+    itemType: 'profile-frame',
+    badge: '프로필테두리',
+    icon: '🌈',
+    thumbImagePath: withAssetVersion('./images/profile-frame/rainbow.png'),
+    price: 389,
+    state: '판매 중',
+    description: '프로필을 꾸밀 수 있는 무지개 테두리야.',
+    detailDescription:
+      '프로필을 꾸밀 수 있는 무지개 테두리야.<br>구매하면 인벤토리의 프로필테두리 항목에 추가되고, 장착하면 프로필카드 테두리에 표시돼.',
+    previewImages: PROFILE_FRAME_RAINBOW_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'bgm-reggae-01',
     name: '레게 말린오이 BGM',

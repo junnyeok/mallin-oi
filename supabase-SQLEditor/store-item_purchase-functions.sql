@@ -94,6 +94,11 @@ begin
     v_required_character_code := 'char-teto-carrot';
     v_required_character_name := '테토당근';
 
+  elsif p_item_id = 'BF-01' then
+    v_price := 389;
+    v_name := '무지개 프로필 테두리';
+    v_category := 'profile';
+
   elsif p_item_id = 'skin-eggpotato-01' then
     v_price := 0;
     v_name := '찐감자 스킨';
@@ -740,6 +745,10 @@ begin
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'BF-01' then
+    -- 프로필테두리는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'BG-01' then
     -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -859,6 +868,8 @@ begin
         then '레게 말린오이 BGM 구매가 완료됐어. 326피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BF-01'
+        then '무지개 프로필 테두리 구매가 완료됐어. 389피클이 차감됐고 프로필테두리 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-01'
         then '중앙경찰학교 카툰배경 구매가 완료됐어. 438피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-02'

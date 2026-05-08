@@ -226,13 +226,18 @@ function bindStoreItemBgmPreview(item) {
   );
 }
 
-function getCategoryLabel(category) {
+function getCategoryLabel(category, item = null) {
   if (category === 'emoticon') return '이모티콘';
   if (category === 'character') return '캐릭터';
   if (category === 'skin') return '스킨';
   if (category === 'bgm') return 'BGM';
   if (category === 'cha-effects') return '캐릭터효과';
-  if (category === 'profile') return '프로필배경';
+
+  if (category === 'profile') {
+    if (item?.itemType === 'profile-frame') return '프로필테두리';
+    return '프로필배경';
+  }
+
   return '기타';
 }
 
@@ -732,6 +737,7 @@ function renderStoreItemPreview(item, options = {}) {
   const isBgmPreview = item?.category === 'bgm';
   const isCharacterEffectPreview = item?.category === 'cha-effects';
   const isProfileBackgroundPreview = item?.itemType === 'profile-background';
+  const isProfileFramePreview = item?.itemType === 'profile-frame';
 
   if (isCharacterEffectPreview) {
     const preview = previews[0];
@@ -813,7 +819,7 @@ function renderStoreItemPreview(item, options = {}) {
     `;
   }
 
-  if (isProfileBackgroundPreview) {
+  if (isProfileBackgroundPreview || isProfileFramePreview) {
     return `
       <div class="store-item-preview__profile-background">
         ${previews

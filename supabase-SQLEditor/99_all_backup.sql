@@ -16300,3 +16300,75 @@ to authenticated
 using ((select auth.uid()) = author_id);
 
 -- 누적본 쿼리 5/6
+
+alter table public.study_calendar_todos
+add column if not exists memo text not null default '';
+
+-- 누적본 쿼리 5/7
+
+-- =========================================
+-- 프로필테두리 장착 컬럼 / 공개 프로필 / 소유권 검증
+-- 2026-05-08
+-- =========================================
+
+alter table public.profiles
+add column if not exists equipped_profile_frame_item_id text;
+
+comment on column public.profiles.equipped_profile_frame_item_id
+is '현재 장착한 프로필테두리 상점 아이템 ID';
+
+drop view if exists public.public_profiles;
+
+create view public.public_profiles as
+select
+  id,
+  nickname,
+  bio,
+  profile_image_url,
+  equipped_character_image_url,
+  equipped_character_effect_item_id,
+  equipped_profile_background_item_id,
+  equipped_profile_frame_item_id,
+  created_at,
+  updated_at
+from public.profiles;
+
+grant select on public.public_profiles to anon, authenticated;
+
+create or replace function public.enforce_equipped_profile_frame_ownership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(trim(new.equipped_profile_frame_item_id), '') = '' then
+    new.equipped_profile_frame_item_id := null;
+    return new;
+  end if;
+
+  if exists (
+    select 1
+    from public.user_store_items usi
+    where usi.user_id = new.id
+      and usi.item_id = new.equipped_profile_frame_item_id
+      and usi.item_id in ('BF-01')
+  ) then
+    return new;
+  end if;
+
+  new.equipped_profile_frame_item_id := null;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_equipped_profile_frame_ownership
+on public.profiles;
+
+create trigger trg_enforce_equipped_profile_frame_ownership
+before insert or update of equipped_profile_frame_item_id
+on public.profiles
+for each row
+execute function public.enforce_equipped_profile_frame_ownership();
+
+-- 누적본쿼리 5/8
