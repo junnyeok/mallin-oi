@@ -872,3 +872,22 @@
     order: 5;
   }
 }
+
+/* =========================
+   Study Todo Memo Auto Height
+   - 메모 내용 길이에 맞춰 textarea와 카드 높이 자동 확장
+========================= */
+
+.study-todo-item__memo-input {
+  min-height: 90px;
+  max-height: none;
+  overflow: hidden;
+  resize: none;
+}
+
+@media (max-width: 640px) {
+  .study-todo-item__memo-input {
+    min-height: 90px;
+    max-height: none;
+  }
+}

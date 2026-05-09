@@ -44,6 +44,13 @@ function getTypeLabel(type) {
   return map[type] || '기타';
 }
 
+function autoResizeTextarea(textarea) {
+  if (!textarea) return;
+
+  textarea.style.height = 'auto';
+  textarea.style.height = `${textarea.scrollHeight + 2}px`;
+}
+
 function appendTypeBadges(root, todos = []) {
   const wrap = document.createElement('div');
   wrap.className = 'study-calendar-day__badges';
@@ -499,6 +506,7 @@ function renderTodoList({
     memoInput.rows = 2;
     memoInput.placeholder = '이 항목의 메모를 입력하세요.';
     memoInput.value = todo.memo || '';
+    autoResizeTextarea(memoInput);
 
     const memoStatus = document.createElement('span');
     memoStatus.className = 'study-todo-item__memo-status';
@@ -512,13 +520,18 @@ function renderTodoList({
       memoToggle.setAttribute('aria-expanded', String(willOpen));
 
       if (willOpen) {
-        memoInput.focus();
+        window.requestAnimationFrame(() => {
+          autoResizeTextarea(memoInput);
+          memoInput.focus();
+        });
       }
     });
 
     let memoSaveTimer = null;
 
     memoInput.addEventListener('input', () => {
+      autoResizeTextarea(memoInput);
+
       const nextMemo = memoInput.value;
 
       todo.memo = nextMemo;
@@ -544,6 +557,7 @@ function renderTodoList({
 
     memoInput.addEventListener('blur', async () => {
       window.clearTimeout(memoSaveTimer);
+      autoResizeTextarea(memoInput);
 
       const nextMemo = memoInput.value;
 
