@@ -11,6 +11,91 @@ import {
 const TABLE_NAME = 'study_calendar_todos';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+const CATEGORY_TABLE_NAME = 'study_calendar_categories';
+
+const DEFAULT_CATEGORIES = [
+  {
+    name: '공부',
+    slug: 'study',
+    color: '#e7f6ff',
+    is_default: true,
+    sort_order: 10,
+  },
+  {
+    name: '운동',
+    slug: 'workout',
+    color: '#eaffd7',
+    is_default: true,
+    sort_order: 20,
+  },
+  {
+    name: '기타',
+    slug: 'etc',
+    color: '#fff1d1',
+    is_default: true,
+    sort_order: 30,
+  },
+];
+
+const CATEGORY_COLOR_PRESETS = [
+  '#eaffd7',
+  '#d8fff2',
+  '#e7f6ff',
+  '#fff6bf',
+  '#ffe3c2',
+  '#ffe0ef',
+  '#eadfff',
+  '#eeeeee',
+];
+
+function normalizeCategoryName(name) {
+  return String(name || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 20);
+}
+
+function normalizeColor(color) {
+  const nextColor = String(color || '').trim();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(nextColor)) {
+    return nextColor.toLowerCase();
+  }
+
+  return '#eaffd7';
+}
+
+function getCategoryTextColor(bgColor) {
+  const color = normalizeColor(bgColor).replace('#', '');
+  const r = parseInt(color.slice(0, 2), 16);
+  const g = parseInt(color.slice(2, 4), 16);
+  const b = parseInt(color.slice(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness > 170 ? '#111111' : '#ffffff';
+}
+
+function getFallbackCategory(categories = []) {
+  return (
+    categories.find((category) => category.slug === 'etc') ||
+    categories[0] ||
+    DEFAULT_CATEGORIES[2]
+  );
+}
+
+function getCategoryByTodo(todo, categories = []) {
+  return (
+    categories.find((category) => category.id === todo.categoryId) ||
+    categories.find((category) => category.slug === todo.type) ||
+    getFallbackCategory(categories)
+  );
+}
+
+function getTypeLabel(type, categories = []) {
+  const category = categories.find((item) => item.slug === type);
+  return category?.name || '기타';
+}
+
 function pad(value) {
   return String(value).padStart(2, '0');
 }
@@ -34,16 +119,6 @@ function getReadableDate(dateKey) {
   return `${year}년 ${Number(month)}월 ${Number(day)}일`;
 }
 
-function getTypeLabel(type) {
-  const map = {
-    study: '공부',
-    workout: '운동',
-    etc: '기타',
-  };
-
-  return map[type] || '기타';
-}
-
 function autoResizeTextarea(textarea) {
   if (!textarea) return;
 
@@ -51,25 +126,30 @@ function autoResizeTextarea(textarea) {
   textarea.style.height = `${textarea.scrollHeight + 2}px`;
 }
 
-function appendTypeBadges(root, todos = []) {
+function appendTypeBadges(root, todos = [], categories = []) {
   const wrap = document.createElement('div');
   wrap.className = 'study-calendar-day__badges';
 
   todos.forEach((todo) => {
-    const type = todo.type || 'etc';
     const title = String(todo.text || '').trim();
-
     if (!title) return;
 
+    const category = getCategoryByTodo(todo, categories);
+
     const badge = document.createElement('span');
-    badge.className = `study-calendar-day__badge study-calendar-day__badge--${type}`;
+    badge.className = 'study-calendar-day__badge';
+    badge.style.setProperty('--todo-category-color', category.color);
+    badge.style.setProperty(
+      '--todo-category-text',
+      getCategoryTextColor(category.color),
+    );
 
     if (todo.done) {
       badge.classList.add('is-done');
     }
 
     badge.textContent = title;
-    badge.title = title;
+    badge.title = `${category.name} · ${title}`;
 
     wrap.append(badge);
   });
@@ -85,7 +165,8 @@ function normalizeTodo(row) {
     text: row.todo_text,
     memo: row.memo || '',
     done: Boolean(row.is_done),
-    type: row.todo_type || 'etc',
+    type: row.todo_type || row.study_calendar_categories?.slug || 'etc',
+    categoryId: row.category_id || row.study_calendar_categories?.id || null,
     date: row.todo_date,
   };
 }
@@ -110,7 +191,23 @@ async function fetchUserTodos(userId) {
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .select(
-      'id, user_id, todo_date, todo_type, todo_text, memo, is_done, created_at',
+      `
+      id,
+      user_id,
+      todo_date,
+      todo_type,
+      category_id,
+      todo_text,
+      memo,
+      is_done,
+      created_at,
+      study_calendar_categories (
+        id,
+        name,
+        slug,
+        color
+      )
+    `,
     )
     .eq('user_id', userId)
     .order('todo_date', { ascending: true })
@@ -124,19 +221,181 @@ async function fetchUserTodos(userId) {
   return groupTodosByDate(data || []);
 }
 
-async function insertTodo({ userId, dateKey, text, memo, type }) {
+async function fetchUserCategories(userId) {
+  if (!userId) return [];
+
+  const { data, error } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .select(
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+    )
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[study-calendar] fetchUserCategories error:', error.message);
+    throw error;
+  }
+
+  return data || [];
+}
+
+async function ensureDefaultCategories(userId) {
+  if (!userId) return [];
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .select('slug')
+    .eq('user_id', userId);
+
+  if (fetchError) {
+    console.error(
+      '[study-calendar] ensureDefaultCategories fetch error:',
+      fetchError.message,
+    );
+    throw fetchError;
+  }
+
+  const existingSlugs = new Set((existing || []).map((item) => item.slug));
+
+  const rowsToInsert = DEFAULT_CATEGORIES.filter(
+    (category) => !existingSlugs.has(category.slug),
+  ).map((category) => ({
+    user_id: userId,
+    name: category.name,
+    slug: category.slug,
+    color: category.color,
+    is_default: category.is_default,
+    sort_order: category.sort_order,
+  }));
+
+  if (rowsToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from(CATEGORY_TABLE_NAME)
+      .insert(rowsToInsert);
+
+    if (insertError) {
+      console.error(
+        '[study-calendar] ensureDefaultCategories insert error:',
+        insertError.message,
+      );
+      throw insertError;
+    }
+  }
+
+  return fetchUserCategories(userId);
+}
+
+async function insertCategory({ userId, name, color, sortOrder }) {
+  const safeName = normalizeCategoryName(name);
+  const safeColor = normalizeColor(color);
+
+  const { data, error } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .insert({
+      user_id: userId,
+      name: safeName,
+      slug: `custom-${crypto.randomUUID()}`,
+      color: safeColor,
+      is_default: false,
+      sort_order: sortOrder || 100,
+    })
+    .select(
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+    )
+    .single();
+
+  if (error) {
+    console.error('[study-calendar] insertCategory error:', error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+async function updateCategory({ categoryId, name, color }) {
+  const { data, error } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .update({
+      name: normalizeCategoryName(name),
+      color: normalizeColor(color),
+    })
+    .eq('id', categoryId)
+    .select(
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+    )
+    .single();
+
+  if (error) {
+    console.error('[study-calendar] updateCategory error:', error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+async function moveTodosToCategory({ userId, fromCategoryId, toCategory }) {
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({
+      category_id: toCategory.id,
+      todo_type: toCategory.slug,
+    })
+    .eq('user_id', userId)
+    .eq('category_id', fromCategoryId);
+
+  if (error) {
+    console.error('[study-calendar] moveTodosToCategory error:', error.message);
+    throw error;
+  }
+}
+
+async function deleteCategoryById(categoryId) {
+  const { error } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .delete()
+    .eq('id', categoryId)
+    .eq('is_default', false);
+
+  if (error) {
+    console.error('[study-calendar] deleteCategoryById error:', error.message);
+    throw error;
+  }
+}
+
+async function insertTodo({ userId, dateKey, text, memo, category }) {
+  const safeCategory = category || DEFAULT_CATEGORIES[2];
+
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .insert({
       user_id: userId,
       todo_date: dateKey,
-      todo_type: type,
+      todo_type: safeCategory.slug || 'etc',
+      category_id: safeCategory.id || null,
       todo_text: text,
       memo: memo || '',
       is_done: false,
     })
     .select(
-      'id, user_id, todo_date, todo_type, todo_text, memo, is_done, created_at',
+      `
+      id,
+      user_id,
+      todo_date,
+      todo_type,
+      category_id,
+      todo_text,
+      memo,
+      is_done,
+      created_at,
+      study_calendar_categories (
+        id,
+        name,
+        slug,
+        color
+      )
+    `,
     )
     .single();
 
@@ -273,6 +532,7 @@ async function renderPreviewCalendar() {
     return;
   }
 
+  const categories = await ensureDefaultCategories(user.id);
   const store = await fetchUserTodos(user.id);
   const today = new Date();
   const todayKey = getTodayKey();
@@ -321,8 +581,7 @@ async function renderPreviewCalendar() {
     number.textContent = String(item.date.getDate());
 
     dayEl.append(number);
-    appendTypeBadges(dayEl, todos);
-
+    appendTypeBadges(dayEl, todos, categories);
     grid.append(dayEl);
   });
 
@@ -335,6 +594,7 @@ function createDayButton({
   selectedDateKey,
   onSelect,
   store,
+  categories,
 }) {
   const dateKey = toDateKey(date);
   const todayKey = getTodayKey();
@@ -362,7 +622,7 @@ function createDayButton({
   number.textContent = String(date.getDate());
 
   button.append(number);
-  appendTypeBadges(button, todos);
+  appendTypeBadges(button, todos, categories);
 
   button.addEventListener('click', () => {
     onSelect(dateKey);
@@ -374,6 +634,7 @@ function createDayButton({
 function renderTodoList({
   selectedDateKey,
   store,
+  categories,
   onToggle,
   onDelete,
   onTextChange,
@@ -424,8 +685,15 @@ function renderTodoList({
     body.className = 'study-todo-item__body';
 
     const type = document.createElement('span');
+    const category = getCategoryByTodo(todo, categories);
+
     type.className = 'study-todo-item__type';
-    type.textContent = getTypeLabel(todo.type);
+    type.textContent = category.name;
+    type.style.setProperty('--todo-category-color', category.color);
+    type.style.setProperty(
+      '--todo-category-text',
+      getCategoryTextColor(category.color),
+    );
 
     const text = document.createElement('input');
     text.className = 'study-todo-item__text-input';
@@ -583,6 +851,116 @@ function renderTodoList({
   });
 }
 
+function renderCategorySelect(select, categories = []) {
+  if (!select) return;
+
+  const selectedValue = select.value;
+  select.innerHTML = '';
+
+  categories.forEach((category) => {
+    const option = document.createElement('option');
+    option.value = category.id;
+    option.textContent = category.name;
+    select.append(option);
+  });
+
+  if (
+    selectedValue &&
+    categories.some((category) => category.id === selectedValue)
+  ) {
+    select.value = selectedValue;
+    return;
+  }
+
+  const fallback = getFallbackCategory(categories);
+  if (fallback?.id) {
+    select.value = fallback.id;
+  }
+}
+
+function renderCategoryPalette({ root, colorInput }) {
+  if (!root || !colorInput) return;
+
+  root.innerHTML = '';
+
+  CATEGORY_COLOR_PRESETS.forEach((color) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'study-category-palette__button';
+    button.style.setProperty('--category-color', color);
+    button.setAttribute('aria-label', `${color} 색상 선택`);
+
+    if (normalizeColor(colorInput.value) === color) {
+      button.classList.add('is-selected');
+    }
+
+    button.addEventListener('click', () => {
+      colorInput.value = color;
+      renderCategoryPalette({ root, colorInput });
+    });
+
+    root.append(button);
+  });
+}
+
+function renderCategoryList({ root, categories, onSave, onDelete }) {
+  if (!root) return;
+
+  root.innerHTML = '';
+
+  categories.forEach((category) => {
+    const item = document.createElement('li');
+    item.className = 'study-category-item';
+
+    const dot = document.createElement('span');
+    dot.className = 'study-category-item__dot';
+    dot.style.setProperty('--category-color', category.color);
+
+    const nameInput = document.createElement('input');
+    nameInput.className = 'study-category-item__name';
+    nameInput.type = 'text';
+    nameInput.maxLength = 20;
+    nameInput.value = category.name;
+    nameInput.setAttribute('aria-label', '카테고리 이름 수정');
+
+    const colorInput = document.createElement('input');
+    colorInput.className = 'study-category-item__color';
+    colorInput.type = 'color';
+    colorInput.value = normalizeColor(category.color);
+    colorInput.setAttribute('aria-label', '카테고리 색상 수정');
+
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.className = 'study-category-item__button';
+    saveButton.textContent = '저장';
+
+    saveButton.addEventListener('click', () => {
+      onSave({
+        category,
+        name: nameInput.value,
+        color: colorInput.value,
+      });
+    });
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'study-category-item__button';
+    deleteButton.textContent = '삭제';
+
+    if (category.is_default) {
+      deleteButton.disabled = true;
+      deleteButton.title = '기본 카테고리는 삭제할 수 없어.';
+    }
+
+    deleteButton.addEventListener('click', () => {
+      onDelete(category);
+    });
+
+    item.append(dot, nameInput, colorInput, saveButton, deleteButton);
+    root.append(item);
+  });
+}
+
 function renderPageCalendar(state) {
   const grid = document.getElementById('studyCalendarGrid');
   const monthLabel = document.getElementById('studyCalendarMonthLabel');
@@ -602,6 +980,7 @@ function renderPageCalendar(state) {
       isCurrentMonth: item.isCurrentMonth,
       selectedDateKey: state.selectedDateKey,
       store: state.store,
+      categories: state.categories,
       onSelect: state.onSelect,
     });
 
@@ -676,6 +1055,14 @@ async function initPageCalendar() {
   const input = document.getElementById('studyTodoInput');
   const typeSelect = document.getElementById('studyTodoType');
   const memoInput = document.getElementById('studyTodoMemo');
+  const categoryToggle = document.getElementById('studyCategoryToggle');
+  const categoryPanel = document.getElementById('studyCategoryPanel');
+  const categoryClose = document.getElementById('studyCategoryClose');
+  const categoryForm = document.getElementById('studyCategoryForm');
+  const categoryNameInput = document.getElementById('studyCategoryName');
+  const categoryColorInput = document.getElementById('studyCategoryColor');
+  const categoryPalette = document.getElementById('studyCategoryPalette');
+  const categoryList = document.getElementById('studyCategoryList');
 
   if (!prevBtn || !nextBtn || !form || !input || !typeSelect || !memoInput) {
     return;
@@ -732,19 +1119,31 @@ async function initPageCalendar() {
     userId: user.id,
     viewDate: new Date(today.getFullYear(), today.getMonth(), 1),
     selectedDateKey: getTodayKey(),
+    categories: await ensureDefaultCategories(user.id),
     store: await fetchUserTodos(user.id),
     onSelect: null,
   };
 
   function renderAll() {
+    renderCategorySelect(typeSelect, state.categories);
+
     renderPageCalendar(state);
+
     renderTodoList({
       selectedDateKey: state.selectedDateKey,
       store: state.store,
+      categories: state.categories,
       onToggle: toggleTodo,
       onDelete: deleteTodo,
       onTextChange: changeTodoText,
       onMemoChange: changeTodoMemo,
+    });
+
+    renderCategoryList({
+      root: categoryList,
+      categories: state.categories,
+      onSave: saveCategory,
+      onDelete: removeCategory,
     });
   }
 
@@ -843,6 +1242,208 @@ async function initPageCalendar() {
 
   state.onSelect = selectDate;
 
+  function openCategoryModal() {
+    if (!categoryToggle || !categoryPanel) return;
+
+    categoryPanel.hidden = false;
+    categoryToggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('study-category-modal-open');
+
+    window.setTimeout(() => {
+      if (categoryNameInput) {
+        categoryNameInput.focus();
+        return;
+      }
+
+      categoryClose?.focus();
+    }, 0);
+  }
+
+  function closeCategoryModal() {
+    if (!categoryToggle || !categoryPanel) return;
+
+    categoryPanel.hidden = true;
+    categoryToggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('study-category-modal-open');
+
+    categoryToggle.focus();
+  }
+
+  if (categoryToggle && categoryPanel) {
+    categoryToggle.addEventListener('click', () => {
+      if (categoryPanel.hidden) {
+        openCategoryModal();
+        return;
+      }
+
+      closeCategoryModal();
+    });
+
+    categoryPanel.addEventListener('click', (event) => {
+      if (event.target !== categoryPanel) return;
+
+      closeCategoryModal();
+    });
+  }
+
+  if (categoryClose) {
+    categoryClose.addEventListener('click', () => {
+      closeCategoryModal();
+    });
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!categoryPanel || categoryPanel.hidden) return;
+
+    closeCategoryModal();
+  });
+
+  if (categoryPalette && categoryColorInput) {
+    renderCategoryPalette({
+      root: categoryPalette,
+      colorInput: categoryColorInput,
+    });
+
+    categoryColorInput.addEventListener('input', () => {
+      renderCategoryPalette({
+        root: categoryPalette,
+        colorInput: categoryColorInput,
+      });
+    });
+  }
+
+  if (categoryForm && categoryNameInput && categoryColorInput) {
+    categoryForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const name = normalizeCategoryName(categoryNameInput.value);
+      const color = normalizeColor(categoryColorInput.value);
+
+      if (!name) {
+        categoryNameInput.focus();
+        return;
+      }
+
+      const duplicated = state.categories.some(
+        (category) => category.name.trim().toLowerCase() === name.toLowerCase(),
+      );
+
+      if (duplicated) {
+        alert('이미 같은 이름의 카테고리가 있어.');
+        categoryNameInput.focus();
+        return;
+      }
+
+      try {
+        const nextCategory = await insertCategory({
+          userId: state.userId,
+          name,
+          color,
+          sortOrder: 100 + state.categories.length,
+        });
+
+        state.categories = [...state.categories, nextCategory];
+
+        categoryNameInput.value = '';
+        categoryColorInput.value = '#eaffd7';
+
+        renderAll();
+
+        renderCategoryPalette({
+          root: categoryPalette,
+          colorInput: categoryColorInput,
+        });
+      } catch (error) {
+        alert('카테고리 추가에 실패했어. 이름 중복 여부를 확인해줘.');
+      }
+    });
+  }
+
+  async function saveCategory({ category, name, color }) {
+    const safeName = normalizeCategoryName(name);
+    const safeColor = normalizeColor(color);
+
+    if (!safeName) {
+      alert('카테고리 이름을 입력해줘.');
+      return;
+    }
+
+    const duplicated = state.categories.some(
+      (item) =>
+        item.id !== category.id &&
+        item.name.trim().toLowerCase() === safeName.toLowerCase(),
+    );
+
+    if (duplicated) {
+      alert('이미 같은 이름의 카테고리가 있어.');
+      return;
+    }
+
+    try {
+      const updatedCategory = await updateCategory({
+        categoryId: category.id,
+        name: safeName,
+        color: safeColor,
+      });
+
+      state.categories = state.categories.map((item) =>
+        item.id === updatedCategory.id ? updatedCategory : item,
+      );
+
+      renderAll();
+    } catch (error) {
+      alert('카테고리 수정에 실패했어. 잠시 후 다시 시도해줘.');
+    }
+  }
+
+  async function removeCategory(category) {
+    if (!category || category.is_default) {
+      alert('기본 카테고리는 삭제할 수 없어.');
+      return;
+    }
+
+    const fallback = getFallbackCategory(state.categories);
+
+    if (!fallback?.id || fallback.id === category.id) {
+      alert('삭제 후 이동할 기본 카테고리를 찾지 못했어.');
+      return;
+    }
+
+    const ok = window.confirm(
+      `"${category.name}" 카테고리를 삭제할까?\n이 카테고리를 쓰던 할 일은 "${fallback.name}" 카테고리로 이동돼.`,
+    );
+
+    if (!ok) return;
+
+    try {
+      await moveTodosToCategory({
+        userId: state.userId,
+        fromCategoryId: category.id,
+        toCategory: fallback,
+      });
+
+      await deleteCategoryById(category.id);
+
+      state.categories = state.categories.filter(
+        (item) => item.id !== category.id,
+      );
+
+      Object.values(state.store).forEach((todos) => {
+        todos.forEach((todo) => {
+          if (todo.categoryId === category.id) {
+            todo.categoryId = fallback.id;
+            todo.type = fallback.slug;
+          }
+        });
+      });
+
+      renderAll();
+    } catch (error) {
+      alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+    }
+  }
+
   prevBtn.addEventListener('click', () => {
     state.viewDate = new Date(
       state.viewDate.getFullYear(),
@@ -868,7 +1469,9 @@ async function initPageCalendar() {
 
     const text = input.value.trim();
     const memo = memoInput.value.trim();
-    const type = typeSelect.value || 'etc';
+    const category =
+      state.categories.find((item) => item.id === typeSelect.value) ||
+      getFallbackCategory(state.categories);
 
     if (!text) {
       input.focus();
@@ -881,7 +1484,7 @@ async function initPageCalendar() {
         dateKey: state.selectedDateKey,
         text,
         memo,
-        type,
+        category,
       });
 
       const currentTodos = state.store[state.selectedDateKey] || [];

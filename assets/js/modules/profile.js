@@ -1310,12 +1310,24 @@ function setProfileBackgroundStyle(targetEl, backgroundItemId = '') {
 }
 
 function applyProfileBackground(profileRow = {}) {
+  const pageName = String(document.body?.dataset?.page || '')
+    .trim()
+    .toLowerCase();
+
   const equippedBackgroundItemId = String(
     profileRow?.equipped_profile_background_item_id || '',
   ).trim();
 
   document.querySelectorAll('.profile-card').forEach((cardEl) => {
     if (cardEl.classList.contains('inventory-card')) return;
+
+    // 프로필 설정 페이지는 꾸미기 결과를 보여주는 곳이 아니므로
+    // 장착된 프로필 배경 이미지를 적용하지 않는다.
+    if (pageName === 'profile-setting') {
+      setProfileBackgroundStyle(cardEl, '');
+      return;
+    }
+
     setProfileBackgroundStyle(cardEl, equippedBackgroundItemId);
   });
 

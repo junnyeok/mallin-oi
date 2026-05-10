@@ -125,6 +125,16 @@
                     <option value="etc">기타</option>
                   </select>
 
+                  <button
+                    type="button"
+                    class="study-todo-form__setting"
+                    id="studyCategoryToggle"
+                    aria-expanded="false"
+                    aria-controls="studyCategoryPanel"
+                  >
+                    설정
+                  </button>
+
                   <input
                     class="study-todo-form__input"
                     id="studyTodoInput"
@@ -146,6 +156,92 @@
                 </form>
 
                 <ul class="study-todo-list" id="studyTodoList"></ul>
+
+                <section
+                  class="study-category-manager"
+                  aria-labelledby="studyCategoryTitle"
+                >
+                  <div
+                    class="study-category-manager__modal"
+                    id="studyCategoryPanel"
+                    hidden
+                  >
+                    <div
+                      class="study-category-manager__dialog"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="studyCategoryTitle"
+                    >
+                      <div class="study-category-manager__head">
+                        <div>
+                          <h3
+                            class="study-category-manager__title"
+                            id="studyCategoryTitle"
+                          >
+                            내 카테고리
+                          </h3>
+                          <p class="study-category-manager__desc">
+                            카테고리 이름과 색상을 직접 정할 수 있어.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="study-category-manager__close"
+                          id="studyCategoryClose"
+                          aria-label="카테고리 관리 닫기"
+                        >
+                          닫기
+                        </button>
+                      </div>
+
+                      <form class="study-category-form" id="studyCategoryForm">
+                        <input
+                          class="study-category-form__input"
+                          id="studyCategoryName"
+                          type="text"
+                          maxlength="20"
+                          placeholder="새 카테고리 이름"
+                          autocomplete="off"
+                        />
+
+                        <input
+                          class="study-category-form__color"
+                          id="studyCategoryColor"
+                          type="color"
+                          value="#eaffd7"
+                          aria-label="카테고리 색상 선택"
+                        />
+
+                        <button
+                          class="study-category-form__button"
+                          type="submit"
+                        >
+                          추가
+                        </button>
+                      </form>
+
+                      <div
+                        class="study-category-palette"
+                        id="studyCategoryPalette"
+                        aria-label="카테고리 색상 프리셋"
+                      ></div>
+
+                      <ul
+                        class="study-category-list"
+                        id="studyCategoryList"
+                      ></ul>
+
+                      <p
+                        class="study-category-manager__notice"
+                        id="studyCategoryNotice"
+                      >
+                        기본 카테고리는 삭제할 수 없고, 직접 추가한 카테고리만
+                        삭제할 수 있어.
+                      </p>
+                    </div>
+                  </div>
+                </section>
 
                 <p class="study-todo-empty" id="studyTodoEmpty">
                   아직 등록된 할 일이 없습니다.

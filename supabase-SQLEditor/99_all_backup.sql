@@ -16372,3 +16372,183 @@ for each row
 execute function public.enforce_equipped_profile_frame_ownership();
 
 -- 누적본쿼리 5/8
+
+-- =========================================
+-- 자기개발 캘린더 카테고리 사용자 설정 기능
+-- =========================================
+
+create table if not exists public.study_calendar_categories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  slug text not null,
+  color text not null default '#eaffd7',
+  is_default boolean not null default false,
+  sort_order integer not null default 100,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint study_calendar_categories_name_length_check
+    check (char_length(trim(name)) between 1 and 20),
+
+  constraint study_calendar_categories_color_check
+    check (color ~ '^#[0-9A-Fa-f]{6}$')
+);
+
+create unique index if not exists study_calendar_categories_user_slug_uidx
+  on public.study_calendar_categories (user_id, slug);
+
+create unique index if not exists study_calendar_categories_user_lower_name_uidx
+  on public.study_calendar_categories (user_id, lower(trim(name)));
+
+create index if not exists study_calendar_categories_user_sort_idx
+  on public.study_calendar_categories (user_id, sort_order, created_at);
+
+alter table public.study_calendar_todos
+  add column if not exists category_id uuid
+  references public.study_calendar_categories(id)
+  on delete set null;
+
+create index if not exists study_calendar_todos_user_category_idx
+  on public.study_calendar_todos (user_id, category_id);
+
+alter table public.study_calendar_todos
+  drop constraint if exists study_calendar_todos_type_check;
+
+create or replace function public.handle_study_calendar_categories_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_study_calendar_categories_updated_at
+on public.study_calendar_categories;
+
+create trigger trg_study_calendar_categories_updated_at
+before update on public.study_calendar_categories
+for each row
+execute function public.handle_study_calendar_categories_updated_at();
+
+alter table public.study_calendar_categories enable row level security;
+
+drop policy if exists "study_calendar_categories_select_own"
+on public.study_calendar_categories;
+
+create policy "study_calendar_categories_select_own"
+on public.study_calendar_categories
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "study_calendar_categories_insert_own"
+on public.study_calendar_categories;
+
+create policy "study_calendar_categories_insert_own"
+on public.study_calendar_categories
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "study_calendar_categories_update_own"
+on public.study_calendar_categories;
+
+create policy "study_calendar_categories_update_own"
+on public.study_calendar_categories
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "study_calendar_categories_delete_own"
+on public.study_calendar_categories;
+
+create policy "study_calendar_categories_delete_own"
+on public.study_calendar_categories
+for delete
+to authenticated
+using (auth.uid() = user_id and is_default = false);
+
+-- 기존 유저별 기본 카테고리 생성
+insert into public.study_calendar_categories (
+  user_id,
+  name,
+  slug,
+  color,
+  is_default,
+  sort_order
+)
+select distinct
+  user_id,
+  '공부',
+  'study',
+  '#e7f6ff',
+  true,
+  10
+from public.study_calendar_todos
+where user_id is not null
+on conflict (user_id, slug) do nothing;
+
+insert into public.study_calendar_categories (
+  user_id,
+  name,
+  slug,
+  color,
+  is_default,
+  sort_order
+)
+select distinct
+  user_id,
+  '운동',
+  'workout',
+  '#eaffd7',
+  true,
+  20
+from public.study_calendar_todos
+where user_id is not null
+on conflict (user_id, slug) do nothing;
+
+insert into public.study_calendar_categories (
+  user_id,
+  name,
+  slug,
+  color,
+  is_default,
+  sort_order
+)
+select distinct
+  user_id,
+  '기타',
+  'etc',
+  '#fff1d1',
+  true,
+  30
+from public.study_calendar_todos
+where user_id is not null
+on conflict (user_id, slug) do nothing;
+
+-- 기존 todo_type 문자열 데이터를 category_id와 연결
+update public.study_calendar_todos t
+set category_id = c.id
+from public.study_calendar_categories c
+where t.user_id = c.user_id
+  and t.category_id is null
+  and c.slug = case
+    when t.todo_type = 'study' then 'study'
+    when t.todo_type = 'workout' then 'workout'
+    else 'etc'
+  end;
+
+-- category_id가 없는 기존 데이터는 기타로 보정
+update public.study_calendar_todos t
+set category_id = c.id,
+    todo_type = 'etc'
+from public.study_calendar_categories c
+where t.user_id = c.user_id
+  and t.category_id is null
+  and c.slug = 'etc';
+
+  -- 누적본 쿼리 5/10

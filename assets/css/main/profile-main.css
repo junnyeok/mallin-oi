@@ -37,6 +37,16 @@
   opacity: 1;
 }
 
+/* profile-setting.html은 꾸미기 배경을 보여주지 않고 기본 카드 배경 유지 */
+body[data-page='profile-setting'] .profile-card {
+  background: var(--color-surface);
+}
+
+body[data-page='profile-setting'] .profile-card::before {
+  background-image: none;
+  opacity: 0;
+}
+
 .profile-card > * {
   position: relative;
   z-index: 1;

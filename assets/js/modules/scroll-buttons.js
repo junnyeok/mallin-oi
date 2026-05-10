@@ -20,7 +20,7 @@
   [mypage.html]
   - TOP / POST / END
 
-  [store.html]
+  [store.html / store-item.html]
   - TOP / END
 ================================================= */
 
@@ -51,6 +51,7 @@ function getPageType() {
   if (path.includes('profile-setting.html')) return 'profile';
   if (path.includes('inventory.html')) return 'profile';
   if (path.includes('profile.html')) return 'profile';
+  if (path.includes('store-item.html')) return 'store-item';
   if (path.includes('store.html')) return 'store';
   if (path.includes('suggestion.html')) return 'suggestion';
   if (path.includes('qna.html')) return 'qna';
@@ -71,6 +72,7 @@ function getPageType() {
   ) {
     return 'profile';
   }
+  if (page === 'store-item') return 'store-item';
   if (page === 'store') return 'store';
   if (page === 'suggestion') return 'suggestion';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
@@ -352,7 +354,7 @@ export function initScrollButtons(options = {}) {
     btnBottom.setAttribute('aria-label', '하단으로 이동');
   }
 
-  if (pageType === 'store') {
+  if (pageType === 'store' || pageType === 'store-item') {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 

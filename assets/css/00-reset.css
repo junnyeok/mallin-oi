@@ -24,6 +24,22 @@ body {
   margin: 0;
 }
 
+/* 모바일에서 absolute/fixed 장식 요소가 viewport 밖으로 삐져나가며
+   오른쪽 빈 공간이나 가로 스크롤을 만드는 문제 방지 */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* overflow-x: clip 미지원 브라우저용 보완 */
+@supports not (overflow-x: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
 /* block-이미지 기본값 inline=> 아래에 알 수 없는 여백 발생(baseline)
 inline은 width, margin-top 안먹힘
 max-width100%-부모보다 이미지 커져서 깨지는 것 방지 */

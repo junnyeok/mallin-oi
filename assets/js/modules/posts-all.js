@@ -498,7 +498,9 @@ export async function initPostsAll() {
     btn.addEventListener('click', () => {
       const selected = normalizeFeatured(btn.dataset.featured);
 
-      state.featured = state.featured === selected ? '' : selected;
+      if (!selected) return;
+
+      state.featured = selected;
       state.page = 1;
 
       render();
