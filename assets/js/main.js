@@ -59,6 +59,8 @@ async function loadCoreModules() {
     pjaxRouterModule,
     qnaBoardModule,
     studyCalendarModule,
+    eventCalendarModule,
+    workCalendarModule,
   ] = await Promise.all([
     import(withModuleVersion('./modules/mobile-stability.js')),
     import(withModuleVersion('./modules/site-version.js')),
@@ -94,6 +96,8 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/pjax-router.js')),
     import(withModuleVersion('./modules/qna-board.js')),
     import(withModuleVersion('./modules/study-calendar.js')),
+    import(withModuleVersion('./modules/event-calendar.js')),
+    import(withModuleVersion('./modules/work-calendar.js')),
   ]);
 
   coreModules = {
@@ -131,6 +135,8 @@ async function loadCoreModules() {
     pjaxRouterModule,
     qnaBoardModule,
     studyCalendarModule,
+    eventCalendarModule,
+    workCalendarModule,
   };
 
   return coreModules;
@@ -188,6 +194,8 @@ async function initPageModules(modules) {
     storeModule,
     qnaBoardModule,
     studyCalendarModule,
+    eventCalendarModule,
+    workCalendarModule,
   } = modules;
 
   const { initPostsUI } = postsUiModule;
@@ -211,7 +219,8 @@ async function initPageModules(modules) {
   const { initStore } = storeModule;
   const { initQnaBoard } = qnaBoardModule;
   const { initStudyCalendar } = studyCalendarModule;
-
+  const { initEventCalendar } = eventCalendarModule;
+  const { initWorkCalendar } = workCalendarModule;
   // 공통
   await runSafe('scroll buttons', async () => {
     initScrollButtons();
@@ -234,6 +243,26 @@ async function initPageModules(modules) {
 
       await runSafe('study calendar', async () => {
         initStudyCalendar();
+      });
+
+      await runSafe('event calendar', async () => {
+        initEventCalendar();
+      });
+
+      await runSafe('work calendar', async () => {
+        initWorkCalendar();
+      });
+      break;
+
+    case 'calendar-work':
+      await runSafe('work calendar', async () => {
+        await initWorkCalendar();
+      });
+      break;
+
+    case 'calendar-event':
+      await runSafe('event calendar', async () => {
+        await initEventCalendar();
       });
       break;
 

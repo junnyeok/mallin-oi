@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>업무 캘린더 - 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+
+    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/calendar-work-main.css" />
+  </head>
+
+  <body class="theme-work" data-page="calendar-work">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="site-main">
+        <section class="home-section work-calendar-page" id="workCalendarPage">
+          <div class="container">
+            <div class="work-calendar-page__head">
+              <div>
+                <h1 class="work-calendar-page__title">🗓️ 업무 캘린더</h1>
+                <p class="work-calendar-page__desc">
+                  근무, 휴무, 야간, 연차 등 업무 일정을 날짜별로 기록하고
+                  관리해보세요.
+                </p>
+              </div>
+            </div>
+
+            <div class="work-calendar-layout">
+              <section
+                class="panel work-calendar-main-panel"
+                aria-labelledby="workCalendarMonthLabel"
+              >
+                <div class="work-calendar-toolbar">
+                  <button
+                    type="button"
+                    class="work-calendar-nav-btn"
+                    id="workCalendarPrevBtn"
+                    aria-label="이전 달 보기"
+                  >
+                    ‹
+                  </button>
+
+                  <h2 class="work-calendar-month" id="workCalendarMonthLabel">
+                    -
+                  </h2>
+
+                  <button
+                    type="button"
+                    class="work-calendar-nav-btn"
+                    id="workCalendarNextBtn"
+                    aria-label="다음 달 보기"
+                  >
+                    ›
+                  </button>
+                </div>
+
+                <div
+                  class="work-calendar-grid work-calendar-grid--page"
+                  id="workCalendarGrid"
+                  aria-label="업무 달력"
+                ></div>
+              </section>
+
+              <aside class="panel work-calendar-todo-panel">
+                <div class="work-calendar-selected">
+                  <p class="work-calendar-selected__label">선택한 날짜</p>
+                  <h2
+                    class="work-calendar-selected__date"
+                    id="workSelectedDate"
+                  >
+                    -
+                  </h2>
+                </div>
+
+                <form class="work-todo-form" id="workTodoForm">
+                  <select
+                    class="work-todo-form__select"
+                    id="workTodoType"
+                    aria-label="업무 카테고리 선택"
+                  >
+                    <option value="workday">근무</option>
+                    <option value="dayoff">휴무</option>
+                    <option value="night">야간</option>
+                    <option value="leave">연차</option>
+                    <option value="etc">기타</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    class="work-todo-form__setting"
+                    id="workCategoryToggle"
+                    aria-expanded="false"
+                    aria-controls="workCategoryPanel"
+                  >
+                    설정
+                  </button>
+
+                  <input
+                    class="work-todo-form__input"
+                    id="workTodoInput"
+                    type="text"
+                    placeholder="오늘 업무 일정을 입력하세요."
+                    autocomplete="off"
+                  />
+
+                  <button class="work-todo-form__button" type="submit">
+                    추가
+                  </button>
+
+                  <textarea
+                    class="work-todo-form__memo"
+                    id="workTodoMemo"
+                    rows="4"
+                    placeholder="메모를 입력하세요."
+                  ></textarea>
+                </form>
+
+                <ul class="work-todo-list" id="workTodoList"></ul>
+
+                <section
+                  class="work-category-manager"
+                  aria-labelledby="workCategoryTitle"
+                >
+                  <div
+                    class="work-category-manager__modal"
+                    id="workCategoryPanel"
+                    hidden
+                  >
+                    <div
+                      class="work-category-manager__dialog"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="workCategoryTitle"
+                    >
+                      <div class="work-category-manager__head">
+                        <div>
+                          <h3
+                            class="work-category-manager__title"
+                            id="workCategoryTitle"
+                          >
+                            내 카테고리
+                          </h3>
+                          <p class="work-category-manager__desc">
+                            근무 유형 이름과 색상을 직접 정할 수 있어.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="work-category-manager__close"
+                          id="workCategoryClose"
+                          aria-label="카테고리 관리 닫기"
+                        >
+                          닫기
+                        </button>
+                      </div>
+
+                      <form class="work-category-form" id="workCategoryForm">
+                        <input
+                          class="work-category-form__input"
+                          id="workCategoryName"
+                          type="text"
+                          maxlength="20"
+                          placeholder="새 카테고리 이름"
+                          autocomplete="off"
+                        />
+
+                        <input
+                          class="work-category-form__color"
+                          id="workCategoryColor"
+                          type="color"
+                          value="#e7f6ff"
+                          aria-label="카테고리 색상 선택"
+                        />
+
+                        <button
+                          class="work-category-form__button"
+                          type="submit"
+                        >
+                          추가
+                        </button>
+                      </form>
+
+                      <div
+                        class="work-category-palette"
+                        id="workCategoryPalette"
+                        aria-label="카테고리 색상 프리셋"
+                      ></div>
+
+                      <ul class="work-category-list" id="workCategoryList"></ul>
+
+                      <p
+                        class="work-category-manager__notice"
+                        id="workCategoryNotice"
+                      >
+                        기본 근무 유형은 삭제할 수 없고, 직접 추가한 항목만
+                        삭제할 수 있어.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <p class="work-todo-empty" id="workTodoEmpty">
+                  아직 등록된 업무 일정이 없습니다.
+                </p>
+              </aside>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

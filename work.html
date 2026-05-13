@@ -44,6 +44,7 @@
 
     <!-- main -->
     <link rel="stylesheet" href="assets/css/main/main.css" />
+    <link rel="stylesheet" href="assets/css/main/calendar-work-main.css" />
   </head>
   <body class="theme-work" data-page="work">
     <div class="page">
@@ -53,6 +54,35 @@
         <!-- 3) 2분할 영역(텍스트/리스트) -->
         <section class="home-section">
           <div class="container">
+            <section
+              class="panel panel--latest-wide work-calendar-preview"
+              aria-labelledby="workCalendarPreviewTitle"
+            >
+              <a
+                class="work-calendar-preview__link"
+                href="./calendar-work.html"
+                id="workCalendarPreviewLink"
+                aria-label="업무 캘린더 상세 페이지로 이동"
+              >
+                <div class="panel__head work-calendar-preview__head">
+                  <div>
+                    <h2 class="panel__title" id="workCalendarPreviewTitle">
+                      🗓️ 이번달 업무 캘린더
+                    </h2>
+                    <p class="panel__desc">
+                      근무, 휴무, 야간, 연차를 한눈에 기록해봐!
+                    </p>
+                  </div>
+                  <span class="work-calendar-preview__more">자세히 보기 →</span>
+                </div>
+
+                <div class="work-calendar-mini" id="workCalendarPreview">
+                  <div class="work-calendar-mini__empty">
+                    이번달 업무 캘린더를 불러오는 중입니다.
+                  </div>
+                </div>
+              </a>
+            </section>
             <div class="panel panel--latest-wide" id="latestUploadSection">
               <div class="panel__head panel__head--with-more">
                 <h2 class="panel__title">🆕 최신 업로드</h2>

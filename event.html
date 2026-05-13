@@ -44,6 +44,7 @@
 
     <!-- main -->
     <link rel="stylesheet" href="assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/calendar-event-main.css" />
   </head>
   <body class="theme-event" data-page="event">
     <div class="page">
@@ -52,6 +53,37 @@
       <main class="site-main">
         <section class="home-section">
           <div class="container">
+            <section
+              class="panel panel--latest-wide event-calendar-preview"
+              aria-labelledby="eventCalendarPreviewTitle"
+            >
+              <a
+                class="event-calendar-preview__link"
+                href="./calendar-event.html"
+                id="eventCalendarPreviewLink"
+                aria-label="이벤트 캘린더 상세 페이지로 이동"
+              >
+                <div class="panel__head event-calendar-preview__head">
+                  <div>
+                    <h2 class="panel__title" id="eventCalendarPreviewTitle">
+                      🗓️ 이번달 이벤트 캘린더
+                    </h2>
+                    <p class="panel__desc">
+                      개인 일정, 약속, 기념일을 날짜별로 기록해봐!
+                    </p>
+                  </div>
+                  <span class="event-calendar-preview__more"
+                    >자세히 보기 →</span
+                  >
+                </div>
+
+                <div class="event-calendar-mini" id="eventCalendarPreview">
+                  <div class="event-calendar-mini__empty">
+                    이번달 이벤트 캘린더를 불러오는 중입니다.
+                  </div>
+                </div>
+              </a>
+            </section>
             <div class="panel panel--latest-wide" id="latestUploadSection">
               <div class="panel__head panel__head--with-more">
                 <h2 class="panel__title">🆕 최신 업로드</h2>
