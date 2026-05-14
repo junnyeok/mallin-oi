@@ -49,7 +49,9 @@ function getLogoSrcByPage(page, base) {
     index: `${base}images/logo-home.png`,
     study: `${base}images/logo-study.png`,
     work: `${base}images/logo-work.png`,
+    'calendar-work': `${base}images/logo-work.png`,
     event: `${base}images/logo-event.png`,
+    'calendar-event': `${base}images/logo-event.png`,
     career: `${base}images/logo-career.png`,
     login: `${base}images/logo-home.png`,
     signup: `${base}images/logo-home.png`,
@@ -150,7 +152,9 @@ function getNavHrefByPage(page, base) {
     index: `${base}index.html`,
     study: `${base}study.html`,
     work: `${base}work.html`,
+    'calendar-work': `${base}work.html`,
     event: `${base}event.html`,
+    'calendar-event': `${base}event.html`,
     career: `${base}career.html`,
   };
 

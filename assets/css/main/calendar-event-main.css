@@ -1444,3 +1444,30 @@ body.theme-event[data-page='calendar-event'] .event-calendar-day--today {
     padding-bottom: 2px;
   }
 }
+
+/* 일정 카드 카테고리 수정 select */
+.event-todo-item__category-select {
+  display: inline-flex;
+  max-width: calc(100% - 92px);
+  min-height: 28px;
+  margin-left: 32px;
+  padding: 0 28px 0 var(--space-8);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background-color: var(--todo-category-color, var(--color-primary-sub));
+  color: var(--todo-category-text, var(--color-text));
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.event-todo-item__category-select:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 640px) {
+  .event-todo-item__category-select {
+    max-width: calc(100% - 92px);
+  }
+}

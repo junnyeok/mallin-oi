@@ -1180,3 +1180,31 @@ body.theme-work[data-page='calendar-work'] .work-calendar-day--today {
     padding-left: var(--space-4);
   }
 }
+
+/* 업무 일정 카드 카테고리 수정 select */
+.work-todo-item__category-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 120px;
+  min-height: 28px;
+  padding: 0 28px 0 var(--space-8);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background-color: var(--todo-category-color, var(--color-primary-sub));
+  color: var(--todo-category-text, var(--color-text));
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-todo-item__category-select:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 640px) {
+  .work-todo-item__category-select {
+    max-width: 100%;
+  }
+}

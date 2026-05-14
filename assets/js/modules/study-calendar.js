@@ -91,6 +91,11 @@ function getCategoryByTodo(todo, categories = []) {
   );
 }
 
+function getTodoCategorySelectValue(todo, categories = []) {
+  const category = getCategoryByTodo(todo, categories);
+  return category?.id || getFallbackCategory(categories)?.id || '';
+}
+
 function getTypeLabel(type, categories = []) {
   const category = categories.find((item) => item.slug === type);
   return category?.name || '기타';
@@ -443,6 +448,24 @@ async function updateTodoText({ todoId, text }) {
   }
 }
 
+async function updateTodoCategory({ todoId, category }) {
+  const fallback = getFallbackCategory([]);
+  const safeCategory = category || fallback;
+
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({
+      category_id: safeCategory?.id || null,
+      todo_type: safeCategory?.slug || 'etc',
+    })
+    .eq('id', todoId);
+
+  if (error) {
+    console.error('[study-calendar] updateTodoCategory error:', error.message);
+    throw error;
+  }
+}
+
 async function deleteTodoById(todoId) {
   const { error } = await supabase.from(TABLE_NAME).delete().eq('id', todoId);
 
@@ -639,6 +662,7 @@ function renderTodoList({
   onDelete,
   onTextChange,
   onMemoChange,
+  onCategoryChange,
 }) {
   const list = document.getElementById('studyTodoList');
   const empty = document.getElementById('studyTodoEmpty');
@@ -684,16 +708,45 @@ function renderTodoList({
     const body = document.createElement('div');
     body.className = 'study-todo-item__body';
 
-    const type = document.createElement('span');
+    const categorySelect = document.createElement('select');
     const category = getCategoryByTodo(todo, categories);
 
-    type.className = 'study-todo-item__type';
-    type.textContent = category.name;
-    type.style.setProperty('--todo-category-color', category.color);
-    type.style.setProperty(
+    categorySelect.className = 'study-todo-item__category-select';
+    categorySelect.setAttribute('aria-label', '일정 카테고리 수정');
+
+    categories.forEach((categoryItem) => {
+      const option = document.createElement('option');
+      option.value = categoryItem.id;
+      option.textContent = categoryItem.name;
+      categorySelect.append(option);
+    });
+
+    categorySelect.value = getTodoCategorySelectValue(todo, categories);
+    categorySelect.style.setProperty('--todo-category-color', category.color);
+    categorySelect.style.setProperty(
       '--todo-category-text',
       getCategoryTextColor(category.color),
     );
+
+    categorySelect.addEventListener('change', async () => {
+      const previousValue = getTodoCategorySelectValue(todo, categories);
+      const nextCategory =
+        categories.find(
+          (categoryItem) => categoryItem.id === categorySelect.value,
+        ) || getFallbackCategory(categories);
+
+      if (!nextCategory?.id || nextCategory.id === previousValue) {
+        categorySelect.value = previousValue;
+        return;
+      }
+
+      try {
+        await onCategoryChange(todo.id, nextCategory);
+      } catch (error) {
+        alert('카테고리 변경에 실패했어. 잠시 후 다시 시도해줘.');
+        categorySelect.value = previousValue;
+      }
+    });
 
     const text = document.createElement('input');
     text.className = 'study-todo-item__text-input';
@@ -844,8 +897,7 @@ function renderTodoList({
     });
 
     memoBox.append(memoLabel, memoInput, memoStatus);
-    body.append(type, text, memoToggle, memoBox);
-
+    body.append(categorySelect, text, memoToggle, memoBox);
     item.append(checkbox, body, deleteButton);
     list.append(item);
   });
@@ -1137,6 +1189,7 @@ async function initPageCalendar() {
       onDelete: deleteTodo,
       onTextChange: changeTodoText,
       onMemoChange: changeTodoMemo,
+      onCategoryChange: changeTodoCategory,
     });
 
     renderCategoryList({
@@ -1238,6 +1291,25 @@ async function initPageCalendar() {
     });
 
     target.memo = nextMemo;
+  }
+
+  async function changeTodoCategory(todoId, category) {
+    const todos = state.store[state.selectedDateKey] || [];
+    const target = todos.find((todo) => todo.id === todoId);
+    const fallback = getFallbackCategory(state.categories);
+    const nextCategory = category || fallback;
+
+    if (!target || !nextCategory?.id) return;
+
+    await updateTodoCategory({
+      todoId,
+      category: nextCategory,
+    });
+
+    target.categoryId = nextCategory.id;
+    target.type = nextCategory.slug;
+
+    renderAll();
   }
 
   state.onSelect = selectDate;

@@ -151,6 +151,11 @@ function getFallbackCategory(categories = []) {
   );
 }
 
+function getTodoCategorySelectValue(todo, categories = []) {
+  const category = getCategoryByTodo(todo, categories);
+  return category?.id || getFallbackCategory(categories)?.id || '';
+}
+
 function getCategoryByTodo(todo, categories = []) {
   return (
     categories.find((category) => category.id === todo.categoryId) ||
@@ -469,6 +474,24 @@ async function updateTodoMemo({ todoId, memo }) {
   }
 }
 
+async function updateTodoCategory({ todoId, category }) {
+  const fallback = getFallbackCategory([]);
+  const safeCategory = category || fallback;
+
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({
+      category_id: safeCategory?.id || null,
+      work_type: safeCategory?.slug || 'etc',
+    })
+    .eq('id', todoId);
+
+  if (error) {
+    console.error('[work-calendar] updateTodoCategory error:', error.message);
+    throw error;
+  }
+}
+
 async function deleteTodoById(todoId) {
   const { error } = await supabase.from(TABLE_NAME).delete().eq('id', todoId);
 
@@ -723,6 +746,7 @@ function renderTodoList({
   onDelete,
   onTextChange,
   onMemoChange,
+  onCategoryChange,
 }) {
   if (!root) return;
 
@@ -738,7 +762,7 @@ function renderTodoList({
     const item = makeEl('li', 'work-todo-item');
     const top = makeEl('div', 'work-todo-item__top');
     const check = document.createElement('input');
-    const badge = makeEl('span', 'work-todo-item__badge', category.name);
+    const categorySelect = document.createElement('select');
     const title = makeEl('strong', 'work-todo-item__title', todo.text);
     const actions = makeEl('div', 'work-todo-item__actions');
     const editButton = makeEl('button', 'work-todo-item__edit', '펼치기');
@@ -752,11 +776,42 @@ function renderTodoList({
     check.checked = todo.done;
     check.setAttribute('aria-label', `${todo.text} 완료 표시`);
 
-    badge.style.setProperty('--todo-category-color', category.color);
-    badge.style.setProperty(
+    categorySelect.className = 'work-todo-item__category-select';
+    categorySelect.setAttribute('aria-label', '업무 일정 카테고리 수정');
+
+    categories.forEach((categoryItem) => {
+      const option = document.createElement('option');
+      option.value = categoryItem.id;
+      option.textContent = categoryItem.name;
+      categorySelect.append(option);
+    });
+
+    categorySelect.value = getTodoCategorySelectValue(todo, categories);
+    categorySelect.style.setProperty('--todo-category-color', category.color);
+    categorySelect.style.setProperty(
       '--todo-category-text',
       getCategoryTextColor(category.color),
     );
+
+    categorySelect.addEventListener('change', async () => {
+      const previousValue = getTodoCategorySelectValue(todo, categories);
+      const nextCategory =
+        categories.find(
+          (categoryItem) => categoryItem.id === categorySelect.value,
+        ) || getFallbackCategory(categories);
+
+      if (!nextCategory?.id || nextCategory.id === previousValue) {
+        categorySelect.value = previousValue;
+        return;
+      }
+
+      try {
+        await onCategoryChange?.(todo.id, nextCategory);
+      } catch (error) {
+        alert('카테고리 변경에 실패했어. 잠시 후 다시 시도해줘.');
+        categorySelect.value = previousValue;
+      }
+    });
 
     editButton.type = 'button';
     deleteButton.type = 'button';
@@ -818,7 +873,7 @@ function renderTodoList({
     });
 
     actions.append(editButton, deleteButton);
-    top.append(check, badge, title, actions);
+    top.append(check, categorySelect, title, actions);
     item.append(top, detail);
     root.append(item);
   });
@@ -994,6 +1049,7 @@ async function initPageCalendar() {
       onDelete: deleteTodo,
       onTextChange: changeTodoText,
       onMemoChange: changeTodoMemo,
+      onCategoryChange: changeTodoCategory,
     });
 
     renderCategoryList({
@@ -1078,6 +1134,28 @@ async function initPageCalendar() {
       renderAll();
     } catch (error) {
       alert('업무 일정 수정에 실패했어. 잠시 후 다시 시도해줘.');
+    }
+  }
+
+  async function changeTodoCategory(todoId, category) {
+    const todos = state.store[state.selectedDateKey] || [];
+    const target = todos.find((todo) => todo.id === todoId);
+    const fallback = getFallbackCategory(state.categories);
+    const nextCategory = category || fallback;
+
+    if (!target || !nextCategory?.id) return;
+
+    try {
+      await updateTodoCategory({
+        todoId,
+        category: nextCategory,
+      });
+
+      target.categoryId = nextCategory.id;
+      target.type = nextCategory.slug;
+      renderAll();
+    } catch (error) {
+      alert('업무 일정 카테고리 변경에 실패했어. 잠시 후 다시 시도해줘.');
     }
   }
 
