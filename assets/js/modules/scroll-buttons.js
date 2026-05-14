@@ -53,6 +53,9 @@ function getPageType() {
   if (path.includes('profile.html')) return 'profile';
   if (path.includes('store-item.html')) return 'store-item';
   if (path.includes('store.html')) return 'store';
+  if (path.includes('calendar-study.html')) return 'calendar';
+  if (path.includes('calendar-work.html')) return 'calendar';
+  if (path.includes('calendar-event.html')) return 'calendar';
   if (path.includes('suggestion.html')) return 'suggestion';
   if (path.includes('qna.html')) return 'qna';
 
@@ -74,6 +77,15 @@ function getPageType() {
   }
   if (page === 'store-item') return 'store-item';
   if (page === 'store') return 'store';
+
+  if (
+    page === 'calendar-study' ||
+    page === 'calendar-work' ||
+    page === 'calendar-event'
+  ) {
+    return 'calendar';
+  }
+
   if (page === 'suggestion') return 'suggestion';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
@@ -355,6 +367,10 @@ export function initScrollButtons(options = {}) {
   }
 
   if (pageType === 'store' || pageType === 'store-item') {
+    btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
+  }
+
+  if (pageType === 'calendar') {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 

@@ -16904,3 +16904,11 @@ to authenticated
 using (auth.uid() = user_id);
 
 --누적본 쿼리 5/12
+
+alter table public.event_calendar_todos
+add column if not exists event_time time null;
+
+create index if not exists event_calendar_todos_user_date_time_idx
+on public.event_calendar_todos (user_id, event_date, event_time);
+
+--누적본 쿼리 5/14

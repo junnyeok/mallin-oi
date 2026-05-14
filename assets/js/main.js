@@ -260,6 +260,12 @@ async function initPageModules(modules) {
       });
       break;
 
+    case 'calendar-study':
+      await runSafe('study calendar', async () => {
+        await initStudyCalendar();
+      });
+      break;
+
     case 'calendar-event':
       await runSafe('event calendar', async () => {
         await initEventCalendar();

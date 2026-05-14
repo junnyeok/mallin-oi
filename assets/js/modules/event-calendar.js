@@ -131,13 +131,249 @@ function autoResizeTextarea(textarea) {
   textarea.style.height = `${textarea.scrollHeight + 2}px`;
 }
 
+function normalizeEventTime(value) {
+  const nextValue = String(value || '').trim();
+
+  if (!nextValue) return '00:00';
+
+  const matched = nextValue.match(/^([01]\d|2[0-3]):([0-5]\d)/);
+  if (!matched) return '00:00';
+
+  return `${matched[1]}:${matched[2]}`;
+}
+
+function formatEventTimeLabel(value) {
+  const time = normalizeEventTime(value);
+
+  const [hourText, minuteText] = time.split(':');
+  const hour24 = Number(hourText);
+  const minute = Number(minuteText);
+
+  const period = hour24 < 12 ? '오전' : '오후';
+  const hour12 = hour24 % 12 || 12;
+
+  return `${period} ${hour12}:${pad(minute)}`;
+}
+
+function setTimeInputValue(input, value) {
+  if (!input) return;
+
+  const time = normalizeEventTime(value);
+
+  input.dataset.time = time;
+  input.value = formatEventTimeLabel(time);
+}
+
+function convertPickerTimeTo24Hour({ period, hour, minute }) {
+  const safePeriod = period === 'PM' ? 'PM' : 'AM';
+  const safeHour = Math.min(Math.max(Number(hour) || 12, 1), 12);
+  const safeMinute = Math.min(Math.max(Number(minute) || 0, 0), 59);
+
+  let hour24 = safeHour;
+
+  if (safePeriod === 'AM' && safeHour === 12) {
+    hour24 = 0;
+  }
+
+  if (safePeriod === 'PM' && safeHour !== 12) {
+    hour24 = safeHour + 12;
+  }
+
+  return `${pad(hour24)}:${pad(safeMinute)}`;
+}
+
+function getPickerStateFromTime(value) {
+  const time = normalizeEventTime(value);
+  const [hourText, minuteText] = time.split(':');
+  const hour24 = Number(hourText);
+
+  return {
+    period: hour24 < 12 ? 'AM' : 'PM',
+    hour: hour24 % 12 || 12,
+    minute: Number(minuteText) || 0,
+  };
+}
+
+function createPickerSelect({ className, label, options, value }) {
+  const wrap = document.createElement('label');
+  wrap.className = 'event-time-picker__field';
+
+  const labelText = document.createElement('span');
+  labelText.className = 'event-time-picker__label';
+  labelText.textContent = label;
+
+  const select = document.createElement('select');
+  select.className = className;
+
+  options.forEach((item) => {
+    const option = document.createElement('option');
+    option.value = item.value;
+    option.textContent = item.label;
+    select.append(option);
+  });
+
+  select.value = String(value);
+
+  wrap.append(labelText, select);
+
+  return {
+    wrap,
+    select,
+  };
+}
+
+function openEventTimePicker({ anchorEl, initialTime, onChange }) {
+  if (!anchorEl) return;
+
+  const previousPicker = document.querySelector('.event-time-picker');
+  previousPicker?.remove();
+
+  const state = getPickerStateFromTime(initialTime);
+
+  const popover = document.createElement('div');
+  popover.className = 'event-time-picker';
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', '일정 시간 선택');
+
+  const panel = document.createElement('div');
+  panel.className = 'event-time-picker__panel';
+
+  const title = document.createElement('strong');
+  title.className = 'event-time-picker__title';
+  title.textContent = '시간 선택';
+
+  const fields = document.createElement('div');
+  fields.className = 'event-time-picker__fields';
+
+  const periodField = createPickerSelect({
+    className: 'event-time-picker__select',
+    label: '오전/오후',
+    value: state.period,
+    options: [
+      { value: 'AM', label: '오전' },
+      { value: 'PM', label: '오후' },
+    ],
+  });
+
+  const hourField = createPickerSelect({
+    className: 'event-time-picker__select',
+    label: '시',
+    value: state.hour,
+    options: Array.from({ length: 12 }, (_, index) => {
+      const hour = index + 1;
+
+      return {
+        value: String(hour),
+        label: `${hour}시`,
+      };
+    }),
+  });
+
+  const minuteField = createPickerSelect({
+    className: 'event-time-picker__select',
+    label: '분',
+    value: state.minute,
+    options: Array.from({ length: 60 }, (_, index) => ({
+      value: String(index),
+      label: `${pad(index)}분`,
+    })),
+  });
+
+  let isSaving = false;
+
+  function positionPicker() {
+    const rect = anchorEl.getBoundingClientRect();
+    const pickerWidth = Math.min(360, window.innerWidth - 24);
+    const left = Math.min(
+      Math.max(rect.left + window.scrollX, 12),
+      window.scrollX + window.innerWidth - pickerWidth - 12,
+    );
+
+    popover.style.width = `${pickerWidth}px`;
+    popover.style.left = `${left}px`;
+    popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+  }
+
+  function closePicker() {
+    popover.remove();
+    document.removeEventListener('keydown', handleKeydown);
+    document.removeEventListener('pointerdown', handlePointerDown);
+    window.removeEventListener('resize', positionPicker);
+    window.removeEventListener('scroll', positionPicker, true);
+  }
+
+  function handleKeydown(event) {
+    if (event.key !== 'Escape') return;
+
+    closePicker();
+  }
+
+  function handlePointerDown(event) {
+    if (popover.contains(event.target) || anchorEl.contains(event.target)) {
+      return;
+    }
+
+    closePicker();
+  }
+
+  async function applySelectedTime() {
+    if (isSaving) return;
+
+    const nextTime = convertPickerTimeTo24Hour({
+      period: periodField.select.value,
+      hour: hourField.select.value,
+      minute: minuteField.select.value,
+    });
+
+    isSaving = true;
+
+    try {
+      await onChange(nextTime);
+    } finally {
+      isSaving = false;
+    }
+  }
+
+  periodField.select.addEventListener('change', applySelectedTime);
+  hourField.select.addEventListener('change', applySelectedTime);
+  minuteField.select.addEventListener('change', applySelectedTime);
+
+  fields.append(periodField.wrap, hourField.wrap, minuteField.wrap);
+  panel.append(title, fields);
+  popover.append(panel);
+  document.body.append(popover);
+
+  positionPicker();
+
+  window.setTimeout(() => {
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeydown);
+    window.addEventListener('resize', positionPicker);
+    window.addEventListener('scroll', positionPicker, true);
+    periodField.select.focus();
+  }, 0);
+}
+
+function getTodoDisplayText(todo) {
+  return String(todo?.text || '').trim();
+}
+
+function compareTodosByTime(a, b) {
+  const aTime = normalizeEventTime(a?.eventTime);
+  const bTime = normalizeEventTime(b?.eventTime);
+
+  return aTime.localeCompare(bTime);
+}
+
 function appendTypeBadges(root, todos = [], categories = []) {
   const wrap = document.createElement('div');
   wrap.className = 'event-calendar-day__badges';
 
   todos.forEach((todo) => {
     const title = String(todo.text || '').trim();
-    if (!title) return;
+    const displayText = getTodoDisplayText(todo);
+
+    if (!title || !displayText) return;
 
     const category = getCategoryByTodo(todo, categories);
 
@@ -149,12 +385,8 @@ function appendTypeBadges(root, todos = [], categories = []) {
       getCategoryTextColor(category.color),
     );
 
-    if (todo.done) {
-      badge.classList.add('is-done');
-    }
-
-    badge.textContent = title;
-    badge.title = `${category.name} · ${title}`;
+    badge.textContent = displayText;
+    badge.title = `${category.name} · ${displayText}`;
 
     wrap.append(badge);
   });
@@ -169,7 +401,7 @@ function normalizeTodo(row) {
     id: row.id,
     text: row.event_text,
     memo: row.memo || '',
-    done: Boolean(row.is_done),
+    eventTime: normalizeEventTime(row.event_time),
     type:
       row.event_type || row.event_calendar_categories?.slug || 'anniversary',
     categoryId: row.category_id || row.event_calendar_categories?.id || null,
@@ -178,7 +410,7 @@ function normalizeTodo(row) {
 }
 
 function groupTodosByDate(rows = []) {
-  return rows.reduce((acc, row) => {
+  const grouped = rows.reduce((acc, row) => {
     const todo = normalizeTodo(row);
     const dateKey = todo.date;
 
@@ -189,6 +421,12 @@ function groupTodosByDate(rows = []) {
     acc[dateKey].push(todo);
     return acc;
   }, {});
+
+  Object.keys(grouped).forEach((dateKey) => {
+    grouped[dateKey].sort(compareTodosByTime);
+  });
+
+  return grouped;
 }
 
 async function fetchUserTodos(userId) {
@@ -205,6 +443,7 @@ async function fetchUserTodos(userId) {
     category_id,
     event_text,
     memo,
+    event_time,
     is_done,
     created_at,
     event_calendar_categories (
@@ -217,6 +456,7 @@ async function fetchUserTodos(userId) {
     )
     .eq('user_id', userId)
     .order('event_date', { ascending: true })
+    .order('event_time', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -370,9 +610,16 @@ async function deleteCategoryById(categoryId) {
   }
 }
 
-async function insertTodo({ userId, dateKey, text, memo, category }) {
+async function insertTodo({
+  userId,
+  dateKey,
+  text,
+  memo,
+  eventTime,
+  category,
+}) {
   const safeCategory = category || DEFAULT_CATEGORIES[2];
-
+  const safeEventTime = normalizeEventTime(eventTime);
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .insert({
@@ -382,6 +629,7 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
       category_id: safeCategory.id || null,
       event_text: text,
       memo: memo || '',
+      event_time: safeEventTime,
       is_done: false,
     })
     .select(
@@ -393,6 +641,7 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
       category_id,
       event_text,
       memo,
+      event_time,
       is_done,
       created_at,
       event_calendar_categories (
@@ -411,18 +660,6 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
   }
 
   return normalizeTodo(data);
-}
-
-async function updateTodoDone({ todoId, done }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ is_done: done })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[event-calendar] updateTodoDone error:', error.message);
-    throw error;
-  }
 }
 
 async function updateTodoMemo({ todoId, memo }) {
@@ -445,6 +682,20 @@ async function updateTodoText({ todoId, text }) {
 
   if (error) {
     console.error('[event-calendar] updateTodoText error:', error.message);
+    throw error;
+  }
+}
+
+async function updateTodoTime({ todoId, eventTime }) {
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({
+      event_time: normalizeEventTime(eventTime),
+    })
+    .eq('id', todoId);
+
+  if (error) {
+    console.error('[event-calendar] updateTodoTime error:', error.message);
     throw error;
   }
 }
@@ -659,11 +910,11 @@ function renderTodoList({
   selectedDateKey,
   store,
   categories,
-  onToggle,
   onDelete,
   onTextChange,
   onMemoChange,
   onCategoryChange,
+  onTimeChange,
 }) {
   const list = document.getElementById('eventTodoList');
   const empty = document.getElementById('eventTodoEmpty');
@@ -671,7 +922,7 @@ function renderTodoList({
 
   if (!list || !empty || !selectedDate) return;
 
-  const todos = store[selectedDateKey] || [];
+  const todos = [...(store[selectedDateKey] || [])].sort(compareTodosByTime);
 
   selectedDate.textContent = getReadableDate(selectedDateKey);
   list.innerHTML = '';
@@ -681,20 +932,6 @@ function renderTodoList({
   todos.forEach((todo) => {
     const item = document.createElement('li');
     item.className = 'event-todo-item';
-
-    if (todo.done) {
-      item.classList.add('is-done');
-    }
-
-    const checkbox = document.createElement('input');
-    checkbox.className = 'event-todo-item__check';
-    checkbox.type = 'checkbox';
-    checkbox.checked = Boolean(todo.done);
-    checkbox.setAttribute('aria-label', `${todo.text} 완료 처리`);
-
-    checkbox.addEventListener('change', () => {
-      onToggle(todo.id);
-    });
 
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
@@ -708,6 +945,9 @@ function renderTodoList({
 
     const body = document.createElement('div');
     body.className = 'event-todo-item__body';
+
+    const controls = document.createElement('div');
+    controls.className = 'event-todo-item__controls';
 
     const categorySelect = document.createElement('select');
     const category = getCategoryByTodo(todo, categories);
@@ -749,11 +989,46 @@ function renderTodoList({
       }
     });
 
+    const timeInput = document.createElement('input');
+    timeInput.className = 'event-todo-item__time-input';
+    timeInput.type = 'text';
+    timeInput.placeholder = '시간 선택';
+    timeInput.readOnly = true;
+    timeInput.inputMode = 'none';
+    timeInput.setAttribute('aria-label', '일정 시간 수정');
+
+    setTimeInputValue(timeInput, todo.eventTime);
+
+    timeInput.addEventListener('click', () => {
+      let previousTime = normalizeEventTime(todo.eventTime);
+
+      openEventTimePicker({
+        anchorEl: timeInput,
+        initialTime: previousTime,
+        onChange: async (nextTime) => {
+          const safeNextTime = normalizeEventTime(nextTime);
+
+          if (safeNextTime === previousTime) return;
+
+          setTimeInputValue(timeInput, safeNextTime);
+
+          try {
+            await onTimeChange(todo.id, safeNextTime);
+            todo.eventTime = safeNextTime;
+            previousTime = safeNextTime;
+          } catch (error) {
+            alert('시간 변경에 실패했어. 잠시 후 다시 시도해줘.');
+            setTimeInputValue(timeInput, previousTime);
+          }
+        },
+      });
+    });
+
     const text = document.createElement('input');
     text.className = 'event-todo-item__text-input';
     text.type = 'text';
     text.value = todo.text;
-    text.setAttribute('aria-label', '할 일 제목 수정');
+    text.setAttribute('aria-label', '일정 제목 수정');
 
     let textSaveTimer = null;
     let lastSavedText = todo.text;
@@ -772,7 +1047,6 @@ function renderTodoList({
           lastSavedText = nextText;
           todo.text = nextText;
 
-          checkbox.setAttribute('aria-label', `${nextText} 완료 처리`);
           deleteButton.setAttribute('aria-label', `${nextText} 삭제`);
         } catch (error) {
           alert('제목 수정에 실패했어. 잠시 후 다시 시도해줘.');
@@ -799,7 +1073,6 @@ function renderTodoList({
         lastSavedText = nextText;
         todo.text = nextText;
 
-        checkbox.setAttribute('aria-label', `${nextText} 완료 처리`);
         deleteButton.setAttribute('aria-label', `${nextText} 삭제`);
       } catch (error) {
         alert('제목 수정에 실패했어. 잠시 후 다시 시도해줘.');
@@ -897,9 +1170,10 @@ function renderTodoList({
       }
     });
 
+    controls.append(categorySelect, timeInput);
     memoBox.append(memoLabel, memoInput, memoStatus);
-    body.append(categorySelect, text, memoToggle, memoBox);
-    item.append(checkbox, body, deleteButton);
+    body.append(controls, text, memoToggle, memoBox);
+    item.append(body, deleteButton);
     list.append(item);
   });
 }
@@ -1107,6 +1381,7 @@ async function initPageCalendar() {
   const form = document.getElementById('eventTodoForm');
   const input = document.getElementById('eventTodoInput');
   const typeSelect = document.getElementById('eventTodoType');
+  const timeInput = document.getElementById('eventTodoTime');
   const memoInput = document.getElementById('eventTodoMemo');
   const categoryToggle = document.getElementById('eventCategoryToggle');
   const categoryPanel = document.getElementById('eventCategoryPanel');
@@ -1117,16 +1392,36 @@ async function initPageCalendar() {
   const categoryPalette = document.getElementById('eventCategoryPalette');
   const categoryList = document.getElementById('eventCategoryList');
 
-  if (!prevBtn || !nextBtn || !form || !input || !typeSelect || !memoInput) {
+  if (
+    !prevBtn ||
+    !nextBtn ||
+    !form ||
+    !input ||
+    !typeSelect ||
+    !timeInput ||
+    !memoInput
+  ) {
     return;
   }
+
+  setTimeInputValue(timeInput, '00:00');
+
+  timeInput.addEventListener('click', () => {
+    openEventTimePicker({
+      anchorEl: timeInput,
+      initialTime: timeInput.dataset.time,
+      onChange: (nextTime) => {
+        setTimeInputValue(timeInput, nextTime);
+      },
+    });
+  });
 
   const mobileTodoFormQuery = window.matchMedia('(max-width: 640px)');
 
   const formToggleButton = document.createElement('button');
   formToggleButton.type = 'button';
   formToggleButton.className = 'event-todo-form-toggle';
-  formToggleButton.textContent = '할 일 추가';
+  formToggleButton.textContent = '일정 추가';
   formToggleButton.setAttribute('aria-expanded', 'false');
   formToggleButton.setAttribute('aria-controls', 'eventTodoForm');
 
@@ -1186,11 +1481,11 @@ async function initPageCalendar() {
       selectedDateKey: state.selectedDateKey,
       store: state.store,
       categories: state.categories,
-      onToggle: toggleTodo,
       onDelete: deleteTodo,
       onTextChange: changeTodoText,
       onMemoChange: changeTodoMemo,
       onCategoryChange: changeTodoCategory,
+      onTimeChange: changeTodoTime,
     });
 
     renderCategoryList({
@@ -1214,27 +1509,6 @@ async function initPageCalendar() {
     }
   }
 
-  async function toggleTodo(todoId) {
-    const todos = state.store[state.selectedDateKey] || [];
-    const target = todos.find((todo) => todo.id === todoId);
-
-    if (!target) return;
-
-    const nextDone = !target.done;
-
-    try {
-      await updateTodoDone({
-        todoId,
-        done: nextDone,
-      });
-
-      target.done = nextDone;
-      renderAll();
-    } catch (error) {
-      alert('완료 상태 변경에 실패했어. 잠시 후 다시 시도해줘.');
-    }
-  }
-
   async function deleteTodo(todoId) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
@@ -1254,7 +1528,7 @@ async function initPageCalendar() {
 
       renderAll();
     } catch (error) {
-      alert('할 일 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+      alert('일정 삭제에 실패했어. 잠시 후 다시 시도해줘.');
     }
   }
 
@@ -1274,6 +1548,26 @@ async function initPageCalendar() {
     });
 
     target.text = nextText;
+
+    renderPageCalendar(state);
+  }
+
+  async function changeTodoTime(todoId, eventTime) {
+    const todos = state.store[state.selectedDateKey] || [];
+    const target = todos.find((todo) => todo.id === todoId);
+
+    if (!target) return;
+
+    const nextTime = normalizeEventTime(eventTime);
+
+    await updateTodoTime({
+      todoId,
+      eventTime: nextTime,
+    });
+
+    target.eventTime = nextTime;
+
+    state.store[state.selectedDateKey] = [...todos].sort(compareTodosByTime);
 
     renderPageCalendar(state);
   }
@@ -1542,6 +1836,7 @@ async function initPageCalendar() {
 
     const text = input.value.trim();
     const memo = memoInput.value.trim();
+    const eventTime = normalizeEventTime(timeInput.dataset.time);
     const category =
       state.categories.find((item) => item.id === typeSelect.value) ||
       getFallbackCategory(state.categories);
@@ -1557,13 +1852,16 @@ async function initPageCalendar() {
         dateKey: state.selectedDateKey,
         text,
         memo,
+        eventTime,
         category,
       });
 
       const currentTodos = state.store[state.selectedDateKey] || [];
-      state.store[state.selectedDateKey] = [...currentTodos, nextTodo];
-
+      state.store[state.selectedDateKey] = [...currentTodos, nextTodo].sort(
+        compareTodosByTime,
+      );
       input.value = '';
+      setTimeInputValue(timeInput, '00:00');
       memoInput.value = '';
 
       renderAll();
@@ -1574,7 +1872,7 @@ async function initPageCalendar() {
         input.focus();
       }
     } catch (error) {
-      alert('할 일 추가에 실패했어. 잠시 후 다시 시도해줘.');
+      alert('일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
     }
   });
 

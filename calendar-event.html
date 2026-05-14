@@ -62,7 +62,8 @@
                 <h1 class="event-calendar-page__title">🗓️ 이벤트 캘린더</h1>
                 <p class="event-calendar-page__desc">
                   개인 일정, 약속, 행사, 할 일을 날짜별로 기록해보세요.
-                  <br />계정별로 기록 되므로 다른사람은 볼 수 없으니 걱정마세요!
+                  <br />계정별로 기록 되므로 다른 사람은 볼 수 없으니
+                  걱정마세요!
                 </p>
               </div>
             </div>
@@ -99,7 +100,7 @@
                 <div
                   class="event-calendar-grid event-calendar-grid--page"
                   id="eventCalendarGrid"
-                  aria-label="자기개발 달력"
+                  aria-label="이벤트 달력"
                 ></div>
               </section>
 
@@ -136,16 +137,25 @@
                   </button>
 
                   <input
-                    class="event-todo-form__input"
-                    id="eventTodoInput"
+                    class="event-todo-form__time"
+                    id="eventTodoTime"
                     type="text"
-                    placeholder="오늘 일정을 입력하세요."
-                    autocomplete="off"
+                    readonly
+                    inputmode="none"
+                    aria-label="일정 시간 선택"
                   />
 
                   <button class="event-todo-form__button" type="submit">
                     추가
                   </button>
+
+                  <input
+                    class="event-todo-form__input"
+                    id="eventTodoInput"
+                    type="text"
+                    placeholder="일정 제목을 입력하세요."
+                    autocomplete="off"
+                  />
 
                   <textarea
                     class="event-todo-form__memo"

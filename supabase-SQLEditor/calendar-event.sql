@@ -171,3 +171,9 @@ on public.event_calendar_todos
 for delete
 to authenticated
 using (auth.uid() = user_id);
+-- 추가 및 수정 5/14
+alter table public.event_calendar_todos
+add column if not exists event_time time null;
+
+create index if not exists event_calendar_todos_user_date_time_idx
+on public.event_calendar_todos (user_id, event_date, event_time);
