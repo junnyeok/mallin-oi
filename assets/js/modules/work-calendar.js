@@ -84,6 +84,43 @@ function getReadableDate(dateKey) {
   return `${year}년 ${Number(month)}월 ${Number(day)}일`;
 }
 
+function parseDateKey(dateKey) {
+  const [year, month, day] = String(dateKey).split('-').map(Number);
+
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day);
+}
+
+function addDays(dateKey, days) {
+  const date = parseDateKey(dateKey);
+
+  if (!date) return '';
+
+  date.setDate(date.getDate() + Number(days || 0));
+  return toDateKey(date);
+}
+
+function diffDays(startDateKey, endDateKey) {
+  const start = parseDateKey(startDateKey);
+  const end = parseDateKey(endDateKey);
+
+  if (!start || !end) return 0;
+
+  const oneDay = 24 * 60 * 60 * 1000;
+  return Math.round((end - start) / oneDay);
+}
+
+function getDateKeysBetween(startDateKey, endDateKey) {
+  const totalDays = diffDays(startDateKey, endDateKey);
+
+  if (totalDays < 0) return [];
+
+  return Array.from({ length: totalDays + 1 }, (_, index) =>
+    addDays(startDateKey, index),
+  );
+}
+
 function getMonthRange(date) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
@@ -439,6 +476,67 @@ async function insertTodo({ userId, dateKey, memo, category }) {
   }
 
   return normalizeTodo(data);
+}
+
+function buildWorkPatternFromRange(store, startDateKey, endDateKey) {
+  const dateKeys = getDateKeysBetween(startDateKey, endDateKey);
+
+  return dateKeys.map((dateKey) => ({
+    sourceDateKey: dateKey,
+    todos: [...(store[dateKey] || [])],
+  }));
+}
+
+async function insertRepeatTodos(rows = []) {
+  if (rows.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from(TABLE_NAME)
+    .insert(rows)
+    .select(
+      `
+      id,
+      user_id,
+      work_date,
+      work_type,
+      category_id,
+      work_text,
+      memo,
+      is_done,
+      created_at,
+      work_calendar_categories (
+        id,
+        name,
+        slug,
+        color
+      )
+    `,
+    );
+
+  if (error) {
+    console.error('[work-calendar] insertRepeatTodos error:', error.message);
+    throw error;
+  }
+
+  return data || [];
+}
+
+async function deleteTodosByDateKeys({ userId, dateKeys }) {
+  if (!userId || dateKeys.length === 0) return;
+
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .delete()
+    .eq('user_id', userId)
+    .in('work_date', dateKeys);
+
+  if (error) {
+    console.error(
+      '[work-calendar] deleteTodosByDateKeys error:',
+      error.message,
+    );
+    throw error;
+  }
 }
 
 async function updateTodoMemo({ todoId, memo }) {
@@ -986,6 +1084,14 @@ async function initPageCalendar() {
   const categoryPalette = document.getElementById('workCategoryPalette');
   const categoryList = document.getElementById('workCategoryList');
 
+  const repeatForm = document.getElementById('workRepeatForm');
+  const repeatStartInput = document.getElementById('workRepeatStart');
+  const repeatEndInput = document.getElementById('workRepeatEnd');
+  const repeatUntilInput = document.getElementById('workRepeatUntil');
+  const repeatSkipInput = document.getElementById('workRepeatSkipExisting');
+  const repeatButton = document.getElementById('workRepeatButton');
+  const repeatMessage = document.getElementById('workRepeatMessage');
+
   const mobileTodoFormQuery = window.matchMedia('(max-width: 720px)');
 
   if (!prevBtn || !nextBtn || !form || !typeSelect || !memoInput) {
@@ -1029,6 +1135,14 @@ async function initPageCalendar() {
   function selectDate(dateKey) {
     state.selectedDateKey = dateKey;
 
+    if (repeatStartInput && !repeatStartInput.value) {
+      repeatStartInput.value = dateKey;
+    }
+
+    if (repeatEndInput && !repeatEndInput.value) {
+      repeatEndInput.value = dateKey;
+    }
+
     const [year, month] = dateKey.split('-').map(Number);
     state.viewDate = new Date(year, month - 1, 1);
 
@@ -1036,6 +1150,143 @@ async function initPageCalendar() {
 
     if (mobileTodoFormQuery.matches) {
       openMobileTodoForm();
+    }
+  }
+
+  function setRepeatMessage(message = '') {
+    if (!repeatMessage) return;
+
+    repeatMessage.textContent = message;
+  }
+
+  function setRepeatLoading(isLoading) {
+    if (!repeatButton) return;
+
+    repeatButton.disabled = isLoading;
+    repeatButton.textContent = isLoading ? '적용 중' : '반복 적용';
+  }
+
+  async function applyWorkRepeatPattern({
+    patternStartKey,
+    patternEndKey,
+    repeatUntilKey,
+    overwrite,
+  }) {
+    if (!patternStartKey || !patternEndKey || !repeatUntilKey) {
+      alert('반복근무 날짜를 모두 선택해줘.');
+      return;
+    }
+
+    if (diffDays(patternStartKey, patternEndKey) < 0) {
+      alert('패턴 종료일은 패턴 시작일보다 뒤여야 해.');
+      return;
+    }
+
+    if (diffDays(patternEndKey, repeatUntilKey) <= 0) {
+      alert('반복 적용 종료일은 패턴 종료일보다 뒤여야 해.');
+      return;
+    }
+
+    const pattern = buildWorkPatternFromRange(
+      state.store,
+      patternStartKey,
+      patternEndKey,
+    );
+
+    const hasPatternTodo = pattern.some(
+      (patternDay) => patternDay.todos.length > 0,
+    );
+
+    if (!hasPatternTodo) {
+      alert('패턴 구간에 등록된 근무가 없어. 먼저 근무를 입력해줘.');
+      return;
+    }
+
+    const repeatDateKeys = getDateKeysBetween(
+      addDays(patternEndKey, 1),
+      repeatUntilKey,
+    );
+
+    const patternLength = pattern.length;
+    const rowsToInsert = [];
+    const targetDateKeys = overwrite ? new Set(repeatDateKeys) : new Set();
+    let skippedCount = 0;
+
+    repeatDateKeys.forEach((targetDateKey, index) => {
+      const patternDay = pattern[index % patternLength];
+
+      if (!patternDay || patternDay.todos.length === 0) return;
+
+      const hasExistingTodos = (state.store[targetDateKey] || []).length > 0;
+
+      if (!overwrite && hasExistingTodos) {
+        skippedCount += 1;
+        return;
+      }
+
+      targetDateKeys.add(targetDateKey);
+
+      patternDay.todos.forEach((todo) => {
+        const category = getCategoryByTodo(todo, state.categories);
+
+        rowsToInsert.push({
+          user_id: state.userId,
+          work_date: targetDateKey,
+          work_type: todo.type || category?.slug || 'etc',
+          category_id: todo.categoryId || category?.id || null,
+          work_text: String(category?.name || todo.text || '기타').trim(),
+          memo: String(todo.memo || '').trim(),
+          is_done: false,
+        });
+      });
+    });
+
+    if (rowsToInsert.length === 0) {
+      alert(
+        skippedCount > 0
+          ? '이미 일정이 있어서 새로 추가된 반복근무가 없어.'
+          : '반복 적용할 근무가 없어.',
+      );
+      return;
+    }
+
+    const ok = window.confirm(
+      overwrite
+        ? `기존 일정이 있는 날짜는 삭제하고 반복근무 ${rowsToInsert.length}개를 적용할까?`
+        : `반복근무 ${rowsToInsert.length}개를 적용할까?`,
+    );
+
+    if (!ok) return;
+
+    setRepeatLoading(true);
+    setRepeatMessage('반복근무를 적용하는 중이야.');
+
+    try {
+      if (overwrite) {
+        await deleteTodosByDateKeys({
+          userId: state.userId,
+          dateKeys: [...targetDateKeys],
+        });
+      }
+
+      await insertRepeatTodos(rowsToInsert);
+
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+
+      const message =
+        skippedCount > 0
+          ? `반복근무가 적용됐어. 기존 일정 ${skippedCount}일은 건너뛰었어.`
+          : '반복근무가 적용됐어.';
+
+      setRepeatMessage(message);
+      alert(message);
+    } catch (error) {
+      console.error('[work-calendar] applyWorkRepeatPattern error:', error);
+      setRepeatMessage('반복 적용 중 오류가 발생했어.');
+      alert('반복 적용 중 오류가 발생했어. 잠시 후 다시 시도해줘.');
+    } finally {
+      setRepeatLoading(false);
     }
   }
 
@@ -1273,6 +1524,17 @@ async function initPageCalendar() {
 
   memoInput.addEventListener('input', () => {
     autoResizeTextarea(memoInput);
+  });
+
+  repeatForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    await applyWorkRepeatPattern({
+      patternStartKey: repeatStartInput?.value || '',
+      patternEndKey: repeatEndInput?.value || '',
+      repeatUntilKey: repeatUntilInput?.value || '',
+      overwrite: !Boolean(repeatSkipInput?.checked),
+    });
   });
 
   if (categoryToggle && categoryPanel) {

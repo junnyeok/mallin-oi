@@ -148,6 +148,67 @@
                   ></textarea>
                 </form>
 
+                <section class="work-repeat" aria-labelledby="workRepeatTitle">
+                  <div class="work-repeat__head">
+                    <div>
+                      <h3 class="work-repeat__title" id="workRepeatTitle">
+                        반복근무 설정
+                      </h3>
+                      <p class="work-repeat__desc">
+                        선택한 기간의 근무패턴을 이후 날짜에 반복 적용합니다.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form class="work-repeat__form" id="workRepeatForm">
+                    <label class="work-repeat__field" for="workRepeatStart">
+                      <span class="work-repeat__label">패턴 시작일</span>
+                      <input
+                        class="work-repeat__input"
+                        id="workRepeatStart"
+                        type="date"
+                      />
+                    </label>
+
+                    <label class="work-repeat__field" for="workRepeatEnd">
+                      <span class="work-repeat__label">패턴 종료일</span>
+                      <input
+                        class="work-repeat__input"
+                        id="workRepeatEnd"
+                        type="date"
+                      />
+                    </label>
+
+                    <label class="work-repeat__field" for="workRepeatUntil">
+                      <span class="work-repeat__label">반복 적용 종료일</span>
+                      <input
+                        class="work-repeat__input"
+                        id="workRepeatUntil"
+                        type="date"
+                      />
+                    </label>
+
+                    <label class="work-repeat__check">
+                      <input
+                        id="workRepeatSkipExisting"
+                        type="checkbox"
+                        checked
+                      />
+                      <span>기존 일정이 있는 날짜는 건너뛰기</span>
+                    </label>
+
+                    <button
+                      class="work-repeat__button"
+                      id="workRepeatButton"
+                      type="submit"
+                    >
+                      반복 적용
+                    </button>
+
+                    <p class="work-repeat__message" id="workRepeatMessage"></p>
+                  </form>
+                </section>
+
                 <ul class="work-todo-list" id="workTodoList"></ul>
 
                 <section

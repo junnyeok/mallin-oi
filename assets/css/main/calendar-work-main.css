@@ -356,6 +356,119 @@
 }
 
 /* =========================
+  Work Repeat
+========================= */
+
+.work-repeat {
+  display: grid;
+  gap: var(--space-12);
+  margin: var(--space-16) 0;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.work-repeat__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.work-repeat__title {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--text-body);
+  font-weight: 900;
+}
+
+.work-repeat__desc {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: var(--line-body);
+}
+
+.work-repeat__form {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.work-repeat__field {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.work-repeat__label {
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-repeat__input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 800;
+}
+
+.work-repeat__input:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.work-repeat__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: var(--line-body);
+}
+
+.work-repeat__check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.work-repeat__button {
+  min-height: 42px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-repeat__button:hover {
+  opacity: 0.82;
+}
+
+.work-repeat__button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.work-repeat__message {
+  min-height: 18px;
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: var(--line-body);
+}
+
+/* =========================
   Work Todo List
 ========================= */
 
@@ -710,7 +823,8 @@ body.work-category-modal-open {
 
 body.theme-work[data-page='calendar-work'] .work-calendar-weekday,
 body.theme-work[data-page='calendar-work'] .work-todo-form__button,
-body.theme-work[data-page='calendar-work'] .work-category-form__button {
+body.theme-work[data-page='calendar-work'] .work-category-form__button,
+body.theme-work[data-page='calendar-work'] .work-repeat__button {
   background: var(--color-primary);
 }
 
@@ -889,6 +1003,15 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   .work-todo-form__memo,
   .work-todo-form__button {
     grid-column: 1 / -1;
+  }
+
+  .work-repeat {
+    padding: var(--space-12);
+  }
+
+  .work-repeat__input,
+  .work-repeat__button {
+    min-height: 44px;
   }
 
   .work-todo-item {
