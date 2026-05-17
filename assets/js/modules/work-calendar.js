@@ -168,7 +168,7 @@ function normalizeTodo(row) {
   return {
     id: row.id,
     text: row.work_text,
-    memo: row.memo || '',
+    memo: row.memo || row.note || '',
     done: Boolean(row.is_done),
     type: row.work_type || row.work_calendar_categories?.slug || 'etc',
     categoryId: row.category_id || row.work_calendar_categories?.id || null,
@@ -225,24 +225,26 @@ function appendTypeBadges(root, todos = [], categories = []) {
   const wrap = makeEl('div', 'work-calendar-day__badges');
 
   todos.forEach((todo) => {
-    const title = String(todo.text || '').trim();
-    if (!title) return;
-
     const category = getCategoryByTodo(todo, categories);
-    const badge = makeEl('span', 'work-calendar-day__badge', title);
+    const categoryName = String(category?.name || todo.text || '기타').trim();
+    const memo = String(todo.memo || todo.note || '').trim();
+
+    const badge = makeEl('span', 'work-calendar-day__badge', categoryName);
 
     badge.style.setProperty('--todo-category-color', category.color);
     badge.style.setProperty(
       '--todo-category-text',
       getCategoryTextColor(category.color),
     );
-    badge.title = `${category.name} · ${title}`;
-
-    if (todo.done) {
-      badge.classList.add('is-done');
-    }
+    badge.title = categoryName;
 
     wrap.append(badge);
+
+    if (memo) {
+      const memoText = makeEl('span', 'work-calendar-day__memo', memo);
+      memoText.title = memo;
+      wrap.append(memoText);
+    }
   });
 
   if (wrap.children.length > 0) {
@@ -395,8 +397,9 @@ async function fetchUserTodosInMonth(userId, viewDate) {
   return groupTodosByDate(data || []);
 }
 
-async function insertTodo({ userId, dateKey, text, memo, category }) {
+async function insertTodo({ userId, dateKey, memo, category }) {
   const safeCategory = category || DEFAULT_CATEGORIES[4];
+  const workText = String(safeCategory.name || '기타').trim();
 
   const { data, error } = await supabase
     .from(TABLE_NAME)
@@ -405,7 +408,7 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
       work_date: dateKey,
       work_type: safeCategory.slug || 'etc',
       category_id: safeCategory.id || null,
-      work_text: text,
+      work_text: workText,
       memo: memo || '',
       is_done: false,
     })
@@ -436,30 +439,6 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
   }
 
   return normalizeTodo(data);
-}
-
-async function updateTodoDone({ todoId, done }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ is_done: done })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[work-calendar] updateTodoDone error:', error.message);
-    throw error;
-  }
-}
-
-async function updateTodoText({ todoId, text }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ work_text: text })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[work-calendar] updateTodoText error:', error.message);
-    throw error;
-  }
 }
 
 async function updateTodoMemo({ todoId, memo }) {
@@ -742,9 +721,7 @@ function renderTodoList({
   selectedDateKey,
   store,
   categories,
-  onToggle,
   onDelete,
-  onTextChange,
   onMemoChange,
   onCategoryChange,
 }) {
@@ -759,25 +736,26 @@ function renderTodoList({
 
   todos.forEach((todo) => {
     const category = getCategoryByTodo(todo, categories);
+    const memo = String(todo.memo || '').trim();
+
     const item = makeEl('li', 'work-todo-item');
     const top = makeEl('div', 'work-todo-item__top');
-    const check = document.createElement('input');
     const categorySelect = document.createElement('select');
-    const title = makeEl('strong', 'work-todo-item__title', todo.text);
+    const summary = makeEl(
+      'span',
+      'work-todo-item__summary',
+      memo || '메모 없음',
+    );
     const actions = makeEl('div', 'work-todo-item__actions');
     const editButton = makeEl('button', 'work-todo-item__edit', '펼치기');
+    const saveMemoButton = makeEl('button', 'work-todo-item__save', '저장');
     const deleteButton = makeEl('button', 'work-todo-item__delete', '삭제');
     const detail = makeEl('div', 'work-todo-item__detail');
-    const titleInput = document.createElement('input');
+    const detailActions = makeEl('div', 'work-todo-item__detail-actions');
     const memoInput = document.createElement('textarea');
 
-    check.type = 'checkbox';
-    check.className = 'work-todo-item__check';
-    check.checked = todo.done;
-    check.setAttribute('aria-label', `${todo.text} 완료 표시`);
-
     categorySelect.className = 'work-todo-item__category-select';
-    categorySelect.setAttribute('aria-label', '업무 일정 카테고리 수정');
+    categorySelect.setAttribute('aria-label', '근무형태 수정');
 
     categories.forEach((categoryItem) => {
       const option = document.createElement('option');
@@ -808,36 +786,24 @@ function renderTodoList({
       try {
         await onCategoryChange?.(todo.id, nextCategory);
       } catch (error) {
-        alert('카테고리 변경에 실패했어. 잠시 후 다시 시도해줘.');
+        alert('근무형태 변경에 실패했어. 잠시 후 다시 시도해줘.');
         categorySelect.value = previousValue;
       }
     });
 
     editButton.type = 'button';
+    saveMemoButton.type = 'button';
     deleteButton.type = 'button';
-
-    titleInput.className = 'work-todo-item__input';
-    titleInput.type = 'text';
-    titleInput.value = todo.text;
-    titleInput.maxLength = 100;
-    titleInput.setAttribute('aria-label', '업무 일정 제목 수정');
 
     memoInput.className = 'work-todo-item__memo';
     memoInput.rows = 3;
     memoInput.value = todo.memo || '';
     memoInput.placeholder = '메모를 입력하세요.';
-    memoInput.setAttribute('aria-label', '업무 일정 메모 수정');
+    memoInput.setAttribute('aria-label', '업무 캘린더 메모 수정');
 
     detail.hidden = true;
-    detail.append(titleInput, memoInput);
-
-    if (todo.done) {
-      item.classList.add('is-done');
-    }
-
-    check.addEventListener('change', () => {
-      onToggle?.(todo.id);
-    });
+    detailActions.append(saveMemoButton);
+    detail.append(memoInput, detailActions);
 
     editButton.addEventListener('click', () => {
       detail.hidden = !detail.hidden;
@@ -845,7 +811,7 @@ function renderTodoList({
 
       if (!detail.hidden) {
         autoResizeTextarea(memoInput);
-        titleInput.focus();
+        memoInput.focus();
       }
     });
 
@@ -853,27 +819,30 @@ function renderTodoList({
       onDelete?.(todo.id);
     });
 
-    titleInput.addEventListener('change', () => {
-      const nextText = titleInput.value.trim();
-
-      if (!nextText) {
-        titleInput.value = todo.text;
-        return;
-      }
-
-      onTextChange?.(todo.id, nextText);
-    });
-
     memoInput.addEventListener('input', () => {
       autoResizeTextarea(memoInput);
     });
 
-    memoInput.addEventListener('change', () => {
-      onMemoChange?.(todo.id, memoInput.value);
+    saveMemoButton.addEventListener('click', async () => {
+      saveMemoButton.disabled = true;
+      saveMemoButton.textContent = '저장 중';
+
+      try {
+        await onMemoChange?.(todo.id, memoInput.value);
+      } finally {
+        saveMemoButton.disabled = false;
+        saveMemoButton.textContent = '저장';
+      }
+    });
+
+    memoInput.addEventListener('blur', () => {
+      if (String(memoInput.value || '') !== String(todo.memo || '')) {
+        onMemoChange?.(todo.id, memoInput.value);
+      }
     });
 
     actions.append(editButton, deleteButton);
-    top.append(check, categorySelect, title, actions);
+    top.append(categorySelect, summary, actions);
     item.append(top, detail);
     root.append(item);
   });
@@ -1004,7 +973,6 @@ async function initPageCalendar() {
   const nextBtn = document.getElementById('workCalendarNextBtn');
   const form = document.getElementById('workTodoForm');
   const typeSelect = document.getElementById('workTodoType');
-  const input = document.getElementById('workTodoInput');
   const memoInput = document.getElementById('workTodoMemo');
   const todoList = document.getElementById('workTodoList');
   const todoEmpty = document.getElementById('workTodoEmpty');
@@ -1020,7 +988,7 @@ async function initPageCalendar() {
 
   const mobileTodoFormQuery = window.matchMedia('(max-width: 720px)');
 
-  if (!prevBtn || !nextBtn || !form || !typeSelect || !input || !memoInput) {
+  if (!prevBtn || !nextBtn || !form || !typeSelect || !memoInput) {
     return;
   }
 
@@ -1045,9 +1013,7 @@ async function initPageCalendar() {
       selectedDateKey: state.selectedDateKey,
       store: state.store,
       categories: state.categories,
-      onToggle: toggleTodo,
       onDelete: deleteTodo,
-      onTextChange: changeTodoText,
       onMemoChange: changeTodoMemo,
       onCategoryChange: changeTodoCategory,
     });
@@ -1073,27 +1039,6 @@ async function initPageCalendar() {
     }
   }
 
-  async function toggleTodo(todoId) {
-    const todos = state.store[state.selectedDateKey] || [];
-    const target = todos.find((todo) => todo.id === todoId);
-
-    if (!target) return;
-
-    const nextDone = !target.done;
-
-    try {
-      await updateTodoDone({
-        todoId,
-        done: nextDone,
-      });
-
-      target.done = nextDone;
-      renderAll();
-    } catch (error) {
-      alert('완료 상태 변경에 실패했어. 잠시 후 다시 시도해줘.');
-    }
-  }
-
   async function deleteTodo(todoId) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
@@ -1114,26 +1059,6 @@ async function initPageCalendar() {
       renderAll();
     } catch (error) {
       alert('업무 일정 삭제에 실패했어. 잠시 후 다시 시도해줘.');
-    }
-  }
-
-  async function changeTodoText(todoId, text) {
-    const todos = state.store[state.selectedDateKey] || [];
-    const target = todos.find((todo) => todo.id === todoId);
-    const nextText = String(text || '').trim();
-
-    if (!target || !nextText) return;
-
-    try {
-      await updateTodoText({
-        todoId,
-        text: nextText,
-      });
-
-      target.text = nextText;
-      renderAll();
-    } catch (error) {
-      alert('업무 일정 수정에 실패했어. 잠시 후 다시 시도해줘.');
     }
   }
 
@@ -1165,13 +1090,16 @@ async function initPageCalendar() {
 
     if (!target) return;
 
+    const nextMemo = String(memo || '').trim();
+
     try {
       await updateTodoMemo({
         todoId,
-        memo,
+        memo: nextMemo,
       });
 
-      target.memo = String(memo || '');
+      target.memo = nextMemo;
+      renderAll();
     } catch (error) {
       alert('메모 수정에 실패했어. 잠시 후 다시 시도해줘.');
     }
@@ -1307,14 +1235,14 @@ async function initPageCalendar() {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    const text = input.value.trim();
     const memo = memoInput.value.trim();
     const category =
       state.categories.find((item) => item.id === typeSelect.value) ||
       getFallbackCategory(state.categories);
 
-    if (!text) {
-      input.focus();
+    if (!category?.id) {
+      alert('근무형태를 선택해줘.');
+      typeSelect.focus();
       return;
     }
 
@@ -1322,7 +1250,6 @@ async function initPageCalendar() {
       const nextTodo = await insertTodo({
         userId: state.userId,
         dateKey: state.selectedDateKey,
-        text,
         memo,
         category,
       });
@@ -1330,12 +1257,11 @@ async function initPageCalendar() {
       const currentTodos = state.store[state.selectedDateKey] || [];
       state.store[state.selectedDateKey] = [...currentTodos, nextTodo];
 
-      input.value = '';
       memoInput.value = '';
       autoResizeTextarea(memoInput);
 
       renderAll();
-      input.focus();
+      typeSelect.focus();
 
       if (mobileTodoFormQuery.matches) {
         closeMobileTodoForm();

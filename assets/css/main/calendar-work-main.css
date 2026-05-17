@@ -164,7 +164,7 @@
   min-width: 0;
   min-height: 20px;
   padding: 0 var(--space-6);
-  border-radius: var(--radius-pill);
+  border-radius: 5px;
   background: var(--todo-category-color, var(--color-primary-sub));
   color: var(--todo-category-text, var(--color-text));
   font-size: 11px;
@@ -176,9 +176,19 @@
   text-overflow: ellipsis;
 }
 
-.work-calendar-day__badge.is-done {
-  opacity: 0.62;
-  text-decoration: line-through;
+.work-calendar-day__memo {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 /* =========================
@@ -277,13 +287,12 @@
 
 .work-todo-form {
   display: grid;
-  grid-template-columns: 96px auto 1fr auto;
+  grid-template-columns: 96px auto auto;
   gap: var(--space-8);
   margin-bottom: var(--space-16);
 }
 
 .work-todo-form__select,
-.work-todo-form__input,
 .work-todo-form__memo {
   min-height: 42px;
   border: 1px solid var(--color-border);
@@ -297,11 +306,6 @@
   padding: 0 var(--space-8);
 }
 
-.work-todo-form__input {
-  min-width: 0;
-  padding: 0 var(--space-12);
-}
-
 .work-todo-form__memo {
   grid-column: 1 / -1;
   width: 100%;
@@ -313,7 +317,6 @@
 }
 
 .work-todo-form__select:focus,
-.work-todo-form__input:focus,
 .work-todo-form__memo:focus {
   outline: 2px solid var(--color-primary-sub);
   border-color: var(--color-primary);
@@ -373,51 +376,21 @@
   background: var(--color-surface);
 }
 
-.work-todo-item.is-done {
-  background: #f7f7f7;
-}
-
 .work-todo-item__top {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--space-8);
   align-items: center;
 }
 
-.work-todo-item__check {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--color-primary);
-}
-
-.work-todo-item__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 92px;
-  min-height: 26px;
-  padding: 0 var(--space-8);
-  border-radius: var(--radius-pill);
-  background: var(--todo-category-color, var(--color-primary-sub));
-  color: var(--todo-category-text, var(--color-text));
-  font-size: 12px;
-  font-weight: 900;
+.work-todo-item__summary {
+  min-width: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.work-todo-item__title {
-  min-width: 0;
-  color: var(--color-text);
-  font-size: var(--text-small);
-  line-height: var(--line-body);
-  word-break: break-word;
-}
-
-.work-todo-item.is-done .work-todo-item__title {
-  color: var(--color-text-sub);
-  text-decoration: line-through;
 }
 
 .work-todo-item__actions {
@@ -427,6 +400,7 @@
 }
 
 .work-todo-item__edit,
+.work-todo-item__save,
 .work-todo-item__delete {
   min-width: 40px;
   min-height: 34px;
@@ -441,46 +415,46 @@
 }
 
 .work-todo-item__edit:hover,
+.work-todo-item__save:hover,
 .work-todo-item__delete:hover {
   color: var(--color-text);
   background: var(--color-primary-sub);
 }
 
+.work-todo-item__save:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .work-todo-item__detail {
   display: grid;
   gap: var(--space-8);
-  padding-left: 28px;
+}
+
+.work-todo-item__detail-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .work-todo-item__detail[hidden] {
   display: none;
 }
 
-.work-todo-item__input,
 .work-todo-item__memo {
   width: 100%;
+  min-height: 90px;
+  max-height: none;
+  padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--text-small);
-}
-
-.work-todo-item__input {
-  min-height: 38px;
-  padding: 0 var(--space-8);
-}
-
-.work-todo-item__memo {
-  min-height: 90px;
-  max-height: none;
-  padding: var(--space-8);
   line-height: var(--line-body);
   overflow: hidden;
   resize: none;
 }
 
-.work-todo-item__input:focus,
 .work-todo-item__memo:focus {
   outline: 2px solid var(--color-primary-sub);
   border-color: var(--color-primary);
@@ -800,8 +774,7 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
     touch-action: manipulation;
   }
 
-  #workCalendarPage .work-todo-form__select,
-  #workCalendarPage .work-todo-form__input {
+  #workCalendarPage .work-todo-form__select {
     min-height: 44px;
     padding-right: var(--space-12);
     padding-left: var(--space-12);
@@ -810,12 +783,6 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   #workCalendarPage .work-todo-form__memo {
     min-height: 88px;
     padding: var(--space-12);
-  }
-
-  #workCalendarPage .work-todo-item__input {
-    min-height: 38px;
-    padding-right: var(--space-8);
-    padding-left: var(--space-8);
   }
 
   #workCalendarPage .work-todo-item__memo {
@@ -919,34 +886,24 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
     min-width: 64px;
   }
 
-  .work-todo-form__input,
   .work-todo-form__memo,
   .work-todo-form__button {
     grid-column: 1 / -1;
   }
 
-  .work-todo-form__button {
-    width: 100%;
-  }
-
   .work-todo-item {
-    padding: var(--space-10, var(--space-8));
+    padding: var(--space-8);
   }
 
   .work-todo-item__top {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .work-todo-item__badge {
-    max-width: 100%;
-  }
-
-  .work-todo-item__title {
-    grid-column: 2 / -1;
+  .work-todo-item__summary {
+    grid-column: 1 / -1;
   }
 
   .work-todo-item__actions {
-    grid-column: 1 / -1;
     justify-content: flex-end;
   }
 
@@ -1075,6 +1032,11 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.work-calendar-day__memo {
+  font-size: 10px;
+  line-height: 1.25;
 }
 
 .work-calendar-main-panel {
