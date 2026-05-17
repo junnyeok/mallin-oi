@@ -310,11 +310,12 @@
 .event-todo-form__memo {
   grid-column: 1 / -1;
   width: 100%;
-  min-height: 72px;
-  max-height: 180px;
-  padding: var(--space-12);
+  min-height: 40px;
+  max-height: none;
+  padding: var(--space-8) var(--space-12);
   line-height: var(--line-body);
-  resize: vertical;
+  overflow: hidden;
+  resize: none;
 }
 
 .event-todo-form__select:focus,
@@ -417,8 +418,8 @@
 
 .event-todo-item__memo-input {
   width: 100%;
-  min-height: 100px;
-  max-height: 350px;
+  min-height: 40px;
+  max-height: none;
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
@@ -587,8 +588,8 @@
   }
 
   .event-todo-form__memo {
-    min-height: 64px;
-    max-height: 150px;
+    min-height: 52px;
+    max-height: 140px;
   }
 
   .event-todo-item {
@@ -596,8 +597,8 @@
   }
 
   .event-todo-item__memo-input {
-    min-height: 70px;
-    max-height: 250px;
+    min-height: 40px;
+    max-height: none;
   }
 }
 
@@ -689,8 +690,10 @@
 
 .event-todo-item__memo-input {
   width: 100%;
-  min-height: 150px;
-  max-height: 350px;
+  min-height: 40px;
+  max-height: none;
+  overflow: hidden;
+  resize: none;
 }
 
 /* 모바일에서는 캘린더 좌우 여백을 더 줄여서 달력을 크게 표시 */
@@ -757,8 +760,8 @@
 
   .event-todo-item__memo-input {
     width: 100%;
-    min-height: 150px;
-    max-height: 250px;
+    min-height: 40px;
+    max-height: none;
   }
 }
 
@@ -867,8 +870,8 @@
   }
 
   .event-todo-item__memo-input {
-    min-height: 90px;
-    max-height: 220px;
+    min-height: 40px;
+    max-height: none;
   }
 }
 
@@ -878,7 +881,7 @@
 ========================= */
 
 .event-todo-item__memo-input {
-  min-height: 90px;
+  min-height: 40px;
   max-height: none;
   overflow: hidden;
   resize: none;
@@ -886,7 +889,7 @@
 
 @media (max-width: 640px) {
   .event-todo-item__memo-input {
-    min-height: 90px;
+    min-height: 40px;
     max-height: none;
   }
 }
@@ -913,8 +916,8 @@
   }
 
   #eventCalendarPage .event-todo-form__memo {
-    min-height: 88px;
-    padding: var(--space-12);
+    min-height: 40px;
+    padding: var(--space-8) var(--space-12);
   }
 
   #eventCalendarPage .event-todo-item__text-input {

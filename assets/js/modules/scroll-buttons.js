@@ -7,9 +7,10 @@
   - 댓글: 좋아요/댓글 영역
   - END: 다른 게시물 영역
 
-    [index / study / work / event / career]
+        [index / study / work / event / career]
   - PC / 모바일: TOP / END
-    - END: 최신 업로드 패널
+    - END: 최신 업로드 패널이 있으면 해당 패널
+    - 최신 업로드 패널이 없으면 마지막 콘텐츠 또는 페이지 하단
 
   [posts-all.html]
   - TOP / END(카테고리 탭)
@@ -111,12 +112,29 @@ function findLatestPanel() {
   return latestList.closest('.panel') || latestList;
 }
 
+function findLastMainContent() {
+  const mainEl =
+    document.querySelector('.site-main') || document.querySelector('main');
+  if (!mainEl) return null;
+
+  const candidates = Array.from(
+    mainEl.querySelectorAll('.panel, section, article'),
+  ).filter((el) => {
+    if (!el) return false;
+    if (el.closest('[data-include]')) return false;
+    return true;
+  });
+
+  return candidates[candidates.length - 1] || mainEl;
+}
+
 function getHomeLikeTargets() {
   const latestPanel =
     document.getElementById('latestUploadSection') || findLatestPanel();
 
   return {
-    bottomScrollEl: latestPanel,
+    bottomScrollEl: latestPanel || findLastMainContent(),
+    hasLatestPanel: Boolean(latestPanel),
   };
 }
 
@@ -307,8 +325,10 @@ export function initScrollButtons(options = {}) {
     const homeTargets = getHomeLikeTargets();
     bottomScrollEl = homeTargets.bottomScrollEl;
 
-    if (bottomScrollEl) {
+    if (homeTargets.hasLatestPanel) {
       btnBottom.setAttribute('aria-label', '최신 업로드로 이동');
+    } else if (bottomScrollEl) {
+      btnBottom.setAttribute('aria-label', '마지막 콘텐츠로 이동');
     } else {
       btnBottom.setAttribute('aria-label', '하단으로 이동');
     }

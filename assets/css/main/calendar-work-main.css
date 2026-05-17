@@ -309,11 +309,12 @@
 .work-todo-form__memo {
   grid-column: 1 / -1;
   width: 100%;
-  min-height: 72px;
-  max-height: 180px;
-  padding: var(--space-12);
+  min-height: 40px;
+  max-height: none;
+  padding: var(--space-8) var(--space-12);
   line-height: var(--line-body);
-  resize: vertical;
+  overflow: hidden;
+  resize: none;
 }
 
 .work-todo-form__select:focus,
@@ -641,7 +642,7 @@ body.work-repeat-modal-open {
 
 .work-todo-item__memo {
   width: 100%;
-  min-height: 90px;
+  min-height: 40px;
   max-height: none;
   padding: var(--space-8);
   border: 1px solid var(--color-border);
@@ -985,14 +986,15 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   }
 
   #workCalendarPage .work-todo-form__memo {
-    min-height: 88px;
-    padding: var(--space-12);
+    min-height: 40px;
+    padding: var(--space-8) var(--space-12);
   }
 
   #workCalendarPage .work-todo-item__memo {
+    min-height: 44px;
     font-size: 16px;
     line-height: 1.45;
-    padding: var(--space-12);
+    padding: var(--space-8) var(--space-12);
   }
 }
 

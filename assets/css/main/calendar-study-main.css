@@ -288,7 +288,7 @@
 .study-todo-form__select,
 .study-todo-form__input,
 .study-todo-form__memo {
-  min-height: 42px;
+  min-height: 40px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
   background: var(--color-surface);
@@ -308,11 +308,12 @@
 .study-todo-form__memo {
   grid-column: 1 / -1;
   width: 100%;
-  min-height: 72px;
-  max-height: 180px;
-  padding: var(--space-12);
+  min-height: 40px;
+  max-height: none;
+  padding: var(--space-8) var(--space-12);
   line-height: var(--line-body);
-  resize: vertical;
+  overflow: hidden;
+  resize: none;
 }
 
 .study-todo-form__select:focus,
@@ -415,8 +416,6 @@
 
 .study-todo-item__memo-input {
   width: 100%;
-  min-height: 100px;
-  max-height: 350px;
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
@@ -424,7 +423,6 @@
   color: var(--color-text);
   font-size: 13px;
   line-height: var(--line-body);
-  resize: vertical;
 }
 
 .study-todo-item__memo-input:focus {
@@ -585,8 +583,8 @@
   }
 
   .study-todo-form__memo {
-    min-height: 64px;
-    max-height: 150px;
+    min-height: 52px;
+    max-height: 140px;
   }
 
   .study-todo-item {
@@ -594,8 +592,7 @@
   }
 
   .study-todo-item__memo-input {
-    min-height: 70px;
-    max-height: 250px;
+    min-height: 20px;
   }
 }
 
@@ -687,8 +684,10 @@
 
 .study-todo-item__memo-input {
   width: 100%;
-  min-height: 150px;
-  max-height: 350px;
+  min-height: 20px;
+  max-height: none;
+  overflow: hidden;
+  resize: none;
 }
 
 /* 모바일에서는 캘린더 좌우 여백을 더 줄여서 달력을 크게 표시 */
@@ -755,8 +754,7 @@
 
   .study-todo-item__memo-input {
     width: 100%;
-    min-height: 150px;
-    max-height: 250px;
+    min-height: 20px;
   }
 }
 
@@ -865,8 +863,7 @@
   }
 
   .study-todo-item__memo-input {
-    min-height: 90px;
-    max-height: 220px;
+    min-height: 20px;
   }
 }
 
@@ -876,7 +873,7 @@
 ========================= */
 
 .study-todo-item__memo-input {
-  min-height: 90px;
+  min-height: 20px;
   max-height: none;
   overflow: hidden;
   resize: none;
@@ -884,7 +881,7 @@
 
 @media (max-width: 640px) {
   .study-todo-item__memo-input {
-    min-height: 90px;
+    min-height: 20px;
     max-height: none;
   }
 }
@@ -911,8 +908,8 @@
   }
 
   #studyCalendarPage .study-todo-form__memo {
-    min-height: 88px;
-    padding: var(--space-12);
+    min-height: 40px;
+    padding: var(--space-8) var(--space-12);
   }
 
   #studyCalendarPage .study-todo-item__text-input {

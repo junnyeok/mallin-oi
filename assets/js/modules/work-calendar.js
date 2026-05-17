@@ -894,7 +894,7 @@ function renderTodoList({
     deleteButton.type = 'button';
 
     memoInput.className = 'work-todo-item__memo';
-    memoInput.rows = 3;
+    memoInput.rows = 1;
     memoInput.value = todo.memo || '';
     memoInput.placeholder = '메모를 입력하세요.';
     memoInput.setAttribute('aria-label', '업무 캘린더 메모 수정');

@@ -824,7 +824,7 @@ function renderTodoList({
     const memoInput = document.createElement('textarea');
     memoInput.className = 'study-todo-item__memo-input';
     memoInput.id = `studyTodoMemo-${todo.id}`;
-    memoInput.rows = 2;
+    memoInput.rows = 1;
     memoInput.placeholder = '이 항목의 메모를 입력하세요.';
     memoInput.value = todo.memo || '';
     autoResizeTextarea(memoInput);
@@ -1564,6 +1564,7 @@ async function initPageCalendar() {
 
       input.value = '';
       memoInput.value = '';
+      autoResizeTextarea(memoInput);
 
       renderAll();
 
@@ -1576,6 +1577,12 @@ async function initPageCalendar() {
       alert('할 일 추가에 실패했어. 잠시 후 다시 시도해줘.');
     }
   });
+
+  memoInput.addEventListener('input', () => {
+    autoResizeTextarea(memoInput);
+  });
+
+  autoResizeTextarea(memoInput);
 
   renderAll();
 }
