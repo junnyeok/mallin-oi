@@ -1084,6 +1084,10 @@ async function initPageCalendar() {
   const categoryPalette = document.getElementById('workCategoryPalette');
   const categoryList = document.getElementById('workCategoryList');
 
+  const repeatToggle = document.getElementById('workRepeatToggle');
+  const repeatPanel = document.getElementById('workRepeatPanel');
+  const repeatClose = document.getElementById('workRepeatClose');
+  const repeatCancel = document.getElementById('workRepeatCancel');
   const repeatForm = document.getElementById('workRepeatForm');
   const repeatStartInput = document.getElementById('workRepeatStart');
   const repeatEndInput = document.getElementById('workRepeatEnd');
@@ -1440,8 +1444,40 @@ async function initPageCalendar() {
     }
   }
 
+  function openRepeatModal() {
+    if (!repeatToggle || !repeatPanel) return;
+
+    if (categoryPanel && !categoryPanel.hidden) {
+      closeCategoryModal();
+    }
+
+    repeatPanel.hidden = false;
+    repeatToggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('work-repeat-modal-open');
+
+    window.setTimeout(() => {
+      repeatStartInput?.focus();
+    }, 0);
+  }
+
+  function closeRepeatModal({ restoreFocus = true } = {}) {
+    if (!repeatToggle || !repeatPanel) return;
+
+    repeatPanel.hidden = true;
+    repeatToggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('work-repeat-modal-open');
+
+    if (restoreFocus) {
+      repeatToggle.focus();
+    }
+  }
+
   function openCategoryModal() {
     if (!categoryToggle || !categoryPanel) return;
+
+    if (repeatPanel && !repeatPanel.hidden) {
+      closeRepeatModal({ restoreFocus: false });
+    }
 
     categoryPanel.hidden = false;
     categoryToggle.setAttribute('aria-expanded', 'true');
@@ -1537,6 +1573,30 @@ async function initPageCalendar() {
     });
   });
 
+  if (repeatToggle && repeatPanel) {
+    repeatToggle.addEventListener('click', () => {
+      if (repeatPanel.hidden) {
+        openRepeatModal();
+        return;
+      }
+
+      closeRepeatModal();
+    });
+
+    repeatPanel.addEventListener('click', (event) => {
+      if (event.target !== repeatPanel) return;
+      closeRepeatModal();
+    });
+  }
+
+  repeatClose?.addEventListener('click', () => {
+    closeRepeatModal();
+  });
+
+  repeatCancel?.addEventListener('click', () => {
+    closeRepeatModal();
+  });
+
   if (categoryToggle && categoryPanel) {
     categoryToggle.addEventListener('click', () => {
       if (categoryPanel.hidden) {
@@ -1559,9 +1619,15 @@ async function initPageCalendar() {
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
-    if (!categoryPanel || categoryPanel.hidden) return;
 
-    closeCategoryModal();
+    if (repeatPanel && !repeatPanel.hidden) {
+      closeRepeatModal();
+      return;
+    }
+
+    if (categoryPanel && !categoryPanel.hidden) {
+      closeCategoryModal();
+    }
   });
 
   if (categoryPalette && categoryColorInput) {

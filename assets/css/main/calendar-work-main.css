@@ -359,14 +359,58 @@
   Work Repeat
 ========================= */
 
+body.work-repeat-modal-open {
+  overflow: hidden;
+}
+
 .work-repeat {
+  margin: var(--space-16) 0;
+  padding: 0;
+}
+
+.work-repeat__trigger {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-repeat__trigger:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.work-repeat__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-16);
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.work-repeat__modal[hidden] {
+  display: none;
+}
+
+.work-repeat__dialog {
+  width: min(460px, 100%);
+  max-height: min(680px, calc(100vh - var(--space-32)));
+  overflow-y: auto;
   display: grid;
   gap: var(--space-12);
-  margin: var(--space-16) 0;
-  padding: var(--space-12);
+  padding: var(--space-16);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .work-repeat__head {
@@ -388,6 +432,25 @@
   color: var(--color-text-sub);
   font-size: 12px;
   line-height: var(--line-body);
+}
+
+.work-repeat__close {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-repeat__close:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
 }
 
 .work-repeat__form {
@@ -439,20 +502,43 @@
   accent-color: var(--color-primary);
 }
 
-.work-repeat__button {
+.work-repeat__actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.work-repeat__button,
+.work-repeat__cancel {
   min-height: 42px;
   padding: 0 var(--space-16);
-  border: 1px solid var(--color-primary);
   border-radius: var(--radius-btn);
-  background: var(--color-primary);
-  color: var(--color-surface);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
 }
 
+.work-repeat__button {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.work-repeat__cancel {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+}
+
 .work-repeat__button:hover {
   opacity: 0.82;
+}
+
+.work-repeat__cancel:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
 }
 
 .work-repeat__button:disabled {
@@ -825,6 +911,7 @@ body.theme-work[data-page='calendar-work'] .work-calendar-weekday,
 body.theme-work[data-page='calendar-work'] .work-todo-form__button,
 body.theme-work[data-page='calendar-work'] .work-category-form__button,
 body.theme-work[data-page='calendar-work'] .work-repeat__button {
+  border-color: var(--color-primary);
   background: var(--color-primary);
 }
 
@@ -847,6 +934,9 @@ body.theme-work[data-page='calendar-work']
 
 body.theme-work[data-page='calendar-work'] .work-calendar-nav-btn:hover,
 body.theme-work[data-page='calendar-work'] .work-todo-form__setting:hover,
+body.theme-work[data-page='calendar-work'] .work-repeat__trigger:hover,
+body.theme-work[data-page='calendar-work'] .work-repeat__close:hover,
+body.theme-work[data-page='calendar-work'] .work-repeat__cancel:hover,
 body.theme-work[data-page='calendar-work'] .work-todo-item__edit:hover,
 body.theme-work[data-page='calendar-work'] .work-todo-item__delete:hover,
 body.theme-work[data-page='calendar-work'] .work-category-manager__close:hover {
@@ -1006,12 +1096,37 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   }
 
   .work-repeat {
+    margin: var(--space-12) 0;
+  }
+
+  .work-repeat__modal {
+    align-items: center;
     padding: var(--space-12);
   }
 
+  .work-repeat__dialog {
+    width: 100%;
+    max-height: calc(100vh - var(--space-24));
+    padding: var(--space-12);
+  }
+
+  .work-repeat__head {
+    gap: var(--space-8);
+  }
+
   .work-repeat__input,
-  .work-repeat__button {
+  .work-repeat__button,
+  .work-repeat__cancel,
+  .work-repeat__trigger {
     min-height: 44px;
+  }
+
+  .work-repeat__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .work-repeat__cancel {
+    width: 100%;
   }
 
   .work-todo-item {
