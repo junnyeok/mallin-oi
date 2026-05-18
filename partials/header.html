@@ -343,6 +343,18 @@
               <span class="service-menu__label">내프로필</span>
             </a>
 
+            <button
+              class="service-menu__link write-btn"
+              id="calendarManageBtn"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="calendarManagePanel"
+              aria-label="캘린더 관리 팝업 열기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">🗓️</span>
+              <span class="service-menu__label">캘린더 관리</span>
+            </button>
+
             <a
               class="service-menu__link write-btn"
               href="__BASE__store.html"
@@ -377,6 +389,77 @@
             >
               <span class="service-menu__icon" aria-hidden="true">❓</span>
               <span class="service-menu__label">Q&amp;A</span>
+            </a>
+          </div>
+        </div>
+        <button
+          class="calendar-manage__backdrop"
+          id="calendarManageBackdrop"
+          type="button"
+          aria-label="캘린더 관리 닫기"
+          hidden
+        ></button>
+
+        <div
+          class="calendar-manage__panel"
+          id="calendarManagePanel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="calendarManageTitle"
+          hidden
+        >
+          <div class="calendar-manage__head">
+            <h2 class="calendar-manage__title" id="calendarManageTitle">
+              캘린더 관리
+            </h2>
+            <button
+              class="calendar-manage__close"
+              id="calendarManageCloseBtn"
+              type="button"
+              aria-label="캘린더 관리 닫기"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="calendar-manage__list">
+            <a
+              class="calendar-manage__link"
+              href="__BASE__calendar-study.html"
+              aria-label="자기개발 캘린더로 이동"
+            >
+              <img
+                class="calendar-manage__logo calendar-manage__logo--study"
+                src="__BASE__images/logo-study.png"
+                alt=""
+              />
+              <span class="calendar-manage__label">자기개발 캘린더</span>
+            </a>
+
+            <a
+              class="calendar-manage__link"
+              href="__BASE__calendar-work.html"
+              aria-label="업무 캘린더로 이동"
+            >
+              <img
+                class="calendar-manage__logo calendar-manage__logo--work"
+                src="__BASE__images/logo-work.png"
+                alt=""
+              />
+              <span class="calendar-manage__label">업무 캘린더</span>
+            </a>
+
+            <a
+              class="calendar-manage__link"
+              href="__BASE__calendar-event.html"
+              aria-label="이벤트 캘린더로 이동"
+            >
+              <img
+                class="calendar-manage__logo calendar-manage__logo--event"
+                src="__BASE__images/logo-event.png"
+                alt=""
+              />
+              <span class="calendar-manage__label">이벤트 캘린더</span>
             </a>
           </div>
         </div>

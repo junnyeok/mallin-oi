@@ -21,7 +21,17 @@ export function initServiceMenu() {
   const panel = document.getElementById('serviceMenuPanel');
   const closeBtn = document.getElementById('serviceMenuCloseBtn');
   const backdrop = document.getElementById('serviceMenuBackdrop');
-  const links = menu.querySelectorAll('.service-menu__link');
+  const links = menu.querySelectorAll('.service-menu__link[href]');
+
+  const calendarManageBtn = document.getElementById('calendarManageBtn');
+  const calendarManagePanel = document.getElementById('calendarManagePanel');
+  const calendarManageBackdrop = document.getElementById(
+    'calendarManageBackdrop',
+  );
+  const calendarManageCloseBtn = document.getElementById(
+    'calendarManageCloseBtn',
+  );
+  const calendarManageLinks = menu.querySelectorAll('.calendar-manage__link');
 
   if (!button || !panel || !closeBtn) return;
 
@@ -140,10 +150,53 @@ export function initServiceMenu() {
     }
   };
 
+  const isCalendarManageOpen = () => {
+    return menu.classList.contains('is-calendar-manage-open');
+  };
+
+  const openCalendarManage = () => {
+    if (!calendarManagePanel || !calendarManageBackdrop) return;
+
+    closeMenu();
+
+    calendarManagePanel.hidden = false;
+    calendarManageBackdrop.hidden = false;
+
+    requestAnimationFrame(() => {
+      menu.classList.add('is-calendar-manage-open');
+      document.body.classList.add('calendar-manage-open');
+      calendarManageBtn?.setAttribute('aria-expanded', 'true');
+      calendarManageCloseBtn?.focus();
+    });
+  };
+
+  const closeCalendarManage = ({ restoreFocus = false } = {}) => {
+    if (!calendarManagePanel || !calendarManageBackdrop) return;
+
+    menu.classList.remove('is-calendar-manage-open');
+    document.body.classList.remove('calendar-manage-open');
+    calendarManageBtn?.setAttribute('aria-expanded', 'false');
+
+    window.setTimeout(() => {
+      if (!isCalendarManageOpen()) {
+        calendarManagePanel.hidden = true;
+        calendarManageBackdrop.hidden = true;
+      }
+    }, 180);
+
+    if (restoreFocus) {
+      calendarManageBtn?.focus();
+    }
+  };
+
   const toggleMenu = () => {
     if (menu.classList.contains('is-open')) {
       closeMenu({ restoreFocus: true });
       return;
+    }
+
+    if (isCalendarManageOpen()) {
+      closeCalendarManage();
     }
 
     openMenu();
@@ -167,19 +220,55 @@ export function initServiceMenu() {
     });
   });
 
-  document.addEventListener('click', (event) => {
-    if (!menu.classList.contains('is-open')) return;
+  calendarManageBtn?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openCalendarManage();
+  });
 
+  calendarManageCloseBtn?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeCalendarManage({ restoreFocus: true });
+  });
+
+  calendarManageBackdrop?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeCalendarManage();
+  });
+
+  calendarManageLinks.forEach((link) => {
+    link.addEventListener('click', () => {
+      closeCalendarManage();
+    });
+  });
+
+  document.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
 
-    if (!menu.contains(target)) {
+    if (menu.classList.contains('is-open') && !menu.contains(target)) {
       closeMenu();
+      return;
+    }
+
+    if (
+      isCalendarManageOpen() &&
+      calendarManagePanel &&
+      !calendarManagePanel.contains(target) &&
+      target !== calendarManageBackdrop
+    ) {
+      closeCalendarManage();
     }
   });
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
+
+    if (isCalendarManageOpen()) {
+      closeCalendarManage({ restoreFocus: true });
+      return;
+    }
+
     if (!menu.classList.contains('is-open')) return;
 
     closeMenu({ restoreFocus: true });
