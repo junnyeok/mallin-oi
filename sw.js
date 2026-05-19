@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260518-03';
+const SITE_VERSION = '20260519-02';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -42,6 +42,9 @@ const APP_SHELL_FILES = [
   './assets/js/main.js',
   './assets/js/modules/pwa-install.js',
   './assets/js/modules/calendar-widget-data.js',
+
+  './assets/js/modules/push-config.js',
+  './assets/js/modules/push-notifications.js',
 
   './images/favicon.ico',
   './images/favicon-16x16.png',
@@ -180,4 +183,112 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizePushPayload(event) {
+  const fallback = {
+    title: '말린오이닷컴 알림',
+    body: '새 알림이 도착했어.',
+    url: './',
+    icon: './images/android-chrome-192x192.png',
+    badge: './images/favicon-32x32.png',
+    tag: `mallin-notification-${Date.now()}`,
+    notificationId: null,
+  };
+
+  if (!event.data) return fallback;
+
+  const text = event.data.text();
+  const parsed = safeJsonParse(text);
+
+  if (!parsed || typeof parsed !== 'object') {
+    return {
+      ...fallback,
+      body: text || fallback.body,
+    };
+  }
+
+  return {
+    ...fallback,
+    ...parsed,
+    title: parsed.title || fallback.title,
+    body: parsed.body || fallback.body,
+    url: parsed.url || fallback.url,
+    icon: parsed.icon || fallback.icon,
+    badge: parsed.badge || fallback.badge,
+    tag: parsed.tag || fallback.tag,
+    notificationId: parsed.notificationId || null,
+  };
+}
+
+function resolveNotificationUrl(rawUrl = './') {
+  try {
+    return new URL(rawUrl, self.location.origin).href;
+  } catch (error) {
+    return new URL('./', self.location.origin).href;
+  }
+}
+
+self.addEventListener('push', (event) => {
+  const payload = normalizePushPayload(event);
+  const targetUrl = resolveNotificationUrl(payload.url);
+
+  const options = {
+    body: payload.body,
+    icon: payload.icon,
+    badge: payload.badge,
+    tag: payload.tag,
+    data: {
+      url: targetUrl,
+      notificationId: payload.notificationId,
+      type: payload.type || '',
+      postId: payload.postId || null,
+      commentId: payload.commentId || null,
+      itemId: payload.itemId || null,
+    },
+    renotify: false,
+  };
+
+  event.waitUntil(self.registration.showNotification(payload.title, options));
+});
+
+async function focusOrOpenNotificationUrl(targetUrl) {
+  const windowClients = await clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  });
+
+  const target = new URL(targetUrl);
+
+  for (const client of windowClients) {
+    const clientUrl = new URL(client.url);
+
+    if (clientUrl.origin === target.origin) {
+      await client.focus();
+
+      if ('navigate' in client) {
+        return client.navigate(target.href);
+      }
+
+      return client;
+    }
+  }
+
+  return clients.openWindow(target.href);
+}
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification?.data?.url || './';
+
+  event.waitUntil(focusOrOpenNotificationUrl(targetUrl));
 });

@@ -42,12 +42,24 @@ function formatDateTime(value) {
   return `${yy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-function buildNotificationHref(postId, commentId) {
+function buildNotificationHref(item = {}) {
+  if (item.action_url) {
+    const url = new URL(item.action_url, window.location.origin);
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+
+  if (item.item_id) {
+    const base = resolveSitePath('store-item.html');
+    const url = new URL(base, window.location.origin);
+    url.searchParams.set('id', String(item.item_id));
+    return `${url.pathname}${url.search}`;
+  }
+
   const base = resolveSitePath('post.html');
   const url = new URL(base, window.location.origin);
 
-  if (postId) url.searchParams.set('id', String(postId));
-  if (commentId) url.searchParams.set('comment', String(commentId));
+  if (item.post_id) url.searchParams.set('id', String(item.post_id));
+  if (item.comment_id) url.searchParams.set('comment', String(item.comment_id));
 
   return `${url.pathname}${url.search}`;
 }
@@ -192,7 +204,7 @@ function renderNotifications(items = [], unreadCount = 0) {
 
   list.innerHTML = items
     .map((item) => {
-      const href = buildNotificationHref(item.post_id, item.comment_id);
+      const href = buildNotificationHref(item);
       const unreadClass = item.is_read ? '' : ' is-unread';
 
       return `
@@ -239,7 +251,9 @@ export async function refreshNotifications({ keepPanelOpen = false } = {}) {
 
     supabase
       .from('user_notifications')
-      .select('id, post_id, comment_id, title, message, is_read, created_at')
+      .select(
+        'id, post_id, comment_id, notification_type, title, message, action_url, item_id, is_read, created_at',
+      )
       .eq('recipient_user_id', currentUserId)
       .order('created_at', { ascending: false })
       .limit(MAX_NOTIFICATIONS),
