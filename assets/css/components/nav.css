@@ -191,97 +191,6 @@ body[data-page='post'] .logo #siteLogoImg {
   color: var(--color-text-sub);
 }
 
-.notification-push {
-  margin: var(--space-12) 14px 0;
-  padding: var(--space-12);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-btn);
-  background: #fff;
-}
-
-.notification-push__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-12);
-}
-
-.notification-push__title {
-  display: block;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text);
-}
-
-.notification-push__desc {
-  margin: var(--space-4) 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-text-sub);
-}
-
-.notification-push__status {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 3px var(--space-8);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-primary-sub);
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.notification-push__status[data-status='enabled'] {
-  border-color: #8bc34a;
-  background: #f8fff0;
-}
-
-.notification-push__status[data-status='denied'],
-.notification-push__status[data-status='unsupported'] {
-  border-color: #e0b4b4;
-  background: #fff5f5;
-}
-
-.notification-push__actions {
-  display: flex;
-  gap: var(--space-8);
-  margin-top: var(--space-12);
-}
-
-.notification-push__btn {
-  flex: 1 1 auto;
-  min-height: 36px;
-  padding: 8px var(--space-12);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-btn);
-  background: var(--color-primary);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.notification-push__btn--sub {
-  background: #fff;
-}
-
-.notification-push__btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.notification-push__message {
-  margin: var(--space-8) 0 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--color-text-sub);
-}
-
 .notification-panel__list {
   display: flex;
   flex-direction: column;
@@ -774,22 +683,6 @@ body[data-page='post'] .logo #siteLogoImg {
     justify-self: end;
     padding: 7px 9px;
     font-size: 11px;
-  }
-}
-
-@media (max-width: 700px) {
-  .notification-push__top {
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
-  .notification-push__actions {
-    flex-direction: column;
-  }
-
-  .notification-push__btn {
-    width: 100%;
-    min-height: 40px;
   }
 }
 

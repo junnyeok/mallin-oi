@@ -18109,3 +18109,131 @@ begin
 end $$;
 
 --누적본쿼리 5/19
+
+create extension if not exists pg_net;
+
+create or replace function public.call_send_push_notification()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, net
+as $$
+declare
+  v_request_id bigint;
+begin
+  select net.http_post(
+    url := 'https://tfztkeihdqkfzwpilyky.supabase.co/functions/v1/send-push-notification',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-push-secret', '07e94c08fd94e5800d7a0949794b369c31a5610003b3b71bc9f6b193fcbf7f2f'
+    ),
+    body := jsonb_build_object(
+      'notificationId', new.id,
+      'table', 'user_notifications',
+      'type', 'INSERT',
+      'record', jsonb_build_object('id', new.id)
+    ),
+    timeout_milliseconds := 5000
+  )
+  into v_request_id;
+
+  raise notice '[push] queued notification_id=%, request_id=%', new.id, v_request_id;
+
+  return new;
+exception
+  when others then
+    raise warning '[push] failed notification_id=%, error=%', new.id, sqlerrm;
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_user_notifications_send_push on public.user_notifications;
+
+create trigger trg_user_notifications_send_push
+after insert on public.user_notifications
+for each row
+execute function public.call_send_push_notification();
+
+
+---
+-- =========================================================
+-- 말린오이닷컴 기기 푸시 알림 제거 SQL
+-- 목적:
+-- - 사이트 내부 알림 public.user_notifications 유지
+-- - Web Push 구독/설정/Edge Function 호출 트리거만 제거
+-- - store-item 구매 함수 SQL에는 넣지 말 것
+-- =========================================================
+
+-- 1) user_notifications insert 후 Edge Function 호출 트리거 제거
+drop trigger if exists trg_user_notifications_send_push
+on public.user_notifications;
+
+-- 2) Edge Function 호출용 트리거 함수 제거
+drop function if exists public.call_send_push_notification();
+
+-- 3) push 전용 테이블에 붙은 updated_at 트리거 제거
+drop trigger if exists trg_user_push_subscriptions_updated_at
+on public.user_push_subscriptions;
+
+drop trigger if exists trg_user_notification_preferences_updated_at
+on public.user_notification_preferences;
+
+-- 4) push 전용 RPC 권한 제거
+revoke execute on function public.register_my_push_subscription(text, text, text, text, text)
+from authenticated;
+
+revoke execute on function public.disable_my_push_subscription(text)
+from authenticated;
+
+-- 5) push 전용 RPC 함수 제거
+drop function if exists public.register_my_push_subscription(text, text, text, text, text);
+drop function if exists public.disable_my_push_subscription(text);
+
+-- 6) Realtime publication에서 push 전용 테이블 제거
+do $$
+begin
+  if exists (
+    select 1
+    from pg_publication
+    where pubname = 'supabase_realtime'
+  ) then
+    execute 'alter publication supabase_realtime drop table if exists public.user_push_subscriptions';
+    execute 'alter publication supabase_realtime drop table if exists public.user_notification_preferences';
+  end if;
+exception
+  when others then
+    raise notice '[push cleanup] realtime publication cleanup skipped: %', sqlerrm;
+end $$;
+
+-- 7) push 전용 RLS policy 제거
+drop policy if exists "푸시 구독은 본인만 조회 가능"
+on public.user_push_subscriptions;
+
+drop policy if exists "푸시 구독은 본인만 추가 가능"
+on public.user_push_subscriptions;
+
+drop policy if exists "푸시 구독은 본인만 수정 가능"
+on public.user_push_subscriptions;
+
+drop policy if exists "푸시 구독은 본인만 삭제 가능"
+on public.user_push_subscriptions;
+
+drop policy if exists "알림 설정은 본인만 조회 가능"
+on public.user_notification_preferences;
+
+drop policy if exists "알림 설정은 본인만 추가 가능"
+on public.user_notification_preferences;
+
+drop policy if exists "알림 설정은 본인만 수정 가능"
+on public.user_notification_preferences;
+
+-- 8) push 전용 테이블 제거
+drop table if exists public.user_push_subscriptions cascade;
+drop table if exists public.user_notification_preferences cascade;
+
+-- 9) 확인용
+select
+  to_regclass('public.user_notifications') as internal_notifications_table,
+  to_regclass('public.user_push_subscriptions') as push_subscriptions_table,
+  to_regclass('public.user_notification_preferences') as push_preferences_table;
+--누적본쿼리 5/20

@@ -55,7 +55,6 @@ async function loadCoreModules() {
     storeModule,
     dailyAttendancePopupModule,
     notificationsModule,
-    pushNotificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
     pjaxRouterModule,
@@ -135,7 +134,6 @@ async function loadCoreModules() {
     storeModule,
     dailyAttendancePopupModule,
     notificationsModule,
-    pushNotificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
     pjaxRouterModule,
@@ -413,7 +411,6 @@ async function initGlobalModules(modules) {
 
     dailyAttendancePopupModule,
     notificationsModule,
-    pushNotificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
     pjaxRouterModule,
@@ -437,7 +434,6 @@ async function initGlobalModules(modules) {
   const { initServiceMenu } = serviceMenuModule;
   const { initDailyAttendancePopup } = dailyAttendancePopupModule;
   const { initNotifications } = notificationsModule;
-  const { initPushNotifications } = pushNotificationsModule;
   const { initBgmPlayer } = bgmPlayerModule;
   const { initPickleStatus } = pickleStatusModule;
   const { initPjaxRouter } = pjaxRouterModule;
@@ -501,10 +497,6 @@ async function initGlobalModules(modules) {
 
   await runSafe('notifications module', async () => {
     await initNotifications();
-  });
-
-  await runSafe('push notifications module', async () => {
-    await initPushNotifications();
   });
 
   await runSafe('pickle status module', async () => {
