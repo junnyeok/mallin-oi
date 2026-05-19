@@ -28,6 +28,7 @@ async function loadCoreModules() {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    pwaInstallModule,
     cursorBuddyModule,
     postsUiModule,
     postDetailModule,
@@ -65,6 +66,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/mobile-stability.js')),
     import(withModuleVersion('./modules/site-version.js')),
     import(withModuleVersion('./modules/update-banner.js')),
+    import(withModuleVersion('./modules/pwa-install.js')),
     import(withModuleVersion('./modules/cursor-buddy.js')),
     import(withModuleVersion('./modules/posts-ui.js')),
     import(withModuleVersion('./modules/post-detail.js')),
@@ -104,6 +106,7 @@ async function loadCoreModules() {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    pwaInstallModule,
     cursorBuddyModule,
     postsUiModule,
     postDetailModule,
@@ -398,6 +401,7 @@ async function initGlobalModules(modules) {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    pwaInstallModule,
     cursorBuddyModule,
     searchNavModule,
     layoutIncludesModule,
@@ -421,6 +425,7 @@ async function initGlobalModules(modules) {
   } = siteVersionModule;
 
   const { showUpdateBanner } = updateBannerModule;
+  const { initPwaInstall } = pwaInstallModule;
   const { initCursorBuddy } = cursorBuddyModule;
   const { initSearchNav } = searchNavModule;
   const { initLayoutIncludes, refreshLayoutState } = layoutIncludesModule;
@@ -433,6 +438,11 @@ async function initGlobalModules(modules) {
   const { initPjaxRouter } = pjaxRouterModule;
 
   applyVersionToStaticLinks(withAssetVersion);
+
+  await runSafe('pwa install', async () => {
+    await initPwaInstall();
+  });
+
   await runSafe('mobile stability', async () => {
     initMobileStability();
   });

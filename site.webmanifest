@@ -1,6 +1,14 @@
 {
   "name": "말린오이닷컴",
-  "short_name": "말린오이닷컴",
+  "short_name": "말린오이",
+  "description": "게시글, 프로필, 상점, 캘린더를 앱처럼 사용할 수 있는 말린오이닷컴",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "./images/android-chrome-192x192.png",
@@ -11,9 +19,78 @@
       "src": "./images/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "./images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ],
-  "theme_color": "#111111",
-  "background_color": "#111111",
-  "display": "standalone"
+  "shortcuts": [
+    {
+      "name": "전체게시글",
+      "short_name": "게시글",
+      "description": "말린오이닷컴 전체게시글 보기",
+      "url": "./posts-all.html",
+      "icons": [
+        {
+          "src": "./images/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "자기개발 캘린더",
+      "short_name": "자기개발",
+      "description": "자기개발 캘린더 열기",
+      "url": "./calendar-study.html",
+      "icons": [
+        {
+          "src": "./images/logo-study.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "업무 캘린더",
+      "short_name": "업무",
+      "description": "업무 캘린더 열기",
+      "url": "./calendar-work.html",
+      "icons": [
+        {
+          "src": "./images/logo-work.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "이벤트 캘린더",
+      "short_name": "이벤트",
+      "description": "이벤트 캘린더 열기",
+      "url": "./calendar-event.html",
+      "icons": [
+        {
+          "src": "./images/logo-event.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "내프로필",
+      "short_name": "프로필",
+      "description": "내프로필 열기",
+      "url": "./profile.html",
+      "icons": [
+        {
+          "src": "./images/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

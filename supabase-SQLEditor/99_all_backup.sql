@@ -16912,3 +16912,94 @@ create index if not exists event_calendar_todos_user_date_time_idx
 on public.event_calendar_todos (user_id, event_date, event_time);
 
 --누적본 쿼리 5/14
+create or replace function public.get_my_calendar_widget_items(
+  p_start_date date default current_date,
+  p_end_date date default current_date + 30
+)
+returns table (
+  calendar_type text,
+  item_id uuid,
+  item_date date,
+  category_name text,
+  category_color text,
+  title text,
+  memo text,
+  event_time time,
+  sort_order integer,
+  created_at timestamptz
+)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select
+    'study'::text as calendar_type,
+    t.id as item_id,
+    t.todo_date as item_date,
+    coalesce(c.name, t.todo_type, '기타') as category_name,
+    coalesce(c.color, '') as category_color,
+    t.todo_text as title,
+    coalesce(t.memo, '') as memo,
+    null::time as event_time,
+    coalesce(c.sort_order, 100) as sort_order,
+    t.created_at
+  from public.study_calendar_todos t
+  left join public.study_calendar_categories c
+    on c.id = t.category_id
+   and c.user_id = t.user_id
+  where t.user_id = auth.uid()
+    and t.todo_date between p_start_date and p_end_date
+
+  union all
+
+  select
+    'work'::text as calendar_type,
+    t.id as item_id,
+    t.work_date as item_date,
+    coalesce(c.name, t.work_type, '기타') as category_name,
+    coalesce(c.color, '') as category_color,
+    t.work_text as title,
+    coalesce(t.memo, '') as memo,
+    null::time as event_time,
+    coalesce(c.sort_order, 100) as sort_order,
+    t.created_at
+  from public.work_calendar_todos t
+  left join public.work_calendar_categories c
+    on c.id = t.category_id
+   and c.user_id = t.user_id
+  where t.user_id = auth.uid()
+    and t.work_date between p_start_date and p_end_date
+
+  union all
+
+  select
+    'event'::text as calendar_type,
+    t.id as item_id,
+    t.event_date as item_date,
+    coalesce(c.name, t.event_type, '기타') as category_name,
+    coalesce(c.color, '') as category_color,
+    t.event_text as title,
+    coalesce(t.memo, '') as memo,
+    t.event_time as event_time,
+    coalesce(c.sort_order, 100) as sort_order,
+    t.created_at
+  from public.event_calendar_todos t
+  left join public.event_calendar_categories c
+    on c.id = t.category_id
+   and c.user_id = t.user_id
+  where t.user_id = auth.uid()
+    and t.event_date between p_start_date and p_end_date
+
+  order by
+    item_date asc,
+    calendar_type asc,
+    event_time asc nulls last,
+    sort_order asc,
+    created_at asc;
+$$;
+
+revoke all on function public.get_my_calendar_widget_items(date, date) from public;
+grant execute on function public.get_my_calendar_widget_items(date, date) to authenticated;
+
+  --누적본 쿼리 5/18

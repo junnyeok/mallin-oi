@@ -329,6 +329,50 @@ function getBodyField() {
   return $('#body');
 }
 
+function isRangeInsideBodyEditor(range) {
+  const editor = getBodyEditor();
+
+  if (!editor || !range) return false;
+
+  const startContainer = range.startContainer;
+  const endContainer = range.endContainer;
+  const commonAncestor = range.commonAncestorContainer;
+
+  if (!startContainer || !endContainer || !commonAncestor) return false;
+
+  const startRoot =
+    startContainer.nodeType === Node.DOCUMENT_NODE
+      ? startContainer
+      : startContainer.getRootNode?.();
+
+  const endRoot =
+    endContainer.nodeType === Node.DOCUMENT_NODE
+      ? endContainer
+      : endContainer.getRootNode?.();
+
+  if (startRoot !== document || endRoot !== document) return false;
+
+  return (
+    editor.contains(startContainer) &&
+    editor.contains(endContainer) &&
+    editor.contains(commonAncestor)
+  );
+}
+
+function preserveEditorSelectionFromEvent(event) {
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  const target = event?.target;
+
+  if (
+    target?.closest?.('#writeEmoticonToggle') ||
+    target?.closest?.('#writeEmoticonPanel')
+  ) {
+    saveCurrentSelectionRange();
+  }
+}
+
 async function initWriteEmoticonPicker(user) {
   const editor = getBodyEditor();
   const toggleBtn = $('#writeEmoticonToggle');
@@ -354,8 +398,44 @@ async function initWriteEmoticonPicker(user) {
 
   toggleBtn.disabled = ownedEmoticons.length === 0;
 
+  const keepEditorSelection = (event) => {
+    preserveEditorSelectionFromEvent(event);
+
+    /*
+      이모티콘 버튼/패널을 누르는 순간 버튼으로 포커스가 이동하면
+      모바일 Safari/Chrome에서 contenteditable selection이 이전 줄로 돌아가거나 사라질 수 있다.
+      기본 포커스 이동만 막고, 실제 선택 처리는 click 이벤트에서 그대로 처리한다.
+    */
+    event.preventDefault();
+  };
+
+  toggleBtn.addEventListener('pointerdown', keepEditorSelection);
+  toggleBtn.addEventListener('mousedown', keepEditorSelection);
+
+  panel.addEventListener('pointerdown', (event) => {
+    const pickerButton = event.target.closest(
+      '[data-action="select-emoticon"], [data-action="select-emoticon-pack"]',
+    );
+
+    if (!pickerButton) return;
+
+    keepEditorSelection(event);
+  });
+
+  panel.addEventListener('mousedown', (event) => {
+    const pickerButton = event.target.closest(
+      '[data-action="select-emoticon"], [data-action="select-emoticon-pack"]',
+    );
+
+    if (!pickerButton) return;
+
+    keepEditorSelection(event);
+  });
+
   toggleBtn.addEventListener('click', () => {
     if (!ownedEmoticons.length) return;
+
+    restoreSavedSelectionRange();
     panel.hidden = !panel.hidden;
   });
 
@@ -378,7 +458,8 @@ async function initWriteEmoticonPicker(user) {
 
     if (!emoticon) return;
 
-    editor.focus();
+    restoreSavedSelectionRange();
+    editor.focus({ preventScroll: true });
     restoreSavedSelectionRange();
 
     const node = createInlineEmoticonNode(emoticon);
@@ -387,6 +468,7 @@ async function initWriteEmoticonPicker(user) {
       sync: true,
     });
 
+    saveCurrentSelectionRange();
     panel.hidden = true;
   });
 
@@ -409,7 +491,8 @@ function saveCurrentSelectionRange() {
   if (!editor || !sel || !sel.rangeCount) return;
 
   const range = sel.getRangeAt(0);
-  if (!editor.contains(range.commonAncestorContainer)) return;
+
+  if (!isRangeInsideBodyEditor(range)) return;
 
   savedSelectionRange = range.cloneRange();
 }
@@ -417,12 +500,26 @@ function saveCurrentSelectionRange() {
 function restoreSavedSelectionRange() {
   if (!savedSelectionRange) return false;
 
+  const editor = getBodyEditor();
+  if (!editor) return false;
+
+  if (!isRangeInsideBodyEditor(savedSelectionRange)) {
+    savedSelectionRange = null;
+    return false;
+  }
+
   const sel = window.getSelection();
   if (!sel) return false;
 
-  sel.removeAllRanges();
-  sel.addRange(savedSelectionRange);
-  return true;
+  try {
+    sel.removeAllRanges();
+    sel.addRange(savedSelectionRange.cloneRange());
+    return true;
+  } catch (error) {
+    console.warn('[write] restore selection failed:', error);
+    savedSelectionRange = null;
+    return false;
+  }
 }
 
 function getSelectionContainerElement() {
@@ -1018,9 +1115,11 @@ function insertInlineNodeAtCaret(node, options = {}) {
   const editor = getBodyEditor();
   if (!editor || !node) return;
 
-  editor.focus();
+  restoreSavedSelectionRange();
+  editor.focus({ preventScroll: true });
 
   if (!restoreSavedSelectionRange()) {
+    ensureEditorHasParagraph();
     placeCaretAtEnd(editor);
   }
 
@@ -1029,7 +1128,8 @@ function insertInlineNodeAtCaret(node, options = {}) {
 
   let range = sel.getRangeAt(0);
 
-  if (!editor.contains(range.commonAncestorContainer)) {
+  if (!isRangeInsideBodyEditor(range)) {
+    ensureEditorHasParagraph();
     placeCaretAtEnd(editor);
 
     const fallbackSel = window.getSelection();
@@ -1043,12 +1143,9 @@ function insertInlineNodeAtCaret(node, options = {}) {
   }
 
   /*
-    본문이 완전히 비어 있을 때 이모티콘을 넣으면
-    일부 브라우저에서 bodyEditor 바로 아래에 img가 들어가며
-    이후 normalizeEditorParagraphs() 과정에서 커서 위치가 흔들릴 수 있다.
-
-    그래서 빈 에디터에서는 먼저 <p>를 만들고,
-    그 안에 이모티콘을 inline으로 넣는다.
+    본문이 완전히 비어 있거나 Range가 editor 바로 아래에 잡힌 경우,
+    img가 루트에 바로 들어가면 모바일에서 커서 위치가 흔들릴 수 있다.
+    그래서 p 안으로 넣어준다.
   */
   if (range.startContainer === editor) {
     const p = document.createElement('p');
@@ -1080,8 +1177,11 @@ function insertInlineNodeAtCaret(node, options = {}) {
   nextRange.setStartAfter(lastInsertedNode);
   nextRange.collapse(true);
 
-  sel.removeAllRanges();
-  sel.addRange(nextRange);
+  const nextSel = window.getSelection();
+  if (nextSel) {
+    nextSel.removeAllRanges();
+    nextSel.addRange(nextRange);
+  }
 
   savedSelectionRange = nextRange.cloneRange();
 
@@ -1090,6 +1190,21 @@ function insertInlineNodeAtCaret(node, options = {}) {
   }
 
   refreshEditorToolbarState();
+
+  if (isMobileRichEditorInputDevice()) {
+    requestAnimationFrame(() => {
+      const currentSel = window.getSelection();
+
+      if (currentSel) {
+        currentSel.removeAllRanges();
+        currentSel.addRange(nextRange.cloneRange());
+      }
+
+      savedSelectionRange = nextRange.cloneRange();
+      syncBodyFromEditor({ normalize: false });
+      refreshEditorToolbarState();
+    });
+  }
 }
 
 function insertNodeAtCaret(node) {
@@ -1566,9 +1681,18 @@ function bindAttachmentInputs(note) {
 
   editor.addEventListener('input', (event) => {
     if (isEditorComposing || event.isComposing) return;
+
     saveCurrentSelectionRange();
     syncBodyFromEditor({ normalize: false });
     refreshEditorToolbarState();
+
+    if (isMobileRichEditorInputDevice()) {
+      requestAnimationFrame(() => {
+        saveCurrentSelectionRange();
+        syncBodyFromEditor({ normalize: false });
+        refreshEditorToolbarState();
+      });
+    }
   });
 
   editor.addEventListener('blur', () => {
