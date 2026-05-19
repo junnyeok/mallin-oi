@@ -26,6 +26,17 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+}
+
+function isStandaloneMode() {
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true
+  );
+}
+
 function isPushSupported() {
   return (
     'serviceWorker' in navigator &&
@@ -70,8 +81,41 @@ function getPermissionState() {
   return Notification.permission;
 }
 
+function getSwPath() {
+  const base = document.body?.dataset?.base || './';
+  return new URL(`${base}sw.js`, window.location.href);
+}
+
+function getSwScope() {
+  const base = document.body?.dataset?.base || './';
+  return new URL(base, window.location.href);
+}
+
+async function ensureServiceWorkerRegistration() {
+  if (!('serviceWorker' in navigator)) return null;
+
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (existing?.pushManager) return existing;
+
+  const swUrl = getSwPath();
+  const scopeUrl = getSwScope();
+
+  try {
+    const registration = await navigator.serviceWorker.register(swUrl.href, {
+      scope: scopeUrl.pathname,
+    });
+
+    return registration;
+  } catch (error) {
+    console.error('[push] service worker register failed:', error);
+    return null;
+  }
+}
+
 async function getReadyRegistration() {
   if (!('serviceWorker' in navigator)) return null;
+
+  await ensureServiceWorkerRegistration();
 
   const registration = await navigator.serviceWorker.ready;
 
@@ -116,6 +160,14 @@ async function loadPreference(userId) {
   return data;
 }
 
+function getUnsupportedMessage() {
+  if (isIosDevice() && !isStandaloneMode()) {
+    return '아이폰은 Safari에서 홈 화면에 추가한 PWA 상태에서만 휴대폰 알림을 켤 수 있어.';
+  }
+
+  return '이 브라우저는 푸시 알림을 지원하지 않아. PC/안드로이드 Chrome 또는 iPhone Safari PWA에서 다시 시도해줘.';
+}
+
 async function refreshPushStatus() {
   const user = await getCurrentUser();
 
@@ -132,8 +184,7 @@ async function refreshPushStatus() {
   if (!isPushSupported()) {
     setPushUi({
       status: 'unsupported',
-      message:
-        '이 브라우저는 휴대폰 푸시 알림을 지원하지 않아. 최신 Chrome 또는 홈 화면에 추가한 PWA에서 다시 시도해줘.',
+      message: getUnsupportedMessage(),
       enableDisabled: true,
       disableDisabled: true,
     });
@@ -244,6 +295,16 @@ async function enablePushNotifications() {
   }
 
   const normalized = normalizeSubscription(subscription);
+
+  if (!normalized.endpoint || !normalized.p256dh || !normalized.auth) {
+    setPushUi({
+      status: 'disabled',
+      message: '브라우저 구독 정보를 읽지 못했어. 새로고침 후 다시 시도해줘.',
+      enableDisabled: false,
+      disableDisabled: true,
+    });
+    return;
+  }
 
   const { error } = await supabase.rpc('register_my_push_subscription', {
     p_endpoint: normalized.endpoint,

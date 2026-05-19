@@ -69,18 +69,36 @@ function getRequiredEnv(name: string) {
   return value;
 }
 
+function isReplyNotification(notification: NotificationRow) {
+  const metadata = notification.metadata || {};
+  const eventLabel = String(metadata.eventLabel || '').trim();
+  const parentCommentId = metadata.parentCommentId;
+
+  return (
+    eventLabel === '답글' ||
+    parentCommentId !== null ||
+    typeof parentCommentId !== 'undefined'
+  );
+}
+
 function isAllowedByPreference(
-  notificationType: string,
+  notification: NotificationRow,
   pref: NotificationPreferenceRow | null,
 ) {
   if (!pref) return false;
   if (pref.push_enabled !== true) return false;
 
+  const notificationType = notification.notification_type;
+
   if (
     notificationType === 'post_comment' ||
     notificationType === 'post_participant_comment'
   ) {
-    return pref.notify_comments !== false || pref.notify_replies !== false;
+    if (isReplyNotification(notification)) {
+      return pref.notify_replies !== false;
+    }
+
+    return pref.notify_comments !== false;
   }
 
   if (
@@ -117,13 +135,24 @@ function normalizeUrl(rawUrl: string | null, fallback = '/') {
   return `/${value}`;
 }
 
-function buildPayload(notification: NotificationRow) {
-  const fallbackUrl = notification.post_id
-    ? `/post.html?id=${notification.post_id}${
-        notification.comment_id ? `&comment=${notification.comment_id}` : ''
-      }`
-    : '/';
+function buildFallbackUrl(notification: NotificationRow) {
+  if (notification.item_id) {
+    return `/store-item.html?id=${encodeURIComponent(notification.item_id)}`;
+  }
 
+  if (notification.post_id) {
+    const commentQuery = notification.comment_id
+      ? `&comment=${notification.comment_id}`
+      : '';
+
+    return `/post.html?id=${notification.post_id}${commentQuery}`;
+  }
+
+  return '/';
+}
+
+function buildPayload(notification: NotificationRow) {
+  const fallbackUrl = buildFallbackUrl(notification);
   const url = normalizeUrl(notification.action_url, fallbackUrl);
 
   return {
@@ -152,6 +181,14 @@ async function deactivateSubscription(
       updated_at: new Date().toISOString(),
     })
     .eq('id', subscriptionId);
+}
+
+function getPushErrorStatusCode(error: unknown) {
+  if (typeof error === 'object' && error !== null && 'statusCode' in error) {
+    return Number((error as { statusCode?: number }).statusCode || 0);
+  }
+
+  return 0;
 }
 
 Deno.serve(async (req) => {
@@ -219,7 +256,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           error: 'NOTIFICATION_NOT_FOUND',
-          detail: notificationError?.message,
+          detail: notificationError?.message || null,
         },
         404,
       );
@@ -229,13 +266,13 @@ Deno.serve(async (req) => {
       .from('user_notification_preferences')
       .select(
         `
-        push_enabled,
-        notify_comments,
-        notify_replies,
-        notify_reactions,
-        notify_store_items,
-        notify_admin_announcements
-      `,
+          push_enabled,
+          notify_comments,
+          notify_replies,
+          notify_reactions,
+          notify_store_items,
+          notify_admin_announcements
+        `,
       )
       .eq('user_id', notification.recipient_user_id)
       .maybeSingle<NotificationPreferenceRow>();
@@ -250,11 +287,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!isAllowedByPreference(notification.notification_type, preference)) {
+    if (!isAllowedByPreference(notification, preference)) {
       return jsonResponse({
         ok: true,
         skipped: true,
         reason: 'PUSH_DISABLED_BY_PREFERENCE',
+        notificationId,
       });
     }
 
@@ -281,6 +319,7 @@ Deno.serve(async (req) => {
         ok: true,
         skipped: true,
         reason: 'NO_ACTIVE_SUBSCRIPTIONS',
+        notificationId,
       });
     }
 
@@ -305,6 +344,7 @@ Deno.serve(async (req) => {
             .from('user_push_subscriptions')
             .update({
               last_used_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             })
             .eq('id', sub.id);
 
@@ -313,10 +353,7 @@ Deno.serve(async (req) => {
             ok: true,
           };
         } catch (error) {
-          const statusCode =
-            typeof error === 'object' && error !== null && 'statusCode' in error
-              ? Number((error as { statusCode?: number }).statusCode)
-              : 0;
+          const statusCode = getPushErrorStatusCode(error);
 
           if (statusCode === 404 || statusCode === 410) {
             await deactivateSubscription(supabaseAdmin, sub.id);
@@ -332,14 +369,26 @@ Deno.serve(async (req) => {
       }),
     );
 
+    const normalizedResults = results.map((result) => {
+      if (result.status === 'fulfilled') return result.value;
+
+      return {
+        ok: false,
+        message:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      };
+    });
+
+    const sent = normalizedResults.filter((result) => result.ok).length;
+
     return jsonResponse({
       ok: true,
       notificationId,
-      sent: results.filter(
-        (result) => result.status === 'fulfilled' && result.value.ok,
-      ).length,
+      sent,
       total: activeSubscriptions.length,
-      results,
+      results: normalizedResults,
     });
   } catch (error) {
     return jsonResponse(

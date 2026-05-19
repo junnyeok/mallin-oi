@@ -735,5 +735,370 @@ begin
     when duplicate_object then null;
   end;
 end $$;
+--
+-- =========================================================
+-- 말린오이닷컴 Web Push 발송 연결 패치
+-- 실행 위치: supabase-SQLEditor/push-notification.sql
+-- 누적 보관: supabase-SQLEditor/99_all_backup.sql
+-- 주의: store-item_purchase-functions.sql에는 넣지 말 것
+-- =========================================================
 
+create extension if not exists pg_net;
+
+-- ---------------------------------------------------------
+-- 1) user_notifications 구조 보강
+-- ---------------------------------------------------------
+
+alter table public.user_notifications
+alter column post_id drop not null;
+
+alter table public.user_notifications
+alter column comment_id drop not null;
+
+alter table public.user_notifications
+add column if not exists action_url text;
+
+alter table public.user_notifications
+add column if not exists item_id text;
+
+alter table public.user_notifications
+add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+do $$
+declare
+  v_constraint_name text;
+begin
+  select conname
+    into v_constraint_name
+  from pg_constraint
+  where conrelid = 'public.user_notifications'::regclass
+    and contype = 'c'
+    and pg_get_constraintdef(oid) like '%notification_type%'
+  limit 1;
+
+  if v_constraint_name is not null then
+    execute format(
+      'alter table public.user_notifications drop constraint if exists %I',
+      v_constraint_name
+    );
+  end if;
+end $$;
+
+alter table public.user_notifications
+add constraint user_notifications_notification_type_check
+check (
+  notification_type in (
+    'post_comment',
+    'post_participant_comment',
+    'post_reaction_like',
+    'post_reaction_dislike',
+    'store_new_item',
+    'admin_announcement'
+  )
+);
+
+create index if not exists user_notifications_action_url_idx
+  on public.user_notifications(action_url);
+
+create index if not exists user_notifications_type_created_idx
+  on public.user_notifications(notification_type, created_at desc);
+
+
+-- ---------------------------------------------------------
+-- 2) 푸시 구독 테이블 보강
+-- ---------------------------------------------------------
+
+create table if not exists public.user_push_subscriptions (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  device_label text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_used_at timestamptz
+);
+
+create unique index if not exists user_push_subscriptions_endpoint_uidx
+  on public.user_push_subscriptions(endpoint);
+
+create index if not exists user_push_subscriptions_user_active_idx
+  on public.user_push_subscriptions(user_id, is_active);
+
+alter table public.user_push_subscriptions enable row level security;
+
+drop policy if exists "푸시 구독은 본인만 조회 가능" on public.user_push_subscriptions;
+create policy "푸시 구독은 본인만 조회 가능"
+on public.user_push_subscriptions
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "푸시 구독은 본인만 추가 가능" on public.user_push_subscriptions;
+create policy "푸시 구독은 본인만 추가 가능"
+on public.user_push_subscriptions
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "푸시 구독은 본인만 수정 가능" on public.user_push_subscriptions;
+create policy "푸시 구독은 본인만 수정 가능"
+on public.user_push_subscriptions
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "푸시 구독은 본인만 삭제 가능" on public.user_push_subscriptions;
+create policy "푸시 구독은 본인만 삭제 가능"
+on public.user_push_subscriptions
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+
+-- ---------------------------------------------------------
+-- 3) 알림 preference 테이블 보강
+-- ---------------------------------------------------------
+
+create table if not exists public.user_notification_preferences (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  push_enabled boolean not null default false,
+  notify_comments boolean not null default true,
+  notify_replies boolean not null default true,
+  notify_reactions boolean not null default true,
+  notify_store_items boolean not null default true,
+  notify_admin_announcements boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_notification_preferences enable row level security;
+
+drop policy if exists "알림 설정은 본인만 조회 가능" on public.user_notification_preferences;
+create policy "알림 설정은 본인만 조회 가능"
+on public.user_notification_preferences
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "알림 설정은 본인만 추가 가능" on public.user_notification_preferences;
+create policy "알림 설정은 본인만 추가 가능"
+on public.user_notification_preferences
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "알림 설정은 본인만 수정 가능" on public.user_notification_preferences;
+create policy "알림 설정은 본인만 수정 가능"
+on public.user_notification_preferences
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+
+-- ---------------------------------------------------------
+-- 4) 푸시 구독 저장 RPC
+-- ---------------------------------------------------------
+
+create or replace function public.register_my_push_subscription(
+  p_endpoint text,
+  p_p256dh text,
+  p_auth text,
+  p_user_agent text default null,
+  p_device_label text default null
+)
+returns public.user_push_subscriptions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_row public.user_push_subscriptions;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'LOGIN_REQUIRED';
+  end if;
+
+  if coalesce(trim(p_endpoint), '') = ''
+    or coalesce(trim(p_p256dh), '') = ''
+    or coalesce(trim(p_auth), '') = '' then
+    raise exception 'INVALID_PUSH_SUBSCRIPTION';
+  end if;
+
+  insert into public.user_push_subscriptions (
+    user_id,
+    endpoint,
+    p256dh,
+    auth,
+    user_agent,
+    device_label,
+    is_active,
+    last_used_at
+  )
+  values (
+    v_user_id,
+    p_endpoint,
+    p_p256dh,
+    p_auth,
+    nullif(trim(coalesce(p_user_agent, '')), ''),
+    nullif(trim(coalesce(p_device_label, '')), ''),
+    true,
+    now()
+  )
+  on conflict (endpoint)
+  do update set
+    user_id = excluded.user_id,
+    p256dh = excluded.p256dh,
+    auth = excluded.auth,
+    user_agent = excluded.user_agent,
+    device_label = excluded.device_label,
+    is_active = true,
+    last_used_at = now(),
+    updated_at = now()
+  returning * into v_row;
+
+  insert into public.user_notification_preferences (
+    user_id,
+    push_enabled
+  )
+  values (
+    v_user_id,
+    true
+  )
+  on conflict (user_id)
+  do update set
+    push_enabled = true,
+    updated_at = now();
+
+  return v_row;
+end;
+$$;
+
+grant execute on function public.register_my_push_subscription(text, text, text, text, text)
+to authenticated;
+
+
+-- ---------------------------------------------------------
+-- 5) 푸시 구독 해제 RPC
+-- ---------------------------------------------------------
+
+create or replace function public.disable_my_push_subscription(
+  p_endpoint text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'LOGIN_REQUIRED';
+  end if;
+
+  if coalesce(trim(p_endpoint), '') <> '' then
+    update public.user_push_subscriptions
+    set is_active = false,
+        updated_at = now()
+    where user_id = v_user_id
+      and endpoint = p_endpoint;
+  else
+    update public.user_push_subscriptions
+    set is_active = false,
+        updated_at = now()
+    where user_id = v_user_id;
+  end if;
+
+  update public.user_notification_preferences
+  set push_enabled = false,
+      updated_at = now()
+  where user_id = v_user_id;
+end;
+$$;
+
+grant execute on function public.disable_my_push_subscription(text)
+to authenticated;
+
+
+-- ---------------------------------------------------------
+-- 6) user_notifications insert 후 Edge Function 호출
+--    아래 URL/SECRET은 반드시 네 값으로 교체
+-- ---------------------------------------------------------
+
+create or replace function public.call_send_push_notification()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_request_id bigint;
+begin
+  select net.http_post(
+    url := 'https://너의프로젝트ref.supabase.co/functions/v1/send-push-notification',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-push-secret', '여기에_PUSH_WEBHOOK_SECRET_입력'
+    ),
+    body := jsonb_build_object(
+      'notificationId', new.id,
+      'table', 'user_notifications',
+      'type', 'INSERT',
+      'record', jsonb_build_object('id', new.id)
+    ),
+    timeout_milliseconds := 5000
+  )
+  into v_request_id;
+
+  return new;
+exception
+  when others then
+    raise warning '[push] send-push-notification call failed. notification_id=%, error=%', new.id, sqlerrm;
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_user_notifications_send_push on public.user_notifications;
+
+create trigger trg_user_notifications_send_push
+after insert on public.user_notifications
+for each row
+execute function public.call_send_push_notification();
+
+
+-- ---------------------------------------------------------
+-- 7) Realtime publication 보강
+-- ---------------------------------------------------------
+
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.user_notifications;
+  exception
+    when duplicate_object then null;
+  end;
+
+  begin
+    alter publication supabase_realtime add table public.user_notification_preferences;
+  exception
+    when duplicate_object then null;
+  end;
+
+  begin
+    alter publication supabase_realtime add table public.user_push_subscriptions;
+  exception
+    when duplicate_object then null;
+  end;
+end $$;
 --5/19

@@ -151,7 +151,8 @@ body[data-page='post'] .logo #siteLogoImg {
   left: 0;
   width: min(360px, calc(100vw - 32px));
   max-height: 420px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -285,8 +286,6 @@ body[data-page='post'] .logo #siteLogoImg {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 330px;
-  overflow-y: auto;
   padding: 12px 14px 14px;
 }
 
@@ -380,6 +379,8 @@ body[data-page='post'] .logo #siteLogoImg {
     bottom: calc(100% + 8px);
     width: min(360px, calc(100vw - 24px));
     max-height: min(420px, 58vh);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 }
 
