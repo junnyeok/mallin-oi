@@ -1,0 +1,20 @@
+{
+  "name": "mallin-oi-calendar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "말린오이닷컴 캘린더 앱 출시 준비용 Capacitor 프로젝트",
+  "scripts": {
+    "capacitor:prepare": "node scripts/prepare-capacitor-web.mjs",
+    "cap:sync": "npm run capacitor:prepare && npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "latest"
+  },
+  "devDependencies": {
+    "@capacitor/android": "latest",
+    "@capacitor/cli": "latest",
+    "@capacitor/ios": "latest"
+  }
+}

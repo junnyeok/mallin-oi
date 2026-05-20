@@ -1,0 +1,498 @@
+<header class="site-header">
+  <div class="notification-menu" id="notificationMenu">
+    <button
+      type="button"
+      class="notification-btn"
+      id="notificationBtn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="notificationPanel"
+    >
+      <span class="notification-btn__icon" aria-hidden="true">🔔</span>
+      <span class="notification-btn__text">알림</span>
+      <span class="notification-btn__badge" id="notificationBadge" hidden
+        >0</span
+      >
+    </button>
+
+    <section
+      class="notification-panel"
+      id="notificationPanel"
+      aria-label="알림 목록"
+      hidden
+    >
+      <div class="notification-panel__head">
+        <strong class="notification-panel__title">알림</strong>
+        <button
+          type="button"
+          class="notification-panel__refresh"
+          id="notificationRefreshBtn"
+        >
+          새로고침
+        </button>
+      </div>
+
+      <p class="notification-panel__desc" id="notificationPanelDesc">
+        알림을 불러오는 중이야.
+      </p>
+
+      <div class="notification-panel__list" id="notificationList">
+        <div class="notification-empty">알림을 확인하는 중이야.</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bgm-menu" id="bgmMenu">
+    <button
+      type="button"
+      class="bgm-btn"
+      id="bgmBtn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="bgmPanel"
+    >
+      <span class="bgm-btn__icon" aria-hidden="true">🎵</span>
+      <span class="bgm-btn__text">BGM</span>
+    </button>
+
+    <section class="bgm-panel" id="bgmPanel" aria-label="배경음악 목록" hidden>
+      <div class="bgm-panel__head">
+        <strong class="bgm-panel__title">배경음악</strong>
+        <button type="button" class="bgm-panel__toggle" id="bgmPlayToggleBtn">
+          재생/일시정지
+        </button>
+      </div>
+
+      <p class="bgm-panel__desc" id="bgmPanelDesc">
+        배경음악을 불러오는 중이야.
+      </p>
+
+      <a
+        class="bgm-panel__quick-link"
+        href="__BASE__inventory.html#bgm-inventory"
+      >
+        BGM 설정하러 가기
+      </a>
+
+      <div class="bgm-panel__list" id="bgmList">
+        <div class="bgm-empty">등록된 배경음악을 확인하는 중이야.</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="pickle-menu" id="pickleMenu" hidden>
+    <button
+      type="button"
+      class="pickle-btn"
+      id="pickleBtn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="picklePanel"
+    >
+      <span class="pickle-btn__icon" aria-hidden="true">🥒</span>
+      <span class="pickle-btn__text">피클</span>
+    </button>
+
+    <section
+      class="pickle-panel"
+      id="picklePanel"
+      aria-label="피클 현황"
+      hidden
+    >
+      <div class="pickle-panel__head">
+        <strong class="pickle-panel__title">피클 현황</strong>
+        <button type="button" class="pickle-panel__close" id="pickleCloseBtn">
+          닫기
+        </button>
+      </div>
+
+      <div class="pickle-panel__body">
+        <div class="pickle-balance-card">
+          <span class="pickle-balance-card__label">보유 피클</span>
+          <strong class="pickle-balance-card__value" id="pickleBalanceValue">
+            0 🥒
+          </strong>
+        </div>
+
+        <div class="pickle-status-list">
+          <div class="pickle-status-item">
+            <span class="pickle-status-item__label">8시 출석 체크</span>
+            <strong
+              class="pickle-status-item__value"
+              id="pickleAttendanceStatus"
+            >
+              미완료 ❌
+            </strong>
+          </div>
+
+          <div class="pickle-status-item">
+            <span class="pickle-status-item__label">게시글 지급</span>
+            <strong class="pickle-status-item__value" id="picklePostStatus">
+              0 / 5
+            </strong>
+          </div>
+
+          <div class="pickle-status-item">
+            <span class="pickle-status-item__label">댓글/답글 지급</span>
+            <strong class="pickle-status-item__value" id="pickleCommentStatus">
+              0 / 20
+            </strong>
+          </div>
+        </div>
+      </div>
+      <a class="pickle-panel__quick-link" href="__BASE__profile-history.html">
+        피클 내역 보기
+      </a>
+    </section>
+  </div>
+
+  <div class="container header-inner">
+    <a class="logo" href="__BASE__index.html" aria-label="홈으로">
+      <img
+        id="siteLogoImg"
+        src="__BASE__images/logo-home.png"
+        alt="말린오이닷컴"
+      />
+      <img
+        id="siteLogoWord"
+        src="__BASE__images/logo-word.png"
+        alt="말린오이닷컴"
+      />
+    </a>
+
+    <form class="search" id="searchForm" role="search">
+      <label class="sr-only" for="q">검색</label>
+
+      <input
+        id="q"
+        name="q"
+        class="search__input"
+        type="search"
+        placeholder="검색어를 입력하세요."
+      />
+
+      <!-- PC용 -->
+      <div
+        class="search__type search__type--desktop"
+        role="group"
+        aria-label="검색 방식"
+      >
+        <button
+          type="button"
+          class="search-type-btn is-active"
+          data-type="title"
+          aria-pressed="true"
+        >
+          제목/요약
+        </button>
+        <button
+          type="button"
+          class="search-type-btn"
+          data-type="tag"
+          aria-pressed="false"
+        >
+          태그
+        </button>
+        <button
+          type="button"
+          class="search-type-btn"
+          data-type="author"
+          aria-pressed="false"
+        >
+          작성자
+        </button>
+      </div>
+
+      <!-- 모바일용 -->
+      <div class="search__type-mobile">
+        <button
+          type="button"
+          class="search-type-current"
+          id="searchTypeCurrent"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="searchTypeMenu"
+        >
+          <span class="search-type-current__label">제목/요약</span>
+          <span class="search-type-current__arrow" aria-hidden="true">▾</span>
+        </button>
+
+        <div
+          class="search-type-menu"
+          id="searchTypeMenu"
+          role="menu"
+          aria-label="검색 방식 선택"
+          hidden
+        >
+          <button
+            type="button"
+            class="search-type-menu__item is-active"
+            data-type="title"
+            role="menuitemradio"
+            aria-checked="true"
+          >
+            제목/요약
+          </button>
+          <button
+            type="button"
+            class="search-type-menu__item"
+            data-type="tag"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            태그
+          </button>
+          <button
+            type="button"
+            class="search-type-menu__item"
+            data-type="author"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            작성자
+          </button>
+        </div>
+      </div>
+
+      <button class="btn search__btn" type="submit" aria-label="검색">
+        🔍
+      </button>
+    </form>
+
+    <div class="header-actions header-actions--corner">
+      <div class="service-menu" id="serviceMenu">
+        <button
+          class="service-menu-btn"
+          id="serviceMenuBtn"
+          type="button"
+          aria-label="전체서비스 열기"
+          aria-expanded="false"
+          aria-controls="serviceMenuPanel"
+        >
+          <span class="service-menu-btn__dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+
+        <button
+          class="service-menu__backdrop"
+          id="serviceMenuBackdrop"
+          type="button"
+          aria-label="전체서비스 닫기"
+          hidden
+        ></button>
+
+        <div
+          class="service-menu__panel"
+          id="serviceMenuPanel"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="serviceMenuTitle"
+          hidden
+        >
+          <div class="service-menu__head">
+            <h2 class="service-menu__title" id="serviceMenuTitle">
+              전체서비스
+            </h2>
+            <button
+              class="service-menu__close"
+              id="serviceMenuCloseBtn"
+              type="button"
+              aria-label="전체서비스 닫기"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="service-menu__list">
+            <a
+              class="service-menu__link write-btn write-btn--all write-btn--with-badge"
+              href="__BASE__posts-all.html"
+              aria-label="전체 게시물 보기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">📚</span>
+              <span class="service-menu__label">전체게시글</span>
+              <span
+                class="write-btn__badge"
+                id="allPostsBadge"
+                aria-label="읽지 않은 새 게시글 수"
+                hidden
+              >
+                0
+              </span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn"
+              href="__BASE__write.html"
+              aria-label="새 글 쓰기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">✍️</span>
+              <span class="service-menu__label">새글쓰기</span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn write-btn--profile"
+              data-profile-btn
+              href="__BASE__login.html"
+              aria-label="내 프로필 보기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">👤</span>
+              <span class="service-menu__label">내프로필</span>
+            </a>
+
+            <button
+              class="service-menu__link write-btn"
+              id="calendarManageBtn"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="calendarManagePanel"
+              aria-label="캘린더 관리 팝업 열기"
+            >
+              <span class="service-menu__icon" aria-hidden="true">🗓️</span>
+              <span class="service-menu__label">캘린더 관리</span>
+            </button>
+
+            <a
+              class="service-menu__link write-btn"
+              href="__BASE__store.html"
+              aria-label="상점 페이지로 이동"
+            >
+              <span class="service-menu__icon" aria-hidden="true">🛍️</span>
+              <span class="service-menu__label">상점가기</span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn"
+              href="__BASE__profile-history.html"
+              aria-label="피클, 글, 댓글 내역 페이지로 이동"
+            >
+              <span class="service-menu__icon" aria-hidden="true">📝</span>
+              <span class="service-menu__label">내역페이지</span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn"
+              href="__BASE__suggestion.html"
+              aria-label="건의사항 페이지로 이동"
+            >
+              <span class="service-menu__icon" aria-hidden="true">💬</span>
+              <span class="service-menu__label">건의사항</span>
+            </a>
+
+            <a
+              class="service-menu__link write-btn"
+              href="__BASE__qna.html"
+              aria-label="Q&A 페이지로 이동"
+            >
+              <span class="service-menu__icon" aria-hidden="true">❓</span>
+              <span class="service-menu__label">Q&amp;A</span>
+            </a>
+          </div>
+        </div>
+        <button
+          class="calendar-manage__backdrop"
+          id="calendarManageBackdrop"
+          type="button"
+          aria-label="캘린더 관리 닫기"
+          hidden
+        ></button>
+
+        <div
+          class="calendar-manage__panel"
+          id="calendarManagePanel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="calendarManageTitle"
+          hidden
+        >
+          <div class="calendar-manage__head">
+            <h2 class="calendar-manage__title" id="calendarManageTitle">
+              캘린더 관리
+            </h2>
+            <button
+              class="calendar-manage__close"
+              id="calendarManageCloseBtn"
+              type="button"
+              aria-label="캘린더 관리 닫기"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="calendar-manage__list">
+            <a
+              class="calendar-manage__link"
+              href="__BASE__calendar-study.html"
+              aria-label="자기개발 캘린더로 이동"
+            >
+              <img
+                class="calendar-manage__logo calendar-manage__logo--study"
+                src="__BASE__images/logo-study.png"
+                alt=""
+              />
+              <span class="calendar-manage__label">자기개발</span>
+            </a>
+
+            <a
+              class="calendar-manage__link"
+              href="__BASE__calendar-work.html"
+              aria-label="업무 캘린더로 이동"
+            >
+              <img
+                class="calendar-manage__logo calendar-manage__logo--work"
+                src="__BASE__images/logo-work.png"
+                alt=""
+              />
+              <span class="calendar-manage__label">업무</span>
+            </a>
+
+            <a
+              class="calendar-manage__link"
+              href="__BASE__calendar-event.html"
+              aria-label="이벤트 캘린더로 이동"
+            >
+              <img
+                class="calendar-manage__logo calendar-manage__logo--event"
+                src="__BASE__images/logo-event.png"
+                alt=""
+              />
+              <span class="calendar-manage__label">이벤트</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-links" aria-label="계정 메뉴">
+    <a class="auth-link" data-auth-link href="__BASE__login.html">
+      <span data-auth-text>로그인</span>
+    </a>
+    <a class="auth-link" data-mypage-link href="__BASE__prev-mypage.html">
+      마이페이지
+    </a>
+  </div>
+
+  <nav class="site-nav" aria-label="주요 메뉴">
+    <ul class="site-nav__list">
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__index.html">홈</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__study.html">자기개발</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__work.html">업무</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__event.html">이벤트</a>
+      </li>
+      <li class="site-nav__item">
+        <a class="site-nav__link" href="__BASE__career.html">이력</a>
+      </li>
+    </ul>
+  </nav>
+</header>

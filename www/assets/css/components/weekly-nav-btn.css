@@ -1,0 +1,29 @@
+/* 주간 체크 네비(패널 우측 상단) */
+.weekly-nav {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.weekly-nav__label {
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.weekly-nav__btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.weekly-nav__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

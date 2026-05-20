@@ -1,0 +1,224 @@
+/* account-auth-main.css */
+
+.account-auth-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-32);
+  min-height: 60vh;
+}
+
+/* ✅ hidden 우선 적용 */
+.account-auth-step[hidden],
+.account-auth-result[hidden],
+.account-auth-field[hidden],
+.account-auth-actions[hidden],
+.account-auth-note[hidden],
+.account-auth-msg[hidden] {
+  display: none !important;
+}
+
+.account-auth-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-32);
+  box-shadow: var(--shadow-card);
+}
+
+.account-auth-title {
+  font-size: var(--text-h1);
+  margin-bottom: var(--space-12);
+  text-align: center;
+}
+
+.account-auth-desc {
+  margin-bottom: var(--space-24);
+  text-align: center;
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  color: var(--color-text-sub);
+}
+
+.account-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.account-auth-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.account-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.account-auth-field label {
+  font-size: var(--text-body);
+  color: var(--color-text);
+}
+
+.account-auth-field input,
+.account-auth-field select {
+  width: 100%;
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  border: 2px solid var(--color-border);
+  font-size: var(--text-body);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.account-auth-field input:focus,
+.account-auth-field select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.account-auth-btn {
+  width: 100%;
+  padding: var(--space-12);
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-text);
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+
+.account-auth-btn:hover {
+  opacity: 0.92;
+}
+
+.account-auth-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.account-auth-btn--sub {
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.account-auth-actions {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.account-auth-actions > * {
+  flex: 1;
+}
+
+.account-auth-result {
+  padding: var(--space-16);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-primary-sub);
+}
+
+.account-auth-result__label {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+}
+
+.account-auth-result__value {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+.account-auth-msg {
+  min-height: 24px;
+  text-align: center;
+  font-size: var(--text-small);
+  line-height: 1.4;
+  color: var(--color-text-sub);
+}
+
+.account-auth-msg.is-error {
+  color: #d93025;
+}
+
+.account-auth-msg.is-success {
+  color: #1a7f37;
+}
+
+.account-auth-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+  flex-wrap: nowrap;
+}
+
+.account-auth-links__sep {
+  color: var(--color-border);
+  font-size: var(--text-small);
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.account-auth-links .auth-link {
+  height: 28px;
+  padding: 0 var(--space-8);
+  font-size: var(--text-body);
+  color: var(--color-text-sub);
+  white-space: nowrap;
+  word-break: keep-all;
+  flex: 0 0 auto;
+}
+
+.account-auth-links .auth-link:hover {
+  color: var(--color-text);
+}
+
+.account-auth-note {
+  margin-top: var(--space-16);
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  color: var(--color-text-sub);
+}
+
+@media (max-width: 700px) {
+  .account-auth-main {
+    padding: var(--space-20);
+    align-items: flex-start;
+  }
+
+  .account-auth-card {
+    padding: var(--space-24);
+  }
+
+  .account-auth-actions {
+    flex-direction: column;
+  }
+
+  .account-auth-links {
+    gap: 4px;
+  }
+
+  .account-auth-links .auth-link {
+    height: 26px;
+    padding: 0 4px;
+    font-size: var(--text-small);
+  }
+
+  .account-auth-links__sep {
+    font-size: 12px;
+  }
+}

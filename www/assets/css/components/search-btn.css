@@ -1,0 +1,114 @@
+/* ===== 검색 타입(제목/태그/작성자) ===== */
+
+.search__type {
+  display: flex;
+  gap: var(--space-8);
+  margin-left: var(--space-8);
+  align-items: center;
+}
+
+.search-type-btn {
+  position: relative;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.search-type-btn:hover {
+  color: var(--color-text);
+}
+
+.search-type-btn.is-active,
+.search-type-btn[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border-color: transparent;
+}
+
+/* ===== 모바일용 검색 타입 드롭다운 ===== */
+
+.search__type-mobile {
+  display: none;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.search-type-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 72px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.search-type-current__arrow {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.search-type-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+}
+
+.search-type-menu__item {
+  width: 100%;
+  display: block;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.search-type-menu__item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text);
+}
+
+.search-type-menu__item.is-active,
+.search-type-menu__item[aria-checked='true'] {
+  background: var(--color-primary);
+  color: var(--color-text);
+}
+
+/* ===== 모바일 전환 ===== */
+@media (max-width: 700px) {
+  .search__type--desktop {
+    display: none;
+  }
+
+  .search__type-mobile {
+    display: block;
+  }
+}

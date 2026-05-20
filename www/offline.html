@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>인터넷 연결 필요 - 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+
+    <style>
+      .offline-page {
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-24);
+        background: var(--color-bg);
+      }
+
+      .offline-card {
+        width: min(100%, 420px);
+        padding: var(--space-24);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-card);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-card);
+        text-align: center;
+      }
+
+      .offline-card__logo {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        margin: 0 auto var(--space-16);
+      }
+
+      .offline-card__title {
+        font-size: var(--text-h2);
+        margin-bottom: var(--space-8);
+      }
+
+      .offline-card__desc {
+        color: var(--color-text-sub);
+        margin-bottom: var(--space-24);
+      }
+
+      .offline-card__button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: var(--space-12) var(--space-16);
+        border-radius: var(--radius-pill);
+        background: var(--color-primary);
+        color: var(--color-text);
+        font-weight: 700;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+
+  <body class="theme-home">
+    <main class="offline-page">
+      <section class="offline-card" aria-labelledby="offlineTitle">
+        <img
+          class="offline-card__logo"
+          src="./images/logo-home.png"
+          alt="말린오이닷컴"
+        />
+
+        <h1 class="offline-card__title" id="offlineTitle">
+          인터넷 연결이 필요해
+        </h1>
+
+        <p class="offline-card__desc">
+          게시글, 로그인, 캘린더 데이터는 인터넷 연결 후 다시 이용할 수 있어.
+        </p>
+
+        <a class="offline-card__button" href="./index.html">
+          홈으로 돌아가기
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

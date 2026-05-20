@@ -1,0 +1,50 @@
+#update-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 999px;
+  z-index: 9999;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+}
+
+.update-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#update-btn {
+  background: #00c853;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#update-btn:hover {
+  background: #00b34a;
+}
+
+@media (max-width: 480px) {
+  .update-inner {
+    white-space: nowrap; /* 줄바꿈 금지 */
+  }
+
+  #update-banner {
+    padding: 10px 14px; /* 살짝 줄여서 공간 확보 */
+    font-size: 13px; /* 글씨 조금 줄이기 */
+  }
+
+  #update-btn {
+    padding: 5px 10px; /* 버튼도 살짝 줄임 */
+    font-size: 12px;
+    flex-shrink: 0; /* 버튼 찌그러지는거 방지 */
+  }
+}

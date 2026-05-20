@@ -1,0 +1,113 @@
+/* assets/css/components/pwa-install.css */
+
+html.is-pwa-standalone body {
+  min-height: 100dvh;
+  background: var(--color-bg);
+}
+
+.pwa-install {
+  position: fixed;
+  left: var(--space-16);
+  right: var(--space-16);
+  bottom: calc(var(--space-16) + env(safe-area-inset-bottom));
+  z-index: 9998;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pwa-install__card {
+  width: min(100%, 460px);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  pointer-events: auto;
+}
+
+.pwa-install__icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.pwa-install__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.pwa-install__title {
+  font-size: var(--text-small);
+  font-weight: 800;
+  margin-bottom: var(--space-4);
+}
+
+.pwa-install__desc {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-sub);
+}
+
+.pwa-install__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex: 0 0 auto;
+}
+
+.pwa-install__button {
+  min-height: 40px;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pwa-install__button--ghost {
+  width: 40px;
+  padding: 0;
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+}
+
+@media (max-width: 480px) {
+  .pwa-install {
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: calc(var(--space-8) + env(safe-area-inset-bottom));
+  }
+
+  .pwa-install__card {
+    align-items: flex-start;
+    gap: var(--space-8);
+    padding: var(--space-8);
+  }
+
+  .pwa-install__icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .pwa-install__actions {
+    gap: var(--space-4);
+  }
+
+  .pwa-install__button {
+    min-height: 38px;
+    padding: var(--space-8);
+  }
+
+  .pwa-install__button--ghost {
+    width: 38px;
+  }
+}

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>말린오이 캘린더</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-title" content="말린오이 캘린더" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
+  </head>
+
+  <body
+    class="theme-home app-calendar-body"
+    data-page="app-calendar"
+    data-app-mode="calendar"
+  >
+    <main class="app-calendar-launcher" aria-labelledby="appCalendarTitle">
+      <section class="app-calendar-launcher__hero">
+        <img
+          class="app-calendar-launcher__logo"
+          src="./images/android-chrome-192x192.png"
+          alt=""
+        />
+
+        <p class="app-calendar-launcher__eyebrow">말린오이닷컴</p>
+
+        <h1 class="app-calendar-launcher__title" id="appCalendarTitle">
+          말린오이 캘린더
+        </h1>
+
+        <p class="app-calendar-launcher__desc">
+          자기개발, 업무, 이벤트 일정을 앱에서 바로 관리해.
+        </p>
+      </section>
+
+      <section class="app-calendar-launcher__grid" aria-label="캘린더 선택">
+        <a
+          class="app-calendar-card app-calendar-card--study"
+          href="./calendar-study.html?app=calendar"
+        >
+          <span class="app-calendar-card__thumb">
+            <img src="./images/logo-study.png" alt="" />
+          </span>
+          <span class="app-calendar-card__body">
+            <strong class="app-calendar-card__title">자기개발 캘린더</strong>
+            <span class="app-calendar-card__desc">공부, 운동, 루틴 기록</span>
+          </span>
+          <span class="app-calendar-card__arrow" aria-hidden="true">›</span>
+        </a>
+
+        <a
+          class="app-calendar-card app-calendar-card--work"
+          href="./calendar-work.html?app=calendar"
+        >
+          <span class="app-calendar-card__thumb">
+            <img src="./images/logo-work.png" alt="" />
+          </span>
+          <span class="app-calendar-card__body">
+            <strong class="app-calendar-card__title">업무 캘린더</strong>
+            <span class="app-calendar-card__desc">근무표, 반복근무, 메모</span>
+          </span>
+          <span class="app-calendar-card__arrow" aria-hidden="true">›</span>
+        </a>
+
+        <a
+          class="app-calendar-card app-calendar-card--event"
+          href="./calendar-event.html?app=calendar"
+        >
+          <span class="app-calendar-card__thumb">
+            <img src="./images/logo-event.png" alt="" />
+          </span>
+          <span class="app-calendar-card__body">
+            <strong class="app-calendar-card__title">이벤트 캘린더</strong>
+            <span class="app-calendar-card__desc">약속, 일정, 기념일</span>
+          </span>
+          <span class="app-calendar-card__arrow" aria-hidden="true">›</span>
+        </a>
+      </section>
+
+      <p class="app-calendar-launcher__notice">
+        앱에서는 캘린더 기능을 중심으로 사용하도록 구성했어.
+      </p>
+    </main>
+
+    <script type="module" src="./assets/js/modules/app-calendar.js"></script>
+  </body>
+</html>

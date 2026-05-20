@@ -1,0 +1,9 @@
+{
+  "appId": "com.mallinoi.calendar",
+  "appName": "말린오이 캘린더",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "appStartPath": "app-calendar.html?app=calendar"
+  }
+}
