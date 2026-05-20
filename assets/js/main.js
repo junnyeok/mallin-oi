@@ -93,7 +93,6 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/store.js')),
     import(withModuleVersion('./modules/daily-attendance-popup.js')),
     import(withModuleVersion('./modules/notifications.js')),
-    import(withModuleVersion('./modules/push-notifications.js')),
     import(withModuleVersion('./modules/bgm-player.js')),
     import(withModuleVersion('./modules/pickle-status.js')),
     import(withModuleVersion('./modules/pjax-router.js')),
