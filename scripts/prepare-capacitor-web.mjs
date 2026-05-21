@@ -118,6 +118,7 @@ function assertRequiredFiles() {
     'assets/js/main.js',
     'assets/js/modules/app-calendar-mode.js',
     'assets/js/modules/app-calendar.js',
+    'assets/js/modules/calendar-widget-data.js',
     'assets/css/main/app-calendar-main.css',
   ];
 
@@ -158,6 +159,7 @@ function assertPreparedOutput() {
     'assets/js/modules/mobile-stability.js',
     'assets/js/modules/app-calendar-mode.js',
     'assets/js/modules/app-calendar.js',
+    'assets/js/modules/calendar-widget-data.js',
     'assets/js/modules/study-calendar.js',
     'assets/js/modules/work-calendar.js',
     'assets/js/modules/event-calendar.js',

@@ -4,6 +4,9 @@ import { supabase } from './supabase-client.js';
 export const REDIRECT_KEY = 'authRedirectTo';
 export const MYPAGE_VERIFY_KEY = 'mypageVerified_v1';
 export const AUTH_POLICY_KEY = 'mallinAuthPolicy_v2';
+const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
+const APP_MODE_PARAM = 'app';
+const APP_MODE_VALUE = 'calendar';
 
 function readAuthPolicy() {
   try {
@@ -120,6 +123,44 @@ function normalizePath(path) {
   return String(path || '').replace(/^\.?\//, '');
 }
 
+function hasCalendarAppQuery() {
+  return (
+    new URLSearchParams(window.location.search || '').get(APP_MODE_PARAM) ===
+    APP_MODE_VALUE
+  );
+}
+
+function hasStoredCalendarAppMode() {
+  try {
+    return sessionStorage.getItem(CALENDAR_APP_MODE_KEY) === APP_MODE_VALUE;
+  } catch {
+    return false;
+  }
+}
+
+function isNativeCapacitor() {
+  return window.Capacitor?.isNativePlatform?.() === true;
+}
+
+function isCalendarAppMode() {
+  return (
+    document.body?.dataset?.appMode === APP_MODE_VALUE ||
+    document.documentElement.classList.contains('is-calendar-app-mode') ||
+    hasCalendarAppQuery() ||
+    hasStoredCalendarAppMode() ||
+    isNativeCapacitor()
+  );
+}
+
+function withCalendarAppParam(href) {
+  if (!isCalendarAppMode()) return href;
+
+  const url = new URL(href, window.location.href);
+  url.searchParams.set(APP_MODE_PARAM, APP_MODE_VALUE);
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function getSiteBasePath() {
   const parts = window.location.pathname.split('/').filter(Boolean);
 
@@ -136,15 +177,17 @@ export function resolveSitePath(path = '') {
 }
 
 export function homeHref() {
-  return resolveSitePath('index.html');
+  return isCalendarAppMode()
+    ? withCalendarAppParam(resolveSitePath('app-calendar.html'))
+    : resolveSitePath('index.html');
 }
 
 export function loginHref() {
-  return resolveSitePath('login.html');
+  return withCalendarAppParam(resolveSitePath('login.html'));
 }
 
 export function signupHref() {
-  return resolveSitePath('account/signup.html');
+  return withCalendarAppParam(resolveSitePath('account/signup.html'));
 }
 
 export function mypageHref() {
@@ -172,15 +215,15 @@ export function writeHref() {
 }
 
 export function findIdHref() {
-  return resolveSitePath('account/find-id.html');
+  return withCalendarAppParam(resolveSitePath('account/find-id.html'));
 }
 
 export function findPasswordHref() {
-  return resolveSitePath('account/find-password.html');
+  return withCalendarAppParam(resolveSitePath('account/find-password.html'));
 }
 
 export function resetPasswordHref() {
-  return resolveSitePath('account/reset-password.html');
+  return withCalendarAppParam(resolveSitePath('account/reset-password.html'));
 }
 
 const LOGIN_REQUIRED_POPUP_ID = 'loginRequiredPopup';

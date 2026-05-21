@@ -20,6 +20,24 @@ function getPostsAllBaseUrl() {
 
 let coreModules = null;
 let globalInitialized = false;
+let calendarAppModeInitialized = false;
+let calendarAppModeEarlyResult = false;
+
+async function initCalendarAppModeEarly() {
+  if (calendarAppModeInitialized) return calendarAppModeEarlyResult;
+
+  try {
+    const { initCalendarAppMode } = await import(
+      withModuleVersion('./modules/app-calendar-mode.js')
+    );
+    calendarAppModeEarlyResult = initCalendarAppMode();
+    calendarAppModeInitialized = true;
+    return calendarAppModeEarlyResult;
+  } catch (error) {
+    console.error('[main] calendar app mode load failed:', error);
+    return false;
+  }
+}
 
 async function loadCoreModules() {
   if (coreModules) return coreModules;
@@ -444,7 +462,9 @@ async function initGlobalModules(modules) {
 
   applyVersionToStaticLinks(withAssetVersion);
 
-  const calendarAppMode = initCalendarAppMode();
+  const calendarAppMode = calendarAppModeInitialized
+    ? calendarAppModeEarlyResult
+    : initCalendarAppMode();
 
   if (!calendarAppMode) {
     await runSafe('pwa install', async () => {
@@ -539,6 +559,8 @@ async function initGlobalModules(modules) {
 
 async function initApp() {
   let modules;
+
+  await initCalendarAppModeEarly();
 
   try {
     modules = await loadCoreModules();

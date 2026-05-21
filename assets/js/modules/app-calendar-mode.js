@@ -26,6 +26,13 @@ function getSearchParams() {
   return new URLSearchParams(window.location.search || '');
 }
 
+function toAppModeHref(href) {
+  const url = new URL(href, window.location.href);
+  url.searchParams.set(APP_MODE_PARAM, APP_MODE_VALUE);
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function isNativeCapacitor() {
   return window.Capacitor?.isNativePlatform?.() === true;
 }
@@ -135,18 +142,26 @@ function createCalendarAppShell() {
 
 function keepCalendarLinksInAppMode() {
   document
-    .querySelectorAll('a[href*="calendar-"], a[href*="app-calendar.html"]')
+    .querySelectorAll(
+      [
+        'a[href*="app-calendar.html"]',
+        'a[href*="calendar-"]',
+        'a[href*="login.html"]',
+        'a[href*="account/signup.html"]',
+        'a[href*="account/find-id.html"]',
+        'a[href*="account/find-password.html"]',
+        'a[href*="account/reset-password.html"]',
+        'a[href*="signup.html"]',
+        'a[href*="find-id.html"]',
+        'a[href*="find-password.html"]',
+        'a[href*="reset-password.html"]',
+      ].join(', '),
+    )
     .forEach((link) => {
       const href = link.getAttribute('href');
       if (!href || href.includes('app=calendar')) return;
 
-      const url = new URL(href, window.location.href);
-      url.searchParams.set(APP_MODE_PARAM, APP_MODE_VALUE);
-
-      link.setAttribute(
-        'href',
-        `${url.pathname.split('/').pop()}${url.search}${url.hash}`,
-      );
+      link.setAttribute('href', toAppModeHref(href));
     });
 }
 
