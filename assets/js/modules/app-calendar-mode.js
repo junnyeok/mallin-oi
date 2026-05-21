@@ -9,6 +9,11 @@ const CALENDAR_PAGES = new Set([
   'calendar-study',
   'calendar-work',
   'calendar-event',
+  'login',
+  'signup',
+  'find-id',
+  'find-password',
+  'reset-password',
 ]);
 
 function getPageName() {

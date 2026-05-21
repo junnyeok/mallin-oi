@@ -10,14 +10,30 @@ function enableCalendarAppMode() {
   }
 
   document.documentElement.classList.add('is-calendar-app-mode');
+  if (document.body) {
+    document.body.dataset.appMode = 'calendar';
+  }
 }
 
 function bindCalendarLinks() {
-  document.querySelectorAll('a[href*="calendar-"]').forEach((link) => {
-    link.addEventListener('click', () => {
-      enableCalendarAppMode();
+  document
+    .querySelectorAll('a[href*="calendar-"], a[href*="app-calendar.html"]')
+    .forEach((link) => {
+      const href = link.getAttribute('href');
+
+      if (href && !href.includes('app=calendar')) {
+        const url = new URL(href, window.location.href);
+        url.searchParams.set('app', 'calendar');
+        link.setAttribute(
+          'href',
+          `${url.pathname.split('/').pop()}${url.search}${url.hash}`,
+        );
+      }
+
+      link.addEventListener('click', () => {
+        enableCalendarAppMode();
+      });
     });
-  });
 }
 
 function initAppCalendarLauncher() {

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>로그인 | 말린오이닷컴</title>
+
+    <!-- 공통 css -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+
+    <!-- login 전용 -->
+    <link rel="stylesheet" href="./assets/css/main/login-main.css" />
+  </head>
+
+  <body data-page="login">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <!-- 로그인 영역 -->
+      <main class="login-main">
+        <div class="login-card">
+          <h1 class="login-title">로그인</h1>
+
+          <form id="loginForm" class="login-form">
+            <div class="login-field">
+              <label for="loginId">이메일</label>
+              <input
+                type="email"
+                id="loginId"
+                required
+                placeholder="가입한 이메일 입력"
+                autocomplete="email"
+              />
+              <p class="help-text">회원가입할 때 사용한 이메일로 로그인해줘.</p>
+            </div>
+
+            <div class="login-field">
+              <label for="loginPw">비밀번호</label>
+              <input
+                type="password"
+                id="loginPw"
+                required
+                placeholder="비밀번호 입력"
+                autocomplete="current-password"
+              />
+            </div>
+
+            <div class="login-remember">
+              <label class="login-remember__label" for="rememberLogin">
+                <input type="checkbox" id="rememberLogin" />
+                <span>자동로그인</span>
+              </label>
+            </div>
+
+            <button type="submit" class="login-btn">로그인</button>
+
+            <!-- 로그인 하단 링크 -->
+            <div class="login-links" aria-label="계정 도움말">
+              <a class="auth-link" href="./account/signup.html">회원가입</a>
+              <span class="login-links__sep" aria-hidden="true">|</span>
+              <a class="auth-link" href="./account/find-id.html">아이디 찾기</a>
+              <span class="login-links__sep" aria-hidden="true">|</span>
+              <a class="auth-link" href="./account/find-password.html"
+                >비밀번호 찾기</a
+              >
+            </div>
+
+            <p class="login-msg" id="loginMsg"></p>
+          </form>
+        </div>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

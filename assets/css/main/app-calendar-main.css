@@ -153,6 +153,11 @@ html.is-calendar-app-mode .site-main {
   padding-top: 0;
 }
 
+html.is-calendar-app-mode .home-section {
+  padding-top: var(--space-16);
+  padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+}
+
 .calendar-app-shell {
   position: sticky;
   top: 0;

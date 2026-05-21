@@ -2,7 +2,10 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>이벤트 캘린더 - 말린오이닷컴</title>
 
     <link
@@ -28,6 +31,25 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+    <script>
+      (() => {
+        const key = 'mallin:calendar-app-mode';
+        const params = new URLSearchParams(window.location.search);
+        const hasCalendarQuery = params.get('app') === 'calendar';
+        let hasCalendarSession = false;
+
+        try {
+          hasCalendarSession = sessionStorage.getItem(key) === 'calendar';
+          if (hasCalendarQuery) sessionStorage.setItem(key, 'calendar');
+        } catch {
+          hasCalendarSession = false;
+        }
+
+        if (hasCalendarQuery || hasCalendarSession) {
+          document.documentElement.classList.add('is-calendar-app-mode');
+        }
+      })();
+    </script>
 
     <link rel="stylesheet" href="./assets/css/00-reset.css" />
     <link rel="stylesheet" href="./assets/css/01-tokens.css" />

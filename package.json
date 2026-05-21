@@ -4,6 +4,7 @@
   "private": true,
   "description": "말린오이닷컴 캘린더 앱 출시 준비용 Capacitor 프로젝트",
   "scripts": {
+    "prepare:capacitor": "node scripts/prepare-capacitor-web.mjs",
     "capacitor:prepare": "node scripts/prepare-capacitor-web.mjs",
     "cap:sync": "npm run capacitor:prepare && npx cap sync",
     "cap:open:android": "npx cap open android",
