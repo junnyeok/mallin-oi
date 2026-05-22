@@ -13,6 +13,7 @@ const filesToCopy = [
   'calendar-study.html',
   'calendar-work.html',
   'calendar-event.html',
+  'assets/version.json',
   'site.webmanifest',
 ];
 
@@ -118,7 +119,9 @@ function assertRequiredFiles() {
     'assets/js/main.js',
     'assets/js/modules/app-calendar-mode.js',
     'assets/js/modules/app-calendar.js',
+    'assets/js/modules/refresh-control.js',
     'assets/js/modules/calendar-widget-data.js',
+    'assets/css/components/refresh-control.css',
     'assets/css/main/app-calendar-main.css',
   ];
 
@@ -149,6 +152,7 @@ function assertPreparedOutput() {
     'assets/css/components/write-btn.css',
     'assets/css/components/auth-links.css',
     'assets/css/components/update-banner.css',
+    'assets/css/components/refresh-control.css',
     'assets/css/main/app-calendar-main.css',
     'assets/css/main/calendar-study-main.css',
     'assets/css/main/calendar-work-main.css',
@@ -159,6 +163,7 @@ function assertPreparedOutput() {
     'assets/js/modules/mobile-stability.js',
     'assets/js/modules/app-calendar-mode.js',
     'assets/js/modules/app-calendar.js',
+    'assets/js/modules/refresh-control.js',
     'assets/js/modules/calendar-widget-data.js',
     'assets/js/modules/study-calendar.js',
     'assets/js/modules/work-calendar.js',

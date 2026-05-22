@@ -36,16 +36,16 @@
         const key = 'mallin:calendar-app-mode';
         const params = new URLSearchParams(window.location.search);
         const hasCalendarQuery = params.get('app') === 'calendar';
-        let hasCalendarSession = false;
+        const isNativeCalendarApp =
+          window.Capacitor?.isNativePlatform?.() === true;
 
         try {
-          hasCalendarSession = sessionStorage.getItem(key) === 'calendar';
           if (hasCalendarQuery) sessionStorage.setItem(key, 'calendar');
         } catch {
-          hasCalendarSession = false;
+          // sessionStorage가 막힌 환경이면 무시
         }
 
-        if (hasCalendarQuery || hasCalendarSession) {
+        if (hasCalendarQuery || isNativeCalendarApp) {
           document.documentElement.classList.add('is-calendar-app-mode');
         }
       })();

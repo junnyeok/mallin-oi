@@ -1,0 +1,124 @@
+/* assets/css/components/refresh-control.css */
+
+.refresh-control-btn,
+.calendar-app-shell__refresh,
+.app-calendar-account__refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+
+.refresh-control-btn:hover,
+.calendar-app-shell__refresh:hover,
+.app-calendar-account__refresh:hover {
+  transform: translateY(-1px);
+}
+
+.refresh-control-btn:active,
+.calendar-app-shell__refresh:active,
+.app-calendar-account__refresh:active {
+  transform: translateY(0);
+}
+
+.refresh-control-btn:focus-visible,
+.calendar-app-shell__refresh:focus-visible,
+.app-calendar-account__refresh:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.refresh-control-btn__icon {
+  line-height: 1;
+}
+
+.header-actions--corner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.pull-refresh-indicator {
+  --pull-refresh-distance: 0px;
+
+  position: fixed;
+  top: calc(var(--space-8) + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 36px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+  font-size: var(--text-small);
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(-52px + var(--pull-refresh-distance)));
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.pull-refresh-indicator[aria-hidden='false'] {
+  opacity: 1;
+}
+
+.pull-refresh-indicator__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.pull-refresh-indicator.is-ready {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.pull-refresh-indicator.is-refreshing .pull-refresh-indicator__icon {
+  animation: pull-refresh-spin 820ms linear infinite;
+}
+
+html.is-pull-refreshing {
+  overscroll-behavior-y: contain;
+}
+
+@keyframes pull-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .refresh-control-btn {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .pull-refresh-indicator {
+    min-height: 34px;
+    font-size: 13px;
+  }
+}

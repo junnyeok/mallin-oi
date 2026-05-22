@@ -51,6 +51,59 @@
   color: var(--color-text-sub);
 }
 
+.app-calendar-account {
+  width: min(100%, 360px);
+  margin: var(--space-16) auto 0;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.app-calendar-account__status {
+  margin: 0 0 var(--space-8);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+.app-calendar-account__status strong {
+  color: var(--color-text);
+}
+
+.app-calendar-account__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.app-calendar-account__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-calendar-account__btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
 .app-calendar-launcher__grid {
   display: grid;
   gap: var(--space-12);
@@ -203,6 +256,45 @@ html.is-calendar-app-mode .home-section {
   color: var(--color-text-sub);
 }
 
+.calendar-app-shell__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.calendar-app-shell__auth,
+.calendar-app-shell__actions .auth-nickname {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  max-width: 128px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.calendar-app-shell__actions .auth-nickname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-app-shell__refresh {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  box-shadow: none;
+  font-size: 20px;
+}
+
 .calendar-app-shell__tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -238,7 +330,20 @@ html.is-calendar-app-mode .home-section {
 
   .app-calendar-card:hover,
   .calendar-app-shell__home:hover,
+  .calendar-app-shell__auth:hover,
   .calendar-app-shell__tab:hover {
     border-color: var(--color-primary);
+  }
+}
+
+@media (max-width: 420px) {
+  .calendar-app-shell__title {
+    display: none;
+  }
+
+  .calendar-app-shell__auth,
+  .calendar-app-shell__actions .auth-nickname {
+    max-width: 96px;
+    padding: 0 var(--space-8);
   }
 }

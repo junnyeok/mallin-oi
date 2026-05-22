@@ -46,6 +46,7 @@ async function loadCoreModules() {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    refreshControlModule,
     appCalendarModeModule,
     pwaInstallModule,
     cursorBuddyModule,
@@ -85,6 +86,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/mobile-stability.js')),
     import(withModuleVersion('./modules/site-version.js')),
     import(withModuleVersion('./modules/update-banner.js')),
+    import(withModuleVersion('./modules/refresh-control.js')),
     import(withModuleVersion('./modules/app-calendar-mode.js')),
     import(withModuleVersion('./modules/pwa-install.js')),
     import(withModuleVersion('./modules/cursor-buddy.js')),
@@ -126,6 +128,7 @@ async function loadCoreModules() {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    refreshControlModule,
     appCalendarModeModule,
     pwaInstallModule,
     cursorBuddyModule,
@@ -422,6 +425,7 @@ async function initGlobalModules(modules) {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    refreshControlModule,
     pwaInstallModule,
     appCalendarModeModule,
     cursorBuddyModule,
@@ -447,6 +451,7 @@ async function initGlobalModules(modules) {
   } = siteVersionModule;
 
   const { showUpdateBanner } = updateBannerModule;
+  const { initRefreshControls } = refreshControlModule;
   const { initPwaInstall } = pwaInstallModule;
   const { initCalendarAppMode } = appCalendarModeModule;
   const { initCursorBuddy } = cursorBuddyModule;
@@ -496,6 +501,10 @@ async function initGlobalModules(modules) {
     });
   }
 
+  await runSafe('refresh controls', async () => {
+    initRefreshControls();
+  });
+
   // BGM은 최대한 빨리 초기화해서
   // 새로고침 직후 자동 재생 복구 시도를 앞당긴다.
   if (!calendarAppMode) {
@@ -504,11 +513,11 @@ async function initGlobalModules(modules) {
     });
   }
 
-  if (!calendarAppMode) {
-    await runSafe('auth ui', async () => {
-      await initAuthUI();
-    });
+  await runSafe('auth ui', async () => {
+    await initAuthUI();
+  });
 
+  if (!calendarAppMode) {
     await runSafe('service menu', async () => {
       initServiceMenu();
     });
@@ -545,6 +554,7 @@ async function initGlobalModules(modules) {
           applyVersionToStaticLinks(withAssetVersion);
           initMobileStability();
           await refreshLayoutState();
+          initRefreshControls();
           await updateAuthUI();
           initServiceMenu();
           await initPageModules(modules);

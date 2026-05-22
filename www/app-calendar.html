@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="./assets/css/00-reset.css" />
     <link rel="stylesheet" href="./assets/css/01-tokens.css" />
     <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/components/refresh-control.css" />
     <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
   </head>
 
@@ -61,6 +62,15 @@
         <p class="app-calendar-launcher__desc">
           자기개발, 업무, 이벤트 일정을 앱에서 바로 관리해.
         </p>
+
+        <div
+          class="app-calendar-account"
+          id="appCalendarAccount"
+          aria-label="계정 메뉴"
+          aria-live="polite"
+        >
+          <p class="app-calendar-account__status">계정 상태를 확인하는 중이야.</p>
+        </div>
       </section>
 
       <section class="app-calendar-launcher__grid" aria-label="캘린더 선택">
