@@ -1008,6 +1008,25 @@ function wrapRootTextNodeSelectionIntoParagraph(editor, range) {
   return nextRange;
 }
 
+function isNodeVisuallyEmpty(node) {
+  if (!node) return true;
+
+  const text = String(node.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+
+  if (text) return false;
+
+  return !node.querySelector?.(
+    '.write-embed, [data-media-id], img.inline-emoticon, img[data-emoticon-code], iframe, video, a[href]',
+  );
+}
+
+function ensureEditableBlockPlaceholder(block) {
+  if (!block || !isNodeVisuallyEmpty(block)) return;
+  block.innerHTML = '<br>';
+}
+
 function insertSingleParagraphAtCaret() {
   const editor = getBodyEditor();
   if (!editor) return;
@@ -1085,21 +1104,20 @@ function insertSingleParagraphAtCaret() {
 
   const moved = splitRange.extractContents();
 
-  if (moved.childNodes.length) {
+  if (moved.childNodes.length && !isNodeVisuallyEmpty(moved)) {
     newBlock.appendChild(moved);
   } else {
     newBlock.innerHTML = '<br>';
   }
 
-  if (!block.innerHTML.trim()) {
-    block.innerHTML = '<br>';
-  }
+  ensureEditableBlockPlaceholder(block);
+  ensureEditableBlockPlaceholder(newBlock);
 
   block.insertAdjacentElement('afterend', newBlock);
 
   const caretRange = document.createRange();
   caretRange.selectNodeContents(newBlock);
-  caretRange.collapse(true);
+  caretRange.collapse(false);
 
   safeSel.removeAllRanges();
   safeSel.addRange(caretRange);
