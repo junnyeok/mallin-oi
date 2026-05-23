@@ -13,6 +13,7 @@ const filesToCopy = [
   'calendar-study.html',
   'calendar-work.html',
   'calendar-event.html',
+  'privacy.html',
   'assets/version.json',
   'site.webmanifest',
 ];
@@ -184,6 +185,7 @@ function assertPreparedOutput() {
     'calendar-study.html',
     'calendar-work.html',
     'calendar-event.html',
+    'privacy.html',
     'login.html',
     'assets/version.json',
     'assets/css/01-tokens.css',

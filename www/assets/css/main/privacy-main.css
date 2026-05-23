@@ -1,0 +1,133 @@
+/* assets/css/main/privacy-main.css */
+
+.privacy-main {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary-sub) 26%, var(--color-bg) 74%) 0%,
+    var(--color-bg) 320px
+  );
+}
+
+.privacy-hero {
+  padding: var(--space-32) 0 var(--space-24);
+}
+
+.privacy-hero__eyebrow {
+  margin: 0 0 var(--space-8);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+
+.privacy-hero__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-h1);
+  line-height: 1.25;
+}
+
+.privacy-hero__desc {
+  max-width: 760px;
+  margin: var(--space-12) 0 0;
+  color: var(--color-text);
+  font-size: var(--text-body);
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+.privacy-hero__date {
+  display: inline-flex;
+  margin: var(--space-16) 0 0;
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+
+.privacy-content {
+  padding-bottom: var(--space-32);
+}
+
+.privacy-content__inner {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.privacy-card {
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.privacy-card__title {
+  margin: 0 0 var(--space-12);
+  color: var(--color-text);
+  font-size: var(--text-h2);
+  line-height: 1.35;
+}
+
+.privacy-card__text {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-body);
+  line-height: 1.75;
+  word-break: keep-all;
+}
+
+.privacy-list {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding-left: var(--space-24);
+  color: var(--color-text-sub);
+  font-size: var(--text-body);
+  line-height: 1.65;
+}
+
+.privacy-card__text + .privacy-list {
+  margin-top: var(--space-12);
+}
+
+.privacy-link {
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.privacy-card--contact {
+  background: color-mix(
+    in srgb,
+    var(--color-primary-sub) 32%,
+    var(--color-surface) 68%
+  );
+}
+
+@media (max-width: 640px) {
+  .privacy-hero {
+    padding-top: var(--space-24);
+  }
+
+  .privacy-hero__title {
+    font-size: 26px;
+  }
+
+  .privacy-card {
+    padding: var(--space-16);
+    border-radius: var(--radius-btn);
+  }
+
+  .privacy-card__title {
+    font-size: 18px;
+  }
+
+  .privacy-card__text,
+  .privacy-list {
+    font-size: 15px;
+  }
+}
