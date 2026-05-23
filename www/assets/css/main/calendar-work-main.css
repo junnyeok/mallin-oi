@@ -1,0 +1,1426 @@
+/* assets/css/main/calendar-work-main.css */
+
+/* =========================
+  Work Calendar Preview
+========================= */
+
+.work-calendar-preview {
+  margin-bottom: var(--space-16);
+}
+
+.work-calendar-preview__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.work-calendar-preview__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.work-calendar-preview__more {
+  flex-shrink: 0;
+  font-size: var(--text-small);
+  font-weight: 800;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.work-calendar-mini {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.work-calendar-mini__month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-8);
+}
+
+.work-calendar-mini__month strong {
+  font-size: var(--text-body);
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.work-calendar-mini__month span {
+  font-size: var(--text-small);
+  color: var(--color-text-sub);
+}
+
+.work-calendar-mini__empty {
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+/* =========================
+  Work Calendar Common Grid
+========================= */
+
+.work-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.work-calendar-weekday {
+  padding: var(--space-8) var(--space-4);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.work-calendar-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--space-6);
+  width: 100%;
+  min-width: 0;
+  min-height: 64px;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+  overflow: hidden;
+}
+
+.work-calendar-day--button {
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.work-calendar-day--button:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  transform: translateY(-1px);
+}
+
+.work-calendar-day.is-muted,
+.work-calendar-day--muted {
+  color: var(--color-text-sub);
+  background: #f7f7f7;
+}
+
+.work-calendar-day--today {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.work-calendar-day--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.work-calendar-day__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  font-weight: 900;
+}
+
+.work-calendar-day--today .work-calendar-day__number {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.work-calendar-day__badges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--space-4);
+}
+
+.work-calendar-day__badge {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 20px;
+  padding: 0 var(--space-6);
+  border-radius: 5px;
+  background: var(--todo-category-color, var(--color-primary-sub));
+  color: var(--todo-category-text, var(--color-text));
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 20px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.work-calendar-day__memo {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* =========================
+  Work Calendar Page
+========================= */
+
+.work-calendar-page__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
+}
+
+.work-calendar-page__title {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-h1);
+  color: var(--color-text);
+}
+
+.work-calendar-page__desc {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
+.work-calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+.work-calendar-main-panel,
+.work-calendar-todo-panel {
+  min-width: 0;
+  padding: var(--space-6);
+}
+
+.work-calendar-toolbar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.work-calendar-nav-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 28px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-calendar-nav-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.work-calendar-month {
+  margin: 0;
+  font-size: var(--text-h2);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.work-calendar-grid--page .work-calendar-day {
+  min-height: 92px;
+}
+
+.work-calendar-selected {
+  margin-bottom: var(--space-16);
+}
+
+.work-calendar-selected__label {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+}
+
+.work-calendar-selected__date {
+  margin: 0;
+  font-size: var(--text-h2);
+  color: var(--color-text);
+}
+
+/* =========================
+  Work Todo Form
+========================= */
+
+.work-todo-form {
+  display: grid;
+  grid-template-columns: 96px auto auto;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.work-todo-form__select,
+.work-todo-form__memo {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+}
+
+.work-todo-form__select {
+  padding: 0 var(--space-8);
+}
+
+.work-todo-form__memo {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 40px;
+  max-height: none;
+  padding: var(--space-8) var(--space-12);
+  line-height: var(--line-body);
+  overflow: hidden;
+  resize: none;
+}
+
+.work-todo-form__select:focus,
+.work-todo-form__memo:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.work-todo-form__setting {
+  min-height: 42px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-todo-form__setting:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.work-todo-form__button {
+  min-height: 42px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-todo-form__button:hover {
+  opacity: 0.82;
+}
+
+/* =========================
+  Work Repeat
+========================= */
+
+body.work-repeat-modal-open {
+  overflow: hidden;
+}
+
+.work-repeat {
+  margin: var(--space-16) 0;
+  padding: 0;
+}
+
+.work-repeat__trigger {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-repeat__trigger:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.work-repeat__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-16);
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.work-repeat__modal[hidden] {
+  display: none;
+}
+
+.work-repeat__dialog {
+  width: min(460px, 100%);
+  max-height: min(680px, calc(100vh - var(--space-32)));
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.work-repeat__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.work-repeat__title {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--text-body);
+  font-weight: 900;
+}
+
+.work-repeat__desc {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: var(--line-body);
+}
+
+.work-repeat__close {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-repeat__close:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.work-repeat__form {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.work-repeat__field {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.work-repeat__label {
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-repeat__input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 800;
+}
+
+.work-repeat__input:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.work-repeat__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: var(--line-body);
+}
+
+.work-repeat__check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.work-repeat__actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.work-repeat__button,
+.work-repeat__cancel {
+  min-height: 42px;
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-btn);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-repeat__button {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.work-repeat__cancel {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+}
+
+.work-repeat__button:hover {
+  opacity: 0.82;
+}
+
+.work-repeat__cancel:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.work-repeat__button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.work-repeat__message {
+  min-height: 18px;
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: var(--line-body);
+}
+
+/* =========================
+  Work Todo List
+========================= */
+
+.work-todo-list {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-todo-item {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+}
+
+.work-todo-item__top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.work-todo-item__summary {
+  min-width: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.work-todo-item__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.work-todo-item__edit,
+.work-todo-item__save,
+.work-todo-item__delete {
+  min-width: 40px;
+  min-height: 34px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.work-todo-item__edit:hover,
+.work-todo-item__save:hover,
+.work-todo-item__delete:hover {
+  color: var(--color-text);
+  background: var(--color-primary-sub);
+}
+
+.work-todo-item__save:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.work-todo-item__detail {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.work-todo-item__detail-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.work-todo-item__detail[hidden] {
+  display: none;
+}
+
+.work-todo-item__memo {
+  width: 100%;
+  min-height: 40px;
+  max-height: none;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  overflow: hidden;
+  resize: none;
+}
+
+.work-todo-item__memo:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.work-todo-empty {
+  margin: var(--space-16) 0 0;
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.work-todo-empty[hidden] {
+  display: none;
+}
+
+/* =========================
+  Work Category Manager Modal
+========================= */
+
+body.work-category-modal-open {
+  overflow: hidden;
+}
+
+.work-category-manager {
+  margin: 0;
+  padding: 0;
+}
+
+.work-category-manager__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-16);
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.work-category-manager__modal[hidden] {
+  display: none;
+}
+
+.work-category-manager__dialog {
+  width: min(560px, 100%);
+  max-height: min(720px, calc(100vh - var(--space-32)));
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.work-category-manager__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.work-category-manager__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-body);
+  color: var(--color-text);
+}
+
+.work-category-manager__desc,
+.work-category-manager__notice {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: var(--line-body);
+}
+
+.work-category-manager__close {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-category-manager__close:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.work-category-form {
+  display: grid;
+  grid-template-columns: 1fr 46px auto;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.work-category-form__input,
+.work-category-form__color {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+}
+
+.work-category-form__input {
+  min-width: 0;
+  padding: 0 var(--space-12);
+}
+
+.work-category-form__color {
+  width: 46px;
+  padding: var(--space-4);
+  cursor: pointer;
+}
+
+.work-category-form__input:focus,
+.work-category-form__color:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.work-category-form__button {
+  min-height: 42px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-category-form__button:hover {
+  opacity: 0.82;
+}
+
+.work-category-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.work-category-palette__button {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--category-color, #e7f6ff);
+  cursor: pointer;
+}
+
+.work-category-palette__button.is-active,
+.work-category-palette__button.is-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-sub);
+}
+
+.work-category-list {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-category-list__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 46px auto auto;
+  gap: var(--space-6);
+  align-items: center;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: #f7f7f7;
+}
+
+.work-category-list__dot {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--category-color, #e7f6ff);
+}
+
+.work-category-list__input {
+  min-width: 0;
+  height: 36px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.work-category-list__color {
+  width: 46px;
+  height: 36px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.work-category-list__input:focus,
+.work-category-list__color:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.work-category-list__save,
+.work-category-list__delete {
+  min-height: 36px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-category-list__save:hover,
+.work-category-list__delete:hover {
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.work-category-list__delete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =========================
+  Work Theme Override
+========================= */
+
+body.theme-work[data-page='calendar-work'] .work-calendar-weekday,
+body.theme-work[data-page='calendar-work'] .work-todo-form__button,
+body.theme-work[data-page='calendar-work'] .work-category-form__button,
+body.theme-work[data-page='calendar-work'] .work-repeat__button {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+body.theme-work[data-page='calendar-work'] .work-calendar-day--button:hover,
+body.theme-work[data-page='calendar-work'] .work-calendar-day--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+body.theme-work[data-page='calendar-work'] .work-calendar-day--today {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+body.theme-work[data-page='calendar-work']
+  .work-calendar-day--today
+  .work-calendar-day__number {
+  background: var(--color-primary);
+}
+
+body.theme-work[data-page='calendar-work'] .work-calendar-nav-btn:hover,
+body.theme-work[data-page='calendar-work'] .work-todo-form__setting:hover,
+body.theme-work[data-page='calendar-work'] .work-repeat__trigger:hover,
+body.theme-work[data-page='calendar-work'] .work-repeat__close:hover,
+body.theme-work[data-page='calendar-work'] .work-repeat__cancel:hover,
+body.theme-work[data-page='calendar-work'] .work-todo-item__edit:hover,
+body.theme-work[data-page='calendar-work'] .work-todo-item__delete:hover,
+body.theme-work[data-page='calendar-work'] .work-category-manager__close:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+body.theme-work[data-page='calendar-work']
+  .work-category-palette__button.is-active,
+body.theme-work[data-page='calendar-work']
+  .work-category-palette__button.is-selected,
+body.theme-work[data-page='calendar-work'] .work-category-form__color {
+  border-color: var(--color-primary);
+}
+
+body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
+  color: var(--color-primary);
+}
+
+/* =========================
+  Responsive
+========================= */
+
+@media (max-width: 900px) {
+  .work-calendar-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  #workCalendarPage input,
+  #workCalendarPage textarea,
+  #workCalendarPage select {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  #workCalendarPage button {
+    touch-action: manipulation;
+  }
+
+  #workCalendarPage .work-todo-form__select {
+    min-height: 44px;
+    padding-right: var(--space-12);
+    padding-left: var(--space-12);
+  }
+
+  #workCalendarPage .work-todo-form__memo {
+    min-height: 40px;
+    padding: var(--space-8) var(--space-12);
+  }
+
+  #workCalendarPage .work-todo-item__memo {
+    min-height: 44px;
+    font-size: 16px;
+    line-height: 1.45;
+    padding: var(--space-8) var(--space-12);
+  }
+}
+
+@media (max-width: 640px) {
+  .work-calendar-preview__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .work-calendar-preview__more {
+    font-size: 13px;
+  }
+
+  .work-calendar-mini__month {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .work-calendar-grid {
+    gap: var(--space-4);
+  }
+
+  .work-calendar-weekday {
+    padding: var(--space-6) var(--space-4);
+    font-size: 11px;
+  }
+
+  .work-calendar-grid--mini .work-calendar-day {
+    min-height: 58px;
+    padding: var(--space-6);
+  }
+
+  .work-calendar-grid--page .work-calendar-day {
+    min-height: 78px;
+    padding: var(--space-6);
+  }
+
+  .work-calendar-day__number {
+    min-width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .work-calendar-day__badges {
+    gap: 3px;
+    margin-top: 2px;
+  }
+
+  .work-calendar-day__badge {
+    min-height: 18px;
+    padding: 0 var(--space-4);
+    font-size: 10px;
+    line-height: 18px;
+    text-overflow: clip;
+  }
+
+  .work-calendar-page__head {
+    display: block;
+  }
+
+  .work-calendar-page__title {
+    font-size: var(--text-h2);
+  }
+
+  .work-calendar-main-panel,
+  .work-calendar-todo-panel {
+    padding: var(--space-4);
+  }
+
+  .work-calendar-toolbar {
+    grid-template-columns: 40px 1fr 40px;
+    gap: var(--space-6);
+  }
+
+  .work-calendar-nav-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+
+  .work-calendar-month {
+    font-size: var(--text-body);
+  }
+
+  .work-todo-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .work-todo-form__select {
+    width: 100%;
+  }
+
+  .work-todo-form__setting {
+    width: auto;
+    min-width: 64px;
+  }
+
+  .work-todo-form__memo,
+  .work-todo-form__button {
+    grid-column: 1 / -1;
+  }
+
+  .work-repeat {
+    margin: var(--space-12) 0;
+  }
+
+  .work-repeat__modal {
+    align-items: center;
+    padding: var(--space-12);
+  }
+
+  .work-repeat__dialog {
+    width: 100%;
+    max-height: calc(100vh - var(--space-24));
+    padding: var(--space-12);
+  }
+
+  .work-repeat__head {
+    gap: var(--space-8);
+  }
+
+  .work-repeat__input,
+  .work-repeat__button,
+  .work-repeat__cancel,
+  .work-repeat__trigger {
+    min-height: 44px;
+  }
+
+  .work-repeat__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .work-repeat__cancel {
+    width: 100%;
+  }
+
+  .work-todo-item {
+    padding: var(--space-8);
+  }
+
+  .work-todo-item__top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .work-todo-item__summary {
+    grid-column: 1 / -1;
+  }
+
+  .work-todo-item__actions {
+    justify-content: flex-end;
+  }
+
+  .work-todo-item__detail {
+    padding-left: 0;
+  }
+
+  .work-category-manager__modal {
+    align-items: center;
+    padding: var(--space-12);
+  }
+
+  .work-category-manager__dialog {
+    width: 100%;
+    max-height: calc(100vh - var(--space-24));
+    padding: var(--space-12);
+  }
+
+  .work-category-manager__head {
+    gap: var(--space-8);
+  }
+
+  .work-category-form {
+    grid-template-columns: 1fr 46px;
+  }
+
+  .work-category-form__button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .work-category-list__item {
+    grid-template-columns: auto minmax(0, 1fr) 42px;
+  }
+
+  .work-category-list__save,
+  .work-category-list__delete {
+    grid-column: 2 / -1;
+    width: 100%;
+  }
+
+  .work-category-list__delete {
+    margin-top: -2px;
+  }
+}
+
+/* =========================
+   Work Calendar Table Layout Patch
+   - 날짜 칸 gap 제거
+   - 날짜 칸 border 제거
+   - 전체 캘린더 칸 높이 확대
+   - 모바일 가로 밀림 방지
+========================= */
+
+.work-calendar-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.work-calendar-weekday {
+  min-width: 0;
+  border-radius: 0;
+}
+
+.work-calendar-day {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  padding: var(--space-6);
+  border: 0;
+  border-radius: 0;
+  gap: var(--space-4);
+  box-shadow: none;
+}
+
+.work-calendar-day--button {
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.work-calendar-day--button:hover {
+  border-color: transparent;
+  background: var(--color-primary-sub);
+  transform: none;
+}
+
+.work-calendar-day--today {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.work-calendar-day--selected {
+  border-color: transparent;
+  background: var(--color-primary-sub);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.work-calendar-grid--page .work-calendar-day {
+  min-height: 116px;
+  padding: var(--space-8);
+}
+
+.work-calendar-day__number,
+.work-calendar-day__badges,
+.work-calendar-day__badge {
+  min-width: 0;
+}
+
+.work-calendar-day__badges {
+  width: 100%;
+  margin-top: 2px;
+  gap: 3px;
+}
+
+.work-calendar-day__badge {
+  width: 100%;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 0 var(--space-6);
+  font-size: 11px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.work-calendar-day__memo {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.work-calendar-main-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+body.theme-work[data-page='calendar-work'] .work-calendar-day--button:hover,
+body.theme-work[data-page='calendar-work'] .work-calendar-day--selected {
+  border-color: transparent;
+  background: var(--color-primary-sub);
+}
+
+body.theme-work[data-page='calendar-work'] .work-calendar-day--today {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+@media (max-width: 640px) {
+  .work-calendar-grid {
+    gap: 0;
+  }
+
+  .work-calendar-weekday {
+    padding: var(--space-6) 2px;
+    font-size: 11px;
+  }
+
+  .work-calendar-grid--mini .work-calendar-day,
+  .work-calendar-day {
+    min-height: 50px;
+    padding: 4px;
+  }
+
+  .work-calendar-grid--page .work-calendar-day {
+    min-height: 84px;
+    padding: 4px;
+  }
+
+  .work-calendar-day__number {
+    min-width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+
+  .work-calendar-day__badges {
+    gap: 2px;
+    margin-top: 2px;
+  }
+
+  .work-calendar-day__badge {
+    min-height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+  }
+}
+
+/* =========================
+   Work Calendar Badge Text Patch
+   - 일정 제목 말줄임(...) 제거
+   - 칸 안에서 가능한 만큼 자연스럽게 표시
+========================= */
+
+.work-calendar-day__badge {
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  height: auto;
+  min-height: 18px;
+  line-height: 1.25;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.work-calendar-grid--page .work-calendar-day__badge {
+  min-height: 20px;
+  line-height: 1.25;
+}
+
+@media (max-width: 640px) {
+  .work-calendar-day__badge,
+  .work-calendar-grid--page .work-calendar-day__badge {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: clip;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    height: auto;
+    min-height: 18px;
+    line-height: 1.2;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .work-calendar-page .container {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+}
+
+/* 업무 일정 카드 카테고리 수정 select */
+.work-todo-item__category-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 120px;
+  min-height: 28px;
+  padding: 0 28px 0 var(--space-8);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background-color: var(--todo-category-color, var(--color-primary-sub));
+  color: var(--todo-category-text, var(--color-text));
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.work-todo-item__category-select:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 640px) {
+  .work-todo-item__category-select {
+    max-width: 100%;
+  }
+}
+
+/* =========================
+  Calendar Today Border Override
+  - 선택하지 않은 오늘 날짜의 칸 전체 테두리 제거
+  - 오늘 날짜 숫자 표시는 기존 유지
+  - 오늘 날짜를 직접 선택한 경우 selected 테두리는 유지
+========================= */
+
+.work-calendar-day--today:not(.work-calendar-day--selected),
+body.theme-work[data-page='calendar-work']
+  .work-calendar-day--today:not(.work-calendar-day--selected) {
+  border-color: transparent;
+  box-shadow: none;
+}

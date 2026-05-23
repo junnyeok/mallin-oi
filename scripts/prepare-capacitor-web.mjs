@@ -25,6 +25,11 @@ const filesToCopyIfExists = [
 ];
 
 const dirsToCopy = ['assets', 'images', 'partials'];
+const requiredAssetDirs = [
+  'assets/js/modules',
+  'assets/css/components',
+  'assets/css/main',
+];
 
 const excludedAssetDirs = new Set(['mp3']);
 const excludedImageDirs = new Set([
@@ -36,10 +41,6 @@ const excludedImageDirs = new Set([
   'profile-frame',
   'skins',
 ]);
-
-function exists(targetPath) {
-  return fs.existsSync(path.join(rootDir, targetPath));
-}
 
 function copyFile(relativePath) {
   const src = path.join(rootDir, relativePath);
@@ -108,6 +109,53 @@ function copyDirRecursive(relativePath, src, dest) {
   fs.copyFileSync(src, dest);
 }
 
+function copyRequiredAssetDirs() {
+  requiredAssetDirs.forEach((relativePath) => {
+    const src = path.join(rootDir, relativePath);
+    const dest = path.join(outDir, relativePath);
+
+    if (!fs.existsSync(src)) {
+      throw new Error(`Capacitor 준비에 필요한 디렉터리가 없어: ${relativePath}`);
+    }
+
+    copyDirRecursive(relativePath, src, dest);
+  });
+}
+
+function listFilesByExtension(relativePath, extension) {
+  const dir = path.join(rootDir, relativePath);
+
+  if (!fs.existsSync(dir)) return [];
+
+  return fs
+    .readdirSync(dir)
+    .filter((entry) => entry.endsWith(extension))
+    .map((entry) => `${relativePath}/${entry}`)
+    .sort();
+}
+
+function getMainModuleImports() {
+  const mainPath = path.join(rootDir, 'assets/js/main.js');
+  const mainSource = fs.readFileSync(mainPath, 'utf8');
+  const imports = new Set();
+  const re = /withModuleVersion\('\.\/modules\/([^']+\.js)'\)/g;
+  let match;
+
+  while ((match = re.exec(mainSource)) !== null) {
+    imports.add(`assets/js/modules/${match[1]}`);
+  }
+
+  return [...imports].sort();
+}
+
+function assertFilesExist(files, baseDir = rootDir) {
+  const missing = files.filter((item) => !fs.existsSync(path.join(baseDir, item)));
+
+  if (missing.length > 0) {
+    throw new Error(`Capacitor 준비 파일이 없어: ${missing.join(', ')}`);
+  }
+}
+
 function assertRequiredFiles() {
   const required = [
     'index.html',
@@ -123,15 +171,10 @@ function assertRequiredFiles() {
     'assets/js/modules/calendar-widget-data.js',
     'assets/css/components/refresh-control.css',
     'assets/css/main/app-calendar-main.css',
+    ...getMainModuleImports(),
   ];
 
-  const missing = required.filter((item) => !exists(item));
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Capacitor 준비에 필요한 파일이 없어: ${missing.join(', ')}`,
-    );
-  }
+  assertFilesExist(required);
 }
 
 function assertPreparedOutput() {
@@ -182,15 +225,13 @@ function assertPreparedOutput() {
     'images/favicon-32x32.png',
     'images/favicon.ico',
     'site.webmanifest',
+    ...listFilesByExtension('assets/js/modules', '.js'),
+    ...listFilesByExtension('assets/css/components', '.css'),
+    ...listFilesByExtension('assets/css/main', '.css'),
+    ...getMainModuleImports(),
   ];
 
-  const missing = required.filter(
-    (item) => !fs.existsSync(path.join(outDir, item)),
-  );
-
-  if (missing.length > 0) {
-    throw new Error(`www 준비 결과에 파일이 없어: ${missing.join(', ')}`);
-  }
+  assertFilesExist(required, outDir);
 }
 
 function cleanOutDir() {
@@ -215,6 +256,7 @@ dirsToCopy.forEach((relativePath) => {
 
   copyDirRecursive(relativePath, src, dest);
 });
+copyRequiredAssetDirs();
 
 assertPreparedOutput();
 

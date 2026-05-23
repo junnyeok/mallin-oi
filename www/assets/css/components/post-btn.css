@@ -1,0 +1,30 @@
+/* =========================================
+   상세페이지 이전글 / 목록 / 다음글 버튼
+========================================= */
+
+.post-pager {
+  margin: var(--space-16) 0 var(--space-24);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+/* 공통 버튼 스타일 (weekly-nav__btn 확장용) */
+.post-pager .weekly-nav__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: auto;
+  min-width: 72px;
+  padding: 0 var(--space-12);
+
+  text-decoration: none;
+}
+
+/* 비활성 상태 */
+.post-pager .weekly-nav__btn[aria-disabled='true'] {
+  opacity: 0.35;
+  pointer-events: none;
+}
