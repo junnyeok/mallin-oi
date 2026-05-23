@@ -173,11 +173,17 @@
 
                     <div class="write-attach-box">
                       <p class="write-attach-note">
-                        사진은 10MB 이하, 동영상은 100MB 이하, 일반 파일은 30MB
-                        이하만 업로드할 수 있어. 큰 동영상은 업로드보다 동영상
-                        링크 삽입을 권장해. 큰 파일은 zip으로 압축하거나 분할
-                        압축 후 올리거나, 외부 링크를 활용해줘.
+                        사진은 10MB 이하, 동영상은 100MB 이하, 일반 파일은
+                        30MB 이하만 직접 업로드할 수 있어. 긴 영상이나 고화질
+                        영상은 용량이 커서 직접 업로드보다 유튜브 링크 삽입을
+                        권장해. 큰 파일은 zip으로 압축하거나 외부 링크를
+                        활용해줘.
                       </p>
+                      <p
+                        id="writeAttachNotice"
+                        class="write-attach-notice"
+                        aria-live="polite"
+                      ></p>
 
                       <div class="write-upload-grid">
                         <label class="write-upload-tile" for="writeImage">
@@ -253,7 +259,8 @@
                         </div>
                         <p class="write-help write-help--compact">
                           지원 예시: youtube.com, youtu.be, 직접 재생 가능한
-                          mp4/webm 링크
+                          mp4/webm 링크. 긴 영상은 유튜브에 일부 공개로 올린 뒤
+                          링크를 넣는 걸 추천해.
                         </p>
                       </div>
                     </div>
