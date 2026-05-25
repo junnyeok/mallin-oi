@@ -109,20 +109,32 @@
   accent-color: var(--color-primary);
 }
 
-.signup-btn {
+.signup-btn,
+.signup-resend-btn {
   padding: var(--space-12);
   border-radius: var(--radius-btn);
-  border: none;
-  background: var(--color-primary);
   font-size: var(--text-body);
   cursor: pointer;
 }
 
-.signup-btn:hover {
+.signup-btn {
+  border: none;
+  background: var(--color-primary);
+}
+
+.signup-resend-btn {
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.signup-btn:hover,
+.signup-resend-btn:hover {
   opacity: 0.9;
 }
 
-.signup-btn:disabled {
+.signup-btn:disabled,
+.signup-resend-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

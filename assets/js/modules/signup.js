@@ -84,6 +84,41 @@ function getEmailRedirectTo() {
   return new URL(loginHref(), window.location.origin).toString();
 }
 
+function isRateLimitError(error) {
+  const code = String(error?.code || '').trim();
+  const message = String(error?.message || '').toLowerCase();
+
+  return (
+    code === 'over_email_send_rate_limit' ||
+    code === 'over_request_rate_limit' ||
+    message.includes('rate limit')
+  );
+}
+
+function isAlreadyRegisteredError(error) {
+  const code = String(error?.code || '').trim();
+  const message = String(error?.message || '').toLowerCase();
+
+  return (
+    code === 'email_exists' ||
+    code === 'user_already_exists' ||
+    message.includes('already registered') ||
+    message.includes('already exists')
+  );
+}
+
+async function resendSignupEmail(email) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: getEmailRedirectTo(),
+    },
+  });
+
+  if (error) throw error;
+}
+
 async function checkAccountAvailability({
   email = '',
   nickname = '',
@@ -104,6 +139,12 @@ async function checkAccountAvailability({
 
   return {
     emailExists: !!row?.email_exists,
+    emailConfirmed:
+      row?.email_confirmed === true
+        ? true
+        : row?.email_confirmed === false
+          ? false
+          : null,
     nicknameExists: !!row?.nickname_exists,
   };
 }
@@ -116,7 +157,7 @@ function getFriendlySignupError(error) {
   const lowerMessage = message.toLowerCase();
 
   if (code === 'over_email_send_rate_limit') {
-    return '인증 메일 발송 제한에 걸렸어. 잠시 후 다시 시도해줘.';
+    return '인증메일 발송 제한에 걸렸어. 잠시 후 다시 시도해줘.';
   }
 
   if (code === 'over_request_rate_limit') {
@@ -152,9 +193,25 @@ function getFriendlySignupError(error) {
   return `회원가입 실패: ${message}`;
 }
 
+function getFriendlyResendError(error) {
+  if (!error) return '인증메일을 다시 보내지 못했어. 잠시 후 다시 시도해줘.';
+
+  if (isRateLimitError(error)) {
+    return '인증메일 발송 요청이 너무 많았어. 잠시 후 다시 시도해줘.';
+  }
+
+  if (isAlreadyRegisteredError(error)) {
+    return '이미 가입된 이메일이야. 로그인하거나 비밀번호 찾기를 이용해줘.';
+  }
+
+  return '인증메일을 다시 보내지 못했어. 이메일 주소를 확인해줘.';
+}
+
 export function initSignup() {
   const form = $('signupForm');
   if (!form) return;
+  if (form.dataset.signupBound === 'true') return;
+  form.dataset.signupBound = 'true';
 
   const emailInput = $('signupEmail');
   const nickInput = $('signupNickname');
@@ -169,6 +226,7 @@ export function initSignup() {
   const agreePrivacy = $('agreePrivacy');
 
   const submitBtn = $('signupSubmitBtn');
+  const resendBtn = $('signupResendBtn');
   const signupMsg = $('signupMsg');
 
   const msgEmail = ensureMsgEl('signupEmail');
@@ -177,6 +235,46 @@ export function initSignup() {
   const msgBirthKey = ensureMsgEl('signupBirthKey');
   const msgQuestion = ensureMsgEl('signupRecoveryQuestion');
   const msgAnswer = ensureMsgEl('signupRecoveryAnswer');
+
+  const setSignupMsg = (text, color = 'var(--color-text-sub)') => {
+    if (!signupMsg) return;
+    signupMsg.textContent = text;
+    signupMsg.style.color = color;
+  };
+
+  const updateResendButtonState = () => {
+    if (!resendBtn) return;
+    resendBtn.disabled = !isValidEmail(emailInput?.value || '');
+  };
+
+  updateResendButtonState();
+  emailInput?.addEventListener('input', updateResendButtonState);
+
+  resendBtn?.addEventListener('click', async () => {
+    const email = emailInput?.value.trim() || '';
+
+    if (!isValidEmail(email)) {
+      setMsg(msgEmail, '이메일 형식을 확인해줘.');
+      emailInput?.focus();
+      return;
+    }
+
+    resendBtn.disabled = true;
+    setSignupMsg('인증메일을 다시 보내는 중...', 'var(--color-text-sub)');
+
+    try {
+      await resendSignupEmail(email);
+      setSignupMsg(
+        '인증메일을 다시 보냈어. 메일함과 스팸함을 확인해줘.',
+        'green',
+      );
+    } catch (error) {
+      console.error('[signup] resend error:', error);
+      setSignupMsg(getFriendlyResendError(error), 'red');
+    } finally {
+      updateResendButtonState();
+    }
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -198,10 +296,7 @@ export function initSignup() {
     clearMsg(msgQuestion);
     clearMsg(msgAnswer);
 
-    if (signupMsg) {
-      signupMsg.textContent = '';
-      signupMsg.style.color = 'var(--color-text-sub)';
-    }
+    setSignupMsg('');
 
     if (!isValidEmail(email)) {
       setMsg(msgEmail, '이메일 형식을 확인해줘.');
@@ -262,8 +357,32 @@ export function initSignup() {
       const availability = await checkAccountAvailability({ email, nickname });
 
       if (availability.emailExists) {
-        setMsg(msgEmail, '이미 가입된 이메일이야.');
-        emailInput?.focus();
+        if (availability.emailConfirmed === true) {
+          setMsg(msgEmail, '이미 가입된 이메일이야.');
+          setSignupMsg(
+            '이미 가입된 이메일이야. 로그인하거나 비밀번호 찾기를 이용해줘.',
+            'red',
+          );
+          emailInput?.focus();
+          return;
+        }
+
+        setSignupMsg(
+          '이미 가입 시도된 이메일이야. 인증메일을 다시 보내는 중...',
+          'var(--color-text-sub)',
+        );
+
+        try {
+          await resendSignupEmail(email);
+          setSignupMsg(
+            '이미 가입 시도된 이메일이야. 인증메일을 다시 보냈어. 메일함과 스팸함을 확인해줘.',
+            'green',
+          );
+        } catch (error) {
+          console.error('[signup] resend existing signup error:', error);
+          setSignupMsg(getFriendlyResendError(error), 'red');
+        }
+
         return;
       }
 
@@ -273,10 +392,7 @@ export function initSignup() {
         return;
       }
 
-      if (signupMsg) {
-        signupMsg.textContent = '회원가입 처리 중...';
-        signupMsg.style.color = 'var(--color-text-sub)';
-      }
+      setSignupMsg('인증메일을 보내는 중...', 'var(--color-text-sub)');
 
       const recoveryAnswerHash = await sha256Hex(
         normalizeRecoveryAnswer(recoveryAnswer),
@@ -300,35 +416,37 @@ export function initSignup() {
       if (error) {
         console.error('[signup] signUp error:', error);
 
-        if (signupMsg) {
-          signupMsg.textContent = getFriendlySignupError(error);
-          signupMsg.style.color = 'red';
-        } else {
-          alert(getFriendlySignupError(error));
+        if (isAlreadyRegisteredError(error)) {
+          try {
+            await resendSignupEmail(email);
+            setSignupMsg(
+              '이미 가입 시도된 이메일이면 인증메일을 다시 보냈어. 메일함과 스팸함을 확인해줘.',
+              'green',
+            );
+          } catch (resendError) {
+            console.error('[signup] resend after signUp error:', resendError);
+            setSignupMsg(getFriendlyResendError(resendError), 'red');
+          }
+          return;
         }
+
+        setSignupMsg(getFriendlySignupError(error), 'red');
         return;
       }
 
       if (!data.session) {
-        if (signupMsg) {
-          signupMsg.textContent =
-            '회원가입 완료! 인증 메일을 보냈어. 메일함과 스팸함을 확인한 뒤 인증하고 로그인해줘.';
-          signupMsg.style.color = 'green';
-        }
+        setSignupMsg(
+          '인증메일을 보냈어. 메일에서 인증 버튼을 누르면 가입이 완료돼.',
+          'green',
+        );
 
-        form.reset();
-
-        setTimeout(() => {
-          window.location.href = loginHref();
-        }, 1200);
+        if (pwInput) pwInput.value = '';
+        if (pw2Input) pw2Input.value = '';
 
         return;
       }
 
-      if (signupMsg) {
-        signupMsg.textContent = '회원가입 완료! 로그인 페이지로 이동할게.';
-        signupMsg.style.color = 'green';
-      }
+      setSignupMsg('인증이 완료된 상태야. 로그인 페이지로 이동할게.', 'green');
 
       form.reset();
 
@@ -338,13 +456,10 @@ export function initSignup() {
     } catch (err) {
       console.error('[signup] unexpected error:', err);
 
-      if (signupMsg) {
-        signupMsg.textContent =
-          '회원가입 중 오류가 발생했어. 잠시 후 다시 시도해줘.';
-        signupMsg.style.color = 'red';
-      }
+      setSignupMsg('회원가입 중 오류가 발생했어. 잠시 후 다시 시도해줘.', 'red');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
+      updateResendButtonState();
     }
   });
 }

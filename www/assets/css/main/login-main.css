@@ -43,17 +43,33 @@
   font-size: var(--text-body);
 }
 
-.login-btn {
+.login-btn,
+.login-resend-btn {
   padding: var(--space-12);
   border-radius: var(--radius-btn);
-  border: none;
-  background: var(--color-primary);
   font-size: var(--text-body);
   cursor: pointer;
 }
 
-.login-btn:hover {
+.login-btn {
+  border: none;
+  background: var(--color-primary);
+}
+
+.login-resend-btn {
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.login-btn:hover,
+.login-resend-btn:hover {
   opacity: 0.9;
+}
+
+.login-resend-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .login-msg {

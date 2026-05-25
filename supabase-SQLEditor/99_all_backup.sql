@@ -193,7 +193,7 @@ create or replace function public.sync_profile_from_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = public
 as $$
 declare
   v_nickname text;
@@ -1523,7 +1523,7 @@ create or replace function public.sync_profile_from_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = public
 as $$
 declare
   v_nickname text;
@@ -18237,3 +18237,66 @@ select
   to_regclass('public.user_push_subscriptions') as push_subscriptions_table,
   to_regclass('public.user_notification_preferences') as push_preferences_table;
 --누적본쿼리 5/20
+
+-- =========================================
+-- 2026-05-25 회원가입 이메일 인증 상태 구분
+-- - 미인증 가입 시도 계정은 인증메일 재발송으로 복구
+-- - 인증 완료 계정은 기존처럼 가입 차단 안내
+-- =========================================
+
+drop function if exists public.check_account_availability(text, text, uuid);
+
+create or replace function public.check_account_availability(
+  p_email text default null,
+  p_nickname text default null,
+  p_exclude_user_id uuid default null
+)
+returns table (
+  email_exists boolean,
+  email_confirmed boolean,
+  nickname_exists boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  with matched_auth_user as (
+    select
+      u.id,
+      u.email_confirmed_at
+    from auth.users u
+    where p_email is not null
+      and lower(u.email) = lower(trim(p_email))
+      and (p_exclude_user_id is null or u.id <> p_exclude_user_id)
+    order by u.created_at desc
+    limit 1
+  ),
+  matched_profile as (
+    select p.id
+    from public.profiles p
+    where p_email is not null
+      and lower(p.email) = lower(trim(p_email))
+      and (p_exclude_user_id is null or p.id <> p_exclude_user_id)
+    limit 1
+  )
+  select
+    (exists (select 1 from matched_auth_user)
+      or exists (select 1 from matched_profile)) as email_exists,
+    coalesce(
+      (select mau.email_confirmed_at is not null from matched_auth_user mau),
+      false
+    ) as email_confirmed,
+    exists (
+      select 1
+      from public.profiles p
+      where p_nickname is not null
+        and lower(p.nickname) = lower(trim(p_nickname))
+        and (p_exclude_user_id is null or p.id <> p_exclude_user_id)
+    ) as nickname_exists;
+end;
+$$;
+
+grant execute on function public.check_account_availability(text, text, uuid)
+to anon, authenticated;
