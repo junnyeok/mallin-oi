@@ -375,7 +375,6 @@ async function initPageModules(modules) {
       });
       break;
 
-    case 'find-id':
     case 'find-password':
     case 'reset-password':
       await runSafe('account recovery module', async () => {

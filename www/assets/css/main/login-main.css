@@ -43,6 +43,16 @@
   font-size: var(--text-body);
 }
 
+.login-email-note {
+  margin: 0;
+  padding: var(--space-12);
+  border-radius: var(--radius-btn);
+  background: var(--color-primary-sub);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
 .login-btn,
 .login-resend-btn {
   padding: var(--space-12);

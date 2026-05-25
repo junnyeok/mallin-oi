@@ -60,7 +60,7 @@
 .mypage-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-24);
   margin-bottom: var(--space-24);
 }
 
@@ -138,15 +138,6 @@
   font-size: var(--text-small);
   color: var(--color-text-sub);
   line-height: var(--line-body);
-}
-
-.mypage-recovery-state {
-  padding: var(--space-12);
-  border-radius: var(--radius-btn);
-  background: var(--color-primary-sub);
-  color: var(--color-text-sub);
-  font-size: var(--text-small);
-  line-height: 1.5;
 }
 
 .mypage-btn,
@@ -296,7 +287,7 @@
 
 @media (max-width: 700px) {
   .mypage-main {
-    padding: var(--space-20);
+    padding: var(--space-24);
   }
 
   .mypage-card {

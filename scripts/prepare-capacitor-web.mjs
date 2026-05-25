@@ -20,7 +20,6 @@ const filesToCopy = [
 
 const filesToCopyIfExists = [
   'account/signup.html',
-  'account/find-id.html',
   'account/find-password.html',
   'account/reset-password.html',
 ];

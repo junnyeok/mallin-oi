@@ -62,7 +62,6 @@ function getLogoSrcByPage(page, base) {
     post: `${base}images/logo-home.png`,
     'posts-all': `${base}images/logo-home.png`,
     'prev-mypage': `${base}images/logo-home.png`,
-    'find-id': `${base}images/logo-home.png`,
     'find-password': `${base}images/logo-home.png`,
     'reset-password': `${base}images/logo-home.png`,
     'profile-history': `${base}images/logo-home.png`,

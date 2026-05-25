@@ -40,29 +40,6 @@ function isValidNickname(v) {
   return String(v || '').trim().length >= 2;
 }
 
-function isValidRealName(v) {
-  return String(v || '').trim().length >= 2;
-}
-
-function normalizeBirthKey(v) {
-  return String(v || '').replace(/[^0-9]/g, '');
-}
-
-function isValidBirthKey(v) {
-  return /^\d{7}$/.test(normalizeBirthKey(v));
-}
-
-function normalizeRecoveryAnswer(v) {
-  return String(v || '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
-}
-
-function isValidRecoveryAnswer(v) {
-  return normalizeRecoveryAnswer(v).length >= 2;
-}
-
 function isStrongPassword(v) {
   const value = String(v || '');
   return (
@@ -71,13 +48,6 @@ function isStrongPassword(v) {
     /\d/.test(value) &&
     /[^A-Za-z0-9]/.test(value)
   );
-}
-
-async function sha256Hex(value) {
-  const src = new TextEncoder().encode(String(value || ''));
-  const hashBuffer = await crypto.subtle.digest('SHA-256', src);
-  const bytes = Array.from(new Uint8Array(hashBuffer));
-  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function getEmailRedirectTo() {
@@ -215,10 +185,6 @@ export function initSignup() {
 
   const emailInput = $('signupEmail');
   const nickInput = $('signupNickname');
-  const realNameInput = $('signupRealName');
-  const birthKeyInput = $('signupBirthKey');
-  const questionInput = $('signupRecoveryQuestion');
-  const answerInput = $('signupRecoveryAnswer');
   const pwInput = $('signupPw');
   const pw2Input = $('signupPw2');
 
@@ -231,10 +197,6 @@ export function initSignup() {
 
   const msgEmail = ensureMsgEl('signupEmail');
   const msgNick = ensureMsgEl('signupNickname');
-  const msgRealName = ensureMsgEl('signupRealName');
-  const msgBirthKey = ensureMsgEl('signupBirthKey');
-  const msgQuestion = ensureMsgEl('signupRecoveryQuestion');
-  const msgAnswer = ensureMsgEl('signupRecoveryAnswer');
 
   const setSignupMsg = (text, color = 'var(--color-text-sub)') => {
     if (!signupMsg) return;
@@ -281,20 +243,12 @@ export function initSignup() {
 
     const email = emailInput?.value.trim() || '';
     const nickname = nickInput?.value.trim() || '';
-    const realName = realNameInput?.value.trim() || '';
-    const birthKey = birthKeyInput?.value.trim() || '';
-    const recoveryQuestion = questionInput?.value || '';
-    const recoveryAnswer = answerInput?.value || '';
     const pw = pwInput?.value || '';
     const pw2 = pw2Input?.value || '';
     const emailRedirectTo = getEmailRedirectTo();
 
     clearMsg(msgEmail);
     clearMsg(msgNick);
-    clearMsg(msgRealName);
-    clearMsg(msgBirthKey);
-    clearMsg(msgQuestion);
-    clearMsg(msgAnswer);
 
     setSignupMsg('');
 
@@ -307,30 +261,6 @@ export function initSignup() {
     if (!isValidNickname(nickname)) {
       setMsg(msgNick, '닉네임은 최소 2글자 이상이야.');
       nickInput?.focus();
-      return;
-    }
-
-    if (!isValidRealName(realName)) {
-      setMsg(msgRealName, '이름을 2글자 이상 입력해줘.');
-      realNameInput?.focus();
-      return;
-    }
-
-    if (!isValidBirthKey(birthKey)) {
-      setMsg(msgBirthKey, '생년월일은 960829-1 형식으로 입력해줘.');
-      birthKeyInput?.focus();
-      return;
-    }
-
-    if (!recoveryQuestion) {
-      setMsg(msgQuestion, '아이디 찾기 질문을 선택해줘.');
-      questionInput?.focus();
-      return;
-    }
-
-    if (!isValidRecoveryAnswer(recoveryAnswer)) {
-      setMsg(msgAnswer, '아이디 찾기 답변을 2글자 이상 입력해줘.');
-      answerInput?.focus();
       return;
     }
 
@@ -394,10 +324,6 @@ export function initSignup() {
 
       setSignupMsg('인증메일을 보내는 중...', 'var(--color-text-sub)');
 
-      const recoveryAnswerHash = await sha256Hex(
-        normalizeRecoveryAnswer(recoveryAnswer),
-      );
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password: pw,
@@ -405,10 +331,7 @@ export function initSignup() {
           emailRedirectTo,
           data: {
             nickname,
-            real_name: realName,
-            birth_key: normalizeBirthKey(birthKey),
-            recovery_question: recoveryQuestion,
-            recovery_answer_hash: recoveryAnswerHash,
+            marketing_agreed: !!$('agreeMarketing')?.checked,
           },
         },
       });

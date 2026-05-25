@@ -205,10 +205,6 @@ export function writeHref() {
   return resolveSitePath('write.html');
 }
 
-export function findIdHref() {
-  return withCalendarAppParam(resolveSitePath('account/find-id.html'));
-}
-
 export function findPasswordHref() {
   return withCalendarAppParam(resolveSitePath('account/find-password.html'));
 }

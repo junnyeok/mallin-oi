@@ -12,7 +12,7 @@
 
 2. 앱 시작 화면이 `www/index.html`과 `www/app-calendar.html`에서 말린오이 캘린더 선택 화면으로 열리는지 확인합니다.
 3. `calendar-study.html`, `calendar-work.html`, `calendar-event.html` 이동 시 `?app=calendar`가 유지되는지 확인합니다.
-4. 로그인, 회원가입, 아이디 찾기, 비밀번호 찾기, 비밀번호 재설정 페이지에서 앱 모드가 유지되는지 확인합니다.
+4. 로그인, 회원가입, 비밀번호 찾기, 비밀번호 재설정 페이지에서 앱 모드가 유지되는지 확인합니다.
 
 ## Android Google Play Store 출시 흐름
 

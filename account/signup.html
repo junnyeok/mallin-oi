@@ -88,101 +88,10 @@
                 />
                 <p class="help-text">닉네임은 최소 2글자 이상 입력해줘.</p>
               </div>
-
-              <div class="signup-field">
-                <label for="signupRealName">이름</label>
-                <input
-                  type="text"
-                  id="signupRealName"
-                  name="signupRealName"
-                  required
-                  minlength="2"
-                  maxlength="20"
-                  placeholder="예: 홍길동"
-                  autocomplete="name"
-                />
-                <p class="help-text">
-                  아이디 찾기 본인 확인에 사용할 이름이야.
-                </p>
-              </div>
-
-              <div class="signup-field">
-                <label for="signupBirthKey">생년월일</label>
-                <input
-                  type="text"
-                  id="signupBirthKey"
-                  name="signupBirthKey"
-                  required
-                  inputmode="numeric"
-                  maxlength="8"
-                  placeholder="예: 990101-1"
-                  autocomplete="off"
-                />
-                <p class="help-text">
-                  앞 6자리 + 뒤 1자리만 입력해줘. 하이픈(-)은 안 넣어도 돼.
-                </p>
-              </div>
             </div>
 
             <div class="signup-section">
-              <h2 class="signup-section__title">보안 정보</h2>
-
-              <div class="signup-field">
-                <label for="signupRecoveryQuestion">아이디 찾기 질문</label>
-                <select
-                  id="signupRecoveryQuestion"
-                  name="signupRecoveryQuestion"
-                  required
-                >
-                  <option value="">질문을 선택해줘</option>
-                  <option value="childhood_nickname">어릴 적 별명</option>
-                  <option value="first_pet_name">
-                    처음 키운 반려동물 이름
-                  </option>
-                  <option value="first_travel_place">
-                    처음으로 여행 간 곳
-                  </option>
-                  <option value="special_treasure">
-                    소중하게 간직했던 물건
-                  </option>
-                  <option value="childhood_dream">어릴 적 꿈</option>
-                  <option value="treasure_no1">내 보물 1호</option>
-                  <option value="favorite_item">좋아하는 물건</option>
-                  <option value="favorite_food">가장 좋아하는 음식</option>
-                  <option value="favorite_animal">가장 좋아하는 동물</option>
-                  <option value="favorite_color">가장 좋아하는 색깔</option>
-                  <option value="favorite_movie">가장 좋아하는 영화</option>
-                  <option value="favorite_season">가장 좋아하는 계절</option>
-                  <option value="best_subject">
-                    학창 시절 가장 좋아했던 과목
-                  </option>
-                  <option value="memorable_place">기억에 남는 장소</option>
-                  <option value="respect_person">가장 존경하는 사람</option>
-                  <option value="father_name">아버지의 성함</option>
-                  <option value="mother_name">어머니의 성함</option>
-                  <option value="elementary_school">초등학교 이름</option>
-                  <option value="hometown">나의 고향</option>
-                  <option value="birthplace">태어난 곳</option>
-                </select>
-                <p class="help-text">아이디 찾기 때 보여줄 질문이야.</p>
-              </div>
-
-              <div class="signup-field">
-                <label for="signupRecoveryAnswer">아이디 찾기 답변</label>
-                <input
-                  type="text"
-                  id="signupRecoveryAnswer"
-                  name="signupRecoveryAnswer"
-                  required
-                  minlength="2"
-                  maxlength="50"
-                  placeholder="질문에 대한 답 입력"
-                  autocomplete="off"
-                />
-                <p class="help-text">
-                  답변은 대소문자/앞뒤 공백을 정리해서 비교돼.
-                </p>
-              </div>
+              <h2 class="signup-section__title">비밀번호</h2>
 
               <div class="signup-field">
                 <label for="signupPw">비밀번호</label>
@@ -251,8 +160,6 @@
 
             <div class="signup-links" aria-label="계정 도움말">
               <a class="auth-link" href="../login.html">로그인</a>
-              <span class="signup-links__sep" aria-hidden="true">|</span>
-              <a class="auth-link" href="./find-id.html">아이디 찾기</a>
               <span class="signup-links__sep" aria-hidden="true">|</span>
               <a class="auth-link" href="./find-password.html">비밀번호 찾기</a>
             </div>

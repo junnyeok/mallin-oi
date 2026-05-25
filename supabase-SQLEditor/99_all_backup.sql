@@ -4107,7 +4107,6 @@ $$;
 
 grant execute on function public.get_post_detail(bigint, text) to anon, authenticated;
 
-
 -- =========================================================
 -- 2. 댓글 직접 select 차단
 --    기존 insert/update/delete 정책은 유지하고,
@@ -4119,7 +4118,6 @@ drop policy if exists "post_comments_select_all" on public.post_comments;
 drop policy if exists "post_comments_select_own" on public.post_comments;
 drop policy if exists "댓글 전체 조회" on public.post_comments;
 drop policy if exists "댓글 본인 조회" on public.post_comments;
-
 
 -- =========================================================
 -- 3. 비밀글 댓글/답글 조회 RPC
@@ -4191,7 +4189,6 @@ end;
 $$;
 
 grant execute on function public.get_post_comments(bigint, text) to anon, authenticated;
-
 
 -- =========================================================
 -- 4. 댓글 수 카운트 RPC
@@ -4739,7 +4736,6 @@ as $$
 $$;
 
 grant execute on function public.get_post_author_rankings(integer, text) to anon, authenticated;
-
 
 drop function if exists public.get_comment_author_rankings(integer, text);
 
@@ -16642,7 +16638,6 @@ using (
   and is_default = false
 );
 
-
 -- =========================================
 -- 이벤트 캘린더 일정 테이블
 -- 계정별 개인 일정 / 약속 / 행사 / 할 일 저장
@@ -16817,7 +16812,6 @@ using (
   auth.uid() = user_id
   and is_default = false
 );
-
 
 -- =========================================
 -- 업무 캘린더 일정 테이블
@@ -17025,7 +17019,6 @@ begin
 end;
 $$;
 
-
 -- ---------------------------------------------------------
 -- 2) 기존 user_notifications 확장
 --    새 상품 알림은 post_id/comment_id가 없을 수 있으므로 nullable 처리
@@ -17044,7 +17037,6 @@ add column if not exists item_id text;
 
 alter table public.user_notifications
 add column if not exists metadata jsonb not null default '{}'::jsonb;
-
 
 -- 기존 notification_type check 제약 제거 후 재생성
 do $$
@@ -17085,7 +17077,6 @@ create index if not exists user_notifications_action_url_idx
 
 create index if not exists user_notifications_type_created_idx
   on public.user_notifications(notification_type, created_at desc);
-
 
 -- ---------------------------------------------------------
 -- 3) 사용자 푸시 구독 테이블
@@ -17149,7 +17140,6 @@ for delete
 to authenticated
 using (auth.uid() = user_id);
 
-
 -- ---------------------------------------------------------
 -- 4) 사용자 알림 설정 테이블
 -- ---------------------------------------------------------
@@ -17196,7 +17186,6 @@ for update
 to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
-
 
 -- ---------------------------------------------------------
 -- 5) 푸시 구독 저장 RPC
@@ -17282,7 +17271,6 @@ $$;
 grant execute on function public.register_my_push_subscription(text, text, text, text, text)
 to authenticated;
 
-
 -- ---------------------------------------------------------
 -- 6) 현재 기기 푸시 구독 비활성화 RPC
 -- ---------------------------------------------------------
@@ -17326,7 +17314,6 @@ $$;
 grant execute on function public.disable_my_push_subscription(text)
 to authenticated;
 
-
 -- ---------------------------------------------------------
 -- 7) 알림 읽음 처리 RPC
 --    Service Worker notificationclick에서 사용 가능
@@ -17355,7 +17342,6 @@ $$;
 
 grant execute on function public.mark_my_notification_read(bigint)
 to authenticated;
-
 
 -- ---------------------------------------------------------
 -- 8) 댓글/답글 알림 함수 교체
@@ -17460,7 +17446,6 @@ create trigger trg_post_comments_insert_notification
 after insert on public.post_comments
 for each row
 execute function public.handle_comment_notification_insert();
-
 
 -- ---------------------------------------------------------
 -- 9) 좋아요/참신해요 알림 포함 toggle_post_reaction RPC 교체
@@ -17634,7 +17619,6 @@ $$;
 grant execute on function public.toggle_post_reaction(bigint, text)
 to authenticated;
 
-
 -- ---------------------------------------------------------
 -- 10) 새 상품 알림 관리자 RPC
 -- ---------------------------------------------------------
@@ -17723,7 +17707,6 @@ $$;
 grant execute on function public.create_store_new_item_notification(text, text, text)
 to authenticated;
 
-
 -- ---------------------------------------------------------
 -- 11) Realtime publication에 신규 테이블 추가
 -- ---------------------------------------------------------
@@ -17809,7 +17792,6 @@ create index if not exists user_notifications_action_url_idx
 create index if not exists user_notifications_type_created_idx
   on public.user_notifications(notification_type, created_at desc);
 
-
 -- ---------------------------------------------------------
 -- 2) 푸시 구독 테이블 보강
 -- ---------------------------------------------------------
@@ -17865,7 +17847,6 @@ for delete
 to authenticated
 using (auth.uid() = user_id);
 
-
 -- ---------------------------------------------------------
 -- 3) 알림 preference 테이블 보강
 -- ---------------------------------------------------------
@@ -17905,7 +17886,6 @@ for update
 to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
-
 
 -- ---------------------------------------------------------
 -- 4) 푸시 구독 저장 RPC
@@ -17991,7 +17971,6 @@ $$;
 grant execute on function public.register_my_push_subscription(text, text, text, text, text)
 to authenticated;
 
-
 -- ---------------------------------------------------------
 -- 5) 푸시 구독 해제 RPC
 -- ---------------------------------------------------------
@@ -18035,7 +18014,6 @@ $$;
 
 grant execute on function public.disable_my_push_subscription(text)
 to authenticated;
-
 
 -- ---------------------------------------------------------
 -- 6) user_notifications insert 후 Edge Function 호출
@@ -18081,7 +18059,6 @@ create trigger trg_user_notifications_send_push
 after insert on public.user_notifications
 for each row
 execute function public.call_send_push_notification();
-
 
 -- ---------------------------------------------------------
 -- 7) Realtime publication 보강
@@ -18153,7 +18130,6 @@ create trigger trg_user_notifications_send_push
 after insert on public.user_notifications
 for each row
 execute function public.call_send_push_notification();
-
 
 ---
 -- =========================================================
@@ -18300,3 +18276,230 @@ $$;
 
 grant execute on function public.check_account_availability(text, text, uuid)
 to anon, authenticated;
+
+-- =========================================
+-- 2026-05-25 회원가입/계정복구 개인정보 최소화
+-- - 이메일/닉네임 중심 가입 구조로 정리
+-- - 이름/생년월일/아이디 힌트 복구정보는 더 이상 사용하지 않음
+-- - 운영 안정성을 위해 컬럼은 보존하고 값만 NULL 처리
+-- =========================================
+
+create or replace function public.sync_profile_from_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_nickname text;
+begin
+  v_nickname := nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), '');
+  if v_nickname is null then
+    v_nickname := split_part(coalesce(new.email, ''), '@', 1);
+  end if;
+
+  insert into public.profiles (
+    id,
+    email,
+    nickname,
+    created_at,
+    updated_at
+  )
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    v_nickname,
+    now(),
+    now()
+  )
+  on conflict (id)
+  do update set
+    email = excluded.email,
+    nickname = excluded.nickname,
+    updated_at = now();
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_sync_profile on auth.users;
+create trigger on_auth_user_created_sync_profile
+after insert on auth.users
+for each row
+execute function public.sync_profile_from_auth_user();
+
+drop trigger if exists on_auth_user_updated_sync_profile on auth.users;
+create trigger on_auth_user_updated_sync_profile
+after update of email, raw_user_meta_data on auth.users
+for each row
+execute function public.sync_profile_from_auth_user();
+
+drop function if exists public.find_id_recovery_start(text, text);
+drop function if exists public.verify_id_recovery(text, text, text, text);
+drop function if exists public.get_my_recovery_profile();
+drop function if exists public.update_my_recovery_profile(text, text, text, text);
+
+drop function if exists public.check_account_availability(text, text, uuid);
+
+create or replace function public.check_account_availability(
+  p_email text default null,
+  p_nickname text default null,
+  p_exclude_user_id uuid default null
+)
+returns table (
+  email_exists boolean,
+  email_confirmed boolean,
+  nickname_exists boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  with matched_auth_user as (
+    select
+      u.id,
+      u.email_confirmed_at
+    from auth.users u
+    where p_email is not null
+      and lower(u.email) = lower(trim(p_email))
+      and (p_exclude_user_id is null or u.id <> p_exclude_user_id)
+    order by u.created_at desc
+    limit 1
+  ),
+  matched_profile as (
+    select p.id
+    from public.profiles p
+    where p_email is not null
+      and lower(p.email) = lower(trim(p_email))
+      and (p_exclude_user_id is null or p.id <> p_exclude_user_id)
+    limit 1
+  )
+  select
+    (exists (select 1 from matched_auth_user)
+      or exists (select 1 from matched_profile)) as email_exists,
+    coalesce(
+      (select mau.email_confirmed_at is not null from matched_auth_user mau),
+      false
+    ) as email_confirmed,
+    exists (
+      select 1
+      from public.profiles p
+      where p_nickname is not null
+        and lower(p.nickname) = lower(trim(p_nickname))
+        and (p_exclude_user_id is null or p.id <> p_exclude_user_id)
+    ) as nickname_exists;
+end;
+$$;
+
+grant execute on function public.check_account_availability(text, text, uuid)
+to anon, authenticated;
+
+do $$
+declare
+  v_constraint record;
+  v_index record;
+  v_column text;
+begin
+  for v_constraint in
+    select conname
+    from pg_constraint c
+    join pg_class t on t.oid = c.conrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    where n.nspname = 'public'
+      and t.relname = 'profiles'
+      and (
+        pg_get_constraintdef(c.oid) ilike '%real_name%'
+        or pg_get_constraintdef(c.oid) ilike '%birth_key%'
+        or pg_get_constraintdef(c.oid) ilike '%recovery_question%'
+        or pg_get_constraintdef(c.oid) ilike '%recovery_answer_hash%'
+      )
+  loop
+    execute format('alter table public.profiles drop constraint if exists %I', v_constraint.conname);
+  end loop;
+
+  for v_index in
+    select indexname
+    from pg_indexes
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and (
+        indexdef ilike '%real_name%'
+        or indexdef ilike '%birth_key%'
+        or indexdef ilike '%recovery_question%'
+        or indexdef ilike '%recovery_answer_hash%'
+      )
+  loop
+    execute format('drop index if exists public.%I', v_index.indexname);
+  end loop;
+
+  foreach v_column in array array[
+    'real_name',
+    'birth_key',
+    'recovery_question',
+    'recovery_answer_hash'
+  ]
+  loop
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'profiles'
+        and column_name = v_column
+    ) then
+      execute format('update public.profiles set %I = null where %I is not null', v_column, v_column);
+      execute format(
+        'comment on column public.profiles.%I is %L',
+        v_column,
+        '2026-05-25 개인정보 최소화로 더 이상 사용하지 않음. 운영 안정성을 위해 컬럼은 보존.'
+      );
+    end if;
+  end loop;
+end $$;
+
+update auth.users
+set raw_user_meta_data =
+  coalesce(raw_user_meta_data, '{}'::jsonb)
+  - 'real_name'
+  - 'birth_key'
+  - 'recovery_question'
+  - 'recovery_answer_hash'
+where raw_user_meta_data ?| array[
+  'real_name',
+  'birth_key',
+  'recovery_question',
+  'recovery_answer_hash'
+];
+
+drop function if exists public.normalize_birth_key(text);
+
+create or replace function public.sync_profile_from_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_nickname text;
+begin
+  v_nickname := nullif(trim(coalesce(new.raw_user_meta_data->>'nickname', '')), '');
+  if v_nickname is null then
+    v_nickname := split_part(coalesce(new.email, ''), '@', 1);
+  end if;
+
+  insert into public.profiles (id, email, nickname, created_at, updated_at)
+  values (new.id, coalesce(new.email, ''), v_nickname, now(), now())
+  on conflict (id)
+  do update set
+    email = excluded.email,
+    updated_at = now();
+
+  return new;
+end;
+$$;
+-- =========================================
+-- 2026-05-25 sync_profile_from_auth_user 닉네임 덮어쓰기 방지
+-- - 기존 회원의 profiles.nickname은 auth.users 업데이트 시 덮어쓰지 않음
+-- - 신규 가입 시에만 nickname 기본값 생성
+-- =========================================
