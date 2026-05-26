@@ -1092,7 +1092,6 @@ async function initPageCalendar() {
   const repeatStartInput = document.getElementById('workRepeatStart');
   const repeatEndInput = document.getElementById('workRepeatEnd');
   const repeatUntilInput = document.getElementById('workRepeatUntil');
-  const repeatSkipInput = document.getElementById('workRepeatSkipExisting');
   const repeatButton = document.getElementById('workRepeatButton');
   const repeatMessage = document.getElementById('workRepeatMessage');
 
@@ -1174,7 +1173,6 @@ async function initPageCalendar() {
     patternStartKey,
     patternEndKey,
     repeatUntilKey,
-    overwrite,
   }) {
     if (!patternStartKey || !patternEndKey || !repeatUntilKey) {
       alert('반복근무 날짜를 모두 선택해줘.');
@@ -1213,22 +1211,12 @@ async function initPageCalendar() {
 
     const patternLength = pattern.length;
     const rowsToInsert = [];
-    const targetDateKeys = overwrite ? new Set(repeatDateKeys) : new Set();
-    let skippedCount = 0;
+    const targetDateKeys = new Set(repeatDateKeys);
 
     repeatDateKeys.forEach((targetDateKey, index) => {
       const patternDay = pattern[index % patternLength];
 
       if (!patternDay || patternDay.todos.length === 0) return;
-
-      const hasExistingTodos = (state.store[targetDateKey] || []).length > 0;
-
-      if (!overwrite && hasExistingTodos) {
-        skippedCount += 1;
-        return;
-      }
-
-      targetDateKeys.add(targetDateKey);
 
       patternDay.todos.forEach((todo) => {
         const category = getCategoryByTodo(todo, state.categories);
@@ -1246,18 +1234,12 @@ async function initPageCalendar() {
     });
 
     if (rowsToInsert.length === 0) {
-      alert(
-        skippedCount > 0
-          ? '이미 일정이 있어서 새로 추가된 반복근무가 없어.'
-          : '반복 적용할 근무가 없어.',
-      );
+      alert('반복 적용할 근무가 없어.');
       return;
     }
 
     const ok = window.confirm(
-      overwrite
-        ? `기존 일정이 있는 날짜는 삭제하고 반복근무 ${rowsToInsert.length}개를 적용할까?`
-        : `반복근무 ${rowsToInsert.length}개를 적용할까?`,
+      `기존 일정이 있는 날짜는 삭제하고 반복근무 ${rowsToInsert.length}개를 적용할까?`,
     );
 
     if (!ok) return;
@@ -1266,22 +1248,17 @@ async function initPageCalendar() {
     setRepeatMessage('반복근무를 적용하는 중이야.');
 
     try {
-      if (overwrite) {
-        await deleteTodosByDateKeys({
-          userId: state.userId,
-          dateKeys: [...targetDateKeys],
-        });
-      }
+      await deleteTodosByDateKeys({
+        userId: state.userId,
+        dateKeys: [...targetDateKeys],
+      });
 
       await insertRepeatTodos(rowsToInsert);
 
       state.store = await fetchUserTodos(state.userId);
       renderAll();
 
-      const message =
-        skippedCount > 0
-          ? `반복근무가 적용됐어. 기존 일정 ${skippedCount}일은 건너뛰었어.`
-          : '반복근무가 적용됐어.';
+      const message = '반복근무를 덮어쓰기 방식으로 적용했어.';
 
       setRepeatMessage(message);
       alert(message);
@@ -1569,7 +1546,6 @@ async function initPageCalendar() {
       patternStartKey: repeatStartInput?.value || '',
       patternEndKey: repeatEndInput?.value || '',
       repeatUntilKey: repeatUntilInput?.value || '',
-      overwrite: !Boolean(repeatSkipInput?.checked),
     });
   });
 

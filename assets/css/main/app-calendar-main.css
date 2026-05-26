@@ -66,6 +66,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  min-width: 0;
   gap: var(--space-4);
   color: var(--color-text-sub);
   font-size: var(--text-small);
@@ -73,7 +74,10 @@
 }
 
 .app-calendar-account__status strong {
+  min-width: 0;
+  max-width: 100%;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .app-calendar-account__actions {
@@ -232,12 +236,14 @@ html.is-calendar-app-mode .home-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-8);
 }
 
 .calendar-app-shell__home {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: var(--space-6);
   min-height: 36px;
   padding: 0 var(--space-12);
@@ -260,6 +266,8 @@ html.is-calendar-app-mode .home-section {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+  flex: 1 1 180px;
+  flex-wrap: wrap;
   gap: var(--space-6);
   min-width: 0;
 }
@@ -269,8 +277,8 @@ html.is-calendar-app-mode .home-section {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   min-height: 36px;
-  max-width: 128px;
   padding: 0 var(--space-12);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
@@ -283,6 +291,8 @@ html.is-calendar-app-mode .home-section {
 }
 
 .calendar-app-shell__actions .auth-nickname {
+  flex: 1 1 96px;
+  max-width: 128px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -343,7 +353,8 @@ html.is-calendar-app-mode .home-section {
 
   .calendar-app-shell__auth,
   .calendar-app-shell__actions .auth-nickname {
-    max-width: 96px;
+    flex-basis: 88px;
+    max-width: 112px;
     padding: 0 var(--space-8);
   }
 }

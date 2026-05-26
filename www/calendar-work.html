@@ -195,8 +195,8 @@
                             반복근무 설정
                           </h3>
                           <p class="work-repeat__desc">
-                            선택한 기간의 근무패턴을 이후 날짜에 반복
-                            적용합니다.
+                            선택한 기간의 근무패턴을 지정한 종료일까지 반복
+                            적용합니다. 기존 일정은 새 반복근무로 덮어씁니다.
                           </p>
                         </div>
 
@@ -238,15 +238,6 @@
                             id="workRepeatUntil"
                             type="date"
                           />
-                        </label>
-
-                        <label class="work-repeat__check">
-                          <input
-                            id="workRepeatSkipExisting"
-                            type="checkbox"
-                            checked
-                          />
-                          <span>기존 일정이 있는 날짜는 건너뛰기</span>
                         </label>
 
                         <div class="work-repeat__actions">
