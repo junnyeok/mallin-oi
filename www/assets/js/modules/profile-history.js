@@ -109,6 +109,28 @@ function getItemKey(type, id) {
   return `${type}:${Number(id)}`;
 }
 
+function getPickleReasonLabel(entry) {
+  const label = String(entry?.reason_label || '').trim();
+  if (label) return label;
+
+  if (entry?.reason_code === 'weekly_attendance_bonus') {
+    return '주간 출석 보너스';
+  }
+
+  return '피클 내역';
+}
+
+function getPickleDescription(entry) {
+  const description = String(entry?.description || '').trim();
+  if (description) return description;
+
+  if (entry?.reason_code === 'weekly_attendance_bonus') {
+    return '월요일부터 일요일까지 7일 출석을 완료해서 보너스를 받았어.';
+  }
+
+  return '피클 내역이야.';
+}
+
 function parseItemKey(key) {
   const [type, rawId] = String(key || '').split(':');
   const id = Number(rawId);
@@ -121,8 +143,8 @@ function parseItemKey(key) {
 function renderPickleRow(entry) {
   const amount = Number(entry?.amount || 0);
   const amountText = amount > 0 ? `+${amount} 피클` : `${amount} 피클`;
-  const reasonLabel = entry?.reason_label || '피클 내역';
-  const description = entry?.description || '피클 내역이야.';
+  const reasonLabel = getPickleReasonLabel(entry);
+  const description = getPickleDescription(entry);
 
   return `
     <div class="history-row">

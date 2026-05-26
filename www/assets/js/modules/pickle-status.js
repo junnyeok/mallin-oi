@@ -119,7 +119,7 @@ function renderPickleStatus({ balance = 0, entries = [] } = {}) {
   }
 
   if (commentEl) {
-    commentEl.textContent = `${commentCount} / 20`;
+    commentEl.textContent = `${commentCount} / 10`;
   }
 }
 

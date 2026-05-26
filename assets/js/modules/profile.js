@@ -188,7 +188,7 @@ function updateTodayPickleStatus(entries = []) {
   ).length;
 
   postEl.textContent = `${todayPostCount} / 5`;
-  commentEl.textContent = `${todayCommentCount} / 20`;
+  commentEl.textContent = `${todayCommentCount} / 10`;
 }
 
 function getTodayPicklePopupStats(entries = []) {
@@ -330,18 +330,40 @@ function updatePickleSummary(balance = 0, isVisible = false) {
   }
 }
 
+function getPickleReasonLabel(entry) {
+  const label = String(entry?.reason_label || '').trim();
+  if (label) return label;
+
+  if (entry?.reason_code === 'weekly_attendance_bonus') {
+    return '주간 출석 보너스';
+  }
+
+  return '피클 획득';
+}
+
+function getPickleDescription(entry) {
+  const description = String(entry?.description || '').trim();
+  if (description) return description;
+
+  if (entry?.reason_code === 'weekly_attendance_bonus') {
+    return '월요일부터 일요일까지 7일 출석을 완료해서 보너스를 받았어.';
+  }
+
+  return '피클 내역이야.';
+}
+
 function renderPickleRow(entry) {
   const amount = Number(entry?.amount || 0);
   const amountText = amount > 0 ? `+${amount} 피클` : `${amount} 피클`;
-  const reasonLabel = entry?.reason_label || '피클 획득';
-  const description = entry?.description || '';
+  const reasonLabel = getPickleReasonLabel(entry);
+  const description = getPickleDescription(entry);
 
   return `
     <div class="profile-row profile-row--pickle">
       <div class="profile-row__main">
         <div class="profile-row__title">${escapeHtml(reasonLabel)}</div>
         <div class="profile-row__body">${escapeHtml(
-          description || '피클 내역이야.',
+          description,
         )}</div>
       </div>
       <div class="profile-row__side">
