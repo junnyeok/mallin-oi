@@ -14,6 +14,7 @@ const STORAGE_BUCKET = 'post-assets';
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const VIDEO_MAX_BYTES = 100 * 1024 * 1024;
 const FILE_MAX_BYTES = 30 * 1024 * 1024;
+const VIDEO_LINK_RECOMMEND_SECONDS = 90;
 
 let attachmentState = [];
 let removedStoragePaths = new Set();
@@ -221,7 +222,56 @@ function getAttachmentLabel(type) {
   return '파일';
 }
 
-const DIRECT_VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v|ogv|ogg)(\?.*)?$/i;
+function getAttachmentLimitBytes(type) {
+  if (type === 'image') return IMAGE_MAX_BYTES;
+  if (type === 'video') return VIDEO_MAX_BYTES;
+  return FILE_MAX_BYTES;
+}
+
+function getAttachmentLimitLabel(type) {
+  return formatBytes(getAttachmentLimitBytes(type));
+}
+
+function formatAttachmentLimitMessage(file, type) {
+  const label = getAttachmentLabel(type);
+  const name = file?.name || '이름 없는 파일';
+  const size = formatBytes(file?.size || 0);
+  const limit = getAttachmentLimitLabel(type);
+
+  if (type === 'video') {
+    return `${name} (${size}) - 동영상은 ${limit} 이하만 직접 업로드할 수 있어. 큰 영상은 유튜브/외부 링크 삽입을 이용해줘.`;
+  }
+
+  if (type === 'file') {
+    return `${name} (${size}) - 일반 파일은 ${limit} 이하만 직접 업로드할 수 있어. zip 압축이나 외부 링크를 활용해줘.`;
+  }
+
+  return `${name} (${size}) - ${label}는 ${limit} 이하만 직접 업로드할 수 있어.`;
+}
+
+function setAttachNotice(message = '', state = 'info') {
+  const notice = $('#writeAttachNotice');
+  if (!notice) return;
+
+  notice.textContent = message;
+  notice.classList.remove(
+    'is-error',
+    'is-warning',
+    'is-success',
+    'is-info',
+  );
+
+  if (message) {
+    notice.classList.add(`is-${state || 'info'}`);
+  }
+}
+
+function syncAttachNoticeToNote(message = '', state = 'info', note = null) {
+  setAttachNotice(message, state);
+  if (note && message) note.textContent = message;
+}
+
+const DIRECT_VIDEO_EXT_RE = /\.(mp4|webm)(\?.*)?$/i;
 
 function extractYoutubeId(url) {
   try {
@@ -318,6 +368,51 @@ function pushExternalVideoLink(rawUrl) {
   attachmentState.push(item);
   renderAttachmentList();
   insertAttachmentIntoEditor(item);
+  return '';
+}
+
+function readVideoDuration(file) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    const objectUrl = createPreviewUrl(file);
+
+    if (!objectUrl) {
+      resolve(null);
+      return;
+    }
+
+    const cleanup = () => {
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const duration = Number(video.duration);
+      cleanup();
+      resolve(Number.isFinite(duration) ? duration : null);
+    };
+    video.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+    video.src = objectUrl;
+  });
+}
+
+async function getVideoDurationNotice(file) {
+  const duration = await readVideoDuration(file);
+  const name = file?.name || '동영상';
+
+  if (duration === null) {
+    return `${name} - 영상 길이를 확인하지 못했어. 긴 영상이면 유튜브/외부 링크 삽입을 권장해.`;
+  }
+
+  if (duration > VIDEO_LINK_RECOMMEND_SECONDS) {
+    return `${name} (${Math.round(duration)}초) - 긴 영상은 직접 업로드보다 유튜브/외부 링크 삽입을 권장해.`;
+  }
+
   return '';
 }
 
@@ -882,9 +977,20 @@ function bodyToEditorHtml(body = '') {
   if (!trimmed) return '';
 
   const looksLikeHtml = /<([a-z][a-z0-9]*)\b[^>]*>/i.test(trimmed);
-  if (looksLikeHtml) return raw;
+  if (looksLikeHtml) return removeStoredAttachmentMetaHtml(raw);
 
   return plainTextToEditorHtml(raw);
+}
+
+function removeStoredAttachmentMetaHtml(html = '') {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(String(html || ''), 'text/html');
+
+  doc
+    .querySelectorAll('.write-embed__meta, .write-embed__file-desc')
+    .forEach((node) => node.remove());
+
+  return doc.body.innerHTML;
 }
 
 function isMobileRichEditorInputDevice() {
@@ -1293,7 +1399,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
   const mediaId = escapeAttr(item?.id || '');
   const title = escapeHtml(item?.title || item?.fileName || '첨부');
   const url = escapeAttr(urlOverride || item?.url || item?.previewUrl || '');
-  const label = getAttachmentLabel(type);
   const originalUrl = escapeAttr(item?.originalUrl || item?.url || '');
 
   if (type === 'image') {
@@ -1452,7 +1557,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
 
       <div class="write-embed__file">
         <strong class="write-embed__file-name">${title}</strong>
-        <span class="write-embed__file-desc">${label} 첨부파일</span>
         <a
           class="write-embed__file-link"
           href="${url || '#'}"
@@ -1509,17 +1613,10 @@ function validateAttachment(file, type) {
   if (!file) return '파일을 찾지 못했어.';
 
   const size = Number(file.size || 0);
+  const limit = getAttachmentLimitBytes(type);
 
-  if (type === 'image' && size > IMAGE_MAX_BYTES) {
-    return '이미지는 10MB 이하만 가능해.';
-  }
-
-  if (type === 'video' && size > VIDEO_MAX_BYTES) {
-    return '동영상은 100MB 이하만 가능해. 큰 영상은 해상도를 줄여서 다시 올리거나, 동영상 링크 삽입을 이용해줘.';
-  }
-
-  if (type === 'file' && size > FILE_MAX_BYTES) {
-    return '일반 파일은 30MB 이하만 가능해. 큰 파일은 zip 압축/분할 압축 또는 외부 링크를 사용해줘.';
+  if (size > limit) {
+    return formatAttachmentLimitMessage(file, type);
   }
 
   return '';
@@ -1534,6 +1631,57 @@ function bindAttachmentInputs(note) {
   const editor = getBodyEditor();
   const uploadTiles = document.querySelectorAll('.write-upload-tile');
 
+  const handleSelectedFiles = async (files, type, input) => {
+    const selected = Array.from(files || []);
+    const blockedMessages = [];
+    const warningMessages = [];
+    let addedCount = 0;
+
+    if (!selected.length) return;
+
+    ensureEditorHasParagraph();
+    restoreSavedSelectionRange();
+
+    for (const file of selected) {
+      const errorMsg = validateAttachment(file, type);
+      if (errorMsg) {
+        blockedMessages.push(errorMsg);
+        continue;
+      }
+
+      if (type === 'video') {
+        const warningMsg = await getVideoDurationNotice(file);
+        if (warningMsg) warningMessages.push(warningMsg);
+      }
+
+      pushAttachment(file, type);
+      addedCount += 1;
+    }
+
+    if (input) input.value = '';
+    saveCurrentSelectionRange();
+
+    const messages = [];
+    if (blockedMessages.length) {
+      messages.push(`업로드하지 않은 파일:\n${blockedMessages.join('\n')}`);
+    }
+    if (warningMessages.length) {
+      messages.push(`확인 안내:\n${warningMessages.join('\n')}`);
+    }
+    if (addedCount > 0) {
+      messages.push(`${addedCount}개 파일을 본문에 넣었어.`);
+    }
+
+    if (messages.length) {
+      const state = blockedMessages.length
+        ? 'error'
+        : warningMessages.length
+          ? 'warning'
+          : 'success';
+      syncAttachNoticeToNote(messages.join('\n'), state, note);
+    }
+  };
+
   uploadTiles.forEach((tile) => {
     tile.addEventListener('mousedown', () => {
       saveCurrentSelectionRange();
@@ -1541,22 +1689,8 @@ function bindAttachmentInputs(note) {
   });
 
   if (imageInput) {
-    imageInput.addEventListener('change', () => {
-      const files = Array.from(imageInput.files || []);
-      ensureEditorHasParagraph();
-      restoreSavedSelectionRange();
-
-      for (const file of files) {
-        const errorMsg = validateAttachment(file, 'image');
-        if (errorMsg) {
-          if (note) note.textContent = errorMsg;
-          continue;
-        }
-        pushAttachment(file, 'image');
-      }
-
-      imageInput.value = '';
-      saveCurrentSelectionRange();
+    imageInput.addEventListener('change', async () => {
+      await handleSelectedFiles(imageInput.files, 'image', imageInput);
     });
   }
 
@@ -1569,7 +1703,7 @@ function bindAttachmentInputs(note) {
       const raw = videoLinkInput?.value?.trim() || '';
 
       if (!raw) {
-        if (note) note.textContent = '동영상 링크를 입력해줘.';
+        syncAttachNoticeToNote('동영상 링크를 입력해줘.', 'error', note);
         return;
       }
 
@@ -1578,11 +1712,11 @@ function bindAttachmentInputs(note) {
 
       const errorMsg = pushExternalVideoLink(raw);
       if (errorMsg) {
-        if (note) note.textContent = errorMsg;
+        syncAttachNoticeToNote(errorMsg, 'error', note);
         return;
       }
 
-      if (note) note.textContent = '동영상 링크를 본문에 넣었어.';
+      syncAttachNoticeToNote('동영상 링크를 본문에 넣었어.', 'success', note);
       if (videoLinkInput) videoLinkInput.value = '';
       saveCurrentSelectionRange();
     });
@@ -1597,42 +1731,14 @@ function bindAttachmentInputs(note) {
   }
 
   if (videoInput) {
-    videoInput.addEventListener('change', () => {
-      const files = Array.from(videoInput.files || []);
-      ensureEditorHasParagraph();
-      restoreSavedSelectionRange();
-
-      for (const file of files) {
-        const errorMsg = validateAttachment(file, 'video');
-        if (errorMsg) {
-          if (note) note.textContent = errorMsg;
-          continue;
-        }
-        pushAttachment(file, 'video');
-      }
-
-      videoInput.value = '';
-      saveCurrentSelectionRange();
+    videoInput.addEventListener('change', async () => {
+      await handleSelectedFiles(videoInput.files, 'video', videoInput);
     });
   }
 
   if (fileInput) {
-    fileInput.addEventListener('change', () => {
-      const files = Array.from(fileInput.files || []);
-      ensureEditorHasParagraph();
-      restoreSavedSelectionRange();
-
-      for (const file of files) {
-        const errorMsg = validateAttachment(file, 'file');
-        if (errorMsg) {
-          if (note) note.textContent = errorMsg;
-          continue;
-        }
-        pushAttachment(file, 'file');
-      }
-
-      fileInput.value = '';
-      saveCurrentSelectionRange();
+    fileInput.addEventListener('change', async () => {
+      await handleSelectedFiles(fileInput.files, 'file', fileInput);
     });
   }
 
@@ -1856,10 +1962,8 @@ function applyUploadedMediaToEditor(mediaItems = []) {
 
     const link = node.querySelector('.write-embed__file-link');
     const nameEl = node.querySelector('.write-embed__file-name');
-    const descEl = node.querySelector('.write-embed__file-desc');
 
     if (nameEl) nameEl.textContent = title;
-    if (descEl) descEl.textContent = item.fileName || title;
     if (link) {
       link.href = url || '#';
       link.textContent = '파일 열기';

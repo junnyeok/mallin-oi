@@ -222,22 +222,6 @@ function getAttachmentLabel(type) {
   return '파일';
 }
 
-function getAttachmentKindText(itemOrType, mimeType = '') {
-  const type =
-    typeof itemOrType === 'string'
-      ? itemOrType
-      : String(itemOrType?.type || '').trim();
-  const mime =
-    typeof itemOrType === 'string'
-      ? String(mimeType || '').trim()
-      : String(itemOrType?.mimeType || '').trim();
-
-  if (type === 'image') return mime || '이미지';
-  if (type === 'video') return mime || '동영상';
-  if (type === 'video-link') return '동영상 링크';
-  return mime || '일반 파일';
-}
-
 function getAttachmentLimitBytes(type) {
   if (type === 'image') return IMAGE_MAX_BYTES;
   if (type === 'video') return VIDEO_MAX_BYTES;
@@ -993,9 +977,20 @@ function bodyToEditorHtml(body = '') {
   if (!trimmed) return '';
 
   const looksLikeHtml = /<([a-z][a-z0-9]*)\b[^>]*>/i.test(trimmed);
-  if (looksLikeHtml) return raw;
+  if (looksLikeHtml) return removeStoredAttachmentMetaHtml(raw);
 
   return plainTextToEditorHtml(raw);
+}
+
+function removeStoredAttachmentMetaHtml(html = '') {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(String(html || ''), 'text/html');
+
+  doc
+    .querySelectorAll('.write-embed__meta, .write-embed__file-desc')
+    .forEach((node) => node.remove());
+
+  return doc.body.innerHTML;
 }
 
 function isMobileRichEditorInputDevice() {
@@ -1404,20 +1399,7 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
   const mediaId = escapeAttr(item?.id || '');
   const title = escapeHtml(item?.title || item?.fileName || '첨부');
   const url = escapeAttr(urlOverride || item?.url || item?.previewUrl || '');
-  const label = getAttachmentLabel(type);
   const originalUrl = escapeAttr(item?.originalUrl || item?.url || '');
-  const fileName = escapeHtml(item?.fileName || item?.title || '첨부');
-  const fileSize = formatBytes(item?.size || 0);
-  const kind = escapeHtml(getAttachmentKindText(item));
-  const metaText = escapeHtml(
-    [kind, fileSize !== '0B' ? fileSize : ''].filter(Boolean).join(' · '),
-  );
-  const fileMetaHtml = `
-    <figcaption class="write-embed__meta">
-      <span class="write-embed__file-name">${fileName}</span>
-      <span class="write-embed__file-desc">${metaText}</span>
-    </figcaption>
-  `;
 
   if (type === 'image') {
     return `
@@ -1442,7 +1424,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
           alt="${title}"
           loading="lazy"
         />
-        ${fileMetaHtml}
       </figure>
     `;
   }
@@ -1471,7 +1452,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
           playsinline
           preload="metadata"
         ></video>
-        ${fileMetaHtml}
       </figure>
     `;
   }
@@ -1517,7 +1497,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
           >
             원본 링크 열기
           </a>
-          ${fileMetaHtml}
         </figure>
       `;
     }
@@ -1555,7 +1534,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
         >
           원본 링크 열기
         </a>
-        ${fileMetaHtml}
       </figure>
     `;
   }
@@ -1579,7 +1557,6 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
 
       <div class="write-embed__file">
         <strong class="write-embed__file-name">${title}</strong>
-        <span class="write-embed__file-desc">${label} · ${kind} · ${fileSize}</span>
         <a
           class="write-embed__file-link"
           href="${url || '#'}"
@@ -1965,8 +1942,6 @@ function applyUploadedMediaToEditor(mediaItems = []) {
     const type = String(item.type || '').trim();
     const url = String(item.url || '').trim();
     const title = String(item.title || item.fileName || '첨부').trim();
-    const kind = getAttachmentKindText(item);
-    const fileSize = formatBytes(item.size || 0);
 
     if (type === 'image') {
       const img = node.querySelector('img');
@@ -1987,14 +1962,8 @@ function applyUploadedMediaToEditor(mediaItems = []) {
 
     const link = node.querySelector('.write-embed__file-link');
     const nameEl = node.querySelector('.write-embed__file-name');
-    const descEl = node.querySelector('.write-embed__file-desc');
 
     if (nameEl) nameEl.textContent = title;
-    if (descEl) {
-      descEl.textContent = [kind, fileSize !== '0B' ? fileSize : '']
-        .filter(Boolean)
-        .join(' · ');
-    }
     if (link) {
       link.href = url || '#';
       link.textContent = '파일 열기';

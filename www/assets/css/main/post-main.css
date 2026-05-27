@@ -1308,12 +1308,6 @@
   word-break: break-word;
 }
 
-.post-body__text .write-embed__file-desc {
-  font-size: 12px;
-  color: var(--color-text-sub);
-  word-break: break-word;
-}
-
 .post-body__text .write-embed__file-link {
   display: inline-flex;
   align-items: center;

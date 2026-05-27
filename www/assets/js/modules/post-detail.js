@@ -464,6 +464,13 @@ function sanitizeNode(node) {
     return document.createTextNode('');
   }
 
+  if (
+    node.classList?.contains('write-embed__meta') ||
+    node.classList?.contains('write-embed__file-desc')
+  ) {
+    return document.createTextNode('');
+  }
+
   const tag = String(node.tagName || '').toLowerCase();
 
   const allowedTags = new Set([
