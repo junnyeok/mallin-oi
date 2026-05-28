@@ -7,6 +7,7 @@ import {
   saveRedirect,
   showLoginRequiredPopup,
 } from './auth-store.js';
+import { isCalendarAppMode } from './app-calendar-mode.js';
 
 const SELECTED_GROUP_KEY = 'mallin:calendar:selected-group';
 const CALENDAR_LABELS = {
@@ -89,12 +90,20 @@ function isAllowed(group, calendarType) {
 }
 
 function makeAppHref(path) {
-  const isApp =
-    document.documentElement.classList.contains('is-calendar-app-mode') ||
-    document.body?.dataset?.appMode === 'calendar' ||
-    new URLSearchParams(window.location.search).get('app') === 'calendar';
+  return isCalendarAppMode() ? `${path}?app=calendar` : path;
+}
 
-  return isApp ? `${path}?app=calendar` : path;
+function getCalendarSelectHref() {
+  return isCalendarAppMode()
+    ? './app-calendar.html?app=calendar'
+    : './calendar-study.html';
+}
+
+function normalizeComparable(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 }
 
 function groupEventsByDateAndUser(rows = []) {
@@ -135,6 +144,51 @@ async function rpc(name, params = {}) {
   const { data, error } = await supabase.rpc(name, params);
   if (error) throw error;
   return data;
+}
+
+export function getVisiblePersonalTodos(todos = [], dateKey, groupState) {
+  if (!Array.isArray(todos) || todos.length === 0) return todos;
+  if (!dateKey || !groupState?.selectedGroup?.id || !groupState?.userId) {
+    return todos;
+  }
+  if (!isAllowed(groupState.selectedGroup, groupState.calendarType)) return todos;
+
+  const myGroupEvents = (groupState.eventsByDate?.[dateKey] || [])
+    .filter((member) => member.userId === groupState.userId)
+    .flatMap((member) => member.events || []);
+
+  if (myGroupEvents.length === 0) return todos;
+
+  const sourceIds = new Set(
+    myGroupEvents
+      .map((event) => String(event.source_event_id || '').trim())
+      .filter(Boolean),
+  );
+
+  const fallbackKeys = new Set(
+    myGroupEvents.map((event) =>
+      [
+        normalizeComparable(event.calendar_type || groupState.calendarType),
+        normalizeComparable(event.event_date || dateKey),
+        normalizeComparable(event.title || event.event_type),
+        normalizeComparable(event.event_type),
+      ].join('|'),
+    ),
+  );
+
+  return todos.filter((todo) => {
+    const todoId = String(todo.id || '').trim();
+    if (todoId && sourceIds.has(todoId)) return false;
+
+    const fallbackKey = [
+      normalizeComparable(groupState.calendarType),
+      normalizeComparable(todo.date || dateKey),
+      normalizeComparable(todo.text || todo.type),
+      normalizeComparable(todo.type),
+    ].join('|');
+
+    return !fallbackKeys.has(fallbackKey);
+  });
 }
 
 export function appendCalendarGroupRows(root, dateKey, groupState) {
@@ -204,7 +258,17 @@ export async function initCalendarGroupBar({
   const bar = document.createElement('section');
   bar.className = 'calendar-group-bar';
   bar.setAttribute('aria-label', '캘린더 그룹 연동');
+  const panelId = `${calendarType}CalendarGroupPanel`;
   bar.innerHTML = `
+    <button
+      class="calendar-group-bar__toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="${panelId}"
+    >
+      그룹
+    </button>
+    <div class="calendar-group-bar__panel" id="${panelId}" hidden>
     <div class="calendar-group-bar__main">
       <label class="calendar-group-bar__field">
         <span>그룹</span>
@@ -214,8 +278,10 @@ export async function initCalendarGroupBar({
       </label>
       <a class="calendar-group-bar__manage" href="${makeAppHref('./calendar-groups.html')}">그룹 관리</a>
       <button class="calendar-group-bar__backup" type="button">백업</button>
+      <button class="calendar-group-bar__close" type="button">닫기</button>
     </div>
     <p class="calendar-group-bar__status" aria-live="polite">그룹 일정을 함께 보려면 그룹을 선택해줘.</p>
+    </div>
   `;
 
   if (head) {
@@ -227,6 +293,23 @@ export async function initCalendarGroupBar({
   const select = bar.querySelector('.calendar-group-bar__select');
   const backupButton = bar.querySelector('.calendar-group-bar__backup');
   const status = bar.querySelector('.calendar-group-bar__status');
+  const toggleButton = bar.querySelector('.calendar-group-bar__toggle');
+  const closeButton = bar.querySelector('.calendar-group-bar__close');
+  const panel = bar.querySelector('.calendar-group-bar__panel');
+
+  function setGroupPanelOpen(isOpen) {
+    if (!panel || !toggleButton) return;
+    panel.hidden = !isOpen;
+    toggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  toggleButton?.addEventListener('click', () => {
+    setGroupPanelOpen(Boolean(panel?.hidden));
+  });
+
+  closeButton?.addEventListener('click', () => {
+    setGroupPanelOpen(false);
+  });
 
   function setStatus(message) {
     if (status) status.textContent = message;
@@ -358,7 +441,7 @@ function getCalendarTypeFlags(form) {
   };
 }
 
-function createGroupCard(group, { myGroup = false } = {}) {
+function createGroupCard(group, { myGroup = false, members = [] } = {}) {
   const isPrivate = group.visibility === 'private';
   const color = normalizeColor(group.color);
   const calendars = ['study', 'work', 'event']
@@ -394,19 +477,58 @@ function createGroupCard(group, { myGroup = false } = {}) {
         }
       </div>
       ${
+        myGroup
+          ? `
+            <div class="calendar-group-card__members">
+              <h4 class="calendar-group-card__section-title">참여자</h4>
+              ${
+                members.length > 0
+                  ? `<ul class="calendar-group-member-list">
+                      ${members
+                        .map(
+                          (member) => `
+                            <li class="calendar-group-member">
+                              <span class="calendar-group-member__name">${escapeHtml(
+                                member.nickname || '회원',
+                              )}${member.is_owner ? ' · 방장' : ''}</span>
+                              ${
+                                member.can_remove
+                                  ? `<button type="button" data-action="kick-member" data-target-user-id="${escapeHtml(
+                                      member.user_id,
+                                    )}" data-target-nickname="${escapeHtml(
+                                      member.nickname || '회원',
+                                    )}">강퇴</button>`
+                                  : ''
+                              }
+                            </li>
+                          `,
+                        )
+                        .join('')}
+                    </ul>`
+                  : '<p class="calendar-groups-empty">참여자 정보를 불러오지 못했어.</p>'
+              }
+            </div>
+          `
+          : ''
+      }
+      ${
         group.can_manage
           ? `
             <details class="calendar-group-card__edit">
               <summary>편집</summary>
               <label>이름 <input data-edit-name value="${escapeHtml(group.name)}" maxlength="30" /></label>
               <label>색상 <input data-edit-color type="color" value="${color}" /></label>
-              <div class="calendar-group-card__checks">
+              <fieldset class="calendar-group-card__checks">
+                <legend>연동 캘린더 설정</legend>
                 <label><input data-edit-allow="study" type="checkbox" ${group.allow_study ? 'checked' : ''} /> 자기개발</label>
                 <label><input data-edit-allow="work" type="checkbox" ${group.allow_work ? 'checked' : ''} /> 업무</label>
                 <label><input data-edit-allow="event" type="checkbox" ${group.allow_event ? 'checked' : ''} /> 이벤트</label>
+              </fieldset>
+              <fieldset class="calendar-group-card__checks">
+                <legend>공개 설정</legend>
                 <label><input data-edit-private type="checkbox" ${isPrivate ? 'checked' : ''} /> 비공개</label>
                 <label><input data-edit-hidden type="checkbox" ${group.is_hidden ? 'checked' : ''} /> 숨기기</label>
-              </div>
+              </fieldset>
               <input data-edit-password type="password" placeholder="새 비밀번호" />
               <button type="button" data-action="save-edit">저장</button>
             </details>
@@ -450,6 +572,8 @@ export async function initCalendarGroupsPage() {
   }
 
   const form = document.getElementById('calendarGroupForm');
+  const createToggle = document.getElementById('calendarGroupCreateToggle');
+  const createPanel = document.getElementById('calendarGroupCreatePanel');
   const myList = document.getElementById('calendarMyGroups');
   const visibleList = document.getElementById('calendarVisibleGroups');
   const hiddenList = document.getElementById('calendarHiddenGroups');
@@ -461,6 +585,21 @@ export async function initCalendarGroupsPage() {
 
   renderColorChoices(colorRoot);
 
+  const backLink = page.querySelector('.calendar-groups-page__back');
+  if (backLink) {
+    backLink.setAttribute('href', getCalendarSelectHref());
+  }
+
+  function setCreatePanelOpen(isOpen) {
+    if (!createToggle || !createPanel) return;
+    createPanel.hidden = !isOpen;
+    createToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  createToggle?.addEventListener('click', () => {
+    setCreatePanelOpen(Boolean(createPanel?.hidden));
+  });
+
   function setStatus(message) {
     if (status) status.textContent = message;
   }
@@ -471,10 +610,31 @@ export async function initCalendarGroupsPage() {
       rpc('get_visible_calendar_groups', { p_include_hidden: false }),
       rpc('get_visible_calendar_groups', { p_include_hidden: true }),
     ]);
+    const memberEntries = await Promise.all(
+      (myGroups || []).map(async (group) => {
+        try {
+          const members = await rpc('get_calendar_group_members', {
+            p_group_id: group.id,
+          });
+          return [group.id, members || []];
+        } catch (error) {
+          console.error('[calendar-groups] members load failed:', error);
+          return [group.id, []];
+        }
+      }),
+    );
+    const membersByGroupId = Object.fromEntries(memberEntries);
 
     myList.innerHTML =
       myGroups?.length > 0
-        ? myGroups.map((group) => createGroupCard(group, { myGroup: true })).join('')
+        ? myGroups
+            .map((group) =>
+              createGroupCard(group, {
+                myGroup: true,
+                members: membersByGroupId[group.id] || [],
+              }),
+            )
+            .join('')
         : '<p class="calendar-groups-empty">아직 들어간 그룹이 없어.</p>';
 
     visibleList.innerHTML =
@@ -499,6 +659,7 @@ export async function initCalendarGroupsPage() {
   hiddenToggle?.addEventListener('click', () => {
     const willShow = hiddenList.hidden;
     hiddenList.hidden = !willShow;
+    hiddenToggle.setAttribute('aria-expanded', willShow ? 'true' : 'false');
     hiddenToggle.textContent = willShow ? '숨긴 그룹 접기' : '숨긴 그룹 보기';
   });
 
@@ -539,6 +700,7 @@ export async function initCalendarGroupsPage() {
       form.reset();
       renderColorChoices(colorRoot);
       privateToggle?.dispatchEvent(new Event('change'));
+      setCreatePanelOpen(false);
       setStatus('그룹을 만들었어.');
       await load();
     } catch (error) {
@@ -572,6 +734,19 @@ export async function initCalendarGroupsPage() {
         await rpc('leave_calendar_group', { p_group_id: groupId });
         if (getSelectedGroupId() === groupId) setSelectedGroupId('');
         setStatus('그룹에서 나왔어.');
+      }
+
+      if (action === 'kick-member') {
+        const targetUserId = button.dataset.targetUserId || '';
+        const nickname = button.dataset.targetNickname || '회원';
+        if (!targetUserId) return;
+        if (!window.confirm(`${nickname} 님을 이 그룹에서 강퇴할까요?`)) return;
+
+        await rpc('kick_calendar_group_member', {
+          p_group_id: groupId,
+          p_target_user_id: targetUserId,
+        });
+        setStatus('참여자를 강퇴했어.');
       }
 
       if (action === 'toggle-hidden') {

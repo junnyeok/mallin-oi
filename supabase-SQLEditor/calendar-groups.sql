@@ -795,11 +795,141 @@ begin
     e.payload,
     e.backed_up_at
   from public.calendar_group_shared_events e
+  join public.calendar_group_members m
+    on m.group_id = e.group_id
+   and m.user_id = e.user_id
+   and m.status = 'active'
   left join public.profiles p on p.id = e.user_id
   where e.group_id = p_group_id
     and e.calendar_type = p_calendar_type
     and e.event_date between p_start_date and p_end_date
   order by e.event_date, coalesce(nullif(trim(p.nickname), ''), '회원'), e.created_at;
+end;
+$$;
+
+create or replace function public.get_calendar_group_members(p_group_id uuid)
+returns table (
+  user_id uuid,
+  nickname text,
+  role text,
+  is_owner boolean,
+  joined_at timestamptz,
+  can_remove boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_can_view boolean := false;
+  v_is_owner boolean := false;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select exists (
+    select 1
+    from public.calendar_groups g
+    where g.id = p_group_id
+      and (
+        public.is_calendar_group_member(g.id, v_uid)
+        or (g.visibility = 'public' and g.is_hidden = false)
+      )
+  )
+    into v_can_view;
+
+  if not coalesce(v_can_view, false) then
+    raise exception '그룹 참여자 목록을 볼 권한이 없습니다.';
+  end if;
+
+  select exists (
+    select 1
+    from public.calendar_groups g
+    where g.id = p_group_id
+      and g.owner_id = v_uid
+  )
+    into v_is_owner;
+
+  return query
+  select
+    m.user_id,
+    coalesce(nullif(trim(p.nickname), ''), '회원') as nickname,
+    m.role,
+    g.owner_id = m.user_id as is_owner,
+    m.joined_at,
+    v_is_owner and m.user_id <> v_uid as can_remove
+  from public.calendar_group_members m
+  join public.calendar_groups g on g.id = m.group_id
+  left join public.profiles p on p.id = m.user_id
+  where m.group_id = p_group_id
+    and m.status = 'active'
+  order by
+    case when g.owner_id = m.user_id then 0 else 1 end,
+    coalesce(nullif(trim(p.nickname), ''), '회원'),
+    m.joined_at;
+end;
+$$;
+
+create or replace function public.kick_calendar_group_member(
+  p_group_id uuid,
+  p_target_user_id uuid
+)
+returns table (
+  success boolean,
+  message text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_owner_id uuid;
+  v_updated integer := 0;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select g.owner_id
+    into v_owner_id
+  from public.calendar_groups g
+  where g.id = p_group_id;
+
+  if v_owner_id is null then
+    raise exception '그룹을 찾을 수 없습니다.';
+  end if;
+
+  if v_owner_id <> v_uid then
+    raise exception '그룹 방장만 참여자를 강퇴할 수 있습니다.';
+  end if;
+
+  if p_target_user_id = v_owner_id then
+    raise exception '방장은 강퇴할 수 없습니다.';
+  end if;
+
+  update public.calendar_group_members m
+  set
+    status = 'left',
+    updated_at = now()
+  where m.group_id = p_group_id
+    and m.user_id = p_target_user_id
+    and m.status = 'active';
+
+  get diagnostics v_updated = row_count;
+
+  if v_updated = 0 then
+    raise exception '강퇴할 참여자를 찾을 수 없습니다.';
+  end if;
+
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id
+    and e.user_id = p_target_user_id;
+
+  return query
+  select true, '참여자를 강퇴했습니다.';
 end;
 $$;
 
@@ -812,3 +942,5 @@ grant execute on function public.get_my_calendar_groups() to authenticated;
 grant execute on function public.get_visible_calendar_groups(boolean) to authenticated;
 grant execute on function public.backup_my_calendar_to_group(uuid, text) to authenticated;
 grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;
+grant execute on function public.get_calendar_group_members(uuid) to authenticated;
+grant execute on function public.kick_calendar_group_member(uuid, uuid) to authenticated;

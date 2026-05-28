@@ -3,6 +3,23 @@
 .calendar-group-bar {
   flex: 0 0 auto;
   width: min(100%, 420px);
+}
+
+.calendar-group-bar__toggle {
+  min-height: 40px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.calendar-group-bar__panel {
+  margin-top: var(--space-8);
   padding: var(--space-12);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -12,7 +29,7 @@
 
 .calendar-group-bar__main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: end;
   gap: var(--space-8);
 }
@@ -28,7 +45,8 @@
 
 .calendar-group-bar__select,
 .calendar-group-bar__manage,
-.calendar-group-bar__backup {
+.calendar-group-bar__backup,
+.calendar-group-bar__close {
   min-height: 38px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
@@ -45,7 +63,8 @@
 }
 
 .calendar-group-bar__manage,
-.calendar-group-bar__backup {
+.calendar-group-bar__backup,
+.calendar-group-bar__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -83,7 +102,7 @@
 
 .calendar-group-day-row {
   display: grid;
-  grid-template-columns: minmax(38px, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(42px, 0.55fr) minmax(0, 1fr);
   align-items: start;
   gap: var(--space-4);
   min-width: 0;
@@ -94,10 +113,9 @@
   color: var(--color-text-sub);
   font-size: 10px;
   font-weight: 900;
-  line-height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .calendar-group-day-row__events {
@@ -116,10 +134,9 @@
   color: var(--calendar-group-event-text);
   font-size: 10px;
   font-weight: 900;
-  line-height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .calendar-groups-page__head {
@@ -223,6 +240,10 @@
 .calendar-group-form__set {
   display: grid;
   gap: var(--space-8);
+}
+
+#calendarGroupCreatePanel {
+  margin-top: var(--space-12);
 }
 
 .calendar-group-form__field span,
@@ -339,6 +360,58 @@
   font-size: var(--text-small);
 }
 
+.calendar-group-card__members {
+  display: grid;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.calendar-group-card__section-title {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 900;
+}
+
+.calendar-group-member-list {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-group-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.calendar-group-member__name {
+  min-width: 0;
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.calendar-group-member button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .calendar-group-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -385,8 +458,7 @@
   gap: var(--space-8);
 }
 
-.calendar-group-card__edit label,
-.calendar-group-card__checks {
+.calendar-group-card__edit label {
   display: grid;
   gap: var(--space-6);
   color: var(--color-text-sub);
@@ -395,7 +467,20 @@
 }
 
 .calendar-group-card__checks {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+}
+
+.calendar-group-card__checks legend {
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 900;
 }
 
 .calendar-group-card__checks label {
@@ -464,6 +549,14 @@
   }
 
   .calendar-group-day-row {
-    grid-template-columns: minmax(34px, 0.45fr) minmax(0, 1fr);
+    grid-template-columns: minmax(42px, 0.55fr) minmax(0, 1fr);
+  }
+
+  .calendar-group-bar__close {
+    grid-column: 1 / -1;
+  }
+
+  .calendar-group-card__checks {
+    grid-template-columns: 1fr;
   }
 }

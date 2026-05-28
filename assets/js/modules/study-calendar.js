@@ -9,6 +9,7 @@ import {
 } from './auth-store.js';
 import {
   appendCalendarGroupRows,
+  getVisiblePersonalTodos,
   initCalendarGroupBar,
 } from './calendar-groups.js';
 
@@ -626,7 +627,7 @@ function createDayButton({
 }) {
   const dateKey = toDateKey(date);
   const todayKey = getTodayKey();
-  const todos = store[dateKey] || [];
+  const todos = getVisiblePersonalTodos(store[dateKey] || [], dateKey, groupState);
 
   const button = document.createElement('button');
   button.type = 'button';

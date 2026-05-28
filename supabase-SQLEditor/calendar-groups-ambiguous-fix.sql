@@ -183,6 +183,10 @@ begin
     e.payload,
     e.backed_up_at
   from public.calendar_group_shared_events e
+  join public.calendar_group_members m
+    on m.group_id = e.group_id
+   and m.user_id = e.user_id
+   and m.status = 'active'
   left join public.profiles p on p.id = e.user_id
   where e.group_id = p_group_id
     and e.calendar_type = p_calendar_type

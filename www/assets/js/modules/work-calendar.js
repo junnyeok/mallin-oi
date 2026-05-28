@@ -9,6 +9,7 @@ import {
 } from './auth-store.js';
 import {
   appendCalendarGroupRows,
+  getVisiblePersonalTodos,
   initCalendarGroupBar,
 } from './calendar-groups.js';
 
@@ -775,7 +776,11 @@ function renderCalendarGrid({
 
   cells.forEach((cell) => {
     const dateNumber = cell.date.getDate();
-    const todos = store[cell.dateKey] || [];
+    const todos = getVisiblePersonalTodos(
+      store[cell.dateKey] || [],
+      cell.dateKey,
+      groupState,
+    );
     const dayButton = document.createElement('button');
     const number = makeEl(
       'span',
