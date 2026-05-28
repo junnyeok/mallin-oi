@@ -11,6 +11,7 @@ import {
   appendCalendarGroupBoard,
   getVisiblePersonalTodos,
   initCalendarGroupBar,
+  isCalendarGroupActive,
 } from './calendar-groups.js';
 
 const TABLE_NAME = 'work_calendar_todos';
@@ -766,61 +767,65 @@ function renderCalendarGrid({
   if (!root) return;
 
   root.innerHTML = '';
-
-  WEEKDAYS.forEach((weekday) => {
-    root.append(makeEl('div', 'work-calendar-weekday', weekday));
-  });
+  const isGroupMode = !isMini && isCalendarGroupActive(groupState);
+  root.classList.toggle('is-calendar-group-mode', isGroupMode);
 
   const todayKey = getTodayKey();
   const cells = getCalendarCells(viewDate);
 
-  cells.forEach((cell) => {
-    const dateNumber = cell.date.getDate();
-    const todos = getVisiblePersonalTodos(
-      store[cell.dateKey] || [],
-      cell.dateKey,
-      groupState,
-    );
-    const dayButton = document.createElement('button');
-    const number = makeEl(
-      'span',
-      'work-calendar-day__number',
-      String(dateNumber),
-    );
-
-    dayButton.type = 'button';
-    dayButton.className = 'work-calendar-day work-calendar-day--button';
-    dayButton.dataset.date = cell.dateKey;
-    dayButton.setAttribute(
-      'aria-label',
-      `${getReadableDate(cell.dateKey)} 선택`,
-    );
-
-    if (isMini) {
-      dayButton.classList.add('work-calendar-day--mini');
-    }
-
-    if (!cell.isCurrentMonth) {
-      dayButton.classList.add('is-muted');
-    }
-
-    if (cell.dateKey === todayKey) {
-      dayButton.classList.add('work-calendar-day--today');
-    }
-
-    if (cell.dateKey === selectedDateKey) {
-      dayButton.classList.add('work-calendar-day--selected');
-    }
-
-    dayButton.append(number);
-    appendTypeBadges(dayButton, todos, categories);
-
-    dayButton.addEventListener('click', () => {
-      onSelect?.(cell.dateKey);
+  if (!isGroupMode) {
+    WEEKDAYS.forEach((weekday) => {
+      root.append(makeEl('div', 'work-calendar-weekday', weekday));
     });
 
-    root.append(dayButton);
-  });
+    cells.forEach((cell) => {
+      const dateNumber = cell.date.getDate();
+      const todos = getVisiblePersonalTodos(
+        store[cell.dateKey] || [],
+        cell.dateKey,
+        groupState,
+      );
+      const dayButton = document.createElement('button');
+      const number = makeEl(
+        'span',
+        'work-calendar-day__number',
+        String(dateNumber),
+      );
+
+      dayButton.type = 'button';
+      dayButton.className = 'work-calendar-day work-calendar-day--button';
+      dayButton.dataset.date = cell.dateKey;
+      dayButton.setAttribute(
+        'aria-label',
+        `${getReadableDate(cell.dateKey)} 선택`,
+      );
+
+      if (isMini) {
+        dayButton.classList.add('work-calendar-day--mini');
+      }
+
+      if (!cell.isCurrentMonth) {
+        dayButton.classList.add('is-muted');
+      }
+
+      if (cell.dateKey === todayKey) {
+        dayButton.classList.add('work-calendar-day--today');
+      }
+
+      if (cell.dateKey === selectedDateKey) {
+        dayButton.classList.add('work-calendar-day--selected');
+      }
+
+      dayButton.append(number);
+      appendTypeBadges(dayButton, todos, categories);
+
+      dayButton.addEventListener('click', () => {
+        onSelect?.(cell.dateKey);
+      });
+
+      root.append(dayButton);
+    });
+  }
 
   if (!isMini) {
     appendCalendarGroupBoard(

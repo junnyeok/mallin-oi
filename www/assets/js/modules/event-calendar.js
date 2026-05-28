@@ -11,6 +11,7 @@ import {
   appendCalendarGroupBoard,
   getVisiblePersonalTodos,
   initCalendarGroupBar,
+  isCalendarGroupActive,
 } from './calendar-groups.js';
 
 const TABLE_NAME = 'event_calendar_todos';
@@ -1301,25 +1302,29 @@ function renderPageCalendar(state) {
   if (!grid || !monthLabel) return;
 
   grid.innerHTML = '';
+  const isGroupMode = isCalendarGroupActive(state.group?.state);
+  grid.classList.toggle('is-calendar-group-mode', isGroupMode);
   monthLabel.textContent = getMonthTitle(state.viewDate);
-
-  renderWeekdays(grid);
 
   const dates = getMonthDates(state.viewDate, { includeOutside: true });
 
-  dates.forEach((item) => {
-    const button = createDayButton({
-      date: item.date,
-      isCurrentMonth: item.isCurrentMonth,
-      selectedDateKey: state.selectedDateKey,
-      store: state.store,
-      categories: state.categories,
-      groupState: state.group?.state,
-      onSelect: state.onSelect,
-    });
+  if (!isGroupMode) {
+    renderWeekdays(grid);
 
-    grid.append(button);
-  });
+    dates.forEach((item) => {
+      const button = createDayButton({
+        date: item.date,
+        isCurrentMonth: item.isCurrentMonth,
+        selectedDateKey: state.selectedDateKey,
+        store: state.store,
+        categories: state.categories,
+        groupState: state.group?.state,
+        onSelect: state.onSelect,
+      });
+
+      grid.append(button);
+    });
+  }
 
   appendCalendarGroupBoard(
     grid,

@@ -106,6 +106,11 @@ function normalizeComparable(value) {
     .toLowerCase();
 }
 
+function getNicknameInitial(name) {
+  const trimmed = String(name || '').trim();
+  return Array.from(trimmed)[0] || '회';
+}
+
 function groupEventsByDateAndUser(rows = []) {
   const byDate = {};
 
@@ -144,6 +149,13 @@ async function rpc(name, params = {}) {
   const { data, error } = await supabase.rpc(name, params);
   if (error) throw error;
   return data;
+}
+
+export function isCalendarGroupActive(groupState) {
+  return Boolean(
+    groupState?.selectedGroup?.id &&
+      isAllowed(groupState.selectedGroup, groupState.calendarType),
+  );
 }
 
 export function getVisiblePersonalTodos(todos = [], dateKey, groupState) {
@@ -214,7 +226,7 @@ export function appendCalendarGroupBoard(
   options = {},
 ) {
   if (!root || !Array.isArray(dateItems) || !groupState?.selectedGroup?.id) return;
-  if (!isAllowed(groupState.selectedGroup, groupState.calendarType)) return;
+  if (!isCalendarGroupActive(groupState)) return;
 
   const weeks = [];
 
@@ -260,7 +272,7 @@ export function appendCalendarGroupBoard(
 
     const corner = document.createElement('div');
     corner.className = 'calendar-group-schedule__corner';
-    corner.textContent = '그룹';
+    corner.setAttribute('aria-hidden', 'true');
     header.append(corner);
 
     week.forEach((item) => {
@@ -280,8 +292,11 @@ export function appendCalendarGroupBoard(
       row.className = 'calendar-group-schedule__row';
 
       const name = document.createElement('div');
+      const fullName = member.name || '회원';
       name.className = 'calendar-group-schedule__name';
-      name.textContent = member.name || '회원';
+      name.textContent = getNicknameInitial(fullName);
+      name.title = fullName;
+      name.setAttribute('aria-label', fullName);
       row.append(name);
 
       week.forEach((item) => {
