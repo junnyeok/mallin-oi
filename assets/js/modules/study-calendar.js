@@ -8,7 +8,7 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import {
-  appendCalendarGroupRows,
+  appendCalendarGroupBoard,
   getVisiblePersonalTodos,
   initCalendarGroupBar,
 } from './calendar-groups.js';
@@ -652,7 +652,6 @@ function createDayButton({
 
   button.append(number);
   appendTypeBadges(button, todos, categories);
-  appendCalendarGroupRows(button, dateKey, groupState);
 
   button.addEventListener('click', () => {
     onSelect(dateKey);
@@ -1046,6 +1045,21 @@ function renderPageCalendar(state) {
 
     grid.append(button);
   });
+
+  appendCalendarGroupBoard(
+    grid,
+    dates.map((item) => ({
+      dateKey: toDateKey(item.date),
+      dateNumber: item.date.getDate(),
+      weekday: WEEKDAYS[item.date.getDay()],
+      isCurrentMonth: item.isCurrentMonth,
+    })),
+    state.group?.state,
+    {
+      selectedDateKey: state.selectedDateKey,
+      onSelect: state.onSelect,
+    },
+  );
 }
 
 function renderPageLoginRequired() {

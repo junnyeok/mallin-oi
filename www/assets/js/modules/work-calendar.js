@@ -8,7 +8,7 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import {
-  appendCalendarGroupRows,
+  appendCalendarGroupBoard,
   getVisiblePersonalTodos,
   initCalendarGroupBar,
 } from './calendar-groups.js';
@@ -814,7 +814,6 @@ function renderCalendarGrid({
 
     dayButton.append(number);
     appendTypeBadges(dayButton, todos, categories);
-    appendCalendarGroupRows(dayButton, cell.dateKey, groupState);
 
     dayButton.addEventListener('click', () => {
       onSelect?.(cell.dateKey);
@@ -822,6 +821,23 @@ function renderCalendarGrid({
 
     root.append(dayButton);
   });
+
+  if (!isMini) {
+    appendCalendarGroupBoard(
+      root,
+      cells.map((cell) => ({
+        dateKey: cell.dateKey,
+        dateNumber: cell.date.getDate(),
+        weekday: WEEKDAYS[cell.date.getDay()],
+        isCurrentMonth: cell.isCurrentMonth,
+      })),
+      groupState,
+      {
+        selectedDateKey,
+        onSelect,
+      },
+    );
+  }
 }
 
 function renderTodoList({

@@ -191,46 +191,139 @@ export function getVisiblePersonalTodos(todos = [], dateKey, groupState) {
   });
 }
 
-export function appendCalendarGroupRows(root, dateKey, groupState) {
-  if (!root || !dateKey || !groupState?.selectedGroup?.id) return;
+function createGroupEventBadge(event, member, groupState) {
+  const badge = document.createElement('span');
+  const color = normalizeColor(
+    event.color,
+    groupState.selectedGroup?.color || '#eeeeee',
+  );
+
+  badge.className = 'calendar-group-schedule__badge';
+  badge.style.setProperty('--calendar-group-event-color', color);
+  badge.style.setProperty('--calendar-group-event-text', getTextColor(color));
+  badge.textContent = event.title || event.event_type || '일정';
+  badge.title = `${member.name || '회원'} · ${badge.textContent}`;
+
+  return badge;
+}
+
+export function appendCalendarGroupBoard(
+  root,
+  dateItems = [],
+  groupState,
+  options = {},
+) {
+  if (!root || !Array.isArray(dateItems) || !groupState?.selectedGroup?.id) return;
   if (!isAllowed(groupState.selectedGroup, groupState.calendarType)) return;
 
-  const members = groupState.eventsByDate?.[dateKey] || [];
-  if (members.length === 0) return;
+  const weeks = [];
+
+  for (let index = 0; index < dateItems.length; index += 7) {
+    weeks.push(dateItems.slice(index, index + 7));
+  }
 
   const wrap = document.createElement('div');
-  wrap.className = 'calendar-group-day-rows';
+  wrap.className = 'calendar-group-schedule';
+  wrap.setAttribute('aria-label', '그룹 공유 일정');
 
-  members.forEach((member) => {
-    const row = document.createElement('div');
-    row.className = 'calendar-group-day-row';
+  weeks.forEach((week) => {
+    if (week.length === 0) return;
 
-    const name = document.createElement('span');
-    name.className = 'calendar-group-day-row__name';
-    name.textContent = member.name;
+    const memberMap = new Map();
 
-    const events = document.createElement('span');
-    events.className = 'calendar-group-day-row__events';
+    week.forEach((item) => {
+      const dateKey = item?.dateKey;
+      if (!dateKey) return;
 
-    member.events.forEach((event) => {
-      const badge = document.createElement('span');
-      const color = normalizeColor(
-        event.color,
-        groupState.selectedGroup?.color || '#eeeeee',
-      );
-
-      badge.className = 'calendar-group-day-row__badge';
-      badge.style.setProperty('--calendar-group-event-color', color);
-      badge.style.setProperty('--calendar-group-event-text', getTextColor(color));
-      badge.textContent = event.title || event.event_type || '일정';
-      badge.title = `${member.name} · ${badge.textContent}`;
-      events.append(badge);
+      (groupState.eventsByDate?.[dateKey] || []).forEach((member) => {
+        if (!member?.userId) return;
+        if (!memberMap.has(member.userId)) {
+          memberMap.set(member.userId, {
+            userId: member.userId,
+            name: member.name || '회원',
+          });
+        }
+      });
     });
 
-    row.append(name, events);
-    wrap.append(row);
+    const members = [...memberMap.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, 'ko'),
+    );
+
+    if (members.length === 0) return;
+
+    const weekEl = document.createElement('section');
+    weekEl.className = 'calendar-group-schedule__week';
+
+    const header = document.createElement('div');
+    header.className = 'calendar-group-schedule__header';
+
+    const corner = document.createElement('div');
+    corner.className = 'calendar-group-schedule__corner';
+    corner.textContent = '그룹';
+    header.append(corner);
+
+    week.forEach((item) => {
+      const head = document.createElement('div');
+      head.className = 'calendar-group-schedule__date-head';
+      if (!item?.isCurrentMonth) {
+        head.classList.add('is-muted');
+      }
+      head.textContent = `${item?.weekday || ''} ${item?.dateNumber || ''}`.trim();
+      header.append(head);
+    });
+
+    weekEl.append(header);
+
+    members.forEach((member) => {
+      const row = document.createElement('div');
+      row.className = 'calendar-group-schedule__row';
+
+      const name = document.createElement('div');
+      name.className = 'calendar-group-schedule__name';
+      name.textContent = member.name || '회원';
+      row.append(name);
+
+      week.forEach((item) => {
+        const cellButton = document.createElement('button');
+        cellButton.type = 'button';
+        cellButton.className = 'calendar-group-schedule__cell';
+        cellButton.dataset.date = item?.dateKey || '';
+        cellButton.setAttribute(
+          'aria-label',
+          `${member.name || '회원'} ${item?.dateKey || ''} 그룹 일정`,
+        );
+
+        if (!item?.isCurrentMonth) {
+          cellButton.classList.add('is-muted');
+        }
+
+        if (item?.dateKey === options.selectedDateKey) {
+          cellButton.classList.add('is-selected');
+        }
+
+        const events = (groupState.eventsByDate?.[item?.dateKey] || [])
+          .find((entry) => entry.userId === member.userId)
+          ?.events || [];
+
+        events.forEach((event) => {
+          cellButton.append(createGroupEventBadge(event, member, groupState));
+        });
+
+        cellButton.addEventListener('click', () => {
+          if (item?.dateKey) options.onSelect?.(item.dateKey);
+        });
+
+        row.append(cellButton);
+      });
+
+      weekEl.append(row);
+    });
+
+    wrap.append(weekEl);
   });
 
+  if (wrap.children.length === 0) return;
   root.append(wrap);
 }
 
