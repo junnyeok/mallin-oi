@@ -9,6 +9,7 @@ const CALENDAR_PAGES = new Set([
   'calendar-study',
   'calendar-work',
   'calendar-event',
+  'calendar-groups',
   'login',
   'signup',
   'find-password',
@@ -77,6 +78,7 @@ function getActiveCalendarType() {
   if (page === 'calendar-study') return 'study';
   if (page === 'calendar-work') return 'work';
   if (page === 'calendar-event') return 'event';
+  if (page === 'calendar-groups') return 'groups';
 
   return '';
 }
@@ -85,7 +87,7 @@ function createCalendarAppShell() {
   if (document.getElementById('calendarAppShell')) return;
 
   const active = getActiveCalendarType();
-  if (!active) return;
+  if (!active || active === 'groups') return;
 
   const shell = document.createElement('nav');
   shell.className = 'calendar-app-shell';

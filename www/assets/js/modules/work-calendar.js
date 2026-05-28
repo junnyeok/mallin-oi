@@ -7,6 +7,10 @@ import {
   saveRedirect,
   showLoginRequiredPopup,
 } from './auth-store.js';
+import {
+  appendCalendarGroupRows,
+  initCalendarGroupBar,
+} from './calendar-groups.js';
 
 const TABLE_NAME = 'work_calendar_todos';
 const CATEGORY_TABLE_NAME = 'work_calendar_categories';
@@ -754,6 +758,7 @@ function renderCalendarGrid({
   selectedDateKey,
   store,
   categories,
+  groupState,
   onSelect,
   isMini = false,
 }) {
@@ -804,6 +809,7 @@ function renderCalendarGrid({
 
     dayButton.append(number);
     appendTypeBadges(dayButton, todos, categories);
+    appendCalendarGroupRows(dayButton, cell.dateKey, groupState);
 
     dayButton.addEventListener('click', () => {
       onSelect?.(cell.dateKey);
@@ -965,6 +971,7 @@ function renderPageCalendar(state) {
     selectedDateKey: state.selectedDateKey,
     store: state.store,
     categories: state.categories,
+    groupState: state.group?.state,
     onSelect: state.onSelect,
   });
 }
@@ -1110,6 +1117,7 @@ async function initPageCalendar() {
     categories: await ensureDefaultCategories(user.id),
     store: await fetchUserTodos(user.id),
     onSelect: null,
+    group: null,
   };
 
   function renderAll() {
@@ -1476,6 +1484,14 @@ async function initPageCalendar() {
 
   state.onSelect = selectDate;
 
+  state.group = await initCalendarGroupBar({
+    calendarType: 'work',
+    pageRoot,
+    getViewDate: () => state.viewDate,
+    renderAll,
+  });
+  renderAll();
+
   prevBtn.addEventListener('click', () => {
     state.viewDate = new Date(
       state.viewDate.getFullYear(),
@@ -1484,6 +1500,7 @@ async function initPageCalendar() {
     );
 
     renderPageCalendar(state);
+    state.group?.refresh?.();
   });
 
   nextBtn.addEventListener('click', () => {
@@ -1494,6 +1511,7 @@ async function initPageCalendar() {
     );
 
     renderPageCalendar(state);
+    state.group?.refresh?.();
   });
 
   form.addEventListener('submit', async (event) => {

@@ -181,6 +181,10 @@
   --color-primary-sub: var(--theme-event-sub);
 }
 
+.app-calendar-card--groups {
+  --color-primary-sub: var(--theme-home-sub);
+}
+
 .app-calendar-launcher__notice {
   margin: 0;
   text-align: center;

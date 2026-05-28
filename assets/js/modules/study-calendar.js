@@ -7,6 +7,10 @@ import {
   saveRedirect,
   showLoginRequiredPopup,
 } from './auth-store.js';
+import {
+  appendCalendarGroupRows,
+  initCalendarGroupBar,
+} from './calendar-groups.js';
 
 const TABLE_NAME = 'study_calendar_todos';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -618,6 +622,7 @@ function createDayButton({
   onSelect,
   store,
   categories,
+  groupState,
 }) {
   const dateKey = toDateKey(date);
   const todayKey = getTodayKey();
@@ -646,6 +651,7 @@ function createDayButton({
 
   button.append(number);
   appendTypeBadges(button, todos, categories);
+  appendCalendarGroupRows(button, dateKey, groupState);
 
   button.addEventListener('click', () => {
     onSelect(dateKey);
@@ -1033,6 +1039,7 @@ function renderPageCalendar(state) {
       selectedDateKey: state.selectedDateKey,
       store: state.store,
       categories: state.categories,
+      groupState: state.group?.state,
       onSelect: state.onSelect,
     });
 
@@ -1174,6 +1181,7 @@ async function initPageCalendar() {
     categories: await ensureDefaultCategories(user.id),
     store: await fetchUserTodos(user.id),
     onSelect: null,
+    group: null,
   };
 
   function renderAll() {
@@ -1313,6 +1321,14 @@ async function initPageCalendar() {
   }
 
   state.onSelect = selectDate;
+
+  state.group = await initCalendarGroupBar({
+    calendarType: 'study',
+    pageRoot,
+    getViewDate: () => state.viewDate,
+    renderAll,
+  });
+  renderAll();
 
   function openCategoryModal() {
     if (!categoryToggle || !categoryPanel) return;
@@ -1524,6 +1540,7 @@ async function initPageCalendar() {
     );
 
     renderPageCalendar(state);
+    state.group?.refresh?.();
   });
 
   nextBtn.addEventListener('click', () => {
@@ -1534,6 +1551,7 @@ async function initPageCalendar() {
     );
 
     renderPageCalendar(state);
+    state.group?.refresh?.();
   });
 
   form.addEventListener('submit', async (event) => {

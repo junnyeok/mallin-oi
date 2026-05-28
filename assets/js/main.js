@@ -82,6 +82,7 @@ async function loadCoreModules() {
     studyCalendarModule,
     eventCalendarModule,
     workCalendarModule,
+    calendarGroupsModule,
   ] = await Promise.all([
     import(withModuleVersion('./modules/mobile-stability.js')),
     import(withModuleVersion('./modules/site-version.js')),
@@ -122,6 +123,7 @@ async function loadCoreModules() {
     import(withModuleVersion('./modules/study-calendar.js')),
     import(withModuleVersion('./modules/event-calendar.js')),
     import(withModuleVersion('./modules/work-calendar.js')),
+    import(withModuleVersion('./modules/calendar-groups.js')),
   ]);
 
   coreModules = {
@@ -164,6 +166,7 @@ async function loadCoreModules() {
     studyCalendarModule,
     eventCalendarModule,
     workCalendarModule,
+    calendarGroupsModule,
   };
 
   return coreModules;
@@ -223,6 +226,7 @@ async function initPageModules(modules) {
     studyCalendarModule,
     eventCalendarModule,
     workCalendarModule,
+    calendarGroupsModule,
   } = modules;
 
   const { initPostsUI } = postsUiModule;
@@ -248,6 +252,7 @@ async function initPageModules(modules) {
   const { initStudyCalendar } = studyCalendarModule;
   const { initEventCalendar } = eventCalendarModule;
   const { initWorkCalendar } = workCalendarModule;
+  const { initCalendarGroupsPage } = calendarGroupsModule;
   // 공통
   await runSafe('scroll buttons', async () => {
     initScrollButtons();
@@ -296,6 +301,12 @@ async function initPageModules(modules) {
     case 'calendar-event':
       await runSafe('event calendar', async () => {
         await initEventCalendar();
+      });
+      break;
+
+    case 'calendar-groups':
+      await runSafe('calendar groups', async () => {
+        await initCalendarGroupsPage();
       });
       break;
 
