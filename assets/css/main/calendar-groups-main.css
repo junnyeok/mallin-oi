@@ -519,6 +519,62 @@
   cursor: pointer;
 }
 
+.calendar-group-card__actions .calendar-group-card__danger {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.calendar-group-card__transfer {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-bg);
+}
+
+.calendar-group-card__transfer[hidden] {
+  display: none;
+}
+
+.calendar-group-card__transfer label {
+  display: grid;
+  gap: var(--space-6);
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 800;
+}
+
+.calendar-group-card__transfer select {
+  min-height: 38px;
+  min-width: 0;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.calendar-group-card__transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.calendar-group-card__transfer-actions button {
+  min-height: 34px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .calendar-group-card__edit {
   padding-top: var(--space-8);
   border-top: 1px solid var(--color-border);

@@ -430,6 +430,7 @@ set search_path = public
 as $$
 declare
   v_uid uuid := auth.uid();
+  v_member_count bigint := 0;
 begin
   if v_uid is null then
     raise exception '로그인이 필요합니다.';
@@ -437,13 +438,24 @@ begin
 
   if exists (
     select 1
+    from public.calendar_groups g
+    join public.calendar_group_members m on m.group_id = g.id
+    where g.id = p_group_id
+      and m.user_id = v_uid
+      and m.status = 'active'
+      and (g.owner_id = v_uid or m.role = 'owner')
+  ) then
+    select count(*)
+      into v_member_count
     from public.calendar_group_members
     where group_id = p_group_id
-      and user_id = v_uid
-      and role = 'owner'
-      and status = 'active'
-  ) then
-    raise exception '그룹장은 그룹을 나갈 수 없습니다. 먼저 그룹을 숨기거나 관리자를 지정해 주세요.';
+      and status = 'active';
+
+    if v_member_count > 1 then
+      raise exception '먼저 그룹장을 넘긴 뒤 나갈 수 있습니다.';
+    end if;
+
+    raise exception '그룹장은 바로 나갈 수 없습니다. 그룹을 삭제해 주세요.';
   end if;
 
   update public.calendar_group_members
@@ -933,6 +945,125 @@ begin
 end;
 $$;
 
+create or replace function public.calendar_transfer_group_owner(
+  p_group_id uuid,
+  p_new_owner_id uuid
+)
+returns table (
+  success boolean,
+  message text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_owner_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select g.owner_id
+    into v_owner_id
+  from public.calendar_groups g
+  where g.id = p_group_id;
+
+  if v_owner_id is null then
+    raise exception '그룹을 찾을 수 없습니다.';
+  end if;
+
+  if v_owner_id <> v_uid then
+    raise exception '그룹장만 그룹장을 넘길 수 있습니다.';
+  end if;
+
+  if p_new_owner_id = v_uid then
+    raise exception '본인에게는 그룹장을 넘길 수 없습니다.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.calendar_group_members m
+    where m.group_id = p_group_id
+      and m.user_id = p_new_owner_id
+      and m.status = 'active'
+  ) then
+    raise exception '새 그룹장은 현재 그룹 참여자여야 합니다.';
+  end if;
+
+  update public.calendar_groups g
+  set owner_id = p_new_owner_id,
+      updated_at = now()
+  where g.id = p_group_id;
+
+  update public.calendar_group_members m
+  set role = case
+        when m.user_id = p_new_owner_id then 'owner'
+        when m.user_id = v_uid then 'member'
+        else m.role
+      end,
+      updated_at = now()
+  where m.group_id = p_group_id
+    and m.user_id in (v_uid, p_new_owner_id)
+    and m.status = 'active';
+
+  return query
+  select true, '그룹장을 넘겼습니다.';
+end;
+$$;
+
+create or replace function public.calendar_delete_group(p_group_id uuid)
+returns table (
+  success boolean,
+  message text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_owner_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select g.owner_id
+    into v_owner_id
+  from public.calendar_groups g
+  where g.id = p_group_id;
+
+  if v_owner_id is null then
+    raise exception '그룹을 찾을 수 없습니다.';
+  end if;
+
+  if v_owner_id <> v_uid then
+    raise exception '그룹장만 그룹을 삭제할 수 있습니다.';
+  end if;
+
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id;
+
+  delete from public.calendar_group_user_settings s
+  where s.group_id = p_group_id;
+
+  delete from public.calendar_group_invites i
+  where i.group_id = p_group_id;
+
+  delete from public.calendar_group_members m
+  where m.group_id = p_group_id;
+
+  delete from public.calendar_groups g
+  where g.id = p_group_id
+    and g.owner_id = v_uid;
+
+  return query
+  select true, '그룹을 삭제했습니다.';
+end;
+$$;
+
 grant execute on function public.create_calendar_group(text, text, boolean, boolean, boolean, text, text, boolean) to authenticated;
 grant execute on function public.join_calendar_group(uuid, text) to authenticated;
 grant execute on function public.leave_calendar_group(uuid) to authenticated;
@@ -944,3 +1075,5 @@ grant execute on function public.backup_my_calendar_to_group(uuid, text) to auth
 grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;
 grant execute on function public.get_calendar_group_members(uuid) to authenticated;
 grant execute on function public.kick_calendar_group_member(uuid, uuid) to authenticated;
+grant execute on function public.calendar_transfer_group_owner(uuid, uuid) to authenticated;
+grant execute on function public.calendar_delete_group(uuid) to authenticated;

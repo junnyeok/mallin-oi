@@ -7,7 +7,7 @@
   - 댓글: 좋아요/댓글 영역
   - END: 다른 게시물 영역
 
-        [index / study / work / event / career]
+  [index / study / work / event / career]
   - PC / 모바일: TOP / END
     - END: 최신 업로드 패널이 있으면 해당 패널
     - 최신 업로드 패널이 없으면 마지막 콘텐츠 또는 페이지 하단
@@ -23,6 +23,9 @@
 
   [store.html / store-item.html]
   - TOP / END
+
+  [calendar-groups.html]
+  - TOP / END(그룹 만들기 패널)
 ================================================= */
 
 let scrollFabCleanup = null;
@@ -57,6 +60,7 @@ function getPageType() {
   if (path.includes('calendar-study.html')) return 'calendar';
   if (path.includes('calendar-work.html')) return 'calendar';
   if (path.includes('calendar-event.html')) return 'calendar';
+  if (path.includes('calendar-groups.html')) return 'calendar-groups';
   if (path.includes('suggestion.html')) return 'suggestion';
   if (path.includes('qna.html')) return 'qna';
 
@@ -86,6 +90,8 @@ function getPageType() {
   ) {
     return 'calendar';
   }
+
+  if (page === 'calendar-groups') return 'calendar-groups';
 
   if (page === 'suggestion') return 'suggestion';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
@@ -224,6 +230,17 @@ function getQnaTargets() {
     document.getElementById('suggestionList') ||
     document.getElementById('qnaSection') ||
     null;
+
+  return {
+    bottomScrollEl,
+  };
+}
+
+function getCalendarGroupsTargets() {
+  const bottomScrollEl =
+    document.getElementById('calendarGroupCreatePanel')?.closest('.panel') ||
+    document.getElementById('calendarGroupForm')?.closest('.panel') ||
+    findLastMainContent();
 
   return {
     bottomScrollEl,
@@ -394,6 +411,15 @@ export function initScrollButtons(options = {}) {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 
+  if (pageType === 'calendar-groups') {
+    const calendarGroupsTargets = getCalendarGroupsTargets();
+    bottomScrollEl = calendarGroupsTargets.bottomScrollEl;
+    btnBottom.setAttribute(
+      'aria-label',
+      bottomScrollEl ? '그룹 만들기 영역으로 이동' : '페이지 하단으로 이동',
+    );
+  }
+
   if (pageType === 'suggestion') {
     const suggestionTargets = getSuggestionTargets();
     bottomScrollEl = suggestionTargets.bottomScrollEl;
@@ -467,6 +493,12 @@ export function initScrollButtons(options = {}) {
     }
 
     if (pageTypeNow === 'posts-all' && bottomScrollEl) {
+      const targetTop = getAbsoluteTop(bottomScrollEl, 16);
+      window.scrollTo({ top: targetTop, behavior });
+      return;
+    }
+
+    if (pageTypeNow === 'calendar-groups' && bottomScrollEl) {
       const targetTop = getAbsoluteTop(bottomScrollEl, 16);
       window.scrollTo({ top: targetTop, behavior });
       return;

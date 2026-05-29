@@ -552,6 +552,8 @@ function getCalendarTypeFlags(form) {
 function createGroupCard(group, { myGroup = false, members = [] } = {}) {
   const isPrivate = group.visibility === 'private';
   const color = normalizeColor(group.color);
+  const isOwner = group.role === 'owner';
+  const transferTargets = members.filter((member) => !member.is_owner);
   const calendars = ['study', 'work', 'event']
     .filter((type) => group[`allow_${type}`])
     .map((type) => CALENDAR_LABELS[type])
@@ -571,7 +573,13 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
       <div class="calendar-group-card__actions">
         ${
           myGroup
-            ? `<button type="button" data-action="leave">나가기</button>`
+            ? `<button type="button" data-action="leave">나가기</button>
+              ${
+                isOwner
+                  ? `<button type="button" data-action="transfer-owner">그룹장 넘기기</button>
+                    <button type="button" data-action="delete-group" class="calendar-group-card__danger">그룹 삭제</button>`
+                  : ''
+              }`
             : `<input type="password" data-password placeholder="비밀번호" ${
                 isPrivate ? '' : 'hidden'
               } /><button type="button" data-action="join">참여</button>`
@@ -616,6 +624,34 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
                   : '<p class="calendar-groups-empty">참여자 정보를 불러오지 못했어.</p>'
               }
             </div>
+            ${
+              isOwner
+                ? `<div class="calendar-group-card__transfer" data-transfer-panel hidden>
+                    ${
+                      transferTargets.length > 0
+                        ? `<label>
+                            <span>넘겨받을 참여자</span>
+                            <select data-transfer-user>
+                              ${transferTargets
+                                .map(
+                                  (member) => `
+                                    <option value="${escapeHtml(member.user_id)}">${escapeHtml(
+                                      member.nickname || '회원',
+                                    )}</option>
+                                  `,
+                                )
+                                .join('')}
+                            </select>
+                          </label>
+                          <div class="calendar-group-card__transfer-actions">
+                            <button type="button" data-action="confirm-transfer-owner">확인</button>
+                            <button type="button" data-action="cancel-transfer-owner">취소</button>
+                          </div>`
+                        : '<p class="calendar-groups-empty">넘겨줄 참여자가 없습니다. 그룹을 삭제할 수 있습니다.</p>'
+                    }
+                  </div>`
+                : ''
+            }
           `
           : ''
       }
@@ -690,6 +726,9 @@ export async function initCalendarGroupsPage() {
   const privateToggle = document.getElementById('calendarGroupPrivate');
   const passwordInput = document.getElementById('calendarGroupPassword');
   const hiddenToggle = document.getElementById('calendarGroupHiddenToggle');
+  const state = {
+    myGroups: [],
+  };
 
   renderColorChoices(colorRoot);
 
@@ -718,6 +757,7 @@ export async function initCalendarGroupsPage() {
       rpc('get_visible_calendar_groups', { p_include_hidden: false }),
       rpc('get_visible_calendar_groups', { p_include_hidden: true }),
     ]);
+    state.myGroups = myGroups || [];
     const memberEntries = await Promise.all(
       (myGroups || []).map(async (group) => {
         try {
@@ -839,9 +879,64 @@ export async function initCalendarGroupsPage() {
       }
 
       if (action === 'leave') {
+        const group = state.myGroups.find((item) => item.id === groupId);
+        if (group?.role === 'owner') {
+          if (Number(group.member_count || 0) > 1) {
+            setStatus('먼저 그룹장을 넘긴 뒤 나갈 수 있습니다.');
+          } else {
+            setStatus('그룹장은 바로 나갈 수 없습니다. 그룹을 삭제해 주세요.');
+          }
+          return;
+        }
+
         await rpc('leave_calendar_group', { p_group_id: groupId });
         if (getSelectedGroupId() === groupId) setSelectedGroupId('');
         setStatus('그룹에서 나왔어.');
+      }
+
+      if (action === 'transfer-owner') {
+        const panel = card.querySelector('[data-transfer-panel]');
+        if (!panel) return;
+        const willShow = panel.hidden;
+        panel.hidden = !willShow;
+        if (willShow && !card.querySelector('[data-transfer-user]')) {
+          setStatus('넘겨줄 참여자가 없습니다. 그룹을 삭제할 수 있습니다.');
+        }
+        return;
+      }
+
+      if (action === 'cancel-transfer-owner') {
+        const panel = card.querySelector('[data-transfer-panel]');
+        if (panel) panel.hidden = true;
+        return;
+      }
+
+      if (action === 'confirm-transfer-owner') {
+        const targetUserId = card.querySelector('[data-transfer-user]')?.value || '';
+        if (!targetUserId) {
+          setStatus('그룹장을 넘길 참여자를 선택해줘.');
+          return;
+        }
+        if (!window.confirm('선택한 참여자에게 그룹장을 넘길까요?')) return;
+
+        await rpc('calendar_transfer_group_owner', {
+          p_group_id: groupId,
+          p_new_owner_id: targetUserId,
+        });
+        setStatus('그룹장을 넘겼어. 이제 일반 멤버로 나갈 수 있어.');
+      }
+
+      if (action === 'delete-group') {
+        const groupName =
+          card.querySelector('.calendar-group-card__title')?.textContent?.trim() ||
+          '이 그룹';
+        if (!window.confirm(`${groupName} 그룹을 삭제할까요? 참여자와 공유 일정도 함께 정리됩니다.`)) {
+          return;
+        }
+
+        await rpc('calendar_delete_group', { p_group_id: groupId });
+        if (getSelectedGroupId() === groupId) setSelectedGroupId('');
+        setStatus('그룹을 삭제했어.');
       }
 
       if (action === 'kick-member') {
