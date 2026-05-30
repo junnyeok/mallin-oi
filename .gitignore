@@ -29,3 +29,10 @@ DerivedData/
 
 # Temporary files
 .tmp-cap-assets/
+
+# Android release signing keys
+keys/
+*.jks
+*.keystore
+android/app/*.jks
+android/app/*.keystore
