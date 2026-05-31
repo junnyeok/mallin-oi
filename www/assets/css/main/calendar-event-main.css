@@ -284,7 +284,15 @@
   display: grid;
   grid-template-columns: 96px auto 1fr auto;
   gap: var(--space-8);
+  width: 100%;
+  max-width: 100%;
   margin-bottom: var(--space-16);
+}
+
+.event-todo-form > * {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .event-todo-form__select,
@@ -1494,7 +1502,7 @@ body.theme-event[data-page='calendar-event']
 ========================= */
 
 .event-todo-form {
-  grid-template-columns: 96px auto 120px auto;
+  grid-template-columns: minmax(84px, 96px) auto minmax(104px, 120px) auto;
   align-items: start;
 }
 
@@ -1506,6 +1514,7 @@ body.theme-event[data-page='calendar-event']
 .event-todo-form__setting {
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
 }
 
 .event-todo-form__time {
@@ -1525,6 +1534,7 @@ body.theme-event[data-page='calendar-event']
 .event-todo-form__button {
   grid-column: 4;
   grid-row: 1;
+  min-width: 52px;
 }
 
 .event-todo-form__input {
@@ -1540,6 +1550,45 @@ body.theme-event[data-page='calendar-event']
 .event-todo-form__time:focus {
   outline: 2px solid #fff0f6;
   border-color: #ff8fb3;
+}
+
+@media (min-width: 641px) and (max-width: 1280px) {
+  .event-calendar-todo-panel .event-todo-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .event-calendar-todo-panel .event-todo-form__select {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .event-calendar-todo-panel .event-todo-form__setting {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    min-width: 58px;
+  }
+
+  .event-calendar-todo-panel .event-todo-form__time {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .event-calendar-todo-panel .event-todo-form__button {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 42px;
+  }
+
+  .event-calendar-todo-panel .event-todo-form__input {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .event-calendar-todo-panel .event-todo-form__memo {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
 }
 
 /* 이벤트 캘린더에서는 완료 상태 UI를 쓰지 않음 */

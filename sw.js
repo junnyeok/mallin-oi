@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260529-02';
+const SITE_VERSION = '20260531-01';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -12,6 +12,7 @@ const APP_SHELL_FILES = [
   './index.html',
   './privacy.html',
   './app-calendar.html',
+  './mypage.html',
   './calendar-study.html',
   './calendar-work.html',
   './calendar-event.html',
@@ -40,6 +41,7 @@ const APP_SHELL_FILES = [
   './assets/css/components/refresh-control.css',
 
   './assets/css/main/main.css',
+  './assets/css/main/mypage-main.css',
   './assets/css/main/privacy-main.css',
   './assets/css/main/store-main.css',
   './assets/css/main/calendar-study-main.css',
@@ -50,6 +52,7 @@ const APP_SHELL_FILES = [
 
   './assets/js/boot.js',
   './assets/js/main.js',
+  './assets/js/modules/mypage.js',
   './assets/js/modules/pwa-install.js',
   './assets/js/modules/refresh-control.js',
   './assets/js/modules/calendar-widget-data.js',

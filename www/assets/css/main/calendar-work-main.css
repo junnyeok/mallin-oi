@@ -402,6 +402,7 @@ body.work-repeat-modal-open {
 }
 
 .work-repeat__dialog {
+  box-sizing: border-box;
   width: min(460px, 100%);
   max-height: min(680px, calc(100vh - var(--space-32)));
   overflow-y: auto;
@@ -457,11 +458,15 @@ body.work-repeat-modal-open {
 .work-repeat__form {
   display: grid;
   gap: var(--space-8);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .work-repeat__field {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .work-repeat__label {
@@ -471,9 +476,14 @@ body.work-repeat-modal-open {
 }
 
 .work-repeat__input {
+  box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 40px;
   padding: 0 var(--space-12);
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
   background: var(--color-surface);
@@ -505,13 +515,18 @@ body.work-repeat-modal-open {
 
 .work-repeat__actions {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-8);
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .work-repeat__button,
 .work-repeat__cancel {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
   min-height: 42px;
   padding: 0 var(--space-16);
   border-radius: var(--radius-btn);
@@ -1107,7 +1122,7 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   }
 
   .work-repeat__dialog {
-    width: 100%;
+    width: min(100%, calc(100vw - var(--space-24)));
     max-height: calc(100vh - var(--space-24));
     padding: var(--space-12);
   }
@@ -1120,6 +1135,7 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   .work-repeat__button,
   .work-repeat__cancel,
   .work-repeat__trigger {
+    width: 100%;
     min-height: 44px;
   }
 

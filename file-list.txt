@@ -144,6 +144,7 @@
 ./android/app/src/main/assets/public/images/logo-work.png
 ./android/app/src/main/assets/public/index.html
 ./android/app/src/main/assets/public/login.html
+./android/app/src/main/assets/public/mypage.html
 ./android/app/src/main/assets/public/partials/footer.html
 ./android/app/src/main/assets/public/partials/header.html
 ./android/app/src/main/assets/public/privacy.html
@@ -593,6 +594,7 @@
 ./ios/App/App/public/images/logo-work.png
 ./ios/App/App/public/index.html
 ./ios/App/App/public/login.html
+./ios/App/App/public/mypage.html
 ./ios/App/App/public/partials/footer.html
 ./ios/App/App/public/partials/header.html
 ./ios/App/App/public/privacy.html
@@ -632,6 +634,7 @@
 ./study.html
 ./suggestion.html
 ./supabase-SQLEditor/99_all_backup.sql
+./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
 ./supabase-SQLEditor/calendar-groups-ambiguous-fix.sql
 ./supabase-SQLEditor/calendar-groups.sql
@@ -649,6 +652,7 @@
 ./supabase/.temp/storage-migration
 ./supabase/.temp/storage-version
 ./supabase/config.toml
+./supabase/functions/delete-account/index.ts
 ./sw.js
 ./work.html
 ./write.html
@@ -770,6 +774,7 @@
 ./www/images/logo-work.png
 ./www/index.html
 ./www/login.html
+./www/mypage.html
 ./www/partials/footer.html
 ./www/partials/header.html
 ./www/privacy.html

@@ -489,6 +489,10 @@ function setLinkText(el, text) {
   el.textContent = text;
 }
 
+function isCalendarShellAuthLink(link) {
+  return !!link?.closest?.('.calendar-app-shell');
+}
+
 export async function updateAuthUI() {
   const loginLink = findLoginLink();
   const mypageLink = findMypageLink();
@@ -517,11 +521,15 @@ export async function updateAuthUI() {
         }
       };
 
+      const isCalendarShell = isCalendarShellAuthLink(loginLink);
       const nickEl = document.createElement('a');
       nickEl.className = 'auth-link auth-nickname';
       nickEl.dataset.authNickname = 'true';
-      nickEl.href = profileHref();
-      nickEl.textContent = `${displayName}님`;
+      nickEl.href = isCalendarShell ? './mypage.html' : profileHref();
+      nickEl.textContent = isCalendarShell ? '계정 관리' : `${displayName}님`;
+      if (isCalendarShell) {
+        nickEl.setAttribute('aria-label', '계정 관리');
+      }
 
       if (!loginLink.previousElementSibling?.matches('.auth-nickname')) {
         loginLink.before(nickEl);

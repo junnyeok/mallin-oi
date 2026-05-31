@@ -1,5 +1,6 @@
 // assets/js/modules/mypage.js
 import { supabase } from './supabase-client.js';
+import { signOutUser } from './auth-store.js';
 import { loadPostsByAuthorId } from './posts-repo.js';
 
 const MODULE_VERSION = encodeURIComponent(
@@ -21,6 +22,39 @@ function saveRedirectHere() {
       `${window.location.pathname}${window.location.search}`,
     );
   } catch {}
+}
+
+function isCalendarAppMode() {
+  return (
+    new URLSearchParams(window.location.search || '').get('app') ===
+      'calendar' ||
+    document.body?.dataset?.appMode === 'calendar' ||
+    document.documentElement.classList.contains('is-calendar-app-mode') ||
+    window.Capacitor?.isNativePlatform?.() === true
+  );
+}
+
+function getWithdrawRedirectHref() {
+  return isCalendarAppMode() ? './app-calendar.html?app=calendar' : './index.html';
+}
+
+function setWithdrawMessage(el, message, type = '') {
+  if (!el) return;
+  el.textContent = message;
+  el.dataset.state = type;
+}
+
+async function signOutAfterWithdraw() {
+  try {
+    await signOutUser();
+  } catch (error) {
+    console.warn('[mypage] signOut after withdraw failed:', error);
+    try {
+      await supabase.auth.signOut();
+    } catch (fallbackError) {
+      console.warn('[mypage] fallback signOut failed:', fallbackError);
+    }
+  }
 }
 
 function formatDate(dateStr) {
@@ -273,6 +307,8 @@ function setupPagedList({
 export async function initMypage() {
   const form = $('mypageForm');
   if (!form) return;
+  if (form.dataset.mypageBound === 'true') return;
+  form.dataset.mypageBound = 'true';
 
   const msgEl = $('mypageMsg');
   const withdrawMsgEl = $('mypageWithdrawMsg');
@@ -459,9 +495,56 @@ export async function initMypage() {
     window.location.href = './index.html';
   });
 
-  withdrawBtn?.addEventListener('click', () => {
-    if (withdrawMsgEl) {
-      withdrawMsgEl.textContent = '회원탈퇴는 아직 연결 전이야.';
+  withdrawBtn?.addEventListener('click', async () => {
+    if (withdrawBtn.disabled) return;
+
+    const firstOk = window.confirm(
+      '회원탈퇴를 진행할까요?\n계정과 프로필, 캘린더 기록 등 계정에 연결된 데이터가 삭제됩니다.',
+    );
+    if (!firstOk) return;
+
+    const finalText = window.prompt(
+      '정말 탈퇴하려면 아래에 "회원탈퇴"를 입력해주세요.',
+    );
+    if (finalText !== '회원탈퇴') {
+      setWithdrawMessage(withdrawMsgEl, '입력 문구가 맞지 않아 탈퇴를 취소했어.');
+      return;
+    }
+
+    withdrawBtn.disabled = true;
+    withdrawBtn.setAttribute('aria-busy', 'true');
+    setWithdrawMessage(withdrawMsgEl, '회원탈퇴 처리 중...', 'loading');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { confirmText: '회원탈퇴' },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.success !== true) {
+        throw new Error(data?.message || '회원탈퇴 처리에 실패했어.');
+      }
+
+      setWithdrawMessage(
+        withdrawMsgEl,
+        '회원탈퇴가 완료됐어. 로그인 화면으로 이동할게.',
+        'success',
+      );
+      await signOutAfterWithdraw();
+      window.alert('회원탈퇴가 완료되었습니다.');
+      window.location.href = getWithdrawRedirectHref();
+    } catch (error) {
+      console.error('[mypage] withdraw failed:', error);
+      setWithdrawMessage(
+        withdrawMsgEl,
+        error?.message || '회원탈퇴 처리 중 오류가 발생했어.',
+        'error',
+      );
+      withdrawBtn.disabled = false;
+      withdrawBtn.setAttribute('aria-busy', 'false');
     }
   });
 
