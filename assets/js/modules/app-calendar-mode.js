@@ -14,6 +14,8 @@ const CALENDAR_PAGES = new Set([
   'signup',
   'find-password',
   'reset-password',
+  'prev-mypage',
+  'mypage',
 ]);
 
 function getPageName() {
@@ -49,12 +51,35 @@ function storeCalendarAppMode() {
   }
 }
 
+function getSessionValue(key) {
+  try {
+    return sessionStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function hasStoredCalendarAppMode() {
+  return getSessionValue(CALENDAR_APP_MODE_KEY) === APP_MODE_VALUE;
+}
+
+function hasCalendarRedirect() {
+  return ['authRedirectTo', 'redirectAfterLogin'].some((key) =>
+    getSessionValue(key).includes('app=calendar'),
+  );
+}
+
 export function isCalendarAppMode() {
   const page = getPageName();
 
+  if (hasCalendarAppQuery()) {
+    storeCalendarAppMode();
+    return true;
+  }
+
   if (!CALENDAR_PAGES.has(page)) return false;
 
-  if (hasCalendarAppQuery()) {
+  if (hasStoredCalendarAppMode() || hasCalendarRedirect()) {
     storeCalendarAppMode();
     return true;
   }
@@ -159,6 +184,8 @@ function keepCalendarLinksInAppMode() {
         'a[href*="signup.html"]',
         'a[href*="find-password.html"]',
         'a[href*="reset-password.html"]',
+        'a[href*="prev-mypage.html"]',
+        'a[href*="mypage.html"]',
       ].join(', '),
     )
     .forEach((link) => {

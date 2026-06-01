@@ -145,6 +145,7 @@
 ./android/app/src/main/assets/public/index.html
 ./android/app/src/main/assets/public/login.html
 ./android/app/src/main/assets/public/mypage.html
+./android/app/src/main/assets/public/prev-mypage.html
 ./android/app/src/main/assets/public/partials/footer.html
 ./android/app/src/main/assets/public/partials/header.html
 ./android/app/src/main/assets/public/privacy.html
@@ -595,6 +596,7 @@
 ./ios/App/App/public/index.html
 ./ios/App/App/public/login.html
 ./ios/App/App/public/mypage.html
+./ios/App/App/public/prev-mypage.html
 ./ios/App/App/public/partials/footer.html
 ./ios/App/App/public/partials/header.html
 ./ios/App/App/public/privacy.html
@@ -775,6 +777,7 @@
 ./www/index.html
 ./www/login.html
 ./www/mypage.html
+./www/prev-mypage.html
 ./www/partials/footer.html
 ./www/partials/header.html
 ./www/privacy.html

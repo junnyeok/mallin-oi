@@ -130,6 +130,24 @@ function hasCalendarAppQuery() {
   );
 }
 
+function getSessionValue(key) {
+  try {
+    return sessionStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function hasStoredCalendarAppMode() {
+  return getSessionValue(CALENDAR_APP_MODE_KEY) === APP_MODE_VALUE;
+}
+
+function hasCalendarRedirect() {
+  return [REDIRECT_KEY, 'redirectAfterLogin'].some((key) =>
+    getSessionValue(key).includes('app=calendar'),
+  );
+}
+
 function isNativeCapacitor() {
   return window.Capacitor?.isNativePlatform?.() === true;
 }
@@ -139,6 +157,8 @@ function isCalendarAppMode() {
     document.body?.dataset?.appMode === APP_MODE_VALUE ||
     document.documentElement.classList.contains('is-calendar-app-mode') ||
     hasCalendarAppQuery() ||
+    hasStoredCalendarAppMode() ||
+    hasCalendarRedirect() ||
     isNativeCapacitor()
   );
 }
@@ -182,11 +202,11 @@ export function signupHref() {
 }
 
 export function mypageHref() {
-  return resolveSitePath('mypage.html');
+  return withCalendarAppParam(resolveSitePath('mypage.html'));
 }
 
 export function prevMypageHref() {
-  return resolveSitePath('prev-mypage.html');
+  return withCalendarAppParam(resolveSitePath('prev-mypage.html'));
 }
 
 export function profileHref() {
@@ -525,7 +545,7 @@ export async function updateAuthUI() {
       const nickEl = document.createElement('a');
       nickEl.className = 'auth-link auth-nickname';
       nickEl.dataset.authNickname = 'true';
-      nickEl.href = isCalendarShell ? './mypage.html' : profileHref();
+      nickEl.href = isCalendarShell ? prevMypageHref() : profileHref();
       nickEl.textContent = isCalendarShell ? '계정 관리' : `${displayName}님`;
       if (isCalendarShell) {
         nickEl.setAttribute('aria-label', '계정 관리');

@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260531-01';
+const SITE_VERSION = '20260601-04';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -12,6 +12,7 @@ const APP_SHELL_FILES = [
   './index.html',
   './privacy.html',
   './app-calendar.html',
+  './prev-mypage.html',
   './mypage.html',
   './calendar-study.html',
   './calendar-work.html',

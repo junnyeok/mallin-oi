@@ -1,6 +1,6 @@
 // assets/js/modules/mypage.js
 import { supabase } from './supabase-client.js';
-import { signOutUser } from './auth-store.js';
+import { isMypageVerified, saveRedirect, signOutUser } from './auth-store.js';
 import { loadPostsByAuthorId } from './posts-repo.js';
 
 const MODULE_VERSION = encodeURIComponent(
@@ -16,12 +16,7 @@ function $(id) {
 }
 
 function saveRedirectHere() {
-  try {
-    sessionStorage.setItem(
-      'redirectAfterLogin',
-      `${window.location.pathname}${window.location.search}`,
-    );
-  } catch {}
+  saveRedirect(`${window.location.pathname}${window.location.search}`);
 }
 
 function isCalendarAppMode() {
@@ -36,6 +31,16 @@ function isCalendarAppMode() {
 
 function getWithdrawRedirectHref() {
   return isCalendarAppMode() ? './app-calendar.html?app=calendar' : './index.html';
+}
+
+function getLoginRedirectHref() {
+  return isCalendarAppMode() ? './login.html?app=calendar' : './login.html';
+}
+
+function getPrevMypageRedirectHref() {
+  return isCalendarAppMode()
+    ? './prev-mypage.html?app=calendar'
+    : './prev-mypage.html';
 }
 
 function setWithdrawMessage(el, message, type = '') {
@@ -336,7 +341,12 @@ export async function initMypage() {
 
   if (!user) {
     saveRedirectHere();
-    window.location.href = './login.html';
+    window.location.href = getLoginRedirectHref();
+    return;
+  }
+
+  if (!isMypageVerified()) {
+    window.location.href = getPrevMypageRedirectHref();
     return;
   }
 
@@ -491,8 +501,8 @@ export async function initMypage() {
   });
 
   logoutBtn?.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.href = './index.html';
+    await signOutUser();
+    window.location.href = getWithdrawRedirectHref();
   });
 
   withdrawBtn?.addEventListener('click', async () => {

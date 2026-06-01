@@ -8,6 +8,11 @@
   min-height: 60vh;
 }
 
+html.is-calendar-app-mode .mypage-main {
+  padding-top: calc(var(--space-24) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+}
+
 .mypage-card {
   width: 100%;
   max-width: 760px;

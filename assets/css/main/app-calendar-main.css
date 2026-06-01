@@ -295,7 +295,7 @@ html.is-calendar-app-mode .home-section {
 }
 
 .calendar-app-shell__actions .auth-nickname {
-  flex: 1 1 96px;
+  flex: 0 0 auto;
   max-width: 128px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -357,7 +357,7 @@ html.is-calendar-app-mode .home-section {
 
   .calendar-app-shell__auth,
   .calendar-app-shell__actions .auth-nickname {
-    flex-basis: 88px;
+    flex-basis: auto;
     max-width: 112px;
     padding: 0 var(--space-8);
   }

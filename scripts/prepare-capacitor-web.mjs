@@ -10,6 +10,7 @@ const calendarLauncherFile = 'app-calendar.html';
 const filesToCopy = [
   'login.html',
   calendarLauncherFile,
+  'prev-mypage.html',
   'mypage.html',
   'calendar-study.html',
   'calendar-work.html',
@@ -162,6 +163,7 @@ function assertRequiredFiles() {
   const required = [
     'index.html',
     'app-calendar.html',
+    'prev-mypage.html',
     'mypage.html',
     'calendar-study.html',
     'calendar-work.html',
@@ -185,6 +187,7 @@ function assertPreparedOutput() {
   const required = [
     'index.html',
     'app-calendar.html',
+    'prev-mypage.html',
     'mypage.html',
     'calendar-study.html',
     'calendar-work.html',
