@@ -10,8 +10,10 @@
 }
 
 html.is-calendar-app-mode .mypage-main {
-  padding-top: calc(var(--space-24) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+  padding-top: calc(
+    var(--space-32) + var(--space-24) + env(safe-area-inset-top)
+  );
+  padding-bottom: calc(var(--space-32) + env(safe-area-inset-bottom));
 }
 
 .calendar-app-back-row {
@@ -329,8 +331,10 @@ html.is-calendar-app-mode .calendar-app-back-row {
   }
 
   html.is-calendar-app-mode .mypage-main {
-    padding-top: calc(var(--space-24) + env(safe-area-inset-top));
-    padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+    padding-top: calc(
+      var(--space-32) + var(--space-24) + env(safe-area-inset-top)
+    );
+    padding-bottom: calc(var(--space-32) + env(safe-area-inset-bottom));
   }
 
   .mypage-card {

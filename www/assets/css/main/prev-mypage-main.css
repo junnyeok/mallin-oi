@@ -9,10 +9,12 @@
 }
 
 html.is-calendar-app-mode .prev-mypage-main {
-  justify-content: flex-start;
-  padding-top: calc(var(--space-24) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
-  min-height: 100vh;
+  justify-content: center;
+  padding-top: calc(
+    var(--space-32) + var(--space-24) + env(safe-area-inset-top)
+  );
+  padding-bottom: calc(var(--space-32) + env(safe-area-inset-bottom));
+  min-height: 100svh;
 }
 
 .calendar-app-back-row {
@@ -155,8 +157,10 @@ html.is-calendar-app-mode .calendar-app-back-row {
 
   html.is-calendar-app-mode .prev-mypage-main {
     align-items: center;
-    padding-top: calc(var(--space-24) + env(safe-area-inset-top));
-    padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+    padding-top: calc(
+      var(--space-32) + var(--space-24) + env(safe-area-inset-top)
+    );
+    padding-bottom: calc(var(--space-32) + env(safe-area-inset-bottom));
   }
 
   .prev-mypage-card {
