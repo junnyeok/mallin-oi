@@ -1394,180 +1394,171 @@ function revokePreviewUrl(item) {
   } catch {}
 }
 
-function buildInlineEmbedHtml(item, urlOverride = '') {
-  const type = String(item?.type || '').trim();
-  const mediaId = escapeAttr(item?.id || '');
-  const title = escapeHtml(item?.title || item?.fileName || '첨부');
-  const url = escapeAttr(urlOverride || item?.url || item?.previewUrl || '');
-  const originalUrl = escapeAttr(item?.originalUrl || item?.url || '');
+function setImagePreviewFallback(img, item) {
+  if (!img || !item?.file || String(item.type || '') !== 'image') return;
+
+  img.addEventListener(
+    'error',
+    () => {
+      const currentSrc = String(img.getAttribute('src') || '').trim();
+      if (!currentSrc.startsWith('blob:')) return;
+
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        const dataUrl = String(reader.result || '').trim();
+        if (!dataUrl) return;
+
+        img.src = dataUrl;
+        item.previewUrl = dataUrl;
+        syncBodyFromEditor({ normalize: false });
+      });
+      reader.readAsDataURL(item.file);
+    },
+    { once: true },
+  );
+}
+
+function createEmbedRemoveButton(mediaId, label) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'write-embed__remove write-embed__remove--floating';
+  button.dataset.embedRemove = mediaId;
+  button.setAttribute('aria-label', label);
+  button.textContent = '삭제';
+  return button;
+}
+
+function createMediaEmbedNode(item, url, title, type) {
+  const figure = document.createElement('figure');
+  figure.className = 'write-embed write-embed--media';
+  figure.dataset.mediaId = String(item?.id || '');
+  figure.dataset.mediaType = type;
+  figure.dataset.align = 'left';
+  figure.contentEditable = 'false';
+  figure.appendChild(
+    createEmbedRemoveButton(
+      String(item?.id || ''),
+      type === 'image' ? '이미지 삭제' : '동영상 삭제',
+    ),
+  );
 
   if (type === 'image') {
-    return `
-      <figure
-        class="write-embed write-embed--media"
-        data-media-id="${mediaId}"
-        data-media-type="image"
-        data-align="left"
-        contenteditable="false"
-      >
-        <button
-          type="button"
-          class="write-embed__remove write-embed__remove--floating"
-          data-embed-remove="${mediaId}"
-          aria-label="이미지 삭제"
-        >
-          삭제
-        </button>
-        <img
-          class="write-embed__media-el"
-          src="${url}"
-          alt="${title}"
-          loading="lazy"
-        />
-      </figure>
-    `;
+    const img = document.createElement('img');
+    img.className = 'write-embed__media-el';
+    img.src = url;
+    img.alt = title;
+    img.loading = 'lazy';
+    setImagePreviewFallback(img, item);
+    figure.appendChild(img);
+    return figure;
   }
 
-  if (type === 'video') {
-    return `
-      <figure
-        class="write-embed write-embed--media"
-        data-media-id="${mediaId}"
-        data-media-type="video"
-        data-align="left"
-        contenteditable="false"
-      >
-        <button
-          type="button"
-          class="write-embed__remove write-embed__remove--floating"
-          data-embed-remove="${mediaId}"
-          aria-label="동영상 삭제"
-        >
-          삭제
-        </button>
-        <video
-          class="write-embed__media-el"
-          src="${url}"
-          controls
-          playsinline
-          preload="metadata"
-        ></video>
-      </figure>
-    `;
+  const video = document.createElement('video');
+  video.className = 'write-embed__media-el';
+  video.src = url;
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = 'metadata';
+  figure.appendChild(video);
+  return figure;
+}
+
+function createVideoLinkEmbedNode(item, url, title, originalUrl) {
+  const embedKind = String(item?.embedKind || 'direct').trim();
+  const figure = document.createElement('figure');
+  figure.className = 'write-embed write-embed--media write-embed--video-link';
+  figure.dataset.mediaId = String(item?.id || '');
+  figure.dataset.mediaType = 'video-link';
+  figure.dataset.align = 'left';
+  figure.contentEditable = 'false';
+  figure.appendChild(
+    createEmbedRemoveButton(String(item?.id || ''), '동영상 링크 삭제'),
+  );
+
+  if (embedKind === 'youtube') {
+    const ratio = document.createElement('div');
+    ratio.className = 'write-embed__ratio';
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'write-embed__iframe';
+    iframe.src = url;
+    iframe.title = title;
+    iframe.loading = 'lazy';
+    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+    iframe.allow =
+      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.allowFullscreen = true;
+    ratio.appendChild(iframe);
+    figure.appendChild(ratio);
+  } else {
+    const video = document.createElement('video');
+    video.className = 'write-embed__media-el';
+    video.src = url;
+    video.controls = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    figure.appendChild(video);
+  }
+
+  const link = document.createElement('a');
+  link.className = 'write-embed__file-link write-embed__external-link';
+  link.href = originalUrl || url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = '원본 링크 열기';
+  figure.appendChild(link);
+
+  return figure;
+}
+
+function createFileEmbedNode(item, url, title) {
+  const wrap = document.createElement('div');
+  wrap.className = 'write-embed write-embed--file';
+  wrap.dataset.mediaId = String(item?.id || '');
+  wrap.dataset.mediaType = 'file';
+  wrap.dataset.align = 'left';
+  wrap.contentEditable = 'false';
+  wrap.appendChild(createEmbedRemoveButton(String(item?.id || ''), '파일 삭제'));
+
+  const fileCard = document.createElement('div');
+  fileCard.className = 'write-embed__file';
+
+  const name = document.createElement('strong');
+  name.className = 'write-embed__file-name';
+  name.textContent = title;
+  fileCard.appendChild(name);
+
+  const link = document.createElement('a');
+  link.className = 'write-embed__file-link';
+  link.href = url || '#';
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = '파일 열기';
+  fileCard.appendChild(link);
+
+  wrap.appendChild(fileCard);
+  return wrap;
+}
+
+function createInlineEmbedNode(item, urlOverride = '') {
+  const type = String(item?.type || '').trim();
+  const title = String(item?.title || item?.fileName || '첨부');
+  const url = String(urlOverride || item?.url || item?.previewUrl || '').trim();
+  const originalUrl = String(item?.originalUrl || item?.url || '').trim();
+
+  if (type === 'image' || type === 'video') {
+    return createMediaEmbedNode(item, url, title, type);
   }
 
   if (type === 'video-link') {
-    const embedKind = String(item?.embedKind || 'direct').trim();
-
-    if (embedKind === 'youtube') {
-      return `
-        <figure
-          class="write-embed write-embed--media write-embed--video-link"
-          data-media-id="${mediaId}"
-          data-media-type="video-link"
-          data-align="left"
-          contenteditable="false"
-        >
-          <button
-            type="button"
-            class="write-embed__remove write-embed__remove--floating"
-            data-embed-remove="${mediaId}"
-            aria-label="동영상 링크 삭제"
-          >
-            삭제
-          </button>
-
-          <div class="write-embed__ratio">
-            <iframe
-              class="write-embed__iframe"
-              src="${url}"
-              title="${title}"
-              loading="lazy"
-              referrerpolicy="strict-origin-when-cross-origin"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen
-            ></iframe>
-          </div>
-
-          <a
-            class="write-embed__file-link write-embed__external-link"
-            href="${originalUrl}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            원본 링크 열기
-          </a>
-        </figure>
-      `;
-    }
-
-    return `
-      <figure
-        class="write-embed write-embed--media write-embed--video-link"
-        data-media-id="${mediaId}"
-        data-media-type="video-link"
-        data-align="left"
-        contenteditable="false"
-      >
-        <button
-          type="button"
-          class="write-embed__remove write-embed__remove--floating"
-          data-embed-remove="${mediaId}"
-          aria-label="동영상 링크 삭제"
-        >
-          삭제
-        </button>
-
-        <video
-          class="write-embed__media-el"
-          src="${url}"
-          controls
-          playsinline
-          preload="metadata"
-        ></video>
-
-        <a
-          class="write-embed__file-link write-embed__external-link"
-          href="${originalUrl || url}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          원본 링크 열기
-        </a>
-      </figure>
-    `;
+    return createVideoLinkEmbedNode(item, url, title, originalUrl);
   }
 
-  return `
-    <div
-      class="write-embed write-embed--file"
-      data-media-id="${mediaId}"
-      data-media-type="file"
-      data-align="left"
-      contenteditable="false"
-    >
-      <button
-        type="button"
-        class="write-embed__remove write-embed__remove--floating"
-        data-embed-remove="${mediaId}"
-        aria-label="파일 삭제"
-      >
-        삭제
-      </button>
+  return createFileEmbedNode(item, url, title);
+}
 
-      <div class="write-embed__file">
-        <strong class="write-embed__file-name">${title}</strong>
-        <a
-          class="write-embed__file-link"
-          href="${url || '#'}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          파일 열기
-        </a>
-      </div>
-    </div>
-  `;
+function buildInlineEmbedHtml(item, urlOverride = '') {
+  return createInlineEmbedNode(item, urlOverride)?.outerHTML || '';
 }
 
 function removeEmbedById(id) {
@@ -1581,7 +1572,7 @@ function removeEmbedById(id) {
 }
 
 function insertAttachmentIntoEditor(item) {
-  const node = createEmbedNodeFromHtml(buildInlineEmbedHtml(item));
+  const node = createInlineEmbedNode(item);
   if (!node) return;
 
   insertNodeAtCaret(node);
@@ -2045,7 +2036,7 @@ function appendMissingExistingAttachmentsToEditor(items = []) {
   items.forEach((item) => {
     if (!item?.id || currentIds.has(item.id)) return;
 
-    const node = createEmbedNodeFromHtml(buildInlineEmbedHtml(item, item.url));
+    const node = createInlineEmbedNode(item, item.url);
     if (!node) return;
 
     editor.insertAdjacentHTML('beforeend', '<p><br></p>');
