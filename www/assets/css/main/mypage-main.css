@@ -2,8 +2,9 @@
 
 .mypage-main {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
   padding: var(--space-32);
   min-height: 60vh;
 }
@@ -11,6 +12,38 @@
 html.is-calendar-app-mode .mypage-main {
   padding-top: calc(var(--space-24) + env(safe-area-inset-top));
   padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+}
+
+.calendar-app-back-row {
+  display: none;
+}
+
+html.is-calendar-app-mode .calendar-app-back-row {
+  display: flex;
+  width: 100%;
+  max-width: 760px;
+  margin-bottom: var(--space-16);
+}
+
+.calendar-app-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: var(--line-body);
+  text-decoration: none;
+  box-shadow: var(--shadow-card);
+}
+
+.calendar-app-back-link:hover {
+  opacity: 0.9;
 }
 
 .mypage-card {
@@ -293,6 +326,11 @@ html.is-calendar-app-mode .mypage-main {
 @media (max-width: 700px) {
   .mypage-main {
     padding: var(--space-24);
+  }
+
+  html.is-calendar-app-mode .mypage-main {
+    padding-top: calc(var(--space-24) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
   }
 
   .mypage-card {
