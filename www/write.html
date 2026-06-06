@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>새 글 쓰기 | 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+    <!-- 공통 -->
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/utilities.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+
+    <!-- write page main -->
+    <link rel="stylesheet" href="./assets/css/main/write-main.css" />
+  </head>
+
+  <body class="theme-home" data-page="write">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="site-main">
+        <section class="write">
+          <div class="container">
+            <header class="write__head">
+              <h1 class="write__title">새 글 쓰기</h1>
+              <p class="write__desc">
+                이제 글은 수파베이스 DB에 바로 저장돼. 등록하면 자동으로
+                전체보기와 상세 페이지에 반영돼.
+              </p>
+            </header>
+
+            <div class="write__grid" style="grid-template-columns: 1fr">
+              <section class="write-card" aria-label="새 글 입력">
+                <form class="write-form" id="writeForm">
+                  <div class="write-row">
+                    <label class="write-label" for="title">제목 *</label>
+                    <input
+                      class="write-control"
+                      id="title"
+                      type="text"
+                      placeholder="제목을 입력"
+                    />
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="excerpt"
+                      >요약(Excerpt) *</label
+                    >
+                    <textarea
+                      class="write-control write-control--area"
+                      id="excerpt"
+                      rows="3"
+                      placeholder="목록에 보일 짧은 요약"
+                    ></textarea>
+                  </div>
+
+                  <!-- 카테고리 / 태그를 본문 위로 이동 -->
+                  <div class="write-row">
+                    <label class="write-label" for="category">카테고리</label>
+                    <select class="write-control" id="category">
+                      <option value="study">study (자기개발)</option>
+                      <option value="work">work (업무)</option>
+                      <option value="event">event (이벤트)</option>
+                      <option value="career">career (이력)</option>
+                    </select>
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="tags"
+                      >태그(쉼표로 구분)</label
+                    >
+                    <input
+                      class="write-control"
+                      id="tags"
+                      type="text"
+                      placeholder="예: 코딩, css, layout"
+                    />
+                    <p class="write-help">
+                      #은 붙여도 자동으로 제거돼. 중복 태그는 알아서 정리함.
+                    </p>
+                  </div>
+
+                  <div
+                    class="comment-form__tools emoticon-picker-box write-editor-tools"
+                  >
+                    <button
+                      type="button"
+                      class="comment-emoticon-toggle write-emoticon-toggle"
+                      id="writeEmoticonToggle"
+                      disabled
+                    >
+                      🥒 이모티콘
+                    </button>
+
+                    <div
+                      class="emoticon-picker"
+                      id="writeEmoticonPanel"
+                      hidden
+                      aria-label="보유 이모티콘"
+                    ></div>
+                  </div>
+
+                  <div class="write-row">
+                    <label class="write-label" for="bodyEditor"
+                      >글내용(본문) *</label
+                    >
+
+                    <div class="write-editor-wrap">
+                      <div
+                        class="write-editor"
+                        id="bodyEditor"
+                        contenteditable="true"
+                        spellcheck="false"
+                        data-placeholder="여기에 본문을 입력해. 사진/영상/파일을 업로드하면 현재 커서 위치에 바로 들어가."
+                      ></div>
+
+                      <!-- 실제 저장용 -->
+                      <textarea
+                        class="write-control write-control--area write-control--body write-hidden-textarea"
+                        id="body"
+                        rows="12"
+                        aria-hidden="true"
+                        tabindex="-1"
+                      ></textarea>
+                    </div>
+
+                    <p class="write-help">
+                      글을 쓰다가 필요한 위치에서 바로 첨부를 넣을 수 있어.
+                      사진, 영상, 파일은 현재 커서 위치에 순서대로 들어가고,
+                      첨부 후에는 삭제만 가능해. 본문 박스 오른쪽 아래를
+                      드래그하면 높이도 조절할 수 있어.
+                    </p>
+                  </div>
+
+                  <!-- 첨부 -->
+                  <div class="write-row">
+                    <p class="write-label">첨부</p>
+
+                    <div class="write-attach-box">
+                      <p class="write-attach-note">
+                        사진은 10MB 이하, 동영상은 100MB 이하, 일반 파일은
+                        30MB 이하만 직접 업로드할 수 있어. 긴 영상이나 고화질
+                        영상은 용량이 커서 직접 업로드보다 유튜브 링크 삽입을
+                        권장해. 큰 파일은 zip으로 압축하거나 외부 링크를
+                        활용해줘.
+                      </p>
+                      <p
+                        id="writeAttachNotice"
+                        class="write-attach-notice"
+                        aria-live="polite"
+                      ></p>
+
+                      <div class="write-upload-grid">
+                        <label class="write-upload-tile" for="writeImage">
+                          <span class="write-upload-tile__icon">🖼️</span>
+                          <span class="write-upload-tile__title"
+                            >사진 업로드</span
+                          >
+                          <span class="write-upload-tile__desc"
+                            >jpg, png, webp / 최대 10MB</span
+                          >
+                        </label>
+                        <input
+                          id="writeImage"
+                          class="write-hidden-file"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                        />
+
+                        <label class="write-upload-tile" for="writeVideo">
+                          <span class="write-upload-tile__icon">🎬</span>
+                          <span class="write-upload-tile__title"
+                            >영상 업로드</span
+                          >
+                          <span class="write-upload-tile__desc"
+                            >mp4, mov, webm / 최대 100MB</span
+                          >
+                        </label>
+                        <input
+                          id="writeVideo"
+                          class="write-hidden-file"
+                          type="file"
+                          accept="video/*"
+                          multiple
+                        />
+
+                        <label class="write-upload-tile" for="writeFile">
+                          <span class="write-upload-tile__icon">📎</span>
+                          <span class="write-upload-tile__title"
+                            >파일 업로드</span
+                          >
+                          <span class="write-upload-tile__desc"
+                            >pdf, hwp, docx, zip / 최대 30MB</span
+                          >
+                        </label>
+                        <input
+                          id="writeFile"
+                          class="write-hidden-file"
+                          type="file"
+                          multiple
+                        />
+                      </div>
+
+                      <div class="write-link-box">
+                        <label class="write-label" for="writeVideoLink"
+                          >동영상 링크 삽입</label
+                        >
+                        <div class="write-link-row">
+                          <input
+                            id="writeVideoLink"
+                            class="write-control"
+                            type="url"
+                            placeholder="유튜브 링크 또는 직접 재생 가능한 mp4/webm 링크를 넣어줘"
+                            inputmode="url"
+                          />
+                          <button
+                            id="writeVideoLinkAddBtn"
+                            class="btn btn--ghost write-link-btn"
+                            type="button"
+                          >
+                            링크 넣기
+                          </button>
+                        </div>
+                        <p class="write-help write-help--compact">
+                          지원 예시: youtube.com, youtu.be, 직접 재생 가능한
+                          mp4/webm 링크. 긴 영상은 유튜브에 일부 공개로 올린 뒤
+                          링크를 넣는 걸 추천해.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 관리자만 표시 -->
+                  <div
+                    class="write-row"
+                    id="pinnedRow"
+                    hidden
+                    aria-hidden="true"
+                  >
+                    <label class="write-check">
+                      <input id="pinned" type="checkbox" />
+                      고정글(pinned)
+                    </label>
+                  </div>
+
+                  <!-- 비밀글 -->
+                  <div class="write-row">
+                    <label class="write-label" for="isPrivate">비밀글</label>
+
+                    <div class="write-private">
+                      <label class="write-check">
+                        <input id="isPrivate" type="checkbox" />
+                        비밀글로 등록
+                      </label>
+
+                      <div
+                        class="write-private__pw"
+                        id="privatePasswordRow"
+                        hidden
+                      >
+                        <input
+                          class="write-control"
+                          id="privatePassword"
+                          type="password"
+                          minlength="4"
+                          maxlength="30"
+                          placeholder="비밀글 비밀번호 입력 (4~30자)"
+                          autocomplete="new-password"
+                        />
+                        <p class="write-help">
+                          비밀글 체크 시 비밀번호를 꼭 입력해야 해. 수정
+                          모드에서는 비워두면 기존 비밀번호를 유지해.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="write-actions">
+                    <button
+                      class="write-action"
+                      id="writeSubmitBtn"
+                      type="submit"
+                    >
+                      등록
+                    </button>
+                  </div>
+
+                  <p class="write-note" id="writeNote" aria-live="polite"></p>
+                </form>
+              </section>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

@@ -26,6 +26,15 @@ function navigateWithPjax(url) {
   const href = String(url || '').trim();
   if (!href) return;
 
+  const pjaxNavigate = window.__mallinNavigate;
+  if (typeof pjaxNavigate === 'function') {
+    pjaxNavigate(href).catch((error) => {
+      console.warn('[write] PJAX navigation failed, fallback 사용:', error);
+      window.location.href = href;
+    });
+    return;
+  }
+
   const tempLink = document.createElement('a');
   tempLink.href = href;
   tempLink.style.display = 'none';
@@ -124,6 +133,48 @@ async function getCurrentUser() {
   return data.user || null;
 }
 
+function getReadableErrorMessage(error, fallback = '잠시 후 다시 시도해줘.') {
+  if (!error) return fallback;
+
+  const message =
+    error.message ||
+    error.error_description ||
+    error.details ||
+    error.hint ||
+    (typeof error === 'string' ? error : '');
+
+  return String(message || fallback).trim() || fallback;
+}
+
+function formatSaveErrorMessage(error) {
+  const raw = getReadableErrorMessage(error, '');
+
+  if (!raw) {
+    return '저장 중 문제가 생겼어. 잠시 후 다시 시도해줘.';
+  }
+
+  if (/jwt|session|auth|token|login|로그인|인증/i.test(raw)) {
+    return '로그인 시간이 만료된 것 같아. 다시 로그인한 뒤 저장해줘.';
+  }
+
+  if (/storage|upload|bucket|object|첨부|업로드/i.test(raw)) {
+    return raw;
+  }
+
+  return `저장 중 문제가 생겼어. ${raw}`;
+}
+
+function redirectToLoginSoon(note) {
+  saveRedirectHere();
+  if (note) {
+    note.textContent = '로그인이 필요해. 로그인 페이지로 이동할게.';
+  }
+
+  window.setTimeout(() => {
+    navigateWithPjax('./login.html');
+  }, 500);
+}
+
 function toBoolean(value) {
   if (value === true) return true;
   if (value === false) return false;
@@ -187,16 +238,6 @@ function setPinnedUiVisible(isAdmin) {
   const row = $('#pinnedRow');
   if (!row) return;
   row.hidden = !isAdmin;
-}
-
-function resetAttachmentInputs() {
-  const fileInput = $('#writeFile');
-  const imageInput = $('#writeImage');
-  const videoInput = $('#writeVideo');
-
-  if (fileInput) fileInput.value = '';
-  if (imageInput) imageInput.value = '';
-  if (videoInput) videoInput.value = '';
 }
 
 function formatBytes(bytes) {
@@ -1888,7 +1929,13 @@ async function uploadSingleAttachment(user, item) {
       contentType: item.file.type || undefined,
     });
 
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    const message = getReadableErrorMessage(
+      uploadError,
+      '첨부 업로드에 실패했어.',
+    );
+    throw new Error(`${item.file.name || item.fileName || '첨부'} 업로드 실패: ${message}`);
+  }
 
   const { data: publicData } = supabase.storage
     .from(STORAGE_BUCKET)
@@ -1905,22 +1952,54 @@ async function uploadSingleAttachment(user, item) {
     fileName: item.file.name || item.fileName || '',
     mimeType: item.file.type || item.mimeType || '',
     size: Number(item.file.size || item.size || 0),
+    uploadedThisSave: true,
   };
 }
 
-async function uploadAllAttachments(user, note) {
+async function cleanupUploadedStorageObjects(paths = []) {
+  const safePaths = [...new Set(paths.filter(Boolean))];
+  if (!safePaths.length) return;
+
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .remove(safePaths);
+
+  if (error) {
+    console.error('[write] uploaded storage cleanup failed:', error);
+  }
+}
+
+async function uploadAllAttachments(user, note, uploadedStoragePaths = []) {
   const result = [];
 
-  for (const item of attachmentState) {
+  const items = [...attachmentState];
+
+  try {
+    for (const item of items) {
+      const index = result.length + 1;
+
+      if (note) {
+        note.textContent = `첨부 업로드 중... (${index}/${items.length})`;
+      }
+
+      const uploaded = await uploadSingleAttachment(user, item);
+      result.push(uploaded);
+
+      if (uploaded.uploadedThisSave && uploaded.path) {
+        uploadedStoragePaths.push(uploaded.path);
+      }
+    }
+  } catch (error) {
     if (note) {
-      note.textContent = `첨부 업로드 중... (${result.length + 1}/${attachmentState.length})`;
+      note.textContent = '첨부 업로드 중 문제가 생겨서 정리하고 있어.';
     }
 
-    const uploaded = await uploadSingleAttachment(user, item);
-    result.push(uploaded);
+    await cleanupUploadedStorageObjects(uploadedStoragePaths);
+    uploadedStoragePaths.length = 0;
+    throw error;
   }
 
-  return result;
+  return result.map(({ uploadedThisSave, ...item }) => item);
 }
 
 function applyUploadedMediaToEditor(mediaItems = []) {
@@ -2109,6 +2188,8 @@ function fillWriteForm(post, isAdmin) {
 export async function initWrite() {
   const form = $('#writeForm');
   if (!form) return;
+  if (form.dataset.writeInitialized === 'true') return;
+  form.dataset.writeInitialized = 'true';
 
   const note = $('#writeNote');
   const submitBtn = $('#writeSubmitBtn');
@@ -2174,6 +2255,11 @@ export async function initWrite() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    if (form.dataset.writeSaving === 'true') {
+      if (note) note.textContent = '이미 저장 중이야. 잠시만 기다려줘.';
+      return;
+    }
+
     const title = $('#title')?.value?.trim() || '';
     const excerpt = $('#excerpt')?.value?.trim() || '';
     const body = syncBodyFromEditor().trim();
@@ -2202,17 +2288,35 @@ export async function initWrite() {
       }
     }
 
+    form.dataset.writeSaving = 'true';
+    let shouldRestoreSubmit = true;
+    let uploadedStoragePaths = [];
+
     if (note) {
       note.textContent = editPostId ? '수정 준비 중...' : '등록 준비 중...';
     }
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const mediaItems = await uploadAllAttachments(user, note);
+      const freshUser = await getCurrentUser();
+
+      if (!freshUser?.id) {
+        shouldRestoreSubmit = false;
+        redirectToLoginSoon(note);
+        return;
+      }
+
+      const mediaItems = await uploadAllAttachments(
+        freshUser,
+        note,
+        uploadedStoragePaths,
+      );
       const finalBody = buildPersistedBodyHtml(mediaItems);
 
       if (!finalBody) {
         if (note) note.textContent = '본문 내용을 다시 확인해줘.';
+        await cleanupUploadedStorageObjects(uploadedStoragePaths);
+        uploadedStoragePaths = [];
         return;
       }
 
@@ -2240,14 +2344,16 @@ export async function initWrite() {
           .from('posts')
           .update(payload)
           .eq('id', editPostId)
-          .eq('author_id', user.id);
+          .eq('author_id', freshUser.id);
 
         if (error) throw error;
 
+        uploadedStoragePaths = [];
         await deleteRemovedStorageObjects();
 
         if (note) note.textContent = '수정 완료! 상세 페이지로 이동할게.';
 
+        shouldRestoreSubmit = false;
         setTimeout(() => {
           navigateWithPjax(`./post.html?id=${editPostId}`);
         }, 400);
@@ -2263,8 +2369,8 @@ export async function initWrite() {
         tags,
         pinned,
         media_items: mediaItems,
-        author_id: user.id,
-        author_nickname: getNicknameFromUser(user),
+        author_id: freshUser.id,
+        author_nickname: getNicknameFromUser(freshUser),
         is_private: isPrivate,
         secret_password_hash: isPrivate
           ? await sha256Hex(privatePassword)
@@ -2278,8 +2384,12 @@ export async function initWrite() {
         .single();
 
       if (error) throw error;
+      uploadedStoragePaths = [];
 
-      const rewardGranted = await hasPostCreatePickleReward(user.id, data.id);
+      const rewardGranted = await hasPostCreatePickleReward(
+        freshUser.id,
+        data.id,
+      );
 
       if (note) {
         note.textContent = rewardGranted
@@ -2288,38 +2398,30 @@ export async function initWrite() {
       }
 
       if (rewardGranted) {
-        playPickleBurst({
-          originEl: submitBtn,
-          count: 10,
-        });
+        try {
+          playPickleBurst({
+            originEl: submitBtn,
+            count: 10,
+          });
+        } catch (effectError) {
+          console.warn('[write] pickle burst failed:', effectError);
+        }
       }
 
-      form.reset();
-      resetAttachmentInputs();
-
-      attachmentState.forEach((item) => revokePreviewUrl(item));
-      attachmentState = [];
-      removedStoragePaths = new Set();
-
-      if (editor) {
-        editor.innerHTML = '';
-        normalizeEditorParagraphs(editor);
-        updateEditorEmptyState(editor);
-      }
-
-      renderAttachmentList();
-      setPinnedUiVisible(isAdmin);
-      syncPrivatePasswordUi(false);
-      syncBodyFromEditor();
-
+      shouldRestoreSubmit = false;
       setTimeout(() => {
         navigateWithPjax(`./post.html?id=${data.id}`);
       }, 700);
     } catch (error) {
       console.error('[write] save failed:', error);
-      if (note) note.textContent = `저장 실패: ${error.message}`;
+      await cleanupUploadedStorageObjects(uploadedStoragePaths);
+      uploadedStoragePaths = [];
+      if (note) note.textContent = formatSaveErrorMessage(error);
     } finally {
-      if (submitBtn) submitBtn.disabled = false;
+      if (shouldRestoreSubmit) {
+        form.dataset.writeSaving = 'false';
+        if (submitBtn) submitBtn.disabled = false;
+      }
     }
   });
 }

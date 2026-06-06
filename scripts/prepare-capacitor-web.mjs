@@ -9,6 +9,7 @@ const calendarLauncherFile = 'app-calendar.html';
 
 const filesToCopy = [
   'login.html',
+  'write.html',
   calendarLauncherFile,
   'prev-mypage.html',
   'mypage.html',
@@ -195,6 +196,7 @@ function assertPreparedOutput() {
     'calendar-groups.html',
     'privacy.html',
     'login.html',
+    'write.html',
     'assets/version.json',
     'assets/css/01-tokens.css',
     'assets/css/components/forms.css',

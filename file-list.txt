@@ -782,3 +782,4 @@
 ./www/partials/header.html
 ./www/privacy.html
 ./www/site.webmanifest
+./www/write.html
