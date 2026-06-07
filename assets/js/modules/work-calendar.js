@@ -13,6 +13,12 @@ import {
   initCalendarGroupBar,
   isCalendarGroupActive,
 } from './calendar-groups.js';
+import {
+  createSharedPersonalControls,
+  fetchSharedPersonalGroups,
+  getCalendarLabel,
+  getSharedPersonalGroupName,
+} from './calendar-shared-personal.js';
 
 const TABLE_NAME = 'work_calendar_todos';
 const CATEGORY_TABLE_NAME = 'work_calendar_categories';
@@ -301,7 +307,7 @@ async function fetchUserCategories(userId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
     )
     .eq('user_id', userId)
     .order('sort_order', { ascending: true })
@@ -313,6 +319,26 @@ async function fetchUserCategories(userId) {
   }
 
   return sortCategories(data || []);
+}
+
+async function fetchCategoryById(userId, categoryId) {
+  if (!userId || !categoryId) return null;
+
+  const { data, error } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .select(
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
+    )
+    .eq('user_id', userId)
+    .eq('id', categoryId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[work-calendar] fetchCategoryById error:', error.message);
+    throw error;
+  }
+
+  return data || null;
 }
 
 async function ensureDefaultCategories(userId) {
@@ -441,8 +467,31 @@ async function fetchUserTodosInMonth(userId, viewDate) {
 }
 
 async function insertTodo({ userId, dateKey, memo, category }) {
-  const safeCategory = category || DEFAULT_CATEGORIES[4];
+  const latestCategory = category?.id
+    ? await fetchCategoryById(userId, category.id)
+    : null;
+  const safeCategory = latestCategory || category || DEFAULT_CATEGORIES[4];
   const workText = String(safeCategory.name || '기타').trim();
+  const shouldShare = Boolean(
+    safeCategory.is_shared_personal && safeCategory.shared_group_id,
+  );
+
+  if (shouldShare) {
+    const { data, error } = await supabase
+      .rpc('create_work_calendar_todo_with_shared_personal', {
+        p_work_date: dateKey,
+        p_category_id: safeCategory.id || null,
+        p_memo: memo || '',
+      })
+      .single();
+
+    if (error) {
+      console.error('[work-calendar] shared insertTodo error:', error.message);
+      throw error;
+    }
+
+    return normalizeTodo(data);
+  }
 
   const { data, error } = await supabase
     .from(TABLE_NAME)
@@ -594,9 +643,11 @@ async function insertCategory({ userId, name, color, sortOrder }) {
       color: normalizeColor(color),
       is_default: false,
       sort_order: sortOrder || 100,
+      is_shared_personal: false,
+      shared_group_id: null,
     })
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
     )
     .single();
 
@@ -608,16 +659,24 @@ async function insertCategory({ userId, name, color, sortOrder }) {
   return data;
 }
 
-async function updateCategory({ categoryId, name, color }) {
+async function updateCategory({
+  categoryId,
+  name,
+  color,
+  isSharedPersonal,
+  sharedGroupId,
+}) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .update({
       name: normalizeCategoryName(name),
       color: normalizeColor(color),
+      is_shared_personal: Boolean(isSharedPersonal),
+      shared_group_id: isSharedPersonal ? sharedGroupId : null,
     })
     .eq('id', categoryId)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
     )
     .single();
 
@@ -658,10 +717,10 @@ async function deleteCategoryById(categoryId) {
   }
 }
 
-function renderCategorySelect(select, categories = []) {
+function renderCategorySelect(select, categories = [], preferredValue = '') {
   if (!select) return;
 
-  const currentValue = select.value;
+  const currentValue = preferredValue || select.value;
   select.innerHTML = '';
 
   categories.forEach((category) => {
@@ -708,7 +767,13 @@ function renderCategoryPalette({ root, colorInput }) {
   });
 }
 
-function renderCategoryList({ root, categories, onSave, onDelete }) {
+function renderCategoryList({
+  root,
+  categories,
+  groups,
+  onSave,
+  onDelete,
+}) {
   if (!root) return;
 
   root.innerHTML = '';
@@ -737,11 +802,31 @@ function renderCategoryList({ root, categories, onSave, onDelete }) {
     deleteButton.type = 'button';
     deleteButton.disabled = Boolean(category.is_default);
 
+    const sharedControls = createSharedPersonalControls({
+      prefix: 'work',
+      groups,
+      category,
+      selectLabel: `${getCalendarLabel('work')} 우리 일정 그룹 선택`,
+    });
+    const sharedGroupName = getSharedPersonalGroupName(category, groups);
+
+    if (sharedGroupName) {
+      sharedControls.element.title = `${sharedGroupName} 그룹 멤버 개인 캘린더에 함께 추가돼.`;
+    }
+
     saveButton.addEventListener('click', () => {
+      const sharedValue = sharedControls.getValue();
+
+      if (sharedValue.isSharedPersonal && !sharedValue.sharedGroupId) {
+        alert('우리 일정으로 쓸 그룹을 선택해줘.');
+        return;
+      }
+
       onSave?.({
         category,
         name: input.value,
         color: color.value,
+        ...sharedValue,
       });
     });
 
@@ -749,7 +834,7 @@ function renderCategoryList({ root, categories, onSave, onDelete }) {
       onDelete?.(category);
     });
 
-    item.append(dot, input, color, saveButton, deleteButton);
+    item.append(dot, input, color, saveButton, deleteButton, sharedControls.element);
     root.append(item);
   });
 }
@@ -1141,10 +1226,24 @@ async function initPageCalendar() {
     viewDate: new Date(),
     selectedDateKey: todayKey,
     categories: await ensureDefaultCategories(user.id),
+    sharedGroups: await fetchSharedPersonalGroups('work'),
     store: await fetchUserTodos(user.id),
     onSelect: null,
     group: null,
   };
+
+  function getLatestCategoryById(categoryId) {
+    return (
+      state.categories.find((item) => item.id === categoryId) ||
+      getFallbackCategory(state.categories)
+    );
+  }
+
+  async function refreshCategories(preferredValue = typeSelect.value) {
+    state.categories = await fetchUserCategories(state.userId);
+    renderCategorySelect(typeSelect, state.categories, preferredValue);
+    return getLatestCategoryById(preferredValue);
+  }
 
   function renderAll() {
     renderCategorySelect(typeSelect, state.categories);
@@ -1164,6 +1263,7 @@ async function initPageCalendar() {
     renderCategoryList({
       root: categoryList,
       categories: state.categories,
+      groups: state.sharedGroups,
       onSave: saveCategory,
       onDelete: removeCategory,
     });
@@ -1371,7 +1471,13 @@ async function initPageCalendar() {
     }
   }
 
-  async function saveCategory({ category, name, color }) {
+  async function saveCategory({
+    category,
+    name,
+    color,
+    isSharedPersonal,
+    sharedGroupId,
+  }) {
     const safeName = normalizeCategoryName(name);
     const safeColor = normalizeColor(color);
 
@@ -1396,12 +1502,17 @@ async function initPageCalendar() {
         categoryId: category.id,
         name: safeName,
         color: safeColor,
+        isSharedPersonal,
+        sharedGroupId,
       });
+
+      const selectedCategoryId = typeSelect.value;
 
       state.categories = state.categories.map((item) =>
         item.id === updatedCategory.id ? updatedCategory : item,
       );
 
+      await refreshCategories(selectedCategoryId);
       renderAll();
     } catch (error) {
       alert('카테고리 수정에 실패했어. 잠시 후 다시 시도해줘.');
@@ -1544,17 +1655,17 @@ async function initPageCalendar() {
     event.preventDefault();
 
     const memo = memoInput.value.trim();
-    const category =
-      state.categories.find((item) => item.id === typeSelect.value) ||
-      getFallbackCategory(state.categories);
-
-    if (!category?.id) {
-      alert('근무형태를 선택해줘.');
-      typeSelect.focus();
-      return;
-    }
+    const selectedCategoryId = typeSelect.value;
 
     try {
+      const category = await refreshCategories(selectedCategoryId);
+
+      if (!category?.id) {
+        alert('근무형태를 선택해줘.');
+        typeSelect.focus();
+        return;
+      }
+
       const nextTodo = await insertTodo({
         userId: state.userId,
         dateKey: state.selectedDateKey,

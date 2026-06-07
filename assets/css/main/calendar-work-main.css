@@ -919,6 +919,49 @@ body.work-category-modal-open {
   cursor: not-allowed;
 }
 
+.work-category-shared {
+  grid-column: 2 / -1;
+}
+
+.calendar-category-shared {
+  display: grid;
+  grid-template-columns: auto minmax(140px, 1fr);
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.calendar-category-shared__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.calendar-category-shared__toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.calendar-category-shared__select {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-category-shared__select:disabled {
+  opacity: 0.55;
+}
+
 /* =========================
   Work Theme Override
 ========================= */
@@ -1203,6 +1246,14 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
 
   .work-category-list__delete {
     margin-top: -2px;
+  }
+
+  .work-category-shared {
+    grid-column: 1 / -1;
+  }
+
+  .calendar-category-shared {
+    grid-template-columns: 1fr;
   }
 }
 

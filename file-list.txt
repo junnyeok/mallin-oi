@@ -262,6 +262,7 @@
 ./assets/js/modules/bgm-player.js
 ./assets/js/modules/bgm-preferences.js
 ./assets/js/modules/calendar-groups.js
+./assets/js/modules/calendar-shared-personal.js
 ./assets/js/modules/calendar-widget-data.js
 ./assets/js/modules/cursor-buddy.js
 ./assets/js/modules/daily-attendance-popup.js
@@ -640,6 +641,7 @@
 ./supabase-SQLEditor/calendar-event.sql
 ./supabase-SQLEditor/calendar-groups-ambiguous-fix.sql
 ./supabase-SQLEditor/calendar-groups.sql
+./supabase-SQLEditor/calendar-shared-personal.sql
 ./supabase-SQLEditor/calendar-study.sql
 ./supabase-SQLEditor/calendar-work.sql
 ./supabase-SQLEditor/store-item_purchase-functions.sql
@@ -710,6 +712,7 @@
 ./www/assets/js/modules/bgm-player.js
 ./www/assets/js/modules/bgm-preferences.js
 ./www/assets/js/modules/calendar-groups.js
+./www/assets/js/modules/calendar-shared-personal.js
 ./www/assets/js/modules/calendar-widget-data.js
 ./www/assets/js/modules/cursor-buddy.js
 ./www/assets/js/modules/daily-attendance-popup.js
