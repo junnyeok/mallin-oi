@@ -791,19 +791,32 @@ async function updateTodoTime({ todoId, eventTime }) {
 }
 
 async function updateTodoCategory({ todoId, category }) {
-  const fallback = getFallbackCategory([]);
-  const safeCategory = category || fallback;
+  const safeCategory = category || getFallbackCategory([]);
 
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({
-      category_id: safeCategory?.id || null,
-      event_type: safeCategory?.slug || 'anniversary',
-    })
-    .eq('id', todoId);
+  const { error } = await supabase.rpc(
+    'update_event_calendar_todo_category_with_shared_personal',
+    {
+      p_todo_id: todoId,
+      p_category_id: safeCategory?.id || null,
+    },
+  );
 
   if (error) {
     console.error('[event-calendar] updateTodoCategory error:', error.message);
+    throw error;
+  }
+}
+
+async function syncSharedPersonalCategory(categoryId) {
+  const { error } = await supabase.rpc('sync_event_shared_personal_category', {
+    p_category_id: categoryId,
+  });
+
+  if (error) {
+    console.error(
+      '[event-calendar] syncSharedPersonalCategory error:',
+      error.message,
+    );
     throw error;
   }
 }
@@ -1802,8 +1815,7 @@ async function initPageCalendar() {
       category: nextCategory,
     });
 
-    target.categoryId = nextCategory.id;
-    target.type = nextCategory.slug;
+    state.store = await fetchUserTodos(state.userId);
 
     renderAll();
   }
@@ -1976,6 +1988,13 @@ async function initPageCalendar() {
       state.categories = state.categories.map((item) =>
         item.id === updatedCategory.id ? updatedCategory : item,
       );
+
+      if (
+        updatedCategory.is_shared_personal &&
+        updatedCategory.shared_group_id
+      ) {
+        await syncSharedPersonalCategory(updatedCategory.id);
+      }
 
       await refreshCategories(selectedCategoryId);
       renderAll();

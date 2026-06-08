@@ -20791,6 +20791,32 @@ where c.slug = 'shared-' || source.id::text
   and source.is_shared_personal = true
   and source.shared_group_id is not null;
 
+create or replace function public.get_shared_personal_group_member_ids(
+  p_group_id uuid
+)
+returns table (
+  member_user_id uuid
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select distinct member_id
+  from (
+    select g.owner_id as member_id
+    from public.calendar_groups g
+    where g.id = p_group_id
+
+    union
+
+    select m.user_id as member_id
+    from public.calendar_group_members m
+    where m.group_id = p_group_id
+      and m.status = 'active'
+  ) members
+  where member_id is not null;
+$$;
+
 alter table public.study_calendar_todos
   drop constraint if exists study_calendar_todos_type_check;
 
@@ -20843,7 +20869,7 @@ declare
   v_origin_user_id uuid;
   v_slug text;
 begin
-  select *
+  select c.*
     into v_source
   from public.study_calendar_categories c
   where c.id = p_source_category_id;
@@ -20918,7 +20944,7 @@ declare
   v_origin_user_id uuid;
   v_slug text;
 begin
-  select *
+  select c.*
     into v_source
   from public.work_calendar_categories c
   where c.id = p_source_category_id;
@@ -20993,7 +21019,7 @@ declare
   v_origin_user_id uuid;
   v_slug text;
 begin
-  select *
+  select c.*
     into v_source
   from public.event_calendar_categories c
   where c.id = p_source_category_id;
@@ -21085,7 +21111,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select c.*
     into v_category
   from public.study_calendar_categories c
   where c.id = p_category_id
@@ -21100,7 +21126,7 @@ begin
       raise exception '우리 일정 그룹을 선택해야 합니다.';
     end if;
 
-    select *
+    select g.*
       into v_group
     from public.calendar_groups g
     where g.id = v_category.shared_group_id
@@ -21125,11 +21151,9 @@ begin
 
   if v_category.is_shared_personal then
     for v_member in
-      select m.user_id
-      from public.calendar_group_members m
-      where m.group_id = v_category.shared_group_id
-        and m.status = 'active'
-        and m.user_id <> v_uid
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_category.shared_group_id) gm
+      where gm.member_user_id <> v_uid
     loop
       v_member_category_id := public.ensure_shared_study_calendar_category(
         v_member.user_id,
@@ -21196,7 +21220,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select c.*
     into v_category
   from public.work_calendar_categories c
   where c.id = p_category_id
@@ -21211,7 +21235,7 @@ begin
       raise exception '우리 일정 그룹을 선택해야 합니다.';
     end if;
 
-    select *
+    select g.*
       into v_group
     from public.calendar_groups g
     where g.id = v_category.shared_group_id
@@ -21236,11 +21260,9 @@ begin
 
   if v_category.is_shared_personal then
     for v_member in
-      select m.user_id
-      from public.calendar_group_members m
-      where m.group_id = v_category.shared_group_id
-        and m.status = 'active'
-        and m.user_id <> v_uid
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_category.shared_group_id) gm
+      where gm.member_user_id <> v_uid
     loop
       v_member_category_id := public.ensure_shared_work_calendar_category(
         v_member.user_id,
@@ -21310,7 +21332,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select c.*
     into v_category
   from public.event_calendar_categories c
   where c.id = p_category_id
@@ -21325,7 +21347,7 @@ begin
       raise exception '우리 일정 그룹을 선택해야 합니다.';
     end if;
 
-    select *
+    select g.*
       into v_group
     from public.calendar_groups g
     where g.id = v_category.shared_group_id
@@ -21351,11 +21373,9 @@ begin
 
   if v_category.is_shared_personal then
     for v_member in
-      select m.user_id
-      from public.calendar_group_members m
-      where m.group_id = v_category.shared_group_id
-        and m.status = 'active'
-        and m.user_id <> v_uid
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_category.shared_group_id) gm
+      where gm.member_user_id <> v_uid
     loop
       v_member_category_id := public.ensure_shared_event_calendar_category(
         v_member.user_id,
@@ -21391,6 +21411,616 @@ begin
 end;
 $$;
 
+create or replace function public.sync_study_shared_personal_category(
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_category public.study_calendar_categories%rowtype;
+  v_member record;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select c.*
+    into v_category
+  from public.study_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  if not v_category.is_shared_personal or v_category.shared_group_id is null then
+    return;
+  end if;
+
+  if not public.is_calendar_group_member(v_category.shared_group_id, v_uid) then
+    raise exception '이 그룹에 우리 일정 카테고리를 공유할 권한이 없습니다.';
+  end if;
+
+  if not v_category.is_shared_copy_category then
+    update public.study_calendar_categories c
+    set
+      shared_origin_category_id = null,
+      shared_origin_user_id = v_uid,
+      is_shared_copy_category = false
+    where c.id = v_category.id;
+  end if;
+
+  for v_member in
+    select gm.member_user_id as user_id
+    from public.get_shared_personal_group_member_ids(v_category.shared_group_id) gm
+    where gm.member_user_id <> v_category.user_id
+  loop
+    perform public.ensure_shared_study_calendar_category(
+      v_member.user_id,
+      v_category.id
+    );
+  end loop;
+end;
+$$;
+
+create or replace function public.sync_work_shared_personal_category(
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_category public.work_calendar_categories%rowtype;
+  v_member record;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select c.*
+    into v_category
+  from public.work_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  if not v_category.is_shared_personal or v_category.shared_group_id is null then
+    return;
+  end if;
+
+  if not public.is_calendar_group_member(v_category.shared_group_id, v_uid) then
+    raise exception '이 그룹에 우리 일정 카테고리를 공유할 권한이 없습니다.';
+  end if;
+
+  if not v_category.is_shared_copy_category then
+    update public.work_calendar_categories c
+    set
+      shared_origin_category_id = null,
+      shared_origin_user_id = v_uid,
+      is_shared_copy_category = false
+    where c.id = v_category.id;
+  end if;
+
+  for v_member in
+    select gm.member_user_id as user_id
+    from public.get_shared_personal_group_member_ids(v_category.shared_group_id) gm
+    where gm.member_user_id <> v_category.user_id
+  loop
+    perform public.ensure_shared_work_calendar_category(
+      v_member.user_id,
+      v_category.id
+    );
+  end loop;
+end;
+$$;
+
+create or replace function public.sync_event_shared_personal_category(
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_category public.event_calendar_categories%rowtype;
+  v_member record;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select c.*
+    into v_category
+  from public.event_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  if not v_category.is_shared_personal or v_category.shared_group_id is null then
+    return;
+  end if;
+
+  if not public.is_calendar_group_member(v_category.shared_group_id, v_uid) then
+    raise exception '이 그룹에 우리 일정 카테고리를 공유할 권한이 없습니다.';
+  end if;
+
+  if not v_category.is_shared_copy_category then
+    update public.event_calendar_categories c
+    set
+      shared_origin_category_id = null,
+      shared_origin_user_id = v_uid,
+      is_shared_copy_category = false
+    where c.id = v_category.id;
+  end if;
+
+  for v_member in
+    select gm.member_user_id as user_id
+    from public.get_shared_personal_group_member_ids(v_category.shared_group_id) gm
+    where gm.member_user_id <> v_category.user_id
+  loop
+    perform public.ensure_shared_event_calendar_category(
+      v_member.user_id,
+      v_category.id
+    );
+  end loop;
+end;
+$$;
+
+create or replace function public.update_study_calendar_todo_category_with_shared_personal(
+  p_todo_id uuid,
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_selected public.study_calendar_todos%rowtype;
+  v_root public.study_calendar_todos%rowtype;
+  v_target public.study_calendar_categories%rowtype;
+  v_root_category_id uuid;
+  v_root_category public.study_calendar_categories%rowtype;
+  v_member record;
+  v_member_category_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select t.*
+    into v_selected
+  from public.study_calendar_todos t
+  where t.id = p_todo_id
+    and t.user_id = v_uid;
+
+  if not found then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  select c.*
+    into v_target
+  from public.study_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  select t.*
+    into v_root
+  from public.study_calendar_todos t
+  where t.id = coalesce(v_selected.shared_origin_todo_id, v_selected.id);
+
+  if not found then
+    raise exception '원본 일정을 찾을 수 없습니다.';
+  end if;
+
+  if v_target.is_shared_personal and v_target.shared_group_id is not null then
+    if not public.is_calendar_group_member(v_target.shared_group_id, v_uid)
+      or not public.is_calendar_group_member(v_target.shared_group_id, v_root.user_id) then
+      raise exception '이 그룹에 우리 일정을 옮길 권한이 없습니다.';
+    end if;
+
+    if v_root.user_id = v_uid then
+      v_root_category_id := v_target.id;
+    else
+      v_root_category_id := public.ensure_shared_study_calendar_category(
+        v_root.user_id,
+        v_target.id
+      );
+    end if;
+
+    select c.*
+      into v_root_category
+    from public.study_calendar_categories c
+    where c.id = v_root_category_id;
+
+    delete from public.study_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id
+      and t.is_shared_copy = true;
+
+    update public.study_calendar_todos t
+    set
+      category_id = v_root_category.id,
+      todo_type = coalesce(v_root_category.slug, v_target.slug, 'etc'),
+      shared_origin_todo_id = null,
+      shared_origin_user_id = null,
+      shared_group_id = v_target.shared_group_id,
+      shared_created_by = coalesce(v_root.shared_created_by, v_uid),
+      is_shared_copy = false
+    where t.id = v_root.id;
+
+    select t.*
+      into v_root
+    from public.study_calendar_todos t
+    where t.id = v_root.id;
+
+    for v_member in
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_target.shared_group_id) gm
+      where gm.member_user_id <> v_root.user_id
+    loop
+      v_member_category_id := public.ensure_shared_study_calendar_category(
+        v_member.user_id,
+        v_root_category.id
+      );
+
+      insert into public.study_calendar_todos (
+        user_id, todo_date, todo_type, category_id, todo_text, memo, is_done,
+        shared_origin_todo_id, shared_origin_user_id, shared_group_id,
+        shared_created_by, is_shared_copy
+      )
+      select
+        v_member.user_id, v_root.todo_date, coalesce(v_root_category.slug, v_target.slug, 'etc'),
+        v_member_category_id, v_root.todo_text, coalesce(v_root.memo, ''), v_root.is_done,
+        v_root.id, v_root.user_id, v_target.shared_group_id,
+        coalesce(v_root.shared_created_by, v_uid), true
+      where not exists (
+        select 1
+        from public.study_calendar_todos existing
+        where existing.user_id = v_member.user_id
+          and existing.shared_origin_todo_id = v_root.id
+          and existing.is_shared_copy = true
+      );
+    end loop;
+
+    return;
+  end if;
+
+  if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+    raise exception '공유 일정을 일반 일정으로 바꾸려면 원본 작성자 계정에서 변경해야 합니다.';
+  end if;
+
+  delete from public.study_calendar_todos t
+  where t.shared_origin_todo_id = v_root.id
+    and t.is_shared_copy = true;
+
+  update public.study_calendar_todos t
+  set
+    category_id = v_target.id,
+    todo_type = coalesce(v_target.slug, 'etc'),
+    shared_origin_todo_id = null,
+    shared_origin_user_id = null,
+    shared_group_id = null,
+    shared_created_by = null,
+    is_shared_copy = false
+  where t.id = v_root.id;
+end;
+$$;
+
+create or replace function public.update_work_calendar_todo_category_with_shared_personal(
+  p_todo_id uuid,
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_selected public.work_calendar_todos%rowtype;
+  v_root public.work_calendar_todos%rowtype;
+  v_target public.work_calendar_categories%rowtype;
+  v_root_category_id uuid;
+  v_root_category public.work_calendar_categories%rowtype;
+  v_member record;
+  v_member_category_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select t.*
+    into v_selected
+  from public.work_calendar_todos t
+  where t.id = p_todo_id
+    and t.user_id = v_uid;
+
+  if not found then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  select c.*
+    into v_target
+  from public.work_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  select t.*
+    into v_root
+  from public.work_calendar_todos t
+  where t.id = coalesce(v_selected.shared_origin_todo_id, v_selected.id);
+
+  if not found then
+    raise exception '원본 일정을 찾을 수 없습니다.';
+  end if;
+
+  if v_target.is_shared_personal and v_target.shared_group_id is not null then
+    if not public.is_calendar_group_member(v_target.shared_group_id, v_uid)
+      or not public.is_calendar_group_member(v_target.shared_group_id, v_root.user_id) then
+      raise exception '이 그룹에 우리 일정을 옮길 권한이 없습니다.';
+    end if;
+
+    if v_root.user_id = v_uid then
+      v_root_category_id := v_target.id;
+    else
+      v_root_category_id := public.ensure_shared_work_calendar_category(
+        v_root.user_id,
+        v_target.id
+      );
+    end if;
+
+    select c.*
+      into v_root_category
+    from public.work_calendar_categories c
+    where c.id = v_root_category_id;
+
+    delete from public.work_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id
+      and t.is_shared_copy = true;
+
+    update public.work_calendar_todos t
+    set
+      category_id = v_root_category.id,
+      work_type = coalesce(v_root_category.slug, v_target.slug, 'etc'),
+      work_text = trim(coalesce(v_root_category.name, v_target.name, v_root.work_text)),
+      shared_origin_todo_id = null,
+      shared_origin_user_id = null,
+      shared_group_id = v_target.shared_group_id,
+      shared_created_by = coalesce(v_root.shared_created_by, v_uid),
+      is_shared_copy = false
+    where t.id = v_root.id;
+
+    select t.*
+      into v_root
+    from public.work_calendar_todos t
+    where t.id = v_root.id;
+
+    for v_member in
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_target.shared_group_id) gm
+      where gm.member_user_id <> v_root.user_id
+    loop
+      v_member_category_id := public.ensure_shared_work_calendar_category(
+        v_member.user_id,
+        v_root_category.id
+      );
+
+      insert into public.work_calendar_todos (
+        user_id, work_date, work_type, category_id, work_text, memo, is_done,
+        shared_origin_todo_id, shared_origin_user_id, shared_group_id,
+        shared_created_by, is_shared_copy
+      )
+      select
+        v_member.user_id, v_root.work_date, coalesce(v_root_category.slug, v_target.slug, 'etc'),
+        v_member_category_id, trim(coalesce(v_root_category.name, v_target.name, v_root.work_text)),
+        coalesce(v_root.memo, ''), v_root.is_done,
+        v_root.id, v_root.user_id, v_target.shared_group_id,
+        coalesce(v_root.shared_created_by, v_uid), true
+      where not exists (
+        select 1
+        from public.work_calendar_todos existing
+        where existing.user_id = v_member.user_id
+          and existing.shared_origin_todo_id = v_root.id
+          and existing.is_shared_copy = true
+      );
+    end loop;
+
+    return;
+  end if;
+
+  if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+    raise exception '공유 일정을 일반 일정으로 바꾸려면 원본 작성자 계정에서 변경해야 합니다.';
+  end if;
+
+  delete from public.work_calendar_todos t
+  where t.shared_origin_todo_id = v_root.id
+    and t.is_shared_copy = true;
+
+  update public.work_calendar_todos t
+  set
+    category_id = v_target.id,
+    work_type = coalesce(v_target.slug, 'etc'),
+    work_text = trim(coalesce(v_target.name, v_root.work_text)),
+    shared_origin_todo_id = null,
+    shared_origin_user_id = null,
+    shared_group_id = null,
+    shared_created_by = null,
+    is_shared_copy = false
+  where t.id = v_root.id;
+end;
+$$;
+
+create or replace function public.update_event_calendar_todo_category_with_shared_personal(
+  p_todo_id uuid,
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_selected public.event_calendar_todos%rowtype;
+  v_root public.event_calendar_todos%rowtype;
+  v_target public.event_calendar_categories%rowtype;
+  v_root_category_id uuid;
+  v_root_category public.event_calendar_categories%rowtype;
+  v_member record;
+  v_member_category_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  select t.*
+    into v_selected
+  from public.event_calendar_todos t
+  where t.id = p_todo_id
+    and t.user_id = v_uid;
+
+  if not found then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  select c.*
+    into v_target
+  from public.event_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  select t.*
+    into v_root
+  from public.event_calendar_todos t
+  where t.id = coalesce(v_selected.shared_origin_todo_id, v_selected.id);
+
+  if not found then
+    raise exception '원본 일정을 찾을 수 없습니다.';
+  end if;
+
+  if v_target.is_shared_personal and v_target.shared_group_id is not null then
+    if not public.is_calendar_group_member(v_target.shared_group_id, v_uid)
+      or not public.is_calendar_group_member(v_target.shared_group_id, v_root.user_id) then
+      raise exception '이 그룹에 우리 일정을 옮길 권한이 없습니다.';
+    end if;
+
+    if v_root.user_id = v_uid then
+      v_root_category_id := v_target.id;
+    else
+      v_root_category_id := public.ensure_shared_event_calendar_category(
+        v_root.user_id,
+        v_target.id
+      );
+    end if;
+
+    select c.*
+      into v_root_category
+    from public.event_calendar_categories c
+    where c.id = v_root_category_id;
+
+    delete from public.event_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id
+      and t.is_shared_copy = true;
+
+    update public.event_calendar_todos t
+    set
+      category_id = v_root_category.id,
+      event_type = coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+      shared_origin_todo_id = null,
+      shared_origin_user_id = null,
+      shared_group_id = v_target.shared_group_id,
+      shared_created_by = coalesce(v_root.shared_created_by, v_uid),
+      is_shared_copy = false
+    where t.id = v_root.id;
+
+    select t.*
+      into v_root
+    from public.event_calendar_todos t
+    where t.id = v_root.id;
+
+    for v_member in
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_target.shared_group_id) gm
+      where gm.member_user_id <> v_root.user_id
+    loop
+      v_member_category_id := public.ensure_shared_event_calendar_category(
+        v_member.user_id,
+        v_root_category.id
+      );
+
+      insert into public.event_calendar_todos (
+        user_id, event_date, event_type, category_id, event_text, memo,
+        event_time, is_done, shared_origin_todo_id, shared_origin_user_id,
+        shared_group_id, shared_created_by, is_shared_copy
+      )
+      select
+        v_member.user_id, v_root.event_date, coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+        v_member_category_id, v_root.event_text, coalesce(v_root.memo, ''),
+        coalesce(v_root.event_time, '00:00'::time), v_root.is_done,
+        v_root.id, v_root.user_id, v_target.shared_group_id,
+        coalesce(v_root.shared_created_by, v_uid), true
+      where not exists (
+        select 1
+        from public.event_calendar_todos existing
+        where existing.user_id = v_member.user_id
+          and existing.shared_origin_todo_id = v_root.id
+          and existing.is_shared_copy = true
+      );
+    end loop;
+
+    return;
+  end if;
+
+  if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+    raise exception '공유 일정을 일반 일정으로 바꾸려면 원본 작성자 계정에서 변경해야 합니다.';
+  end if;
+
+  delete from public.event_calendar_todos t
+  where t.shared_origin_todo_id = v_root.id
+    and t.is_shared_copy = true;
+
+  update public.event_calendar_todos t
+  set
+    category_id = v_target.id,
+    event_type = coalesce(v_target.slug, 'anniversary'),
+    shared_origin_todo_id = null,
+    shared_origin_user_id = null,
+    shared_group_id = null,
+    shared_created_by = null,
+    is_shared_copy = false
+  where t.id = v_root.id;
+end;
+$$;
+
 -- =========================================
 -- 우리 일정 동기화 삭제 및 그룹 백업 제한 보완
 -- =========================================
@@ -21412,7 +22042,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select t.*
     into v_todo
   from public.study_calendar_todos t
   where t.id = p_todo_id;
@@ -21458,7 +22088,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select t.*
     into v_todo
   from public.work_calendar_todos t
   where t.id = p_todo_id;
@@ -21504,7 +22134,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select t.*
     into v_todo
   from public.event_calendar_todos t
   where t.id = p_todo_id;
@@ -21551,7 +22181,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select c.*
     into v_category
   from public.study_calendar_categories c
   where c.id = p_category_id;
@@ -21615,7 +22245,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select c.*
     into v_category
   from public.work_calendar_categories c
   where c.id = p_category_id;
@@ -21679,7 +22309,7 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  select *
+  select c.*
     into v_category
   from public.event_calendar_categories c
   where c.id = p_category_id;
@@ -21772,3 +22402,31 @@ grant execute on function public.delete_work_shared_personal_category(uuid) to a
 revoke all on function public.delete_event_shared_personal_category(uuid) from public;
 revoke all on function public.delete_event_shared_personal_category(uuid) from anon;
 grant execute on function public.delete_event_shared_personal_category(uuid) to authenticated;
+
+revoke all on function public.get_shared_personal_group_member_ids(uuid) from public;
+revoke all on function public.get_shared_personal_group_member_ids(uuid) from anon;
+revoke all on function public.get_shared_personal_group_member_ids(uuid) from authenticated;
+
+revoke all on function public.sync_study_shared_personal_category(uuid) from public;
+revoke all on function public.sync_study_shared_personal_category(uuid) from anon;
+grant execute on function public.sync_study_shared_personal_category(uuid) to authenticated;
+
+revoke all on function public.sync_work_shared_personal_category(uuid) from public;
+revoke all on function public.sync_work_shared_personal_category(uuid) from anon;
+grant execute on function public.sync_work_shared_personal_category(uuid) to authenticated;
+
+revoke all on function public.sync_event_shared_personal_category(uuid) from public;
+revoke all on function public.sync_event_shared_personal_category(uuid) from anon;
+grant execute on function public.sync_event_shared_personal_category(uuid) to authenticated;
+
+revoke all on function public.update_study_calendar_todo_category_with_shared_personal(uuid, uuid) from public;
+revoke all on function public.update_study_calendar_todo_category_with_shared_personal(uuid, uuid) from anon;
+grant execute on function public.update_study_calendar_todo_category_with_shared_personal(uuid, uuid) to authenticated;
+
+revoke all on function public.update_work_calendar_todo_category_with_shared_personal(uuid, uuid) from public;
+revoke all on function public.update_work_calendar_todo_category_with_shared_personal(uuid, uuid) from anon;
+grant execute on function public.update_work_calendar_todo_category_with_shared_personal(uuid, uuid) to authenticated;
+
+revoke all on function public.update_event_calendar_todo_category_with_shared_personal(uuid, uuid) from public;
+revoke all on function public.update_event_calendar_todo_category_with_shared_personal(uuid, uuid) from anon;
+grant execute on function public.update_event_calendar_todo_category_with_shared_personal(uuid, uuid) to authenticated;
