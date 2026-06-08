@@ -688,7 +688,11 @@ begin
       v_now
     from public.study_calendar_todos t
     left join public.study_calendar_categories c on c.id = t.category_id
-    where t.user_id = v_uid;
+    where t.user_id = v_uid
+      and (
+        t.shared_group_id is null
+        or t.shared_group_id = p_group_id
+      );
 
   elsif p_calendar_type = 'work' then
     insert into public.calendar_group_shared_events (
@@ -709,7 +713,11 @@ begin
       v_now
     from public.work_calendar_todos t
     left join public.work_calendar_categories c on c.id = t.category_id
-    where t.user_id = v_uid;
+    where t.user_id = v_uid
+      and (
+        t.shared_group_id is null
+        or t.shared_group_id = p_group_id
+      );
 
   elsif p_calendar_type = 'event' then
     insert into public.calendar_group_shared_events (
@@ -730,7 +738,11 @@ begin
       v_now
     from public.event_calendar_todos t
     left join public.event_calendar_categories c on c.id = t.category_id
-    where t.user_id = v_uid;
+    where t.user_id = v_uid
+      and (
+        t.shared_group_id is null
+        or t.shared_group_id = p_group_id
+      );
 
   else
     raise exception '지원하지 않는 캘린더 타입입니다.';

@@ -411,13 +411,20 @@ function appendTypeBadges(root, todos = [], categories = []) {
 function normalizeTodo(row) {
   return {
     id: row.id,
+    userId: row.user_id,
     text: row.event_text,
     memo: row.memo || '',
+    done: Boolean(row.is_done),
     eventTime: normalizeEventTime(row.event_time),
     type:
       row.event_type || row.event_calendar_categories?.slug || 'anniversary',
     categoryId: row.category_id || row.event_calendar_categories?.id || null,
     date: row.event_date,
+    sharedOriginTodoId: row.shared_origin_todo_id || null,
+    sharedOriginUserId: row.shared_origin_user_id || null,
+    sharedGroupId: row.shared_group_id || null,
+    sharedCreatedBy: row.shared_created_by || null,
+    isSharedCopy: Boolean(row.is_shared_copy),
   };
 }
 
@@ -457,6 +464,11 @@ async function fetchUserTodos(userId) {
     memo,
     event_time,
     is_done,
+    shared_origin_todo_id,
+    shared_origin_user_id,
+    shared_group_id,
+    shared_created_by,
+    is_shared_copy,
     created_at,
     event_calendar_categories (
       id,
@@ -485,7 +497,7 @@ async function fetchUserCategories(userId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
     )
     .eq('user_id', userId)
     .order('sort_order', { ascending: true })
@@ -505,7 +517,7 @@ async function fetchCategoryById(userId, categoryId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
     )
     .eq('user_id', userId)
     .eq('id', categoryId)
@@ -582,7 +594,7 @@ async function insertCategory({ userId, name, color, sortOrder }) {
       shared_group_id: null,
     })
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
     )
     .single();
 
@@ -611,7 +623,7 @@ async function updateCategory({
     })
     .eq('id', categoryId)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
     )
     .single();
 
@@ -685,7 +697,12 @@ async function insertTodo({
       throw error;
     }
 
-    return normalizeTodo(data);
+    return {
+      ...normalizeTodo(data),
+      sharedGroupId: safeCategory.shared_group_id || null,
+      sharedCreatedBy: userId,
+      isSharedCopy: false,
+    };
   }
 
   const { data, error } = await supabase
@@ -711,6 +728,11 @@ async function insertTodo({
       memo,
       event_time,
       is_done,
+      shared_origin_todo_id,
+      shared_origin_user_id,
+      shared_group_id,
+      shared_created_by,
+      is_shared_copy,
       created_at,
       event_calendar_categories (
         id,
@@ -791,6 +813,37 @@ async function deleteTodoById(todoId) {
 
   if (error) {
     console.error('[event-calendar] deleteTodoById error:', error.message);
+    throw error;
+  }
+}
+
+async function deleteSharedPersonalTodoById(todoId) {
+  const { error } = await supabase.rpc('delete_event_shared_personal_todo', {
+    p_todo_id: todoId,
+  });
+
+  if (error) {
+    console.error(
+      '[event-calendar] deleteSharedPersonalTodoById error:',
+      error.message,
+    );
+    throw error;
+  }
+}
+
+async function deleteSharedPersonalCategoryById(categoryId) {
+  const { error } = await supabase.rpc(
+    'delete_event_shared_personal_category',
+    {
+      p_category_id: categoryId,
+    },
+  );
+
+  if (error) {
+    console.error(
+      '[event-calendar] deleteSharedPersonalCategoryById error:',
+      error.message,
+    );
     throw error;
   }
 }
@@ -1646,15 +1699,32 @@ async function initPageCalendar() {
 
     if (!target) return;
 
-    try {
-      await deleteTodoById(todoId);
+    const isSharedTodo = Boolean(
+      target.sharedGroupId || target.sharedOriginTodoId || target.isSharedCopy,
+    );
 
-      state.store[state.selectedDateKey] = todos.filter(
-        (todo) => todo.id !== todoId,
+    if (isSharedTodo) {
+      const ok = window.confirm(
+        '우리 일정이라 같은 그룹 참여자 캘린더에서도 함께 삭제돼. 삭제할까?',
       );
 
-      if (state.store[state.selectedDateKey].length === 0) {
-        delete state.store[state.selectedDateKey];
+      if (!ok) return;
+    }
+
+    try {
+      if (isSharedTodo) {
+        await deleteSharedPersonalTodoById(todoId);
+        state.store = await fetchUserTodos(state.userId);
+      } else {
+        await deleteTodoById(todoId);
+
+        state.store[state.selectedDateKey] = todos.filter(
+          (todo) => todo.id !== todoId,
+        );
+
+        if (state.store[state.selectedDateKey].length === 0) {
+          delete state.store[state.selectedDateKey];
+        }
       }
 
       renderAll();
@@ -1917,6 +1987,25 @@ async function initPageCalendar() {
   async function removeCategory(category) {
     if (!category || category.is_default) {
       alert('기본 카테고리는 삭제할 수 없어.');
+      return;
+    }
+
+    if (category.is_shared_personal && category.shared_group_id) {
+      const ok = window.confirm(
+        `"${category.name}" 카테고리는 우리 일정 카테고리라 같은 그룹 참여자 카테고리도 함께 삭제돼. 삭제할까?`,
+      );
+
+      if (!ok) return;
+
+      try {
+        await deleteSharedPersonalCategoryById(category.id);
+        state.categories = await fetchUserCategories(state.userId);
+        state.store = await fetchUserTodos(state.userId);
+        renderAll();
+      } catch (error) {
+        alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+      }
+
       return;
     }
 
