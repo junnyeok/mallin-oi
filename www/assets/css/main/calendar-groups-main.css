@@ -132,6 +132,15 @@
   border-bottom: 0;
 }
 
+.calendar-group-schedule__row--shared {
+  background: #fff7fa;
+  background: color-mix(
+    in srgb,
+    var(--color-primary-sub) 26%,
+    var(--color-surface)
+  );
+}
+
 .calendar-group-schedule__corner,
 .calendar-group-schedule__name {
   position: sticky;
@@ -172,6 +181,17 @@
   word-break: keep-all;
 }
 
+.calendar-group-schedule__name--shared {
+  background: #fff7fa;
+  background: color-mix(
+    in srgb,
+    var(--color-primary-sub) 26%,
+    var(--color-surface)
+  );
+  border-right: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
 .calendar-group-schedule__cell {
   display: grid;
   align-content: start;
@@ -208,6 +228,10 @@
   line-height: 1.25;
   overflow-wrap: anywhere;
   word-break: keep-all;
+}
+
+.calendar-group-schedule__badge--shared {
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .study-calendar-grid.is-calendar-group-mode,

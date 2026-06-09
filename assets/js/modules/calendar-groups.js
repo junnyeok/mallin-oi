@@ -115,22 +115,26 @@ function groupEventsByDateAndUser(rows = []) {
   const byDate = {};
 
   rows.forEach((row) => {
-    const dateKey = row.event_date;
+    const dateKey = String(row.event_date || '').slice(0, 10);
     if (!dateKey) return;
+    const event = {
+      ...row,
+      event_date: dateKey,
+    };
 
     if (!byDate[dateKey]) byDate[dateKey] = [];
 
-    let member = byDate[dateKey].find((item) => item.userId === row.user_id);
+    let member = byDate[dateKey].find((item) => item.userId === event.user_id);
     if (!member) {
       member = {
-        userId: row.user_id,
-        name: row.user_nickname || '회원',
+        userId: event.user_id,
+        name: event.user_nickname || '회원',
         events: [],
       };
       byDate[dateKey].push(member);
     }
 
-    member.events.push(row);
+    member.events.push(event);
   });
 
   Object.values(byDate).forEach((members) => {
@@ -143,6 +147,134 @@ function groupEventsByDateAndUser(rows = []) {
   });
 
   return byDate;
+}
+
+function getEventPayloadValue(event, key) {
+  const payload = event?.payload;
+  if (!payload || typeof payload !== 'object') return undefined;
+  return payload[key];
+}
+
+function getEventSharedValue(event, snakeKey, camelKey) {
+  return (
+    event?.[snakeKey] ??
+    event?.[camelKey] ??
+    getEventPayloadValue(event, snakeKey) ??
+    getEventPayloadValue(event, camelKey)
+  );
+}
+
+function normalizeSharedBoolean(value) {
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
+
+function getSharedOriginId(event) {
+  return String(
+    getEventSharedValue(event, 'shared_origin_todo_id', 'sharedOriginTodoId') ||
+      '',
+  ).trim();
+}
+
+function isExplicitSharedEvent(event, groupState) {
+  const sharedGroupId = String(
+    getEventSharedValue(event, 'shared_group_id', 'sharedGroupId') || '',
+  ).trim();
+  const originTodoId = String(
+    getEventSharedValue(event, 'shared_origin_todo_id', 'sharedOriginTodoId') ||
+      '',
+  ).trim();
+  const originUserId = String(
+    getEventSharedValue(event, 'shared_origin_user_id', 'sharedOriginUserId') ||
+      '',
+  ).trim();
+  const createdBy = String(
+    getEventSharedValue(event, 'shared_created_by', 'sharedCreatedBy') || '',
+  ).trim();
+  const isSharedCopy = normalizeSharedBoolean(
+    getEventSharedValue(event, 'is_shared_copy', 'isSharedCopy'),
+  );
+  const selectedGroupId = String(groupState?.selectedGroup?.id || '').trim();
+
+  if (selectedGroupId && sharedGroupId === selectedGroupId) return true;
+  return Boolean(originTodoId || originUserId || createdBy || isSharedCopy);
+}
+
+function getSharedDedupeKey(event, groupState) {
+  const sharedGroupId =
+    getEventSharedValue(event, 'shared_group_id', 'sharedGroupId') ||
+    event?.group_id ||
+    groupState?.selectedGroup?.id ||
+    '';
+  const eventId = String(
+    getSharedOriginId(event) || event?.source_event_id || event?.id || '',
+  ).trim();
+
+  return [
+    normalizeComparable(event?.calendar_type || groupState?.calendarType),
+    normalizeComparable(sharedGroupId),
+    normalizeComparable(eventId),
+  ].join('|');
+}
+
+function isSharedEventForGroupBoard(event, groupState) {
+  return isExplicitSharedEvent(event, groupState);
+}
+
+function collectWeekScheduleRows(week, groupState) {
+  const memberMap = new Map();
+  const personalEventsByDateAndUser = new Map();
+  const sharedEventsByDate = new Map();
+  const sharedEventKeys = new Set();
+
+  week.forEach((item) => {
+    const dateKey = item?.dateKey;
+    if (!dateKey) return;
+
+    (groupState.eventsByDate?.[dateKey] || []).forEach((member) => {
+      if (!member?.userId) return;
+      if (!memberMap.has(member.userId)) {
+        memberMap.set(member.userId, {
+          userId: member.userId,
+          name: member.name || '회원',
+        });
+      }
+
+      (member.events || []).forEach((event) => {
+        if (isSharedEventForGroupBoard(event, groupState)) {
+          const dedupeKey = getSharedDedupeKey(event, groupState);
+          if (sharedEventKeys.has(dedupeKey)) return;
+          sharedEventKeys.add(dedupeKey);
+
+          if (!sharedEventsByDate.has(dateKey)) sharedEventsByDate.set(dateKey, []);
+          sharedEventsByDate.get(dateKey).push(event);
+          return;
+        }
+
+        const personalKey = `${dateKey}|${member.userId}`;
+        if (!personalEventsByDateAndUser.has(personalKey)) {
+          personalEventsByDateAndUser.set(personalKey, []);
+        }
+        personalEventsByDateAndUser.get(personalKey).push(event);
+      });
+    });
+  });
+
+  const members = [...memberMap.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, 'ko'),
+  );
+
+  sharedEventsByDate.forEach((events) => {
+    events.sort((a, b) =>
+      String(a.title || '').localeCompare(String(b.title || ''), 'ko'),
+    );
+  });
+
+  return {
+    hasSharedEvents: sharedEventsByDate.size > 0,
+    members,
+    personalEventsByDateAndUser,
+    sharedEventsByDate,
+  };
 }
 
 async function rpc(name, params = {}) {
@@ -203,7 +335,7 @@ export function getVisiblePersonalTodos(todos = [], dateKey, groupState) {
   });
 }
 
-function createGroupEventBadge(event, member, groupState) {
+function createGroupEventBadge(event, member, groupState, options = {}) {
   const badge = document.createElement('span');
   const color = normalizeColor(
     event.color,
@@ -211,12 +343,87 @@ function createGroupEventBadge(event, member, groupState) {
   );
 
   badge.className = 'calendar-group-schedule__badge';
+  if (options.isShared) {
+    badge.classList.add('calendar-group-schedule__badge--shared');
+  }
   badge.style.setProperty('--calendar-group-event-color', color);
   badge.style.setProperty('--calendar-group-event-text', getTextColor(color));
   badge.textContent = event.title || event.event_type || '일정';
-  badge.title = `${member.name || '회원'} · ${badge.textContent}`;
+  badge.title = options.isShared
+    ? `우리 일정 · ${badge.textContent}`
+    : `${member.name || '회원'} · ${badge.textContent}`;
+  badge.setAttribute(
+    'aria-label',
+    options.isShared
+      ? `우리 일정 ${badge.textContent}`
+      : `${member.name || '회원'} 일정 ${badge.textContent}`,
+  );
 
   return badge;
+}
+
+function appendScheduleRow({
+  weekEl,
+  week,
+  rowMember,
+  groupState,
+  selectedDateKey,
+  onSelect,
+  getEvents,
+  isShared = false,
+}) {
+  const row = document.createElement('div');
+  row.className = 'calendar-group-schedule__row';
+  if (isShared) {
+    row.classList.add('calendar-group-schedule__row--shared');
+  }
+
+  const name = document.createElement('div');
+  const fullName = rowMember.name || '회원';
+  name.className = 'calendar-group-schedule__name';
+  if (isShared) {
+    name.classList.add('calendar-group-schedule__name--shared');
+  }
+  name.textContent = isShared ? '우리' : getNicknameInitial(fullName);
+  name.title = isShared ? '우리 일정' : fullName;
+  name.setAttribute('aria-label', isShared ? '우리 일정' : fullName);
+  row.append(name);
+
+  week.forEach((item) => {
+    const cellButton = document.createElement('button');
+    cellButton.type = 'button';
+    cellButton.className = 'calendar-group-schedule__cell';
+    cellButton.dataset.date = item?.dateKey || '';
+    cellButton.setAttribute(
+      'aria-label',
+      `${isShared ? '우리 일정' : rowMember.name || '회원'} ${
+        item?.dateKey || ''
+      } 그룹 일정`,
+    );
+
+    if (!item?.isCurrentMonth) {
+      cellButton.classList.add('is-muted');
+    }
+
+    if (item?.dateKey === selectedDateKey) {
+      cellButton.classList.add('is-selected');
+    }
+
+    const events = getEvents(item?.dateKey) || [];
+    events.forEach((event) => {
+      cellButton.append(
+        createGroupEventBadge(event, rowMember, groupState, { isShared }),
+      );
+    });
+
+    cellButton.addEventListener('click', () => {
+      if (item?.dateKey) onSelect?.(item.dateKey);
+    });
+
+    row.append(cellButton);
+  });
+
+  weekEl.append(row);
 }
 
 export function appendCalendarGroupBoard(
@@ -241,28 +448,14 @@ export function appendCalendarGroupBoard(
   weeks.forEach((week) => {
     if (week.length === 0) return;
 
-    const memberMap = new Map();
+    const {
+      hasSharedEvents,
+      members,
+      personalEventsByDateAndUser,
+      sharedEventsByDate,
+    } = collectWeekScheduleRows(week, groupState);
 
-    week.forEach((item) => {
-      const dateKey = item?.dateKey;
-      if (!dateKey) return;
-
-      (groupState.eventsByDate?.[dateKey] || []).forEach((member) => {
-        if (!member?.userId) return;
-        if (!memberMap.has(member.userId)) {
-          memberMap.set(member.userId, {
-            userId: member.userId,
-            name: member.name || '회원',
-          });
-        }
-      });
-    });
-
-    const members = [...memberMap.values()].sort((a, b) =>
-      a.name.localeCompare(b.name, 'ko'),
-    );
-
-    if (members.length === 0) return;
+    if (!hasSharedEvents && members.length === 0) return;
 
     const weekEl = document.createElement('section');
     weekEl.className = 'calendar-group-schedule__week';
@@ -287,52 +480,30 @@ export function appendCalendarGroupBoard(
 
     weekEl.append(header);
 
-    members.forEach((member) => {
-      const row = document.createElement('div');
-      row.className = 'calendar-group-schedule__row';
-
-      const name = document.createElement('div');
-      const fullName = member.name || '회원';
-      name.className = 'calendar-group-schedule__name';
-      name.textContent = getNicknameInitial(fullName);
-      name.title = fullName;
-      name.setAttribute('aria-label', fullName);
-      row.append(name);
-
-      week.forEach((item) => {
-        const cellButton = document.createElement('button');
-        cellButton.type = 'button';
-        cellButton.className = 'calendar-group-schedule__cell';
-        cellButton.dataset.date = item?.dateKey || '';
-        cellButton.setAttribute(
-          'aria-label',
-          `${member.name || '회원'} ${item?.dateKey || ''} 그룹 일정`,
-        );
-
-        if (!item?.isCurrentMonth) {
-          cellButton.classList.add('is-muted');
-        }
-
-        if (item?.dateKey === options.selectedDateKey) {
-          cellButton.classList.add('is-selected');
-        }
-
-        const events = (groupState.eventsByDate?.[item?.dateKey] || [])
-          .find((entry) => entry.userId === member.userId)
-          ?.events || [];
-
-        events.forEach((event) => {
-          cellButton.append(createGroupEventBadge(event, member, groupState));
-        });
-
-        cellButton.addEventListener('click', () => {
-          if (item?.dateKey) options.onSelect?.(item.dateKey);
-        });
-
-        row.append(cellButton);
+    if (hasSharedEvents) {
+      appendScheduleRow({
+        weekEl,
+        week,
+        rowMember: { name: '우리 일정' },
+        groupState,
+        selectedDateKey: options.selectedDateKey,
+        onSelect: options.onSelect,
+        getEvents: (dateKey) => sharedEventsByDate.get(dateKey) || [],
+        isShared: true,
       });
+    }
 
-      weekEl.append(row);
+    members.forEach((member) => {
+      appendScheduleRow({
+        weekEl,
+        week,
+        rowMember: member,
+        groupState,
+        selectedDateKey: options.selectedDateKey,
+        onSelect: options.onSelect,
+        getEvents: (dateKey) =>
+          personalEventsByDateAndUser.get(`${dateKey}|${member.userId}`) || [],
+      });
     });
 
     wrap.append(weekEl);

@@ -22888,3 +22888,113 @@ grant execute on function public.update_work_shared_personal_todo(uuid, text, te
 revoke all on function public.update_event_shared_personal_todo(uuid, text, text, time, date) from public;
 revoke all on function public.update_event_shared_personal_todo(uuid, text, text, time, date) from anon;
 grant execute on function public.update_event_shared_personal_todo(uuid, text, text, time, date) to authenticated;
+
+-- 2026-06-10 그룹 캘린더 우리일정 전용 행 표시를 위한 get_group_calendar_view 반환값 보강
+drop function if exists public.get_group_calendar_view(uuid, text, date, date);
+
+create or replace function public.get_group_calendar_view(
+  p_group_id uuid,
+  p_calendar_type text,
+  p_start_date date,
+  p_end_date date
+)
+returns table (
+  id uuid,
+  group_id uuid,
+  user_id uuid,
+  user_nickname text,
+  calendar_type text,
+  source_event_id text,
+  event_date date,
+  event_type text,
+  title text,
+  memo text,
+  color text,
+  payload jsonb,
+  backed_up_at timestamptz,
+  shared_group_id uuid,
+  shared_origin_todo_id uuid,
+  shared_origin_user_id uuid,
+  shared_created_by uuid,
+  is_shared_copy boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_allowed boolean := false;
+begin
+  if not public.is_calendar_group_member(p_group_id, auth.uid()) then
+    raise exception '그룹 멤버만 볼 수 있습니다.';
+  end if;
+
+  select case p_calendar_type
+    when 'study' then cg.allow_study
+    when 'work' then cg.allow_work
+    when 'event' then cg.allow_event
+    else false
+  end
+    into v_allowed
+  from public.calendar_groups cg
+  where cg.id = p_group_id;
+
+  if not coalesce(v_allowed, false) then
+    return;
+  end if;
+
+  return query
+  select
+    e.id,
+    e.group_id,
+    e.user_id,
+    coalesce(nullif(trim(p.nickname), ''), '회원') as user_nickname,
+    e.calendar_type,
+    e.source_event_id,
+    e.event_date,
+    e.event_type,
+    e.title,
+    e.memo,
+    e.color,
+    e.payload,
+    e.backed_up_at,
+    coalesce(st.shared_group_id, wt.shared_group_id, et.shared_group_id) as shared_group_id,
+    coalesce(st.shared_origin_todo_id, wt.shared_origin_todo_id, et.shared_origin_todo_id) as shared_origin_todo_id,
+    coalesce(st.shared_origin_user_id, wt.shared_origin_user_id, et.shared_origin_user_id) as shared_origin_user_id,
+    coalesce(st.shared_created_by, wt.shared_created_by, et.shared_created_by) as shared_created_by,
+    coalesce(st.is_shared_copy, wt.is_shared_copy, et.is_shared_copy, false) as is_shared_copy
+  from public.calendar_group_shared_events e
+  join public.calendar_group_members m
+    on m.group_id = e.group_id
+   and m.user_id = e.user_id
+   and m.status = 'active'
+  left join public.profiles p on p.id = e.user_id
+  left join public.study_calendar_todos st
+    on p_calendar_type = 'study'
+   and st.id = case
+     when e.source_event_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then e.source_event_id::uuid
+     else null
+   end
+  left join public.work_calendar_todos wt
+    on p_calendar_type = 'work'
+   and wt.id = case
+     when e.source_event_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then e.source_event_id::uuid
+     else null
+   end
+  left join public.event_calendar_todos et
+    on p_calendar_type = 'event'
+   and et.id = case
+     when e.source_event_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then e.source_event_id::uuid
+     else null
+   end
+  where e.group_id = p_group_id
+    and e.calendar_type = p_calendar_type
+    and e.event_date between p_start_date and p_end_date
+  order by e.event_date, coalesce(nullif(trim(p.nickname), ''), '회원'), e.created_at;
+end;
+$$;
+
+grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;
