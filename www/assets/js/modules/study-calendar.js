@@ -103,6 +103,12 @@ function getCategoryByTodo(todo, categories = []) {
   );
 }
 
+function isSharedPersonalTodo(todo) {
+  return Boolean(
+    todo?.sharedGroupId || todo?.sharedOriginTodoId || todo?.isSharedCopy,
+  );
+}
+
 function getTodoCategorySelectValue(todo, categories = []) {
   const category = getCategoryByTodo(todo, categories);
   return category?.id || getFallbackCategory(categories)?.id || '';
@@ -531,6 +537,23 @@ async function updateTodoText({ todoId, text }) {
 
   if (error) {
     console.error('[study-calendar] updateTodoText error:', error.message);
+    throw error;
+  }
+}
+
+async function updateSharedPersonalTodo({ todoId, text, memo }) {
+  const payload = { p_todo_id: todoId };
+
+  if (text !== undefined) payload.p_todo_text = text;
+  if (memo !== undefined) payload.p_memo = memo;
+
+  const { error } = await supabase.rpc(
+    'update_study_shared_personal_todo',
+    payload,
+  );
+
+  if (error) {
+    console.error('[study-calendar] updateSharedPersonalTodo error:', error.message);
     throw error;
   }
 }
@@ -1434,9 +1457,7 @@ async function initPageCalendar() {
 
     if (!target) return;
 
-    const isSharedTodo = Boolean(
-      target.sharedGroupId || target.sharedOriginTodoId || target.isSharedCopy,
-    );
+    const isSharedTodo = isSharedPersonalTodo(target);
 
     if (isSharedTodo) {
       const ok = window.confirm(
@@ -1478,13 +1499,20 @@ async function initPageCalendar() {
 
     if (!nextText) return;
 
-    await updateTodoText({
-      todoId,
-      text: nextText,
-    });
+    if (isSharedPersonalTodo(target)) {
+      await updateSharedPersonalTodo({
+        todoId,
+        text: nextText,
+        memo: target.memo || '',
+      });
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+      return;
+    }
+
+    await updateTodoText({ todoId, text: nextText });
 
     target.text = nextText;
-
     renderPageCalendar(state);
   }
 
@@ -1496,10 +1524,18 @@ async function initPageCalendar() {
 
     const nextMemo = String(memo || '');
 
-    await updateTodoMemo({
-      todoId,
-      memo: nextMemo,
-    });
+    if (isSharedPersonalTodo(target)) {
+      await updateSharedPersonalTodo({
+        todoId,
+        text: target.text,
+        memo: nextMemo,
+      });
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+      return;
+    }
+
+    await updateTodoMemo({ todoId, memo: nextMemo });
 
     target.memo = nextMemo;
   }

@@ -103,6 +103,12 @@ function getCategoryByTodo(todo, categories = []) {
   );
 }
 
+function isSharedPersonalTodo(todo) {
+  return Boolean(
+    todo?.sharedGroupId || todo?.sharedOriginTodoId || todo?.isSharedCopy,
+  );
+}
+
 function getTodoCategorySelectValue(todo, categories = []) {
   const category = getCategoryByTodo(todo, categories);
   return category?.id || getFallbackCategory(categories)?.id || '';
@@ -786,6 +792,26 @@ async function updateTodoTime({ todoId, eventTime }) {
 
   if (error) {
     console.error('[event-calendar] updateTodoTime error:', error.message);
+    throw error;
+  }
+}
+
+async function updateSharedPersonalTodo({ todoId, text, memo, eventTime }) {
+  const payload = { p_todo_id: todoId };
+
+  if (text !== undefined) payload.p_event_text = text;
+  if (memo !== undefined) payload.p_memo = memo;
+  if (eventTime !== undefined) {
+    payload.p_event_time = normalizeEventTime(eventTime);
+  }
+
+  const { error } = await supabase.rpc(
+    'update_event_shared_personal_todo',
+    payload,
+  );
+
+  if (error) {
+    console.error('[event-calendar] updateSharedPersonalTodo error:', error.message);
     throw error;
   }
 }
@@ -1712,9 +1738,7 @@ async function initPageCalendar() {
 
     if (!target) return;
 
-    const isSharedTodo = Boolean(
-      target.sharedGroupId || target.sharedOriginTodoId || target.isSharedCopy,
-    );
+    const isSharedTodo = isSharedPersonalTodo(target);
 
     if (isSharedTodo) {
       const ok = window.confirm(
@@ -1756,13 +1780,21 @@ async function initPageCalendar() {
 
     if (!nextText) return;
 
-    await updateTodoText({
-      todoId,
-      text: nextText,
-    });
+    if (isSharedPersonalTodo(target)) {
+      await updateSharedPersonalTodo({
+        todoId,
+        text: nextText,
+        memo: target.memo || '',
+        eventTime: target.eventTime,
+      });
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+      return;
+    }
+
+    await updateTodoText({ todoId, text: nextText });
 
     target.text = nextText;
-
     renderPageCalendar(state);
   }
 
@@ -1774,10 +1806,19 @@ async function initPageCalendar() {
 
     const nextTime = normalizeEventTime(eventTime);
 
-    await updateTodoTime({
-      todoId,
-      eventTime: nextTime,
-    });
+    if (isSharedPersonalTodo(target)) {
+      await updateSharedPersonalTodo({
+        todoId,
+        text: target.text,
+        memo: target.memo || '',
+        eventTime: nextTime,
+      });
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+      return;
+    }
+
+    await updateTodoTime({ todoId, eventTime: nextTime });
 
     target.eventTime = nextTime;
 
@@ -1794,10 +1835,19 @@ async function initPageCalendar() {
 
     const nextMemo = String(memo || '');
 
-    await updateTodoMemo({
-      todoId,
-      memo: nextMemo,
-    });
+    if (isSharedPersonalTodo(target)) {
+      await updateSharedPersonalTodo({
+        todoId,
+        text: target.text,
+        memo: nextMemo,
+        eventTime: target.eventTime,
+      });
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+      return;
+    }
+
+    await updateTodoMemo({ todoId, memo: nextMemo });
 
     target.memo = nextMemo;
   }
