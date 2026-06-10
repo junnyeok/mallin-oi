@@ -34,6 +34,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        storePendingCalendarRoute(from: url)
         // Called when the app was launched with a url. Feel free to add additional processing here,
         // but if you want the App API to support tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
@@ -46,4 +47,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    private func storePendingCalendarRoute(from url: URL) {
+        guard url.scheme == "mallinoi", url.host == "calendar" else {
+            return
+        }
+
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let calendarType = components?.queryItems?.first(where: { $0.name == "type" })?.value ?? ""
+
+        guard ["study", "work", "event"].contains(calendarType) else {
+            return
+        }
+
+        let defaults = UserDefaults(suiteName: "group.com.mallinoi.calendar") ?? .standard
+        defaults.set(calendarType, forKey: "pending_calendar_type")
+        defaults.synchronize()
+    }
 }

@@ -3,5 +3,14 @@
     <string name="app_name">말린오이 캘린더</string>
     <string name="title_activity_main">말린오이 캘린더</string>
     <string name="package_name">com.mallinoi.calendar</string>
-    <string name="custom_url_scheme">com.mallinoi.calendar</string>
+    <string name="custom_url_scheme">mallinoi</string>
+    <string name="widget_study_four_days">말린오이 자기개발 4일</string>
+    <string name="widget_study_two_weeks">말린오이 자기개발 2주</string>
+    <string name="widget_study_month">말린오이 자기개발 한 달</string>
+    <string name="widget_work_four_days">말린오이 업무 4일</string>
+    <string name="widget_work_two_weeks">말린오이 업무 2주</string>
+    <string name="widget_work_month">말린오이 업무 한 달</string>
+    <string name="widget_event_four_days">말린오이 이벤트 4일</string>
+    <string name="widget_event_two_weeks">말린오이 이벤트 2주</string>
+    <string name="widget_event_month">말린오이 이벤트 한 달</string>
 </resources>

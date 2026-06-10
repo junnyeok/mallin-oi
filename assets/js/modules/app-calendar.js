@@ -5,6 +5,10 @@ import {
   saveRedirect,
   signOutUser,
 } from './auth-store.js';
+import {
+  consumeCalendarWidgetRoute,
+  scheduleCalendarWidgetRefresh,
+} from './calendar-native-widgets.js';
 import { initRefreshControls } from './refresh-control.js';
 
 const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
@@ -156,9 +160,11 @@ async function initAppCalendarAccount() {
 
 async function initAppCalendarLauncher() {
   enableCalendarAppMode();
+  if (await consumeCalendarWidgetRoute()) return;
   bindCalendarLinks();
   initRefreshControls();
   await initAppCalendarAccount();
+  scheduleCalendarWidgetRefresh();
 }
 
 if (document.readyState === 'loading') {

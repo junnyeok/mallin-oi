@@ -22,7 +22,104 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" android:host="calendar" />
+            </intent-filter>
+
         </activity>
+
+        <receiver
+            android:name=".StudyFourDayWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_study_four_days">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_study_four_days" />
+        </receiver>
+
+        <receiver
+            android:name=".StudyTwoWeekWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_study_two_weeks">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_study_two_weeks" />
+        </receiver>
+
+        <receiver
+            android:name=".StudyMonthWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_study_month">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_study_month" />
+        </receiver>
+
+        <receiver
+            android:name=".WorkFourDayWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_work_four_days">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_work_four_days" />
+        </receiver>
+
+        <receiver
+            android:name=".WorkTwoWeekWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_work_two_weeks">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_work_two_weeks" />
+        </receiver>
+
+        <receiver
+            android:name=".WorkMonthWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_work_month">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_work_month" />
+        </receiver>
+
+        <receiver
+            android:name=".EventFourDayWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_event_four_days">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_event_four_days" />
+        </receiver>
+
+        <receiver
+            android:name=".EventTwoWeekWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_event_two_weeks">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_event_two_weeks" />
+        </receiver>
+
+        <receiver
+            android:name=".EventMonthWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_event_month">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_event_month" />
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

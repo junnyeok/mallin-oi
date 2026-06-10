@@ -19,6 +19,7 @@ import {
   getCalendarLabel,
   getSharedPersonalGroupName,
 } from './calendar-shared-personal.js';
+import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 
 const TABLE_NAME = 'work_calendar_todos';
 const CATEGORY_TABLE_NAME = 'work_calendar_categories';
@@ -1365,6 +1366,8 @@ async function initPageCalendar() {
       onSave: saveCategory,
       onDelete: removeCategory,
     });
+
+    scheduleCalendarWidgetRefresh();
   }
 
   function selectDate(dateKey) {

@@ -19,6 +19,7 @@ import {
   getCalendarLabel,
   getSharedPersonalGroupName,
 } from './calendar-shared-personal.js';
+import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 
 const TABLE_NAME = 'event_calendar_todos';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -1717,6 +1718,8 @@ async function initPageCalendar() {
       onSave: saveCategory,
       onDelete: removeCategory,
     });
+
+    scheduleCalendarWidgetRefresh();
   }
 
   function selectDate(dateKey) {

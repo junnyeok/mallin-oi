@@ -2,6 +2,15 @@
 
 import { supabase } from './supabase-client.js';
 
+export const CALENDAR_WIDGET_TYPES = ['study', 'work', 'event'];
+export const CALENDAR_WIDGET_RANGES = ['fourDays', 'twoWeeks', 'month'];
+
+export const CALENDAR_WIDGET_LABELS = {
+  study: '자기개발',
+  work: '업무',
+  event: '이벤트',
+};
+
 function toDateKey(value) {
   if (!value) return '';
 
@@ -27,13 +36,163 @@ function normalizeWidgetItem(row = {}) {
   };
 }
 
+function parseDateKey(dateKey) {
+  const [year, month, day] = String(dateKey).split('-').map(Number);
+
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day);
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + Number(days || 0));
+  return nextDate;
+}
+
+function getMonthRange(baseDate = new Date()) {
+  const startDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const endDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+
+  return {
+    startDate,
+    endDate,
+    startDateKey: toDateKey(startDate),
+    endDateKey: toDateKey(endDate),
+  };
+}
+
+function getCalendarGridRange(baseDate = new Date()) {
+  const { startDate } = getMonthRange(baseDate);
+  const gridStartDate = addDays(startDate, -startDate.getDay());
+  const gridEndDate = addDays(gridStartDate, 41);
+
+  return {
+    startDate: gridStartDate,
+    endDate: gridEndDate,
+    startDateKey: toDateKey(gridStartDate),
+    endDateKey: toDateKey(gridEndDate),
+  };
+}
+
+function getWidgetFetchRange(baseDate = new Date()) {
+  const monthRange = getCalendarGridRange(baseDate);
+  const endDate = addDays(baseDate, 13);
+
+  if (parseDateKey(monthRange.endDateKey) > endDate) {
+    return {
+      startDate: baseDate,
+      endDate: monthRange.endDate,
+      startDateKey: toDateKey(baseDate),
+      endDateKey: monthRange.endDateKey,
+    };
+  }
+
+  return {
+    startDate: baseDate,
+    endDate,
+    startDateKey: toDateKey(baseDate),
+    endDateKey: toDateKey(endDate),
+  };
+}
+
+function getDateKeys(startDate, count) {
+  return Array.from({ length: count }, (_, index) =>
+    toDateKey(addDays(startDate, index)),
+  );
+}
+
+function sortWidgetItems(items = []) {
+  return [...items].sort((a, b) => {
+    const dateCompare = String(a.date).localeCompare(String(b.date));
+    if (dateCompare !== 0) return dateCompare;
+
+    const timeCompare = String(a.time || '99:99').localeCompare(
+      String(b.time || '99:99'),
+    );
+    if (timeCompare !== 0) return timeCompare;
+
+    const sortCompare = Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
+    if (sortCompare !== 0) return sortCompare;
+
+    return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+  });
+}
+
+function groupItemsByDate(items = []) {
+  return sortWidgetItems(items).reduce((acc, item) => {
+    if (!acc[item.date]) acc[item.date] = [];
+    acc[item.date].push(item);
+    return acc;
+  }, {});
+}
+
+function getRangeDateKeys(range, baseDate) {
+  if (range === 'fourDays') return getDateKeys(baseDate, 4);
+  if (range === 'twoWeeks') return getDateKeys(baseDate, 14);
+
+  const { startDate } = getCalendarGridRange(baseDate);
+  return getDateKeys(startDate, 42);
+}
+
+export function buildCalendarWidgetPayload(items = [], options = {}) {
+  const baseDate = parseDateKey(toDateKey(options.today || new Date())) || new Date();
+  const today = toDateKey(baseDate);
+  const monthRange = getMonthRange(baseDate);
+
+  const filteredItems = sortWidgetItems(
+    items.filter((item) => CALENDAR_WIDGET_TYPES.includes(item.calendarType)),
+  );
+
+  const widgets = {};
+
+  CALENDAR_WIDGET_TYPES.forEach((calendarType) => {
+    const typeItems = filteredItems.filter(
+      (item) => item.calendarType === calendarType,
+    );
+    const typeGroups = groupItemsByDate(typeItems);
+
+    widgets[calendarType] = {};
+
+    CALENDAR_WIDGET_RANGES.forEach((range) => {
+      const dateKeys = getRangeDateKeys(range, baseDate);
+
+      widgets[calendarType][range] = {
+        calendarType,
+        calendarLabel: CALENDAR_WIDGET_LABELS[calendarType],
+        range,
+        today,
+        month: {
+          year: baseDate.getFullYear(),
+          month: baseDate.getMonth() + 1,
+          startDate: monthRange.startDateKey,
+          endDate: monthRange.endDateKey,
+        },
+        days: dateKeys.map((dateKey) => ({
+          date: dateKey,
+          isToday: dateKey === today,
+          isCurrentMonth:
+            dateKey >= monthRange.startDateKey && dateKey <= monthRange.endDateKey,
+          items: typeGroups[dateKey] || [],
+        })),
+      };
+    });
+  });
+
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    today,
+    widgets,
+  };
+}
+
 export async function fetchCalendarWidgetItems(options = {}) {
   const today = new Date();
-  const defaultEnd = new Date(today);
-  defaultEnd.setDate(defaultEnd.getDate() + 30);
+  const defaultRange = getWidgetFetchRange(today);
 
-  const startDate = toDateKey(options.startDate || today);
-  const endDate = toDateKey(options.endDate || defaultEnd);
+  const startDate = toDateKey(options.startDate || defaultRange.startDate);
+  const endDate = toDateKey(options.endDate || defaultRange.endDate);
 
   const { data, error } = await supabase.rpc('get_my_calendar_widget_items', {
     p_start_date: startDate,
@@ -46,4 +205,12 @@ export async function fetchCalendarWidgetItems(options = {}) {
   }
 
   return (data || []).map(normalizeWidgetItem);
+}
+
+export async function fetchCalendarWidgetPayload(options = {}) {
+  const items = await fetchCalendarWidgetItems(options);
+
+  return buildCalendarWidgetPayload(items, {
+    today: options.today || new Date(),
+  });
 }
