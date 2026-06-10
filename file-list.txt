@@ -819,3 +819,5 @@
 ./ios/App/MallinoiCalendarWidgets/MallinoiCalendarWidgets.swift
 ./android/app/src/main/assets/public/assets/js/modules/calendar-native-widgets.js
 ./ios/App/App/public/assets/js/modules/calendar-native-widgets.js
+./ios/App/App/MainViewController.swift
+./ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme
