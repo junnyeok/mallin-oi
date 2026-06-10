@@ -193,6 +193,137 @@ function applyYear() {
   if (year) year.textContent = String(new Date().getFullYear());
 }
 
+const GLOBAL_FLOATING_MODAL_CLASS = 'has-global-floating-modal';
+const MODAL_STATE_CLASSES = [
+  'attendance-popup-open',
+  'study-category-modal-open',
+  'work-category-modal-open',
+  'event-category-modal-open',
+  'work-repeat-modal-open',
+];
+const GLOBAL_FLOATING_MENU_IDS = [
+  'notificationMenu',
+  'bgmMenu',
+  'pickleMenu',
+];
+const OPEN_MODAL_SELECTORS = [
+  '.attendance-popup',
+  '.login-required-popup.is-open',
+  '.study-category-manager__modal:not([hidden])',
+  '.work-category-manager__modal:not([hidden])',
+  '.event-category-manager__modal:not([hidden])',
+  '.work-repeat__modal:not([hidden])',
+  '[role="dialog"][aria-modal="true"]:not([hidden])',
+].join(',');
+
+let globalFloatingObserver = null;
+let globalFloatingRaf = null;
+let globalFloatingLifecycleBound = false;
+
+function isVisibleModalElement(el) {
+  if (!el || el.hidden || el.closest('[hidden]')) return false;
+
+  const style = window.getComputedStyle?.(el);
+  if (!style) return true;
+
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+
+function hasOpenModalState() {
+  const hasModalStateClass = MODAL_STATE_CLASSES.some(
+    (className) =>
+      document.body?.classList.contains(className) ||
+      document.documentElement?.classList.contains(className),
+  );
+  const hasVisibleModal = Array.from(
+    document.querySelectorAll(OPEN_MODAL_SELECTORS),
+  ).some(isVisibleModalElement);
+
+  return hasVisibleModal || (hasModalStateClass && hasVisibleModal);
+}
+
+function setGlobalFloatingMenusHidden(isHidden) {
+  GLOBAL_FLOATING_MENU_IDS.forEach((id) => {
+    const menu = document.getElementById(id);
+    if (!menu) return;
+
+    if (isHidden) {
+      menu.setAttribute('aria-hidden', 'true');
+      menu.setAttribute('inert', '');
+      menu.inert = true;
+
+      if (menu.contains(document.activeElement)) {
+        document.activeElement?.blur?.();
+      }
+      return;
+    }
+
+    if (menu.getAttribute('aria-hidden') === 'true') {
+      menu.removeAttribute('aria-hidden');
+    }
+    menu.removeAttribute('inert');
+    menu.inert = false;
+  });
+}
+
+function updateGlobalFloatingState() {
+  globalFloatingRaf = null;
+
+  const isHidden = hasOpenModalState();
+  document.body?.classList.toggle(GLOBAL_FLOATING_MODAL_CLASS, isHidden);
+  setGlobalFloatingMenusHidden(isHidden);
+}
+
+function scheduleGlobalFloatingStateUpdate() {
+  if (globalFloatingRaf) return;
+  globalFloatingRaf = window.requestAnimationFrame(updateGlobalFloatingState);
+}
+
+function clearGlobalFloatingModalState() {
+  if (globalFloatingRaf) {
+    window.cancelAnimationFrame(globalFloatingRaf);
+    globalFloatingRaf = null;
+  }
+
+  MODAL_STATE_CLASSES.forEach((className) => {
+    document.body?.classList.remove(className);
+    document.documentElement?.classList.remove(className);
+  });
+  document.body?.classList.remove(GLOBAL_FLOATING_MODAL_CLASS);
+  setGlobalFloatingMenusHidden(false);
+}
+
+function initGlobalFloatingModalState() {
+  if (!document.body) return;
+
+  if (!globalFloatingObserver) {
+    globalFloatingObserver = new MutationObserver(
+      scheduleGlobalFloatingStateUpdate,
+    );
+    globalFloatingObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    globalFloatingObserver.observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ['class', 'hidden', 'style'],
+    });
+  }
+
+  if (!globalFloatingLifecycleBound) {
+    globalFloatingLifecycleBound = true;
+    window.addEventListener(
+      'mallin:before-pjax-swap',
+      clearGlobalFloatingModalState,
+    );
+    window.addEventListener('pagehide', clearGlobalFloatingModalState);
+  }
+
+  scheduleGlobalFloatingStateUpdate();
+}
+
 export async function refreshLayoutState() {
   const base = detectBasePath();
 
@@ -204,6 +335,7 @@ export async function refreshLayoutState() {
   applyPageLogos(base);
   applyCurrentNav(base);
   applyYear();
+  initGlobalFloatingModalState();
 }
 
 let layoutInjected = false;

@@ -95,6 +95,14 @@ body[data-page='post'] .logo #siteLogoImg {
   top: 14px;
   left: 16px;
   z-index: 1100;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition:
+    opacity 0.18s ease,
+    visibility 0.18s ease,
+    transform 0.18s ease;
 }
 
 .notification-btn {
@@ -316,6 +324,14 @@ body[data-page='post'] .logo #siteLogoImg {
   top: 14px;
   left: 110px;
   z-index: 1100;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition:
+    opacity 0.18s ease,
+    visibility 0.18s ease,
+    transform 0.18s ease;
 }
 
 .bgm-btn {
@@ -774,6 +790,14 @@ body[data-page='post'] .logo #siteLogoImg {
   top: 14px;
   left: 206px;
   z-index: 1100;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition:
+    opacity 0.18s ease,
+    visibility 0.18s ease,
+    transform 0.18s ease;
 }
 
 .pickle-btn {
@@ -925,6 +949,15 @@ body[data-page='post'] .logo #siteLogoImg {
     bottom: calc(100% + 8px);
     width: min(340px, calc(100vw - 24px));
   }
+}
+
+body.has-global-floating-modal .notification-menu,
+body.has-global-floating-modal .bgm-menu,
+body.has-global-floating-modal .pickle-menu {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  pointer-events: none;
 }
 
 .login-required-popup {
