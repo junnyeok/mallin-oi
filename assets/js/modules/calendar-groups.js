@@ -26,6 +26,7 @@ const GROUP_COLORS = [
   '#ff9a5c',
   '#eeeeee',
 ];
+const GROUP_DESCRIPTION_MAX_LENGTH = 100;
 
 function normalizeColor(color, fallback = '#f54260') {
   const value = String(color || '').trim();
@@ -47,6 +48,10 @@ function escapeHtml(value = '') {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function normalizeGroupDescription(value = '') {
+  return String(value || '').trim().slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
 }
 
 function toDateKey(date) {
@@ -725,6 +730,7 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
   const color = normalizeColor(group.color);
   const isOwner = group.role === 'owner';
   const transferTargets = members.filter((member) => !member.is_owner);
+  const description = normalizeGroupDescription(group.description);
   const calendars = ['study', 'work', 'event']
     .filter((type) => group[`allow_${type}`])
     .map((type) => CALENDAR_LABELS[type])
@@ -736,6 +742,11 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
         <span class="calendar-group-card__dot" style="--calendar-group-color:${color}"></span>
         <div>
           <h3 class="calendar-group-card__title">${escapeHtml(group.name)}</h3>
+          ${
+            description
+              ? `<p class="calendar-group-card__description">${escapeHtml(description)}</p>`
+              : ''
+          }
           <p class="calendar-group-card__meta">${isPrivate ? '비공개' : '공개'} · ${
             calendars || '연동 꺼짐'
           }</p>
@@ -832,6 +843,9 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
             <details class="calendar-group-card__edit">
               <summary>편집</summary>
               <label>이름 <input data-edit-name value="${escapeHtml(group.name)}" maxlength="30" /></label>
+              <label>그룹 소개 <textarea data-edit-description maxlength="100" rows="3" placeholder="그룹을 짧게 소개해줘.">${escapeHtml(
+                description,
+              )}</textarea></label>
               <label>색상 <input data-edit-color type="color" value="${color}" /></label>
               <fieldset class="calendar-group-card__checks">
                 <legend>연동 캘린더 설정</legend>
@@ -987,6 +1001,7 @@ export async function initCalendarGroupsPage() {
 
     const formData = new FormData(form);
     const name = String(formData.get('name') || '').trim();
+    const description = normalizeGroupDescription(formData.get('description'));
     const color = String(formData.get('color') || '#f54260');
     const isPrivate = Boolean(formData.get('isPrivate'));
     const isHidden = Boolean(formData.get('isHidden'));
@@ -1007,6 +1022,7 @@ export async function initCalendarGroupsPage() {
       setStatus('그룹을 만드는 중...');
       await rpc('create_calendar_group', {
         p_name: name,
+        p_description: description,
         p_color: color,
         p_allow_study: flags.allowStudy,
         p_allow_work: flags.allowWork,
@@ -1133,7 +1149,10 @@ export async function initCalendarGroupsPage() {
       }
 
       if (action === 'save-edit') {
-        const name = card.querySelector('[data-edit-name]')?.value || '';
+        const name = String(card.querySelector('[data-edit-name]')?.value || '').trim();
+        const description = normalizeGroupDescription(
+          card.querySelector('[data-edit-description]')?.value,
+        );
         const color = card.querySelector('[data-edit-color]')?.value || '#f54260';
         const allowStudy = Boolean(
           card.querySelector('[data-edit-allow="study"]')?.checked,
@@ -1151,6 +1170,7 @@ export async function initCalendarGroupsPage() {
         await rpc('update_calendar_group', {
           p_group_id: groupId,
           p_name: name,
+          p_description: description,
           p_color: color,
           p_allow_study: allowStudy,
           p_allow_work: allowWork,

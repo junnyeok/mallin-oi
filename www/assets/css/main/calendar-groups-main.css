@@ -355,7 +355,8 @@
   font-weight: 900;
 }
 
-.calendar-group-form__field input {
+.calendar-group-form__field input,
+.calendar-group-form__field textarea {
   min-height: 42px;
   padding: 0 var(--space-12);
   border: 1px solid var(--color-border);
@@ -363,6 +364,14 @@
   background: transparent;
   color: var(--color-text);
   font: inherit;
+}
+
+.calendar-group-form__field textarea {
+  min-height: 76px;
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-10);
+  resize: vertical;
+  overflow-wrap: anywhere;
 }
 
 .calendar-group-form__set {
@@ -454,6 +463,15 @@
   margin: 0;
   font-size: var(--text-body);
   overflow-wrap: anywhere;
+}
+
+.calendar-group-card__description {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .calendar-group-card__meta {
@@ -648,7 +666,8 @@
   color: var(--color-text);
 }
 
-.calendar-group-card__edit input {
+.calendar-group-card__edit input,
+.calendar-group-card__edit textarea {
   min-height: 36px;
   min-width: 0;
   padding: 0 var(--space-12);
@@ -657,6 +676,14 @@
   background: var(--color-bg);
   color: var(--color-text);
   font: inherit;
+}
+
+.calendar-group-card__edit textarea {
+  min-height: 72px;
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-8);
+  resize: vertical;
+  overflow-wrap: anywhere;
 }
 
 .calendar-group-card__edit input[type="checkbox"],
