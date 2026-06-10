@@ -111,6 +111,89 @@ function normalizeComparable(value) {
     .toLowerCase();
 }
 
+function getEventValue(event, ...keys) {
+  for (const key of keys) {
+    const directValue = event?.[key];
+    if (directValue !== undefined && directValue !== null && directValue !== '') {
+      return directValue;
+    }
+
+    const payloadValue = getEventPayloadValue(event, key);
+    if (payloadValue !== undefined && payloadValue !== null && payloadValue !== '') {
+      return payloadValue;
+    }
+  }
+
+  return '';
+}
+
+function getEventTimeSortValue(event) {
+  const value = String(
+    getEventValue(
+      event,
+      'event_time',
+      'eventTime',
+      'time',
+      'start_time',
+      'startTime',
+    ) || '',
+  ).trim();
+
+  if (!value) return Number.POSITIVE_INFINITY;
+
+  const compactValue = value.replace(/\s+/g, ' ');
+  const meridiemMatch = compactValue.match(
+    /^(오전|오후|AM|PM)\s*(\d{1,2})(?::(\d{1,2}))?/i,
+  );
+
+  if (meridiemMatch) {
+    const period = meridiemMatch[1].toUpperCase();
+    const hour = Number(meridiemMatch[2]);
+    const minute = Number(meridiemMatch[3] || 0);
+
+    if (hour >= 1 && hour <= 12 && minute >= 0 && minute <= 59) {
+      const isPm = period === '오후' || period === 'PM';
+      const hour24 = isPm ? (hour % 12) + 12 : hour % 12;
+      return hour24 * 60 + minute;
+    }
+  }
+
+  const hourMinuteMatch = compactValue.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+
+  if (hourMinuteMatch) {
+    return Number(hourMinuteMatch[1]) * 60 + Number(hourMinuteMatch[2]);
+  }
+
+  return Number.POSITIVE_INFINITY;
+}
+
+function getEventCreatedTime(event) {
+  const value = getEventValue(event, 'created_at', 'createdAt', 'backed_up_at');
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function compareEventsByTitle(a, b) {
+  return String(a?.title || '').localeCompare(String(b?.title || ''), 'ko');
+}
+
+function compareGroupEvents(a, b, calendarType) {
+  if (calendarType === 'event') {
+    const aTime = getEventTimeSortValue(a);
+    const bTime = getEventTimeSortValue(b);
+    const hasATime = Number.isFinite(aTime);
+    const hasBTime = Number.isFinite(bTime);
+
+    if (hasATime && hasBTime && aTime !== bTime) return aTime - bTime;
+    if (hasATime !== hasBTime) return hasATime ? -1 : 1;
+
+    const createdDiff = getEventCreatedTime(a) - getEventCreatedTime(b);
+    if (createdDiff !== 0) return createdDiff;
+  }
+
+  return compareEventsByTitle(a, b);
+}
+
 function getNicknameInitial(name) {
   const trimmed = String(name || '').trim();
   return Array.from(trimmed)[0] || '회';
@@ -146,7 +229,7 @@ function groupEventsByDateAndUser(rows = []) {
     members.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     members.forEach((member) => {
       member.events.sort((a, b) =>
-        String(a.title || '').localeCompare(String(b.title || ''), 'ko'),
+        compareGroupEvents(a, b, a?.calendar_type || b?.calendar_type),
       );
     });
   });
@@ -269,9 +352,7 @@ function collectWeekScheduleRows(week, groupState) {
   );
 
   sharedEventsByDate.forEach((events) => {
-    events.sort((a, b) =>
-      String(a.title || '').localeCompare(String(b.title || ''), 'ko'),
-    );
+    events.sort((a, b) => compareGroupEvents(a, b, groupState.calendarType));
   });
 
   return {
