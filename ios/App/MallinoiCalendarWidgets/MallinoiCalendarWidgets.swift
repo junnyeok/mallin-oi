@@ -121,14 +121,14 @@ struct CalendarWidgetView: View {
     }
 
     private var title: String {
-        "말린오이 \(label(for: entry.calendarType))"
+        label(for: entry.calendarType)
     }
 
     @ViewBuilder
     private func content(_ widget: CalendarWidgetData) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("말린오이 \(widget.calendarLabel)")
+                Text(widget.calendarLabel)
                     .font(.caption.bold())
                     .foregroundStyle(.white)
                     .lineLimit(1)

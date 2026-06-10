@@ -45,7 +45,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         boolean isLoggedIn = prefs.getBoolean(CalendarWidgetsPlugin.KEY_LOGGED_IN, false);
         String payloadJson = prefs.getString(CalendarWidgetsPlugin.KEY_PAYLOAD, "{}");
 
-        views.setTextViewText(R.id.widgetTitle, "말린오이 " + label);
+        views.setTextViewText(R.id.widgetTitle, label);
         views.setTextViewText(R.id.widgetSubtitle, getRangeLabel());
         views.setOnClickPendingIntent(R.id.widgetRoot, buildOpenIntent(context));
 
