@@ -1,7 +1,9 @@
 // assets/js/modules/mobile-stability.js
+import { supabase } from './supabase-client.js';
 
 const STABILITY_INITIALIZED_KEY = '__mallinMobileStabilityInitialized';
 const STABILITY_OBSERVER_KEY = '__mallinMobileStabilityObserver';
+const AUTH_REFRESH_GUARD_KEY = '__mallinNativeAuthRefreshGuard';
 
 const RECOVERABLE_BUTTON_SELECTOR = [
   '#writeSubmitBtn',
@@ -18,6 +20,18 @@ function isMobileLike() {
     window.matchMedia?.('(max-width: 700px)').matches ||
     window.matchMedia?.('(hover: none) and (pointer: coarse)').matches
   );
+}
+
+function isNativeCapacitor() {
+  return window.Capacitor?.isNativePlatform?.() === true;
+}
+
+function startAuthAutoRefresh() {
+  try {
+    supabase.auth.startAutoRefresh?.();
+  } catch (error) {
+    console.warn('[mobile-stability] auth auto refresh start failed:', error);
+  }
 }
 
 function markStabilityMode() {
@@ -116,6 +130,7 @@ function installLifecycleRecovery() {
   window.addEventListener('pageshow', (event) => {
     markStabilityMode();
     applyImageLoading(document);
+    startAuthAutoRefresh();
 
     if (event.persisted) {
       recoverStuckButtons();
@@ -131,6 +146,21 @@ function installLifecycleRecovery() {
       markStabilityMode();
       recoverStuckButtons();
       applyImageLoading(document);
+      startAuthAutoRefresh();
+    }
+  });
+}
+
+function installNativeAuthRefreshGuard() {
+  if (!isNativeCapacitor()) return;
+  if (window[AUTH_REFRESH_GUARD_KEY]) return;
+
+  window[AUTH_REFRESH_GUARD_KEY] = true;
+  startAuthAutoRefresh();
+
+  window.Capacitor?.Plugins?.App?.addListener?.('appStateChange', (state) => {
+    if (state?.isActive) {
+      startAuthAutoRefresh();
     }
   });
 }
@@ -199,6 +229,7 @@ export function initMobileStability() {
 
   installGlobalErrorHandlers();
   installLifecycleRecovery();
+  installNativeAuthRefreshGuard();
   installMutationObserver();
   installRecoverableButtonMarker();
 }

@@ -6,6 +6,7 @@ import {
   saveLoginPolicy,
   saveRedirect,
 } from './auth-store.js';
+import { isCalendarAppMode } from './app-calendar-mode.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -137,7 +138,12 @@ export function initLogin() {
   const pwInput = $('loginPw');
   const rememberInput = $('rememberLogin');
   const resendBtn = $('loginResendBtn');
+  const calendarAppMode = isCalendarAppMode();
   let lastUnconfirmedEmail = '';
+
+  if (calendarAppMode && rememberInput) {
+    rememberInput.checked = true;
+  }
 
   const hideResend = () => {
     if (!resendBtn) return;

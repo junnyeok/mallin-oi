@@ -104,6 +104,8 @@ export function getVersionChangeInfo() {
 }
 
 export async function clearOldStaticCaches() {
+  // Supabase 세션과 자동로그인 정책은 localStorage에 있으므로
+  // 버전 갱신에서는 Cache Storage와 service worker만 정리한다.
   try {
     if ('caches' in window) {
       const cacheKeys = await caches.keys();

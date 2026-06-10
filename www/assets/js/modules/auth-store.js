@@ -1,9 +1,10 @@
 // assets/js/modules/auth-store.js
-import { supabase } from './supabase-client.js';
+import { SUPABASE_AUTH_STORAGE_KEY, supabase } from './supabase-client.js';
 
 export const REDIRECT_KEY = 'authRedirectTo';
 export const MYPAGE_VERIFY_KEY = 'mypageVerified_v1';
 export const AUTH_POLICY_KEY = 'mallinAuthPolicy_v2';
+export const AUTO_LOGIN_POLICY_KEY = AUTH_POLICY_KEY;
 const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
 const APP_MODE_PARAM = 'app';
 const APP_MODE_VALUE = 'calendar';
@@ -25,6 +26,20 @@ function readAuthPolicy() {
 
 export function clearLoginPolicy() {
   localStorage.removeItem(AUTH_POLICY_KEY);
+}
+
+function clearSupabaseAuthStorage() {
+  try {
+    localStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+
+    Object.keys(localStorage)
+      .filter((key) => /^sb-.+-auth-token$/.test(key))
+      .forEach((key) => {
+        localStorage.removeItem(key);
+      });
+  } catch (error) {
+    console.warn('[auth-store] clear auth storage failed:', error);
+  }
 }
 
 export function saveLoginPolicy({ autoLogin = false } = {}) {
@@ -431,12 +446,15 @@ export function getDisplayName(user) {
 }
 
 export async function signOutUser() {
-  clearMypageVerified();
-  clearLoginPolicy();
-
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    throw error;
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
+  } finally {
+    clearMypageVerified();
+    clearLoginPolicy();
+    clearSupabaseAuthStorage();
   }
 }
 
