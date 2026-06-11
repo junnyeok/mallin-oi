@@ -252,6 +252,7 @@ struct DayGridView: View {
                 DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", monthRows: 0, theme: theme)
             }
         }
+        .padding(.top, widget.range == "fourDays" ? 10 : 12)
     }
 }
 

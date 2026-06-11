@@ -179,6 +179,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(id, text);
             views.setTextColor(id, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
             views.setInt(id, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
+            if (!"month".equals(range)) {
+                views.setViewPadding(id, 1, "fourDays".equals(range) ? 7 : 5, 1, 1);
+            }
             views.setViewVisibility(id, View.VISIBLE);
         }
     }
