@@ -173,7 +173,7 @@ struct CalendarWidgetView: View {
 
     @ViewBuilder
     private func content(_ widget: CalendarWidgetData, theme: CalendarWidgetTheme) -> some View {
-        VStack(alignment: .leading, spacing: widget.range == "month" ? 3 : 5) {
+        VStack(alignment: .leading, spacing: widget.range == "month" ? 4 : 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(widget.calendarLabel)
                     .font(.caption.bold())
@@ -193,12 +193,10 @@ struct CalendarWidgetView: View {
             } else {
                 DayGridView(widget: widget, columns: entry.range == "fourDays" ? 2 : 7, theme: theme)
             }
-
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, widget.range == "month" ? 6 : 8)
-        .padding(.vertical, widget.range == "month" ? 5 : 7)
+        .padding(.horizontal, widget.range == "month" ? 8 : 10)
+        .padding(.vertical, widget.range == "month" ? 7 : 9)
     }
 
     private func subtitle(for widget: CalendarWidgetData) -> String {
@@ -347,7 +345,7 @@ struct DayCellView: View {
     private var cellHeight: CGFloat {
         if range == "fourDays" { return 52 }
         if range == "twoWeeks" { return 41 }
-        return 31
+        return 40
     }
 
     private var dayNumberColor: Color {

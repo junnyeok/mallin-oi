@@ -108,20 +108,21 @@ function getCalendarGridRange(baseDate = new Date()) {
 function getWidgetFetchRange(baseDate = new Date()) {
   const monthRange = getCalendarGridRange(baseDate);
   const endDate = addDays(baseDate, 13);
+  const fetchStartDate = monthRange.startDate;
 
   if (parseDateKey(monthRange.endDateKey) > endDate) {
     return {
-      startDate: baseDate,
+      startDate: fetchStartDate,
       endDate: monthRange.endDate,
-      startDateKey: toDateKey(baseDate),
+      startDateKey: monthRange.startDateKey,
       endDateKey: monthRange.endDateKey,
     };
   }
 
   return {
-    startDate: baseDate,
+    startDate: fetchStartDate,
     endDate,
-    startDateKey: toDateKey(baseDate),
+    startDateKey: monthRange.startDateKey,
     endDateKey: toDateKey(endDate),
   };
 }
