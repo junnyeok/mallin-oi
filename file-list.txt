@@ -132,6 +132,7 @@
 ./android/app/src/main/assets/public/images/android-chrome-512x512.png
 ./android/app/src/main/assets/public/images/apple-touch-icon.png
 ./android/app/src/main/assets/public/images/bad.png
+./android/app/src/main/assets/public/images/calendar-app-icon.png
 ./android/app/src/main/assets/public/images/favicon-16x16.png
 ./android/app/src/main/assets/public/images/favicon-32x32.png
 ./android/app/src/main/assets/public/images/favicon.ico
@@ -330,6 +331,7 @@
 ./images/android-chrome-512x512.png
 ./images/apple-touch-icon.png
 ./images/bad.png
+./images/calendar-app-icon.png
 ./images/BGM/avocado-sunset.png
 ./images/BGM/cucumbergirl-debuet.png
 ./images/BGM/lofi-cucumber.png
@@ -584,6 +586,7 @@
 ./ios/App/App/public/images/android-chrome-512x512.png
 ./ios/App/App/public/images/apple-touch-icon.png
 ./ios/App/App/public/images/bad.png
+./ios/App/App/public/images/calendar-app-icon.png
 ./ios/App/App/public/images/favicon-16x16.png
 ./ios/App/App/public/images/favicon-32x32.png
 ./ios/App/App/public/images/favicon.ico
@@ -767,6 +770,7 @@
 ./www/images/android-chrome-512x512.png
 ./www/images/apple-touch-icon.png
 ./www/images/bad.png
+./www/images/calendar-app-icon.png
 ./www/images/favicon-16x16.png
 ./www/images/favicon-32x32.png
 ./www/images/favicon.ico

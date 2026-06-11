@@ -187,7 +187,7 @@ struct CalendarWidgetView: View {
                     .foregroundStyle(theme.mutedText)
                     .lineLimit(1)
             }
-            .padding(.horizontal, widget.range == "month" ? 6 : 0)
+            .padding(.horizontal, 6)
 
             if entry.range == "month" {
                 MonthGridView(widget: widget, theme: theme)

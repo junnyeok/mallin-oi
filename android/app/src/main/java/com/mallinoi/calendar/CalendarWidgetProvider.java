@@ -55,6 +55,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widgetSubtitle, getRangeLabel());
         views.setTextColor(R.id.widgetSubtitle, theme.mutedText);
         views.setOnClickPendingIntent(R.id.widgetRoot, buildOpenIntent(context));
+        if (!"month".equals(range)) {
+            int headerInset = dp(context, 8);
+            views.setViewPadding(R.id.widgetHeader, headerInset, 0, headerInset, 0);
+        }
 
         if (!isLoggedIn) {
             setEmptyState(views, "로그인이 필요해요");
@@ -230,6 +234,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         } catch (Exception error) {
             return fallback;
         }
+    }
+
+    int dp(Context context, int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
     }
 
     String getRangeLabel() {
