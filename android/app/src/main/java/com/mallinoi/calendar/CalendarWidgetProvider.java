@@ -7,6 +7,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -44,9 +48,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences(CalendarWidgetsPlugin.PREFS_NAME, Context.MODE_PRIVATE);
         boolean isLoggedIn = prefs.getBoolean(CalendarWidgetsPlugin.KEY_LOGGED_IN, false);
         String payloadJson = prefs.getString(CalendarWidgetsPlugin.KEY_PAYLOAD, "{}");
+        WidgetTheme theme = getTheme();
 
         views.setTextViewText(R.id.widgetTitle, label);
+        views.setTextColor(R.id.widgetTitle, theme.text);
         views.setTextViewText(R.id.widgetSubtitle, getRangeLabel());
+        views.setTextColor(R.id.widgetSubtitle, theme.mutedText);
         views.setOnClickPendingIntent(R.id.widgetRoot, buildOpenIntent(context));
 
         if (!isLoggedIn) {
@@ -72,7 +79,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 views.setTextViewText(R.id.widgetSubtitle, monthNumber + "월");
             }
 
-            bindDays(views, days);
+            bindDays(views, days, theme);
         } catch (Exception error) {
             setEmptyState(views, "위젯을 열어 새로고침해줘요");
         }
@@ -103,10 +110,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         views.setViewVisibility(R.id.widgetEmpty, View.VISIBLE);
     }
 
-    void bindDays(RemoteViews views, JSONArray days) {
+    void bindDays(RemoteViews views, JSONArray days, WidgetTheme theme) {
         int[] ids = getDayIds();
         SimpleDateFormat input = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-        SimpleDateFormat monthDay = new SimpleDateFormat("M/d E", Locale.KOREAN);
+        SimpleDateFormat monthDay = "month".equals(range)
+                ? new SimpleDateFormat("d", Locale.KOREAN)
+                : new SimpleDateFormat("d", Locale.KOREAN);
 
         views.setViewVisibility(R.id.widgetEmpty, View.GONE);
 
@@ -127,30 +136,67 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             String date = day.optString("date", "");
             java.util.Date localDate = parseDate(input, date);
             JSONArray items = day.optJSONArray("items");
-            JSONObject firstItem = items != null && items.length() > 0 ? items.optJSONObject(0) : null;
-            String title = firstItem == null ? "" : firstItem.optString("title", "");
-            String category = firstItem == null ? "" : firstItem.optString("categoryName", "");
-            String color = firstItem == null ? "" : firstItem.optString("categoryColor", "");
             boolean isToday = day.optBoolean("isToday", false);
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
-            int moreCount = items == null ? 0 : Math.max(items.length() - 1, 0);
+            int itemCount = items == null ? 0 : items.length();
+            int visibleCount = Math.min(itemCount, getMaxVisibleItems());
+            int moreCount = Math.max(itemCount - visibleCount, 0);
 
-            String text = monthDay.format(localDate);
-            if (!title.isEmpty()) {
-                text += "\n" + truncate(category.isEmpty() ? title : category + " " + title, "month".equals(range) ? 9 : 14);
+            SpannableStringBuilder text = new SpannableStringBuilder();
+            int dateStart = text.length();
+            text.append(monthDay.format(localDate));
+            text.setSpan(
+                    new ForegroundColorSpan(isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText),
+                    dateStart,
+                    text.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            );
+
+            for (int itemIndex = 0; itemIndex < visibleCount; itemIndex += 1) {
+                JSONObject item = items.optJSONObject(itemIndex);
+                if (item == null) continue;
+
+                String title = getDisplayTitle(item);
+                if (title.isEmpty()) continue;
+
+                text.append("\n");
+                int itemStart = text.length();
+                text.append(truncate(title, "month".equals(range) ? 7 : 10));
+                int itemEnd = text.length();
+                int badgeColor = parseColor(item.optString("displayColor", item.optString("categoryColor", "")), theme.secondary);
+                text.setSpan(new BackgroundColorSpan(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                text.setSpan(new ForegroundColorSpan(theme.text), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
+
             if (moreCount > 0) {
-                text += "\n+" + moreCount;
+                text.append("\n+").append(String.valueOf(moreCount));
             }
 
             views.setTextViewText(id, text);
-            views.setTextColor(id, isCurrentMonth ? Color.WHITE : Color.rgb(120, 120, 126));
-            if (!color.isEmpty() && firstItem != null) {
-                views.setTextColor(id, parseColor(color, Color.WHITE));
-            }
-            views.setInt(id, "setBackgroundResource", isToday ? R.drawable.widget_today_background : R.drawable.widget_day_background);
+            views.setTextColor(id, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
+            views.setInt(id, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
             views.setViewVisibility(id, View.VISIBLE);
         }
+    }
+
+    String getDisplayTitle(JSONObject item) {
+        String displayTitle = item.optString("displayTitle", "");
+        if (!displayTitle.isEmpty()) return displayTitle;
+
+        String title = item.optString("title", "");
+        String category = item.optString("categoryName", "");
+
+        if ("work".equals(calendarType)) {
+            return category.isEmpty() ? title : category;
+        }
+
+        return title.isEmpty() ? category : title;
+    }
+
+    int getMaxVisibleItems() {
+        if ("fourDays".equals(range)) return 3;
+        if ("twoWeeks".equals(range)) return 2;
+        return 2;
     }
 
     String truncate(String value, int length) {
@@ -181,6 +227,36 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return "한 달";
     }
 
+    WidgetTheme getTheme() {
+        if ("work".equals(calendarType)) {
+            return new WidgetTheme(
+                    Color.rgb(52, 52, 206),
+                    Color.rgb(245, 245, 70),
+                    Color.rgb(17, 17, 17),
+                    Color.rgb(102, 102, 102),
+                    R.drawable.widget_today_work_background
+            );
+        }
+
+        if ("event".equals(calendarType)) {
+            return new WidgetTheme(
+                    Color.rgb(250, 133, 154),
+                    Color.rgb(255, 192, 203),
+                    Color.rgb(17, 17, 17),
+                    Color.rgb(102, 102, 102),
+                    R.drawable.widget_today_event_background
+            );
+        }
+
+        return new WidgetTheme(
+                Color.rgb(60, 60, 60),
+                Color.rgb(187, 187, 187),
+                Color.rgb(17, 17, 17),
+                Color.rgb(102, 102, 102),
+                R.drawable.widget_today_study_background
+        );
+    }
+
     int[] getDayIds() {
         return new int[] {
                 R.id.widgetDay01, R.id.widgetDay02, R.id.widgetDay03, R.id.widgetDay04,
@@ -195,5 +271,21 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 R.id.widgetDay37, R.id.widgetDay38, R.id.widgetDay39, R.id.widgetDay40,
                 R.id.widgetDay41, R.id.widgetDay42
         };
+    }
+
+    static class WidgetTheme {
+        final int primary;
+        final int secondary;
+        final int text;
+        final int mutedText;
+        final int todayBackground;
+
+        WidgetTheme(int primary, int secondary, int text, int mutedText, int todayBackground) {
+            this.primary = primary;
+            this.secondary = secondary;
+            this.text = text;
+            this.mutedText = mutedText;
+            this.todayBackground = todayBackground;
+        }
     }
 }

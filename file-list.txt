@@ -802,6 +802,9 @@
 ./android/app/src/main/res/drawable/widget_background.xml
 ./android/app/src/main/res/drawable/widget_day_background.xml
 ./android/app/src/main/res/drawable/widget_today_background.xml
+./android/app/src/main/res/drawable/widget_today_event_background.xml
+./android/app/src/main/res/drawable/widget_today_study_background.xml
+./android/app/src/main/res/drawable/widget_today_work_background.xml
 ./android/app/src/main/res/layout/widget_calendar.xml
 ./android/app/src/main/res/xml/widget_event_four_days.xml
 ./android/app/src/main/res/xml/widget_event_month.xml

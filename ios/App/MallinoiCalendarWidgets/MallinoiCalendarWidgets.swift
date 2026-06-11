@@ -9,11 +9,55 @@ struct CalendarWidgetItem: Decodable, Identifiable {
     let date: String
     let categoryName: String
     let categoryColor: String
+    let displayTitle: String?
+    let displayColor: String?
     let title: String
     let memo: String
     let time: String?
     let sortOrder: Int
     let createdAt: String?
+}
+
+struct CalendarWidgetTheme {
+    let primary: Color
+    let secondary: Color
+    let background: Color
+    let text: Color
+    let mutedText: Color
+    let border: Color
+}
+
+func theme(for calendarType: String) -> CalendarWidgetTheme {
+    if calendarType == "work" {
+        return CalendarWidgetTheme(
+            primary: Color(red: 52 / 255, green: 52 / 255, blue: 206 / 255),
+            secondary: Color(red: 245 / 255, green: 245 / 255, blue: 70 / 255),
+            background: .white,
+            text: Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
+            mutedText: Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
+            border: Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
+        )
+    }
+
+    if calendarType == "event" {
+        return CalendarWidgetTheme(
+            primary: Color(red: 250 / 255, green: 133 / 255, blue: 154 / 255),
+            secondary: Color(red: 1, green: 192 / 255, blue: 203 / 255),
+            background: .white,
+            text: Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
+            mutedText: Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
+            border: Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
+        )
+    }
+
+    return CalendarWidgetTheme(
+        primary: Color(red: 60 / 255, green: 60 / 255, blue: 60 / 255),
+        secondary: Color(red: 187 / 255, green: 187 / 255, blue: 187 / 255),
+        background: .white,
+        text: Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
+        mutedText: Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
+        border: Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
+    )
 }
 
 struct CalendarWidgetDay: Decodable, Identifiable {
@@ -106,17 +150,20 @@ struct CalendarWidgetView: View {
     let entry: CalendarWidgetEntry
 
     var body: some View {
+        let activeTheme = theme(for: entry.calendarType)
+
         ZStack {
-            Color(red: 0.14, green: 0.14, blue: 0.16)
+            activeTheme.background
 
             if !entry.isLoggedIn {
-                EmptyWidgetView(title: title, message: "로그인이 필요해요")
+                EmptyWidgetView(title: title, message: "로그인이 필요해요", theme: activeTheme)
             } else if let widget = entry.widget {
-                content(widget)
+                content(widget, theme: activeTheme)
             } else {
-                EmptyWidgetView(title: title, message: "앱을 열어 새로고침해줘요")
+                EmptyWidgetView(title: title, message: "앱을 열어 새로고침해줘요", theme: activeTheme)
             }
         }
+        .background(activeTheme.background)
         .widgetURL(URL(string: "mallinoi://calendar?type=\(entry.calendarType)"))
     }
 
@@ -125,29 +172,30 @@ struct CalendarWidgetView: View {
     }
 
     @ViewBuilder
-    private func content(_ widget: CalendarWidgetData) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func content(_ widget: CalendarWidgetData, theme: CalendarWidgetTheme) -> some View {
+        VStack(alignment: .leading, spacing: widget.range == "month" ? 5 : 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(widget.calendarLabel)
                     .font(.caption.bold())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.text)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
 
                 Text(subtitle(for: widget))
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(theme.mutedText)
                     .lineLimit(1)
             }
 
             if entry.range == "month" {
-                MonthGridView(widget: widget)
+                MonthGridView(widget: widget, theme: theme)
             } else {
-                DayGridView(widget: widget, columns: entry.range == "fourDays" ? 2 : 7)
+                DayGridView(widget: widget, columns: entry.range == "fourDays" ? 2 : 7, theme: theme)
             }
         }
-        .padding(12)
+        .padding(.horizontal, widget.range == "month" ? 8 : 10)
+        .padding(.vertical, widget.range == "month" ? 8 : 10)
     }
 
     private func subtitle(for widget: CalendarWidgetData) -> String {
@@ -166,38 +214,40 @@ struct CalendarWidgetView: View {
 struct EmptyWidgetView: View {
     let title: String
     let message: String
+    let theme: CalendarWidgetTheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.caption.bold())
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.text)
                 .lineLimit(1)
 
             Spacer()
 
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(theme.mutedText)
                 .frame(maxWidth: .infinity)
 
             Spacer()
         }
-        .padding(12)
+        .padding(10)
     }
 }
 
 struct DayGridView: View {
     let widget: CalendarWidgetData
     let columns: Int
+    let theme: CalendarWidgetTheme
 
     var body: some View {
         LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: columns),
-            spacing: 5
+            columns: Array(repeating: GridItem(.flexible(), spacing: widget.range == "fourDays" ? 5 : 3), count: columns),
+            spacing: widget.range == "fourDays" ? 5 : 3
         ) {
             ForEach(widget.days.prefix(widget.range == "fourDays" ? 4 : 14)) { day in
-                DayCellView(day: day, compact: widget.range == "twoWeeks")
+                DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", theme: theme)
             }
         }
     }
@@ -205,24 +255,25 @@ struct DayGridView: View {
 
 struct MonthGridView: View {
     let widget: CalendarWidgetData
+    let theme: CalendarWidgetTheme
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             HStack {
                 ForEach(["일", "월", "화", "수", "목", "금", "토"], id: \.self) { text in
                     Text(text)
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(text == "일" ? .red.opacity(0.75) : text == "토" ? .blue.opacity(0.8) : .white.opacity(0.65))
+                        .foregroundStyle(text == "일" ? .red.opacity(0.8) : text == "토" ? .blue.opacity(0.8) : theme.mutedText)
                         .frame(maxWidth: .infinity)
                 }
             }
 
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7),
-                spacing: 4
+                columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 7),
+                spacing: 3
             ) {
                 ForEach(widget.days.prefix(42)) { day in
-                    DayCellView(day: day, compact: true)
+                    DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, theme: theme)
                 }
             }
         }
@@ -231,50 +282,95 @@ struct MonthGridView: View {
 
 struct DayCellView: View {
     let day: CalendarWidgetDay
+    let calendarType: String
+    let range: String
     let compact: Bool
+    let theme: CalendarWidgetTheme
 
     var body: some View {
         VStack(spacing: 2) {
             Text(dayNumber)
-                .font(.system(size: compact ? 9 : 11, weight: day.isToday ? .bold : .semibold))
-                .foregroundStyle(day.isCurrentMonth ? .white : .white.opacity(0.35))
+                .font(.system(size: compact ? 9 : 12, weight: day.isToday ? .bold : .semibold))
+                .foregroundStyle(dayNumberColor)
                 .lineLimit(1)
 
-            if let item = day.items.first {
-                Text(item.categoryName.isEmpty ? item.title : item.categoryName)
-                    .font(.system(size: compact ? 8 : 10, weight: .bold))
-                    .foregroundStyle(textColor(for: item.categoryColor))
+            ForEach(Array(day.items.prefix(maxVisibleItems))) { item in
+                Text(displayTitle(for: item))
+                    .font(.system(size: badgeFontSize, weight: .bold))
+                    .foregroundStyle(theme.text)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .frame(maxWidth: .infinity)
+                    .background(textColor(for: item.displayColor ?? item.categoryColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            }
 
-                if !compact {
-                    Text(item.title)
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-            } else {
+            if overflowCount > 0 {
+                Text("+\(overflowCount)")
+                    .font(.system(size: badgeFontSize, weight: .semibold))
+                    .foregroundStyle(day.isToday ? .white : theme.mutedText)
+                    .lineLimit(1)
+            } else if day.items.isEmpty {
                 Text(" ")
-                    .font(.system(size: compact ? 8 : 10))
+                    .font(.system(size: badgeFontSize))
                     .lineLimit(1)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: compact ? 30 : 48)
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
+        .padding(.vertical, range == "month" ? 3 : 4)
         .padding(.horizontal, 2)
-        .background(day.isToday ? Color(red: 0.02, green: 0.22, blue: 0.42) : Color.clear)
+        .background(day.isToday ? theme.primary : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var maxVisibleItems: Int {
+        if range == "fourDays" { return 3 }
+        if range == "twoWeeks" { return 2 }
+        return 2
+    }
+
+    private var overflowCount: Int {
+        max(day.items.count - maxVisibleItems, 0)
+    }
+
+    private var badgeFontSize: CGFloat {
+        if range == "fourDays" { return 9 }
+        return 7.5
+    }
+
+    private var minHeight: CGFloat {
+        if range == "fourDays" { return 58 }
+        if range == "twoWeeks" { return 44 }
+        return 34
+    }
+
+    private var dayNumberColor: Color {
+        if day.isToday { return .white }
+        return day.isCurrentMonth ? theme.text : theme.mutedText.opacity(0.55)
     }
 
     private var dayNumber: String {
         String(Int(day.date.suffix(2)) ?? 0)
     }
 
+    private func displayTitle(for item: CalendarWidgetItem) -> String {
+        if let displayTitle = item.displayTitle, !displayTitle.isEmpty {
+            return displayTitle
+        }
+
+        if calendarType == "work" {
+            return item.categoryName.isEmpty ? item.title : item.categoryName
+        }
+
+        return item.title.isEmpty ? item.categoryName : item.title
+    }
+
     private func textColor(for hex: String) -> Color {
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else {
-            return .white
+            return theme.secondary
         }
 
         return Color(
@@ -301,6 +397,8 @@ struct SampleData {
                 date: dateKey,
                 categoryName: label,
                 categoryColor: calendarType == "work" ? "#fff6bf" : calendarType == "event" ? "#ffe0ef" : "#e7f6ff",
+                displayTitle: calendarType == "work" ? label : "일정",
+                displayColor: calendarType == "work" ? "#fff6bf" : calendarType == "event" ? "#ffe0ef" : "#e7f6ff",
                 title: "일정",
                 memo: "",
                 time: nil,

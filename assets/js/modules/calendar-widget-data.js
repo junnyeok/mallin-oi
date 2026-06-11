@@ -11,6 +11,12 @@ export const CALENDAR_WIDGET_LABELS = {
   event: '이벤트',
 };
 
+const CALENDAR_WIDGET_FALLBACK_COLORS = {
+  study: '#e7f6ff',
+  work: '#f5f546',
+  event: '#ffc0cb',
+};
+
 function toDateKey(value) {
   if (!value) return '';
 
@@ -24,8 +30,29 @@ function toDateKey(value) {
   return String(value).slice(0, 10);
 }
 
-function normalizeWidgetItem(row = {}) {
+function getWidgetItemDisplayTitle(item = {}) {
+  if (item.calendarType === 'work') {
+    return item.categoryName || item.title || '';
+  }
+
+  return item.title || item.categoryName || '';
+}
+
+function prepareWidgetItem(item = {}) {
+  const calendarType = item.calendarType || '';
+
   return {
+    ...item,
+    displayTitle: getWidgetItemDisplayTitle(item),
+    displayColor:
+      item.categoryColor ||
+      CALENDAR_WIDGET_FALLBACK_COLORS[calendarType] ||
+      '#eeeeee',
+  };
+}
+
+function normalizeWidgetItem(row = {}) {
+  return prepareWidgetItem({
     calendarType: row.calendar_type || '',
     id: row.item_id || '',
     date: toDateKey(row.item_date),
@@ -36,7 +63,7 @@ function normalizeWidgetItem(row = {}) {
     time: row.event_time || null,
     sortOrder: Number(row.sort_order || 0),
     createdAt: row.created_at || null,
-  };
+  });
 }
 
 function parseDateKey(dateKey) {
@@ -144,7 +171,9 @@ export function buildCalendarWidgetPayload(items = [], options = {}) {
   const monthRange = getMonthRange(baseDate);
 
   const filteredItems = sortWidgetItems(
-    items.filter((item) => CALENDAR_WIDGET_TYPES.includes(item.calendarType)),
+    items
+      .filter((item) => CALENDAR_WIDGET_TYPES.includes(item.calendarType))
+      .map(prepareWidgetItem),
   );
 
   const widgets = {};

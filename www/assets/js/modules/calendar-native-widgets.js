@@ -9,6 +9,14 @@ const REFRESH_DELAY_MS = 800;
 let refreshTimer = null;
 let refreshPromise = null;
 
+function toLocalDateKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function isNativeCapacitor() {
   return window.Capacitor?.isNativePlatform?.() === true;
 }
@@ -37,7 +45,7 @@ async function saveLoggedOutPayload(plugin) {
     payload: {
       schemaVersion: 1,
       generatedAt: new Date().toISOString(),
-      today: new Date().toISOString().slice(0, 10),
+      today: toLocalDateKey(),
       widgets: {},
     },
   });
