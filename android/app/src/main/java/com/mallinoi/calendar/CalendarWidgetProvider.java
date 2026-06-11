@@ -161,7 +161,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
                 text.append("\n");
                 int itemStart = text.length();
-                text.append(truncate(title, "month".equals(range) ? 7 : 10));
+                text.append(truncate(title, getTitleLimit()));
                 int itemEnd = text.length();
                 int badgeColor = parseColor(item.optString("displayColor", item.optString("categoryColor", "")), theme.secondary);
                 text.setSpan(new BackgroundColorSpan(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -169,7 +169,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             }
 
             if (moreCount > 0) {
-                text.append("\n+").append(String.valueOf(moreCount));
+                text.append("\n");
+                int moreStart = text.length();
+                text.append("+").append(String.valueOf(moreCount));
+                text.setSpan(new ForegroundColorSpan(isToday ? Color.WHITE : theme.mutedText), moreStart, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
 
             views.setTextViewText(id, text);
@@ -194,9 +197,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     int getMaxVisibleItems() {
-        if ("fourDays".equals(range)) return 3;
-        if ("twoWeeks".equals(range)) return 2;
         return 2;
+    }
+
+    int getTitleLimit() {
+        if ("fourDays".equals(range)) return 8;
+        if ("twoWeeks".equals(range)) return 7;
+        return 6;
     }
 
     String truncate(String value, int length) {

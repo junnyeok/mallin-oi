@@ -173,7 +173,7 @@ struct CalendarWidgetView: View {
 
     @ViewBuilder
     private func content(_ widget: CalendarWidgetData, theme: CalendarWidgetTheme) -> some View {
-        VStack(alignment: .leading, spacing: widget.range == "month" ? 5 : 6) {
+        VStack(alignment: .leading, spacing: widget.range == "month" ? 3 : 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(widget.calendarLabel)
                     .font(.caption.bold())
@@ -193,9 +193,12 @@ struct CalendarWidgetView: View {
             } else {
                 DayGridView(widget: widget, columns: entry.range == "fourDays" ? 2 : 7, theme: theme)
             }
+
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, widget.range == "month" ? 8 : 10)
-        .padding(.vertical, widget.range == "month" ? 8 : 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, widget.range == "month" ? 6 : 8)
+        .padding(.vertical, widget.range == "month" ? 5 : 7)
     }
 
     private func subtitle(for widget: CalendarWidgetData) -> String {
@@ -243,8 +246,8 @@ struct DayGridView: View {
 
     var body: some View {
         LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: widget.range == "fourDays" ? 5 : 3), count: columns),
-            spacing: widget.range == "fourDays" ? 5 : 3
+            columns: Array(repeating: GridItem(.flexible(), spacing: widget.range == "fourDays" ? 4 : 2), count: columns),
+            spacing: widget.range == "fourDays" ? 4 : 2
         ) {
             ForEach(widget.days.prefix(widget.range == "fourDays" ? 4 : 14)) { day in
                 DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", theme: theme)
@@ -258,7 +261,7 @@ struct MonthGridView: View {
     let theme: CalendarWidgetTheme
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 2) {
             HStack {
                 ForEach(["일", "월", "화", "수", "목", "금", "토"], id: \.self) { text in
                     Text(text)
@@ -269,8 +272,8 @@ struct MonthGridView: View {
             }
 
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 7),
-                spacing: 3
+                columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
+                spacing: 2
             ) {
                 ForEach(widget.days.prefix(42)) { day in
                     DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, theme: theme)
@@ -299,7 +302,7 @@ struct DayCellView: View {
                     .font(.system(size: badgeFontSize, weight: .bold))
                     .foregroundStyle(theme.text)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .truncationMode(.tail)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
                     .frame(maxWidth: .infinity)
@@ -312,22 +315,23 @@ struct DayCellView: View {
                     .font(.system(size: badgeFontSize, weight: .semibold))
                     .foregroundStyle(day.isToday ? .white : theme.mutedText)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             } else if day.items.isEmpty {
                 Text(" ")
                     .font(.system(size: badgeFontSize))
                     .lineLimit(1)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
-        .padding(.vertical, range == "month" ? 3 : 4)
+        .frame(height: cellHeight, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .top)
+        .clipped()
+        .padding(.vertical, range == "month" ? 2 : 3)
         .padding(.horizontal, 2)
         .background(day.isToday ? theme.primary : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var maxVisibleItems: Int {
-        if range == "fourDays" { return 3 }
-        if range == "twoWeeks" { return 2 }
         return 2
     }
 
@@ -336,14 +340,14 @@ struct DayCellView: View {
     }
 
     private var badgeFontSize: CGFloat {
-        if range == "fourDays" { return 9 }
+        if range == "fourDays" { return 8.5 }
         return 7.5
     }
 
-    private var minHeight: CGFloat {
-        if range == "fourDays" { return 58 }
-        if range == "twoWeeks" { return 44 }
-        return 34
+    private var cellHeight: CGFloat {
+        if range == "fourDays" { return 52 }
+        if range == "twoWeeks" { return 41 }
+        return 31
     }
 
     private var dayNumberColor: Color {
@@ -461,6 +465,7 @@ func makeWidgetConfiguration(_ definition: CalendarWidgetDefinition) -> some Wid
     .configurationDisplayName(definition.name)
     .description(definition.description)
     .supportedFamilies(definition.families)
+    .contentMarginsDisabled()
 }
 
 struct StudyFourDaysWidget: Widget {
