@@ -1,13 +1,25 @@
 // assets/js/modules/calendar-native-widgets.js
 
 import { getCurrentUser } from './auth-store.js';
-import { fetchCalendarWidgetPayload } from './calendar-widget-data.js';
 
 const PLUGIN_NAME = 'CalendarWidgets';
 const REFRESH_DELAY_MS = 800;
 
 let refreshTimer = null;
 let refreshPromise = null;
+let widgetDataModulePromise = null;
+
+function getRuntimeSiteVersion() {
+  return String(window.__SITE_VERSION__ || 'dev').trim();
+}
+
+function withModuleVersion(path = '') {
+  const raw = String(path || '').trim();
+  if (!raw) return raw;
+
+  const sep = raw.includes('?') ? '&' : '?';
+  return `${raw}${sep}v=${encodeURIComponent(getRuntimeSiteVersion())}`;
+}
 
 function toLocalDateKey(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
@@ -35,6 +47,23 @@ function getCalendarHref(calendarType = '') {
   if (calendarType === 'work') return './calendar-work.html?app=calendar';
   if (calendarType === 'event') return './calendar-event.html?app=calendar';
   return './calendar-study.html?app=calendar';
+}
+
+async function loadCalendarWidgetPayloadFetcher() {
+  if (!widgetDataModulePromise) {
+    widgetDataModulePromise = import(withModuleVersion('./calendar-widget-data.js'));
+  }
+
+  const widgetDataModule = await widgetDataModulePromise;
+  const fetcher = widgetDataModule?.fetchCalendarWidgetPayload;
+
+  if (typeof fetcher !== 'function') {
+    throw new Error(
+      '[calendar-native-widgets] fetchCalendarWidgetPayload export is missing',
+    );
+  }
+
+  return fetcher;
 }
 
 async function saveLoggedOutPayload(plugin) {
@@ -66,6 +95,7 @@ export async function refreshCalendarWidgets() {
         return true;
       }
 
+      const fetchCalendarWidgetPayload = await loadCalendarWidgetPayloadFetcher();
       const payload = await fetchCalendarWidgetPayload();
       await plugin.saveWidgetData({
         isLoggedIn: true,

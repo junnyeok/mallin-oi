@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260611-03';
+const SITE_VERSION = '20260611-04';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -56,6 +56,7 @@ const APP_SHELL_FILES = [
   './assets/js/modules/mypage.js',
   './assets/js/modules/pwa-install.js',
   './assets/js/modules/refresh-control.js',
+  './assets/js/modules/calendar-native-widgets.js',
   './assets/js/modules/calendar-widget-data.js',
   './assets/js/modules/calendar-groups.js',
 
