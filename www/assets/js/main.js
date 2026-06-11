@@ -23,6 +23,49 @@ let globalInitialized = false;
 let calendarAppModeInitialized = false;
 let calendarAppModeEarlyResult = false;
 
+const CORE_MODULE_SPECS = [
+  ['mobileStabilityModule', './modules/mobile-stability.js'],
+  ['siteVersionModule', './modules/site-version.js'],
+  ['updateBannerModule', './modules/update-banner.js'],
+  ['refreshControlModule', './modules/refresh-control.js'],
+  ['appCalendarModeModule', './modules/app-calendar-mode.js'],
+  ['pwaInstallModule', './modules/pwa-install.js'],
+  ['cursorBuddyModule', './modules/cursor-buddy.js'],
+  ['postsUiModule', './modules/posts-ui.js'],
+  ['postDetailModule', './modules/post-detail.js'],
+  ['postsAllModule', './modules/posts-all.js'],
+  ['searchNavModule', './modules/search-nav.js'],
+  ['postDetailListModule', './modules/post-detail-list.js'],
+  ['postPrevNextModule', './modules/post-prev-next.js'],
+  ['scrollButtonsModule', './modules/scroll-buttons.js'],
+  ['writeModule', './modules/write.js'],
+  ['loginModule', './modules/login.js'],
+  ['signupModule', './modules/signup.js'],
+  ['layoutIncludesModule', './modules/layout-includes.js'],
+  ['prevMypageModule', './modules/prev-mypage.js'],
+  ['mypageModule', './modules/mypage.js'],
+  ['accountRecoveryModule', './modules/account-recovery.js'],
+  ['authStoreModule', './modules/auth-store.js'],
+  ['serviceMenuModule', './modules/service-menu.js'],
+  ['postViewsModule', './modules/post-views.js'],
+  ['postCommentsModule', './modules/post-comments.js'],
+  ['suggestionsBoardModule', './modules/suggestions-board.js'],
+  ['postReactionsModule', './modules/post-reactions.js'],
+  ['profileModule', './modules/profile.js'],
+  ['profileHistoryModule', './modules/profile-history.js'],
+  ['storeModule', './modules/store.js'],
+  ['dailyAttendancePopupModule', './modules/daily-attendance-popup.js'],
+  ['notificationsModule', './modules/notifications.js'],
+  ['bgmPlayerModule', './modules/bgm-player.js'],
+  ['pickleStatusModule', './modules/pickle-status.js'],
+  ['pjaxRouterModule', './modules/pjax-router.js'],
+  ['qnaBoardModule', './modules/qna-board.js'],
+  ['studyCalendarModule', './modules/study-calendar.js'],
+  ['eventCalendarModule', './modules/event-calendar.js'],
+  ['workCalendarModule', './modules/work-calendar.js'],
+  ['calendarGroupsModule', './modules/calendar-groups.js'],
+];
+
 async function initCalendarAppModeEarly() {
   if (calendarAppModeInitialized) return calendarAppModeEarlyResult;
 
@@ -42,132 +85,22 @@ async function initCalendarAppModeEarly() {
 async function loadCoreModules() {
   if (coreModules) return coreModules;
 
-  const [
-    mobileStabilityModule,
-    siteVersionModule,
-    updateBannerModule,
-    refreshControlModule,
-    appCalendarModeModule,
-    pwaInstallModule,
-    cursorBuddyModule,
-    postsUiModule,
-    postDetailModule,
-    postsAllModule,
-    searchNavModule,
-    postDetailListModule,
-    postPrevNextModule,
-    scrollButtonsModule,
-    writeModule,
-    loginModule,
-    signupModule,
-    layoutIncludesModule,
-    prevMypageModule,
-    mypageModule,
-    accountRecoveryModule,
-    authStoreModule,
-    serviceMenuModule,
-    postViewsModule,
-    postCommentsModule,
-    suggestionsBoardModule,
-    postReactionsModule,
-    profileModule,
-    profileHistoryModule,
-    storeModule,
-    dailyAttendancePopupModule,
-    notificationsModule,
-    bgmPlayerModule,
-    pickleStatusModule,
-    pjaxRouterModule,
-    qnaBoardModule,
-    studyCalendarModule,
-    eventCalendarModule,
-    workCalendarModule,
-    calendarGroupsModule,
-  ] = await Promise.all([
-    import(withModuleVersion('./modules/mobile-stability.js')),
-    import(withModuleVersion('./modules/site-version.js')),
-    import(withModuleVersion('./modules/update-banner.js')),
-    import(withModuleVersion('./modules/refresh-control.js')),
-    import(withModuleVersion('./modules/app-calendar-mode.js')),
-    import(withModuleVersion('./modules/pwa-install.js')),
-    import(withModuleVersion('./modules/cursor-buddy.js')),
-    import(withModuleVersion('./modules/posts-ui.js')),
-    import(withModuleVersion('./modules/post-detail.js')),
-    import(withModuleVersion('./modules/posts-all.js')),
-    import(withModuleVersion('./modules/search-nav.js')),
-    import(withModuleVersion('./modules/post-detail-list.js')),
-    import(withModuleVersion('./modules/post-prev-next.js')),
-    import(withModuleVersion('./modules/scroll-buttons.js')),
-    import(withModuleVersion('./modules/write.js')),
-    import(withModuleVersion('./modules/login.js')),
-    import(withModuleVersion('./modules/signup.js')),
-    import(withModuleVersion('./modules/layout-includes.js')),
-    import(withModuleVersion('./modules/prev-mypage.js')),
-    import(withModuleVersion('./modules/mypage.js')),
-    import(withModuleVersion('./modules/account-recovery.js')),
-    import(withModuleVersion('./modules/auth-store.js')),
-    import(withModuleVersion('./modules/service-menu.js')),
-    import(withModuleVersion('./modules/post-views.js')),
-    import(withModuleVersion('./modules/post-comments.js')),
-    import(withModuleVersion('./modules/suggestions-board.js')),
-    import(withModuleVersion('./modules/post-reactions.js')),
-    import(withModuleVersion('./modules/profile.js')),
-    import(withModuleVersion('./modules/profile-history.js')),
-    import(withModuleVersion('./modules/store.js')),
-    import(withModuleVersion('./modules/daily-attendance-popup.js')),
-    import(withModuleVersion('./modules/notifications.js')),
-    import(withModuleVersion('./modules/bgm-player.js')),
-    import(withModuleVersion('./modules/pickle-status.js')),
-    import(withModuleVersion('./modules/pjax-router.js')),
-    import(withModuleVersion('./modules/qna-board.js')),
-    import(withModuleVersion('./modules/study-calendar.js')),
-    import(withModuleVersion('./modules/event-calendar.js')),
-    import(withModuleVersion('./modules/work-calendar.js')),
-    import(withModuleVersion('./modules/calendar-groups.js')),
-  ]);
+  const results = await Promise.allSettled(
+    CORE_MODULE_SPECS.map(([, path]) => import(withModuleVersion(path))),
+  );
 
-  coreModules = {
-    mobileStabilityModule,
-    siteVersionModule,
-    updateBannerModule,
-    refreshControlModule,
-    appCalendarModeModule,
-    pwaInstallModule,
-    cursorBuddyModule,
-    postsUiModule,
-    postDetailModule,
-    postsAllModule,
-    searchNavModule,
-    postDetailListModule,
-    postPrevNextModule,
-    scrollButtonsModule,
-    writeModule,
-    loginModule,
-    signupModule,
-    layoutIncludesModule,
-    prevMypageModule,
-    mypageModule,
-    accountRecoveryModule,
-    authStoreModule,
-    serviceMenuModule,
-    postViewsModule,
-    postCommentsModule,
-    suggestionsBoardModule,
-    postReactionsModule,
-    profileModule,
-    profileHistoryModule,
-    storeModule,
-    dailyAttendancePopupModule,
-    notificationsModule,
-    bgmPlayerModule,
-    pickleStatusModule,
-    pjaxRouterModule,
-    qnaBoardModule,
-    studyCalendarModule,
-    eventCalendarModule,
-    workCalendarModule,
-    calendarGroupsModule,
-  };
+  coreModules = CORE_MODULE_SPECS.reduce((modules, [key, path], index) => {
+    const result = results[index];
+
+    if (result.status === 'fulfilled') {
+      modules[key] = result.value;
+      return modules;
+    }
+
+    console.error(`[main] module load failed: ${path}`, result.reason);
+    modules[key] = {};
+    return modules;
+  }, {});
 
   return coreModules;
 }
@@ -195,6 +128,13 @@ async function runSafe(label, fn, options = {}) {
       fallback(error);
     }
   }
+}
+
+function renderHomeFallback(selector, message) {
+  const root = document.querySelector(selector);
+  if (!root) return;
+
+  root.innerHTML = `<div class="empty">${message}</div>`;
 }
 
 async function initPageModules(modules) {
@@ -267,10 +207,21 @@ async function initPageModules(modules) {
     case 'career':
       await runSafe('posts ui', async () => {
         await initPostsUI();
+      }, {
+        fallback: () => {
+          renderHomeFallback('#latestList', '최신 업로드를 불러오지 못했어.');
+        },
       });
 
       await runSafe('store module', async () => {
         await initStore();
+      }, {
+        fallback: () => {
+          renderHomeFallback(
+            '#storeFeaturedGrid',
+            '상점 품목을 불러오지 못했어. 잠시 후 다시 시도해줘.',
+          );
+        },
       });
 
       await runSafe('study calendar', async () => {
@@ -451,29 +402,37 @@ async function initGlobalModules(modules) {
     pjaxRouterModule,
   } = modules;
 
-  const { initMobileStability } = mobileStabilityModule;
+  const { initMobileStability = () => {} } = mobileStabilityModule;
 
   const {
-    getVersionChangeInfo,
-    markCurrentVersionApplied,
-    applyVersionUpdateAndReload,
-    withAssetVersion,
+    getVersionChangeInfo = () => ({
+      changed: false,
+      firstVisit: false,
+    }),
+    markCurrentVersionApplied = () => {},
+    applyVersionUpdateAndReload = async () => {},
+    withAssetVersion = (path) => path,
   } = siteVersionModule;
 
-  const { showUpdateBanner } = updateBannerModule;
-  const { initRefreshControls } = refreshControlModule;
-  const { initPwaInstall } = pwaInstallModule;
-  const { initCalendarAppMode } = appCalendarModeModule;
-  const { initCursorBuddy } = cursorBuddyModule;
-  const { initSearchNav } = searchNavModule;
-  const { initLayoutIncludes, refreshLayoutState } = layoutIncludesModule;
-  const { initAuthUI, updateAuthUI } = authStoreModule;
-  const { initServiceMenu } = serviceMenuModule;
-  const { initDailyAttendancePopup } = dailyAttendancePopupModule;
-  const { initNotifications } = notificationsModule;
-  const { initBgmPlayer } = bgmPlayerModule;
-  const { initPickleStatus } = pickleStatusModule;
-  const { initPjaxRouter } = pjaxRouterModule;
+  const { showUpdateBanner = () => {} } = updateBannerModule;
+  const { initRefreshControls = () => {} } = refreshControlModule;
+  const { initPwaInstall = async () => {} } = pwaInstallModule;
+  const { initCalendarAppMode = () => false } = appCalendarModeModule;
+  const { initCursorBuddy = () => {} } = cursorBuddyModule;
+  const { initSearchNav = () => {} } = searchNavModule;
+  const {
+    initLayoutIncludes = async () => {},
+    refreshLayoutState = async () => {},
+  } = layoutIncludesModule;
+  const { initAuthUI = async () => {}, updateAuthUI = async () => {} } =
+    authStoreModule;
+  const { initServiceMenu = () => {} } = serviceMenuModule;
+  const { initDailyAttendancePopup = async () => {} } =
+    dailyAttendancePopupModule;
+  const { initNotifications = async () => {} } = notificationsModule;
+  const { initBgmPlayer = async () => {} } = bgmPlayerModule;
+  const { initPickleStatus = async () => {} } = pickleStatusModule;
+  const { initPjaxRouter = async () => {} } = pjaxRouterModule;
 
   applyVersionToStaticLinks(withAssetVersion);
 

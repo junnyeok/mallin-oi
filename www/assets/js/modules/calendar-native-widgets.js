@@ -1,12 +1,11 @@
 // assets/js/modules/calendar-native-widgets.js
 
-import { getCurrentUser } from './auth-store.js';
-
 const PLUGIN_NAME = 'CalendarWidgets';
 const REFRESH_DELAY_MS = 800;
 
 let refreshTimer = null;
 let refreshPromise = null;
+let authStoreModulePromise = null;
 let widgetDataModulePromise = null;
 
 function getRuntimeSiteVersion() {
@@ -66,6 +65,21 @@ async function loadCalendarWidgetPayloadFetcher() {
   return fetcher;
 }
 
+async function loadCurrentUserFetcher() {
+  if (!authStoreModulePromise) {
+    authStoreModulePromise = import(withModuleVersion('./auth-store.js'));
+  }
+
+  const authStoreModule = await authStoreModulePromise;
+  const fetcher = authStoreModule?.getCurrentUser;
+
+  if (typeof fetcher !== 'function') {
+    throw new Error('[calendar-native-widgets] getCurrentUser export is missing');
+  }
+
+  return fetcher;
+}
+
 async function saveLoggedOutPayload(plugin) {
   if (!plugin?.saveWidgetData) return;
 
@@ -88,6 +102,7 @@ export async function refreshCalendarWidgets() {
 
   refreshPromise = (async () => {
     try {
+      const getCurrentUser = await loadCurrentUserFetcher();
       const user = await getCurrentUser();
 
       if (!user) {

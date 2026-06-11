@@ -1,5 +1,22 @@
-import { loadPosts, formatMMDD, sortByDateDesc } from './posts-repo.js';
-import { getDisplayViews } from './post-views.js';
+let postsRepoModule = null;
+let postViewsModule = null;
+
+function getRuntimeVersion() {
+  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
+}
+
+function importVersioned(path) {
+  return import(`${path}?v=${getRuntimeVersion()}`);
+}
+
+async function ensurePostsUiDeps() {
+  if (postsRepoModule && postViewsModule) return;
+
+  [postsRepoModule, postViewsModule] = await Promise.all([
+    importVersioned('./posts-repo.js'),
+    importVersioned('./post-views.js'),
+  ]);
+}
 
 function getPageCategory() {
   return document.body.dataset.page || 'home';
@@ -12,7 +29,7 @@ function scopePosts(posts, pageCategory) {
 }
 
 function getViews(post) {
-  return getDisplayViews(post);
+  return postViewsModule.getDisplayViews(post);
 }
 
 function getTitle(post) {
@@ -54,7 +71,7 @@ function renderLatestList(posts, listEl) {
       >
         <span class="mini__title">${getTitle(p)}</span>
         <span class="mini__meta">
-          ${formatMMDD(p.date)} · ${getAuthorNickname(p)} · 👀 ${getViews(p)} · 👍 ${getReactionCount(p)} · 💬 ${getCommentCount(p)} · ${getCategoryLabel(p.category)}
+          ${postsRepoModule.formatMMDD(p.date)} · ${getAuthorNickname(p)} · 👀 ${getViews(p)} · 👍 ${getReactionCount(p)} · 💬 ${getCommentCount(p)} · ${getCategoryLabel(p.category)}
         </span>
       </a>
     `,
@@ -71,7 +88,8 @@ export async function initPostsUI() {
 
   let allPosts = [];
   try {
-    allPosts = await loadPosts();
+    await ensurePostsUiDeps();
+    allPosts = await postsRepoModule.loadPosts();
   } catch (error) {
     console.error('[posts-ui] loadPosts failed:', error);
     latestEl.innerHTML = `<div class="empty">최신 업로드를 불러오지 못했어.</div>`;
@@ -79,7 +97,7 @@ export async function initPostsUI() {
   }
 
   const scoped = scopePosts(allPosts, pageCategory);
-  const latest = sortByDateDesc(scoped).slice(0, 12);
+  const latest = postsRepoModule.sortByDateDesc(scoped).slice(0, 12);
 
   renderLatestList(latest, latestEl);
 }

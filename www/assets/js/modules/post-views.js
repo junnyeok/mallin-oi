@@ -1,9 +1,33 @@
 // assets/js/modules/post-views.js
-import { supabase } from './supabase-client.js';
-import { getCurrentUser } from './auth-store.js';
 
 const VIEWER_KEY_STORAGE = 'mallinViewerKey_v1';
 const VIEW_COOLDOWN_SECONDS = 1800; // 30분, 필요하면 600(10분) / 3600(1시간) 등으로 조절 가능
+let supabaseClientModule = null;
+let authStoreModule = null;
+
+function getRuntimeVersion() {
+  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
+}
+
+function importVersioned(path) {
+  return import(`${path}?v=${getRuntimeVersion()}`);
+}
+
+async function getSupabaseClient() {
+  if (!supabaseClientModule) {
+    supabaseClientModule = await importVersioned('./supabase-client.js');
+  }
+
+  return supabaseClientModule.supabase;
+}
+
+async function getCurrentUserSafe() {
+  if (!authStoreModule) {
+    authStoreModule = await importVersioned('./auth-store.js');
+  }
+
+  return authStoreModule.getCurrentUser();
+}
 
 function safeId(id) {
   const n = Number(id);
@@ -40,7 +64,7 @@ function getGuestViewerKey() {
 
 async function getViewerKey() {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
 
     if (user?.id) {
       return `user:${user.id}`;
@@ -63,6 +87,7 @@ export async function incrementPostView(id) {
 
   const viewerKey = await getViewerKey();
 
+  const supabase = await getSupabaseClient();
   const { data, error } = await supabase.rpc('increment_post_views', {
     p_post_id: postId,
     p_viewer_key: viewerKey,

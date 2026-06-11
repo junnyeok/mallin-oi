@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260611-11';
+const SITE_VERSION = '20260611-12';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -119,7 +119,7 @@ async function networkFirst(request) {
 
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(STATIC_CACHE);
-  const cached = await cache.match(request, { ignoreSearch: true });
+  const cached = await cache.match(request);
 
   const fetchPromise = fetch(request)
     .then((response) => {
@@ -135,6 +135,9 @@ async function staleWhileRevalidate(request) {
 
   const response = await fetchPromise;
   if (response) return response;
+
+  const cachedWithoutVersion = await cache.match(request, { ignoreSearch: true });
+  if (cachedWithoutVersion) return cachedWithoutVersion;
 
   return caches.match(OFFLINE_URL, { ignoreSearch: true });
 }

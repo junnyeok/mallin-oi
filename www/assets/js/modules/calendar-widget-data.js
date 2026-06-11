@@ -1,7 +1,5 @@
 // assets/js/modules/calendar-widget-data.js
 
-import { supabase } from './supabase-client.js';
-
 export const CALENDAR_WIDGET_TYPES = ['study', 'work', 'event'];
 export const CALENDAR_WIDGET_RANGES = ['fourDays', 'twoWeeks', 'month'];
 
@@ -16,6 +14,24 @@ const CALENDAR_WIDGET_FALLBACK_COLORS = {
   work: '#f5f546',
   event: '#ffc0cb',
 };
+
+let supabaseClientModule = null;
+
+function getRuntimeVersion() {
+  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
+}
+
+function importVersioned(path) {
+  return import(`${path}?v=${getRuntimeVersion()}`);
+}
+
+async function getSupabaseClient() {
+  if (!supabaseClientModule) {
+    supabaseClientModule = await importVersioned('./supabase-client.js');
+  }
+
+  return supabaseClientModule.supabase;
+}
 
 function toDateKey(value) {
   if (!value) return '';
@@ -226,6 +242,7 @@ export function buildCalendarWidgetPayload(items = [], options = {}) {
 }
 
 export async function fetchCalendarWidgetItems(options = {}) {
+  const supabase = await getSupabaseClient();
   const today = new Date();
   const defaultRange = getWidgetFetchRange(today);
 
