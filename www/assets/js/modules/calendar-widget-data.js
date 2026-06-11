@@ -93,9 +93,9 @@ function getMonthRange(baseDate = new Date()) {
 }
 
 function getCalendarGridRange(baseDate = new Date()) {
-  const { startDate } = getMonthRange(baseDate);
+  const { startDate, endDate } = getMonthRange(baseDate);
   const gridStartDate = addDays(startDate, -startDate.getDay());
-  const gridEndDate = addDays(gridStartDate, 41);
+  const gridEndDate = addDays(endDate, 6 - endDate.getDay());
 
   return {
     startDate: gridStartDate,
@@ -162,8 +162,9 @@ function getRangeDateKeys(range, baseDate) {
   if (range === 'fourDays') return getDateKeys(baseDate, 4);
   if (range === 'twoWeeks') return getDateKeys(baseDate, 14);
 
-  const { startDate } = getCalendarGridRange(baseDate);
-  return getDateKeys(startDate, 42);
+  const { startDate, endDate } = getCalendarGridRange(baseDate);
+  const dayCount = Math.round((endDate - startDate) / 86400000) + 1;
+  return getDateKeys(startDate, dayCount);
 }
 
 export function buildCalendarWidgetPayload(items = [], options = {}) {
@@ -201,13 +202,17 @@ export function buildCalendarWidgetPayload(items = [], options = {}) {
           startDate: monthRange.startDateKey,
           endDate: monthRange.endDateKey,
         },
-        days: dateKeys.map((dateKey) => ({
-          date: dateKey,
-          isToday: dateKey === today,
-          isCurrentMonth:
-            dateKey >= monthRange.startDateKey && dateKey <= monthRange.endDateKey,
-          items: typeGroups[dateKey] || [],
-        })),
+        days: dateKeys.map((dateKey) => {
+          const isCurrentMonth =
+            dateKey >= monthRange.startDateKey && dateKey <= monthRange.endDateKey;
+
+          return {
+            date: dateKey,
+            isToday: dateKey === today,
+            isCurrentMonth,
+            items: range === 'month' && !isCurrentMonth ? [] : typeGroups[dateKey] || [],
+          };
+        }),
       };
     });
   });

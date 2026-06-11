@@ -173,7 +173,7 @@ struct CalendarWidgetView: View {
 
     @ViewBuilder
     private func content(_ widget: CalendarWidgetData, theme: CalendarWidgetTheme) -> some View {
-        VStack(alignment: .leading, spacing: widget.range == "month" ? 4 : 5) {
+        VStack(alignment: .leading, spacing: widget.range == "month" ? 7 : 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(widget.calendarLabel)
                     .font(.caption.bold())
@@ -187,6 +187,7 @@ struct CalendarWidgetView: View {
                     .foregroundStyle(theme.mutedText)
                     .lineLimit(1)
             }
+            .padding(.horizontal, widget.range == "month" ? 2 : 0)
 
             if entry.range == "month" {
                 MonthGridView(widget: widget, theme: theme)
@@ -196,7 +197,7 @@ struct CalendarWidgetView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, widget.range == "month" ? 8 : 10)
-        .padding(.vertical, widget.range == "month" ? 7 : 9)
+        .padding(.vertical, widget.range == "month" ? 11 : 9)
     }
 
     private func subtitle(for widget: CalendarWidgetData) -> String {
@@ -248,7 +249,7 @@ struct DayGridView: View {
             spacing: widget.range == "fourDays" ? 4 : 2
         ) {
             ForEach(widget.days.prefix(widget.range == "fourDays" ? 4 : 14)) { day in
-                DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", theme: theme)
+                DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", monthRows: 0, theme: theme)
             }
         }
     }
@@ -271,13 +272,17 @@ struct MonthGridView: View {
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
-                spacing: 2
+                spacing: 3
             ) {
-                ForEach(widget.days.prefix(42)) { day in
-                    DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, theme: theme)
+                ForEach(widget.days) { day in
+                    DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, monthRows: monthRows, theme: theme)
                 }
             }
         }
+    }
+
+    private var monthRows: Int {
+        max(1, Int(ceil(Double(widget.days.count) / 7.0)))
     }
 }
 
@@ -286,6 +291,7 @@ struct DayCellView: View {
     let calendarType: String
     let range: String
     let compact: Bool
+    let monthRows: Int
     let theme: CalendarWidgetTheme
 
     var body: some View {
@@ -295,7 +301,7 @@ struct DayCellView: View {
                 .foregroundStyle(dayNumberColor)
                 .lineLimit(1)
 
-            ForEach(Array(day.items.prefix(maxVisibleItems))) { item in
+            ForEach(Array(visibleItems.prefix(maxVisibleItems))) { item in
                 Text(displayTitle(for: item))
                     .font(.system(size: badgeFontSize, weight: .bold))
                     .foregroundStyle(theme.text)
@@ -314,7 +320,7 @@ struct DayCellView: View {
                     .foregroundStyle(day.isToday ? .white : theme.mutedText)
                     .lineLimit(1)
                     .truncationMode(.tail)
-            } else if day.items.isEmpty {
+            } else if visibleItems.isEmpty {
                 Text(" ")
                     .font(.system(size: badgeFontSize))
                     .lineLimit(1)
@@ -334,7 +340,12 @@ struct DayCellView: View {
     }
 
     private var overflowCount: Int {
-        max(day.items.count - maxVisibleItems, 0)
+        max(visibleItems.count - maxVisibleItems, 0)
+    }
+
+    private var visibleItems: [CalendarWidgetItem] {
+        if range == "month" && !day.isCurrentMonth { return [] }
+        return day.items
     }
 
     private var badgeFontSize: CGFloat {
@@ -345,7 +356,7 @@ struct DayCellView: View {
     private var cellHeight: CGFloat {
         if range == "fourDays" { return 52 }
         if range == "twoWeeks" { return 41 }
-        return 40
+        return monthRows <= 5 ? 49 : 40
     }
 
     private var dayNumberColor: Color {

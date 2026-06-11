@@ -138,7 +138,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             JSONArray items = day.optJSONArray("items");
             boolean isToday = day.optBoolean("isToday", false);
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
-            int itemCount = items == null ? 0 : items.length();
+            boolean shouldShowItems = !"month".equals(range) || isCurrentMonth;
+            int itemCount = !shouldShowItems || items == null ? 0 : items.length();
             int visibleCount = Math.min(itemCount, getMaxVisibleItems());
             int moreCount = Math.max(itemCount - visibleCount, 0);
 
