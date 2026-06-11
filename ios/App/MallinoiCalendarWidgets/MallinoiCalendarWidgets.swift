@@ -173,7 +173,7 @@ struct CalendarWidgetView: View {
 
     @ViewBuilder
     private func content(_ widget: CalendarWidgetData, theme: CalendarWidgetTheme) -> some View {
-        VStack(alignment: .leading, spacing: widget.range == "month" ? 7 : 5) {
+        VStack(alignment: .leading, spacing: widget.range == "month" ? 10 : 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(widget.calendarLabel)
                     .font(.caption.bold())
@@ -187,7 +187,7 @@ struct CalendarWidgetView: View {
                     .foregroundStyle(theme.mutedText)
                     .lineLimit(1)
             }
-            .padding(.horizontal, widget.range == "month" ? 2 : 0)
+            .padding(.horizontal, widget.range == "month" ? 6 : 0)
 
             if entry.range == "month" {
                 MonthGridView(widget: widget, theme: theme)
