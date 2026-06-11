@@ -279,6 +279,7 @@ struct MonthGridView: View {
                 }
             }
         }
+        .padding(.top, 4)
     }
 
     private var monthRows: Int {
