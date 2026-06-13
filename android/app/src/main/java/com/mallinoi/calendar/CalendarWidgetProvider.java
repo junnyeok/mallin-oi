@@ -11,6 +11,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -55,10 +56,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widgetSubtitle, getRangeLabel());
         views.setTextColor(R.id.widgetSubtitle, theme.mutedText);
         views.setOnClickPendingIntent(R.id.widgetRoot, buildOpenIntent(context));
-        if (!"month".equals(range)) {
-            int headerInset = dp(context, 8);
-            views.setViewPadding(R.id.widgetHeader, headerInset, 0, headerInset, 0);
-        }
+        configureLayout(context, views);
 
         if (!isLoggedIn) {
             setEmptyState(views, "로그인이 필요해요");
@@ -83,7 +81,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 views.setTextViewText(R.id.widgetSubtitle, monthNumber + "월");
             }
 
-            bindDays(views, days, theme);
+            bindDays(context, views, days, theme);
         } catch (Exception error) {
             setEmptyState(views, "위젯을 열어 새로고침해줘요");
         }
@@ -110,16 +108,42 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         for (int id : ids) {
             views.setViewVisibility(id, View.GONE);
         }
+        views.setViewVisibility(R.id.widgetWeekdayRow, View.GONE);
         views.setTextViewText(R.id.widgetEmpty, message);
         views.setViewVisibility(R.id.widgetEmpty, View.VISIBLE);
     }
 
-    void bindDays(RemoteViews views, JSONArray days, WidgetTheme theme) {
+    void configureLayout(Context context, RemoteViews views) {
+        int horizontalPadding = "month".equals(range) ? 8 : 10;
+        int verticalPadding = "month".equals(range) ? 10 : 9;
+        views.setViewPadding(
+                R.id.widgetRoot,
+                dp(context, horizontalPadding),
+                dp(context, verticalPadding),
+                dp(context, horizontalPadding),
+                dp(context, verticalPadding)
+        );
+
+        int headerInset = "month".equals(range) ? 5 : 6;
+        views.setViewPadding(R.id.widgetHeader, dp(context, headerInset), 0, dp(context, headerInset), 0);
+
+        views.setViewVisibility(R.id.widgetWeekdayRow, "month".equals(range) ? View.VISIBLE : View.GONE);
+        views.setViewPadding(R.id.widgetRow01, 0, dp(context, getFirstRowTopPadding()), 0, 0);
+
+        int visibleRows = getVisibleRowCount();
+        int[] rowIds = getRowIds();
+        for (int index = 0; index < rowIds.length; index += 1) {
+            views.setViewVisibility(rowIds[index], index < visibleRows ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    void bindDays(Context context, RemoteViews views, JSONArray days, WidgetTheme theme) {
         int[] ids = getDayIds();
         SimpleDateFormat input = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         SimpleDateFormat monthDay = "month".equals(range)
                 ? new SimpleDateFormat("d", Locale.KOREAN)
                 : new SimpleDateFormat("d", Locale.KOREAN);
+        SimpleDateFormat weekdayFormat = new SimpleDateFormat("E", Locale.KOREAN);
 
         views.setViewVisibility(R.id.widgetEmpty, View.GONE);
 
@@ -139,6 +163,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
             String date = day.optString("date", "");
             java.util.Date localDate = parseDate(input, date);
+            String dateText = monthDay.format(localDate);
+            String weekday = day.optString("weekday", "");
+            if (weekday.isEmpty()) {
+                weekday = weekdayFormat.format(localDate);
+            }
             JSONArray items = day.optJSONArray("items");
             boolean isToday = day.optBoolean("isToday", false);
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
@@ -149,7 +178,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
             SpannableStringBuilder text = new SpannableStringBuilder();
             int dateStart = text.length();
-            text.append(monthDay.format(localDate));
+            text.append(dateText);
+            if (!"month".equals(range)) {
+                text.append(" ").append(weekday);
+            }
             text.setSpan(
                     new ForegroundColorSpan(isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText),
                     dateStart,
@@ -182,9 +214,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
             views.setTextViewText(id, text);
             views.setTextColor(id, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
+            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, getDateTextSize());
+            views.setInt(id, "setHeight", dp(context, getCellHeightDp()));
+            views.setInt(id, "setMaxLines", getMaxLines());
             views.setInt(id, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
             if (!"month".equals(range)) {
-                views.setViewPadding(id, 1, "fourDays".equals(range) ? 7 : 5, 1, 1);
+                views.setViewPadding(id, 1, "fourDays".equals(range) ? 8 : 4, 1, 1);
             }
             views.setViewVisibility(id, View.VISIBLE);
         }
@@ -205,12 +240,41 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     int getMaxVisibleItems() {
+        if ("twoWeeks".equals(range)) return 1;
         return 2;
     }
 
     int getTitleLimit() {
-        if ("fourDays".equals(range)) return 8;
-        if ("twoWeeks".equals(range)) return 7;
+        if ("fourDays".equals(range)) return 7;
+        if ("twoWeeks".equals(range)) return 5;
+        return 6;
+    }
+
+    float getDateTextSize() {
+        if ("fourDays".equals(range)) return 10.5f;
+        if ("twoWeeks".equals(range)) return 6.8f;
+        return 7.5f;
+    }
+
+    int getMaxLines() {
+        if ("twoWeeks".equals(range)) return 3;
+        return 4;
+    }
+
+    int getCellHeightDp() {
+        if ("fourDays".equals(range)) return 52;
+        if ("twoWeeks".equals(range)) return 38;
+        return 34;
+    }
+
+    int getFirstRowTopPadding() {
+        if ("fourDays".equals(range)) return 11;
+        if ("twoWeeks".equals(range)) return 12;
+        return 8;
+    }
+
+    int getVisibleRowCount() {
+        if ("fourDays".equals(range) || "twoWeeks".equals(range)) return 2;
         return 6;
     }
 
@@ -241,8 +305,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     String getRangeLabel() {
-        if ("fourDays".equals(range)) return "오늘 포함 4일";
-        if ("twoWeeks".equals(range)) return "오늘 포함 2주";
+        if ("fourDays".equals(range)) return "4일";
+        if ("twoWeeks".equals(range)) return "2주";
         return "한 달";
     }
 
@@ -277,6 +341,22 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     int[] getDayIds() {
+        if ("fourDays".equals(range)) {
+            return new int[] {
+                    R.id.widgetDay01, R.id.widgetDay02, R.id.widgetDay08, R.id.widgetDay09,
+                    R.id.widgetDay03, R.id.widgetDay04, R.id.widgetDay05, R.id.widgetDay06,
+                    R.id.widgetDay07, R.id.widgetDay10, R.id.widgetDay11, R.id.widgetDay12,
+                    R.id.widgetDay13, R.id.widgetDay14, R.id.widgetDay15, R.id.widgetDay16,
+                    R.id.widgetDay17, R.id.widgetDay18, R.id.widgetDay19, R.id.widgetDay20,
+                    R.id.widgetDay21, R.id.widgetDay22, R.id.widgetDay23, R.id.widgetDay24,
+                    R.id.widgetDay25, R.id.widgetDay26, R.id.widgetDay27, R.id.widgetDay28,
+                    R.id.widgetDay29, R.id.widgetDay30, R.id.widgetDay31, R.id.widgetDay32,
+                    R.id.widgetDay33, R.id.widgetDay34, R.id.widgetDay35, R.id.widgetDay36,
+                    R.id.widgetDay37, R.id.widgetDay38, R.id.widgetDay39, R.id.widgetDay40,
+                    R.id.widgetDay41, R.id.widgetDay42
+            };
+        }
+
         return new int[] {
                 R.id.widgetDay01, R.id.widgetDay02, R.id.widgetDay03, R.id.widgetDay04,
                 R.id.widgetDay05, R.id.widgetDay06, R.id.widgetDay07, R.id.widgetDay08,
@@ -289,6 +369,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 R.id.widgetDay33, R.id.widgetDay34, R.id.widgetDay35, R.id.widgetDay36,
                 R.id.widgetDay37, R.id.widgetDay38, R.id.widgetDay39, R.id.widgetDay40,
                 R.id.widgetDay41, R.id.widgetDay42
+        };
+    }
+
+    int[] getRowIds() {
+        return new int[] {
+                R.id.widgetRow01, R.id.widgetRow02, R.id.widgetRow03,
+                R.id.widgetRow04, R.id.widgetRow05, R.id.widgetRow06
         };
     }
 

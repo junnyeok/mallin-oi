@@ -9,6 +9,8 @@ export const CALENDAR_WIDGET_LABELS = {
   event: '이벤트',
 };
 
+const KOREAN_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
 const CALENDAR_WIDGET_FALLBACK_COLORS = {
   study: '#e7f6ff',
   work: '#f5f546',
@@ -121,25 +123,35 @@ function getCalendarGridRange(baseDate = new Date()) {
   };
 }
 
+function getTwoWeekRange(baseDate = new Date()) {
+  const weekStartDate = addDays(baseDate, -baseDate.getDay());
+  const weekEndDate = addDays(weekStartDate, 13);
+
+  return {
+    startDate: weekStartDate,
+    endDate: weekEndDate,
+    startDateKey: toDateKey(weekStartDate),
+    endDateKey: toDateKey(weekEndDate),
+  };
+}
+
 function getWidgetFetchRange(baseDate = new Date()) {
   const monthRange = getCalendarGridRange(baseDate);
-  const endDate = addDays(baseDate, 13);
-  const fetchStartDate = monthRange.startDate;
-
-  if (parseDateKey(monthRange.endDateKey) > endDate) {
-    return {
-      startDate: fetchStartDate,
-      endDate: monthRange.endDate,
-      startDateKey: monthRange.startDateKey,
-      endDateKey: monthRange.endDateKey,
-    };
-  }
+  const twoWeekRange = getTwoWeekRange(baseDate);
+  const fetchStartDate =
+    parseDateKey(twoWeekRange.startDateKey) < parseDateKey(monthRange.startDateKey)
+      ? twoWeekRange.startDate
+      : monthRange.startDate;
+  const fetchEndDate =
+    parseDateKey(twoWeekRange.endDateKey) > parseDateKey(monthRange.endDateKey)
+      ? twoWeekRange.endDate
+      : monthRange.endDate;
 
   return {
     startDate: fetchStartDate,
-    endDate,
-    startDateKey: monthRange.startDateKey,
-    endDateKey: toDateKey(endDate),
+    endDate: fetchEndDate,
+    startDateKey: toDateKey(fetchStartDate),
+    endDateKey: toDateKey(fetchEndDate),
   };
 }
 
@@ -176,7 +188,7 @@ function groupItemsByDate(items = []) {
 
 function getRangeDateKeys(range, baseDate) {
   if (range === 'fourDays') return getDateKeys(baseDate, 4);
-  if (range === 'twoWeeks') return getDateKeys(baseDate, 14);
+  if (range === 'twoWeeks') return getDateKeys(getTwoWeekRange(baseDate).startDate, 14);
 
   const { startDate, endDate } = getCalendarGridRange(baseDate);
   const dayCount = Math.round((endDate - startDate) / 86400000) + 1;
@@ -224,6 +236,7 @@ export function buildCalendarWidgetPayload(items = [], options = {}) {
 
           return {
             date: dateKey,
+            weekday: KOREAN_WEEKDAYS[(parseDateKey(dateKey) || baseDate).getDay()],
             isToday: dateKey === today,
             isCurrentMonth,
             items: range === 'month' && !isCurrentMonth ? [] : typeGroups[dateKey] || [],

@@ -52,9 +52,25 @@
         android:visibility="gone" />
 
     <LinearLayout
+        android:id="@+id/widgetWeekdayRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+        <TextView android:id="@+id/widgetWeekdaySun" style="@style/MallinoiWidgetWeekday" android:text="일" android:textColor="#cc3333" />
+        <TextView android:id="@+id/widgetWeekdayMon" style="@style/MallinoiWidgetWeekday" android:text="월" />
+        <TextView android:id="@+id/widgetWeekdayTue" style="@style/MallinoiWidgetWeekday" android:text="화" />
+        <TextView android:id="@+id/widgetWeekdayWed" style="@style/MallinoiWidgetWeekday" android:text="수" />
+        <TextView android:id="@+id/widgetWeekdayThu" style="@style/MallinoiWidgetWeekday" android:text="목" />
+        <TextView android:id="@+id/widgetWeekdayFri" style="@style/MallinoiWidgetWeekday" android:text="금" />
+        <TextView android:id="@+id/widgetWeekdaySat" style="@style/MallinoiWidgetWeekday" android:text="토" android:textColor="#3366cc" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widgetRow01"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal">
         <TextView android:id="@+id/widgetDay01" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay02" style="@style/MallinoiWidgetDay" />
@@ -65,7 +81,7 @@
         <TextView android:id="@+id/widgetDay07" style="@style/MallinoiWidgetDay" />
     </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+    <LinearLayout android:id="@+id/widgetRow02" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:id="@+id/widgetDay08" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay09" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay10" style="@style/MallinoiWidgetDay" />
@@ -75,7 +91,7 @@
         <TextView android:id="@+id/widgetDay14" style="@style/MallinoiWidgetDay" />
     </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+    <LinearLayout android:id="@+id/widgetRow03" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:id="@+id/widgetDay15" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay16" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay17" style="@style/MallinoiWidgetDay" />
@@ -85,7 +101,7 @@
         <TextView android:id="@+id/widgetDay21" style="@style/MallinoiWidgetDay" />
     </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+    <LinearLayout android:id="@+id/widgetRow04" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:id="@+id/widgetDay22" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay23" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay24" style="@style/MallinoiWidgetDay" />
@@ -95,7 +111,7 @@
         <TextView android:id="@+id/widgetDay28" style="@style/MallinoiWidgetDay" />
     </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+    <LinearLayout android:id="@+id/widgetRow05" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:id="@+id/widgetDay29" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay30" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay31" style="@style/MallinoiWidgetDay" />
@@ -105,7 +121,7 @@
         <TextView android:id="@+id/widgetDay35" style="@style/MallinoiWidgetDay" />
     </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+    <LinearLayout android:id="@+id/widgetRow06" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:id="@+id/widgetDay36" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay37" style="@style/MallinoiWidgetDay" />
         <TextView android:id="@+id/widgetDay38" style="@style/MallinoiWidgetDay" />

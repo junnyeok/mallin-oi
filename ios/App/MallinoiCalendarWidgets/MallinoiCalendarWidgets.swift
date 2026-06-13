@@ -2,6 +2,7 @@ import SwiftUI
 import WidgetKit
 
 private let appGroupName = "group.com.mallinoi.calendar"
+private let koreanWeekdays = ["일", "월", "화", "수", "목", "금", "토"]
 
 struct CalendarWidgetItem: Decodable, Identifiable {
     let calendarType: String
@@ -62,6 +63,7 @@ func theme(for calendarType: String) -> CalendarWidgetTheme {
 
 struct CalendarWidgetDay: Decodable, Identifiable {
     let date: String
+    let weekday: String?
     let isToday: Bool
     let isCurrentMonth: Bool
     let items: [CalendarWidgetItem]
@@ -299,7 +301,7 @@ struct DayCellView: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(dayNumber)
-                .font(.system(size: compact ? 9 : 12, weight: day.isToday ? .bold : .semibold))
+                .font(.system(size: dateFontSize, weight: day.isToday ? .bold : .semibold))
                 .foregroundStyle(dayNumberColor)
                 .lineLimit(1)
 
@@ -355,6 +357,12 @@ struct DayCellView: View {
         return 7.5
     }
 
+    private var dateFontSize: CGFloat {
+        if range == "fourDays" { return 11 }
+        if range == "twoWeeks" { return 8 }
+        return 9
+    }
+
     private var cellHeight: CGFloat {
         if range == "fourDays" { return 52 }
         if range == "twoWeeks" { return 41 }
@@ -367,7 +375,11 @@ struct DayCellView: View {
     }
 
     private var dayNumber: String {
-        String(Int(day.date.suffix(2)) ?? 0)
+        if range != "month", let weekday = day.weekday, !weekday.isEmpty {
+            return "\(Int(day.date.suffix(2)) ?? 0) \(weekday)"
+        }
+
+        return String(Int(day.date.suffix(2)) ?? 0)
     }
 
     private func displayTitle(for item: CalendarWidgetItem) -> String {
@@ -423,6 +435,7 @@ struct SampleData {
 
             return CalendarWidgetDay(
                 date: dateKey,
+                weekday: koreanWeekdays[calendar.component(.weekday, from: date) - 1],
                 isToday: index == 0,
                 isCurrentMonth: true,
                 items: item.map { [$0] } ?? []
