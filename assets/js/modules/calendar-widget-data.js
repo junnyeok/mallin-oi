@@ -81,6 +81,103 @@ function normalizeWidgetItem(row = {}) {
     time: row.event_time || null,
     sortOrder: Number(row.sort_order || 0),
     createdAt: row.created_at || null,
+    categoryId: row.category_id || null,
+    type: row.type || '',
+    source: row.source || 'personal',
+    sharedGroupId: row.shared_group_id || null,
+    sharedOriginTodoId: row.shared_origin_todo_id || null,
+    sharedOriginUserId: row.shared_origin_user_id || null,
+    sharedCreatedBy: row.shared_created_by || null,
+    isSharedCopy: Boolean(row.is_shared_copy),
+  });
+}
+
+function getRelatedCategory(row = {}, relationName = '') {
+  const category = row[relationName];
+
+  if (Array.isArray(category)) return category[0] || {};
+
+  return category || {};
+}
+
+function getWidgetSource(row = {}) {
+  return row.shared_group_id || row.shared_origin_todo_id || row.is_shared_copy
+    ? 'sharedPersonal'
+    : 'personal';
+}
+
+function normalizeStudyWidgetRow(row = {}) {
+  const category = getRelatedCategory(row, 'study_calendar_categories');
+
+  return normalizeWidgetItem({
+    calendar_type: 'study',
+    item_id: row.id,
+    item_date: row.todo_date,
+    category_id: row.category_id || category.id || null,
+    category_name: category.name || row.todo_type || '기타',
+    category_color: category.color || '',
+    title: row.todo_text || '',
+    memo: row.memo || '',
+    event_time: null,
+    sort_order: category.sort_order || 100,
+    created_at: row.created_at || null,
+    type: row.todo_type || category.slug || '',
+    source: getWidgetSource(row),
+    shared_group_id: row.shared_group_id || null,
+    shared_origin_todo_id: row.shared_origin_todo_id || null,
+    shared_origin_user_id: row.shared_origin_user_id || null,
+    shared_created_by: row.shared_created_by || null,
+    is_shared_copy: row.is_shared_copy,
+  });
+}
+
+function normalizeWorkWidgetRow(row = {}) {
+  const category = getRelatedCategory(row, 'work_calendar_categories');
+
+  return normalizeWidgetItem({
+    calendar_type: 'work',
+    item_id: row.id,
+    item_date: row.work_date,
+    category_id: row.category_id || category.id || null,
+    category_name: category.name || row.work_type || '기타',
+    category_color: category.color || '',
+    title: row.work_text || '',
+    memo: row.memo || row.note || '',
+    event_time: null,
+    sort_order: category.sort_order || 100,
+    created_at: row.created_at || null,
+    type: row.work_type || category.slug || '',
+    source: getWidgetSource(row),
+    shared_group_id: row.shared_group_id || null,
+    shared_origin_todo_id: row.shared_origin_todo_id || null,
+    shared_origin_user_id: row.shared_origin_user_id || null,
+    shared_created_by: row.shared_created_by || null,
+    is_shared_copy: row.is_shared_copy,
+  });
+}
+
+function normalizeEventWidgetRow(row = {}) {
+  const category = getRelatedCategory(row, 'event_calendar_categories');
+
+  return normalizeWidgetItem({
+    calendar_type: 'event',
+    item_id: row.id,
+    item_date: row.event_date,
+    category_id: row.category_id || category.id || null,
+    category_name: category.name || row.event_type || '기타',
+    category_color: category.color || '',
+    title: row.event_text || '',
+    memo: row.memo || '',
+    event_time: row.event_time || null,
+    sort_order: category.sort_order || 100,
+    created_at: row.created_at || null,
+    type: row.event_type || category.slug || '',
+    source: getWidgetSource(row),
+    shared_group_id: row.shared_group_id || null,
+    shared_origin_todo_id: row.shared_origin_todo_id || null,
+    shared_origin_user_id: row.shared_origin_user_id || null,
+    shared_created_by: row.shared_created_by || null,
+    is_shared_copy: row.is_shared_copy,
   });
 }
 
@@ -261,18 +358,129 @@ export async function fetchCalendarWidgetItems(options = {}) {
 
   const startDate = toDateKey(options.startDate || defaultRange.startDate);
   const endDate = toDateKey(options.endDate || defaultRange.endDate);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  const { data, error } = await supabase.rpc('get_my_calendar_widget_items', {
-    p_start_date: startDate,
-    p_end_date: endDate,
-  });
-
-  if (error) {
-    console.error('[calendar-widget-data] fetch failed:', error.message);
-    throw error;
+  if (userError) {
+    console.error('[calendar-widget-data] user fetch failed:', userError.message);
+    throw userError;
   }
 
-  return (data || []).map(normalizeWidgetItem);
+  if (!user?.id) return [];
+
+  const sharedColumns = `
+    shared_origin_todo_id,
+    shared_origin_user_id,
+    shared_group_id,
+    shared_created_by,
+    is_shared_copy
+  `;
+
+  const [studyResult, workResult, eventResult] = await Promise.all([
+    supabase
+      .from('study_calendar_todos')
+      .select(
+        `
+        id,
+        user_id,
+        todo_date,
+        todo_type,
+        category_id,
+        todo_text,
+        memo,
+        is_done,
+        created_at,
+        ${sharedColumns},
+        study_calendar_categories (
+          id,
+          name,
+          slug,
+          color,
+          sort_order
+        )
+      `,
+      )
+      .eq('user_id', user.id)
+      .gte('todo_date', startDate)
+      .lte('todo_date', endDate)
+      .order('todo_date', { ascending: true })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('work_calendar_todos')
+      .select(
+        `
+        id,
+        user_id,
+        work_date,
+        work_type,
+        category_id,
+        work_text,
+        memo,
+        is_done,
+        created_at,
+        ${sharedColumns},
+        work_calendar_categories (
+          id,
+          name,
+          slug,
+          color,
+          sort_order
+        )
+      `,
+      )
+      .eq('user_id', user.id)
+      .gte('work_date', startDate)
+      .lte('work_date', endDate)
+      .order('work_date', { ascending: true })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('event_calendar_todos')
+      .select(
+        `
+        id,
+        user_id,
+        event_date,
+        event_type,
+        category_id,
+        event_text,
+        memo,
+        event_time,
+        is_done,
+        created_at,
+        ${sharedColumns},
+        event_calendar_categories (
+          id,
+          name,
+          slug,
+          color,
+          sort_order
+        )
+      `,
+      )
+      .eq('user_id', user.id)
+      .gte('event_date', startDate)
+      .lte('event_date', endDate)
+      .order('event_date', { ascending: true })
+      .order('event_time', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true }),
+  ]);
+
+  const failedResult = [studyResult, workResult, eventResult].find(
+    (result) => result.error,
+  );
+
+  if (failedResult?.error) {
+    console.error('[calendar-widget-data] fetch failed:', failedResult.error.message);
+    throw failedResult.error;
+  }
+
+  return [
+    ...(studyResult.data || []).map(normalizeStudyWidgetRow),
+    ...(workResult.data || []).map(normalizeWorkWidgetRow),
+    ...(eventResult.data || []).map(normalizeEventWidgetRow),
+  ];
 }
 
 export async function fetchCalendarWidgetPayload(options = {}) {
