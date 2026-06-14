@@ -112,6 +112,28 @@ function getPageType() {
   return 'other';
 }
 
+function isNativeCapacitorApp() {
+  const capacitor = window.Capacitor;
+  if (!capacitor) return false;
+
+  if (typeof capacitor.isNativePlatform === 'function') {
+    return capacitor.isNativePlatform() === true;
+  }
+
+  if (typeof capacitor.getPlatform === 'function') {
+    return capacitor.getPlatform() !== 'web';
+  }
+
+  return capacitor.platform === 'ios' || capacitor.platform === 'android';
+}
+
+function shouldSkipScrollButtons(pageType) {
+  return (
+    isNativeCapacitorApp() &&
+    (pageType === 'calendar' || pageType === 'calendar-groups')
+  );
+}
+
 function findLatestPanel() {
   const latestList = document.getElementById('latestList');
   if (!latestList) return null;
@@ -291,6 +313,7 @@ export function initScrollButtons(options = {}) {
 
   const pageType = getPageType();
   if (pageType === 'other') return;
+  if (shouldSkipScrollButtons(pageType)) return;
 
   const prefersReduced =
     window.matchMedia &&
