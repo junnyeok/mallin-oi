@@ -648,7 +648,16 @@ body.work-repeat-modal-open {
 
 .work-todo-item__detail-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.work-todo-item__status {
+  min-height: 16px;
+  color: var(--color-text-sub);
+  font-size: 11px;
+  line-height: var(--line-body);
 }
 
 .work-todo-item__detail[hidden] {

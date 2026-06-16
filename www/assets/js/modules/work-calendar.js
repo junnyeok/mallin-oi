@@ -1036,8 +1036,7 @@ function renderTodoList({
   store,
   categories,
   onDelete,
-  onMemoChange,
-  onCategoryChange,
+  onSaveEdit,
 }) {
   if (!root) return;
 
@@ -1085,29 +1084,10 @@ function renderTodoList({
       getCategoryTextColor(category.color),
     );
 
-    categorySelect.addEventListener('change', async () => {
-      const previousValue = getTodoCategorySelectValue(todo, categories);
-      const nextCategory =
-        categories.find(
-          (categoryItem) => categoryItem.id === categorySelect.value,
-        ) || getFallbackCategory(categories);
-
-      if (!nextCategory?.id || nextCategory.id === previousValue) {
-        categorySelect.value = previousValue;
-        return;
-      }
-
-      try {
-        await onCategoryChange?.(todo.id, nextCategory);
-      } catch (error) {
-        alert('근무형태 변경에 실패했어. 잠시 후 다시 시도해줘.');
-        categorySelect.value = previousValue;
-      }
-    });
-
     editButton.type = 'button';
     saveMemoButton.type = 'button';
     deleteButton.type = 'button';
+    saveMemoButton.disabled = true;
 
     memoInput.className = 'work-todo-item__memo';
     memoInput.rows = 1;
@@ -1115,8 +1095,28 @@ function renderTodoList({
     memoInput.placeholder = '메모를 입력하세요.';
     memoInput.setAttribute('aria-label', '업무 캘린더 메모 수정');
 
+    const editStatus = makeEl('span', 'work-todo-item__status', '');
+    editStatus.setAttribute('aria-live', 'polite');
+    const savedCategoryId = getTodoCategorySelectValue(todo, categories);
+    const savedMemo = String(todo.memo || '');
+
+    const isDirty = () =>
+      categorySelect.value !== savedCategoryId ||
+      memoInput.value !== savedMemo;
+
+    const syncDirtyState = () => {
+      const dirty = isDirty();
+      saveMemoButton.disabled = !dirty;
+      item.classList.toggle('is-editing', dirty);
+      if (dirty) {
+        editStatus.textContent = '저장 전';
+      } else if (editStatus.textContent === '저장 전') {
+        editStatus.textContent = '';
+      }
+    };
+
     detail.hidden = true;
-    detailActions.append(saveMemoButton);
+    detailActions.append(editStatus, saveMemoButton);
     detail.append(memoInput, detailActions);
 
     editButton.addEventListener('click', () => {
@@ -1135,23 +1135,30 @@ function renderTodoList({
 
     memoInput.addEventListener('input', () => {
       autoResizeTextarea(memoInput);
+      syncDirtyState();
     });
+
+    categorySelect.addEventListener('change', syncDirtyState);
 
     saveMemoButton.addEventListener('click', async () => {
+      const nextCategory =
+        categories.find(
+          (categoryItem) => categoryItem.id === categorySelect.value,
+        ) || getFallbackCategory(categories);
+
       saveMemoButton.disabled = true;
       saveMemoButton.textContent = '저장 중';
+      editStatus.textContent = '저장 중...';
 
       try {
-        await onMemoChange?.(todo.id, memoInput.value);
-      } finally {
+        await onSaveEdit?.(todo.id, {
+          memo: memoInput.value,
+          category: nextCategory,
+        });
+      } catch (error) {
+        editStatus.textContent = '저장 실패';
         saveMemoButton.disabled = false;
         saveMemoButton.textContent = '저장';
-      }
-    });
-
-    memoInput.addEventListener('blur', () => {
-      if (String(memoInput.value || '') !== String(todo.memo || '')) {
-        onMemoChange?.(todo.id, memoInput.value);
       }
     });
 
@@ -1355,8 +1362,7 @@ async function initPageCalendar() {
       store: state.store,
       categories: state.categories,
       onDelete: deleteTodo,
-      onMemoChange: changeTodoMemo,
-      onCategoryChange: changeTodoCategory,
+      onSaveEdit: saveTodoEdit,
     });
 
     renderCategoryList({
@@ -1544,7 +1550,7 @@ async function initPageCalendar() {
     }
   }
 
-  async function changeTodoCategory(todoId, category) {
+  async function saveTodoEdit(todoId, { memo, category }) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
     const fallback = getFallbackCategory(state.categories);
@@ -1552,46 +1558,38 @@ async function initPageCalendar() {
 
     if (!target || !nextCategory?.id) return;
 
-    try {
+    const nextMemo = String(memo || '').trim();
+    const currentCategoryId = getTodoCategorySelectValue(target, state.categories);
+
+    if (isSharedPersonalTodo(target)) {
+      await updateSharedPersonalTodo({
+        todoId,
+        workText: nextCategory.name || target.text || '',
+        memo: nextMemo,
+      });
+      if (nextCategory.id !== currentCategoryId) {
+        await updateTodoCategory({
+          todoId,
+          category: nextCategory,
+        });
+      }
+      state.store = await fetchUserTodos(state.userId);
+      renderAll();
+      return;
+    }
+
+    if (nextMemo !== String(target.memo || '').trim()) {
+      await updateTodoMemo({ todoId, memo: nextMemo });
+    }
+    if (nextCategory.id !== currentCategoryId) {
       await updateTodoCategory({
         todoId,
         category: nextCategory,
       });
-
-      state.store = await fetchUserTodos(state.userId);
-      renderAll();
-    } catch (error) {
-      alert('업무 일정 카테고리 변경에 실패했어. 잠시 후 다시 시도해줘.');
     }
-  }
 
-  async function changeTodoMemo(todoId, memo) {
-    const todos = state.store[state.selectedDateKey] || [];
-    const target = todos.find((todo) => todo.id === todoId);
-
-    if (!target) return;
-
-    const nextMemo = String(memo || '').trim();
-
-    try {
-      if (isSharedPersonalTodo(target)) {
-        await updateSharedPersonalTodo({
-          todoId,
-          workText: target.text || '',
-          memo: nextMemo,
-        });
-        state.store = await fetchUserTodos(state.userId);
-        renderAll();
-        return;
-      }
-
-      await updateTodoMemo({ todoId, memo: nextMemo });
-
-      target.memo = nextMemo;
-      renderAll();
-    } catch (error) {
-      alert('메모 수정에 실패했어. 잠시 후 다시 시도해줘.');
-    }
+    state.store = await fetchUserTodos(state.userId);
+    renderAll();
   }
 
   async function saveCategory({
