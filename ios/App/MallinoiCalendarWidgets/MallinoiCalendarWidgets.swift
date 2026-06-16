@@ -299,7 +299,7 @@ struct DayCellView: View {
     let theme: CalendarWidgetTheme
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: itemSpacing) {
             Text(dayNumber)
                 .font(.system(size: dateFontSize, weight: day.isToday ? .bold : .semibold))
                 .foregroundStyle(dayNumberColor)
@@ -312,7 +312,7 @@ struct DayCellView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
+                    .padding(.vertical, badgeVerticalPadding)
                     .frame(maxWidth: .infinity)
                     .background(textColor(for: item.displayColor ?? item.categoryColor))
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
@@ -347,18 +347,35 @@ struct DayCellView: View {
         max(visibleItems.count - maxVisibleItems, 0)
     }
 
+    private var itemCount: Int {
+        visibleItems.count
+    }
+
     private var visibleItems: [CalendarWidgetItem] {
         if range == "month" && !day.isCurrentMonth { return [] }
         return day.items
     }
 
     private var badgeFontSize: CGFloat {
-        if range == "fourDays" { return 8.5 }
-        return 7.5
+        if range == "fourDays" {
+            if itemCount <= 1 { return 11 }
+            if itemCount == 2 { return 10 }
+            return 8.5
+        }
+
+        if range == "twoWeeks" {
+            if itemCount <= 1 { return 8.5 }
+            if itemCount == 2 { return 7.8 }
+            return 7.2
+        }
+
+        if itemCount <= 1 { return 8.5 }
+        if itemCount == 2 { return 7.8 }
+        return 7.2
     }
 
     private var dateFontSize: CGFloat {
-        if range == "fourDays" { return 11 }
+        if range == "fourDays" { return itemCount <= 1 ? 12.5 : 11.5 }
         if range == "twoWeeks" { return 8 }
         return 9
     }
@@ -367,6 +384,25 @@ struct DayCellView: View {
         if range == "fourDays" { return 52 }
         if range == "twoWeeks" { return 41 }
         return monthRows <= 5 ? 49 : 40
+    }
+
+    private var badgeVerticalPadding: CGFloat {
+        if range == "fourDays" {
+            if itemCount <= 2 { return 2 }
+            return 1
+        }
+
+        return itemCount <= 1 ? 1.5 : 1
+    }
+
+    private var itemSpacing: CGFloat {
+        if range == "fourDays" {
+            if itemCount <= 1 { return 4 }
+            return 3
+        }
+
+        if range == "twoWeeks" { return 2 }
+        return itemCount <= 1 ? 3 : 2
     }
 
     private var dayNumberColor: Color {
