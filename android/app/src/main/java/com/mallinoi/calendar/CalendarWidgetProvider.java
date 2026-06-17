@@ -109,6 +109,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         for (int id : ids) {
             views.setViewVisibility(id, View.GONE);
         }
+        views.setViewVisibility(R.id.widgetGrid, View.GONE);
         views.setViewVisibility(R.id.widgetWeekdayRow, View.GONE);
         views.setTextViewText(R.id.widgetEmpty, message);
         views.setViewVisibility(R.id.widgetEmpty, View.VISIBLE);
@@ -129,7 +130,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         views.setViewPadding(R.id.widgetHeader, dp(context, headerInset), 0, dp(context, headerInset), 0);
 
         views.setViewVisibility(R.id.widgetWeekdayRow, "month".equals(range) ? View.VISIBLE : View.GONE);
-        views.setViewPadding(R.id.widgetRow01, 0, dp(context, getFirstRowTopPadding()), 0, 0);
+        views.setViewVisibility(R.id.widgetGrid, View.VISIBLE);
+        views.setViewPadding(R.id.widgetGrid, 0, dp(context, getGridTopPadding()), 0, dp(context, 1));
 
         int visibleRows = getVisibleRowCount();
         int[] rowIds = getRowIds();
@@ -147,6 +149,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         SimpleDateFormat weekdayFormat = new SimpleDateFormat("E", Locale.KOREAN);
 
         views.setViewVisibility(R.id.widgetEmpty, View.GONE);
+        views.setViewVisibility(R.id.widgetGrid, View.VISIBLE);
 
         for (int index = 0; index < ids.length; index += 1) {
             int id = ids[index];
@@ -235,10 +238,15 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(id, text);
             views.setTextColor(id, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
             views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, getDateTextSize(itemCount));
-            views.setInt(id, "setHeight", dp(context, getCellHeightDp(monthRows)));
             views.setInt(id, "setMaxLines", getMaxLines());
             views.setInt(id, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
-            views.setViewPadding(id, dp(context, 1), dp(context, getCellTopPadding(itemCount)), dp(context, 1), dp(context, 1));
+            views.setViewPadding(
+                    id,
+                    dp(context, 1),
+                    dp(context, getCellTopPadding(itemCount, monthRows)),
+                    dp(context, 1),
+                    dp(context, 2)
+            );
             views.setViewVisibility(id, View.VISIBLE);
         }
     }
@@ -268,66 +276,59 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     float getDateTextSize(int itemCount) {
-        if ("fourDays".equals(range)) return itemCount <= 1 ? 12.5f : 11.2f;
-        if ("twoWeeks".equals(range)) return 7.8f;
-        return 7.5f;
+        if ("fourDays".equals(range)) return itemCount <= 1 ? 13.5f : 12.2f;
+        if ("twoWeeks".equals(range)) return 8.8f;
+        return 8.5f;
     }
 
     float getBadgeTextSize(int itemCount) {
         if ("fourDays".equals(range)) {
-            if (itemCount <= 1) return 10.5f;
-            if (itemCount == 2) return 9.6f;
-            return 8.5f;
+            if (itemCount <= 1) return 11.5f;
+            if (itemCount == 2) return 10.5f;
+            return 9.5f;
         }
 
         if ("twoWeeks".equals(range)) {
-            if (itemCount <= 1) return 7.3f;
-            if (itemCount == 2) return 6.7f;
-            return 6.2f;
+            if (itemCount <= 1) return 8.2f;
+            if (itemCount == 2) return 7.6f;
+            return 7.0f;
         }
 
-        if (itemCount <= 1) return 7.8f;
-        if (itemCount == 2) return 7.1f;
-        return 6.6f;
+        if (itemCount <= 1) return 8.4f;
+        if (itemCount == 2) return 7.7f;
+        return 7.1f;
     }
 
     float getMoreTextSize() {
-        if ("fourDays".equals(range)) return 8.5f;
-        if ("twoWeeks".equals(range)) return 6.2f;
-        return 6.6f;
+        if ("fourDays".equals(range)) return 9.5f;
+        if ("twoWeeks".equals(range)) return 7.0f;
+        return 7.1f;
     }
 
     int getMaxLines() {
         return 4;
     }
 
-    int getCellHeightDp(int monthRows) {
-        if ("fourDays".equals(range)) return 58;
-        if ("twoWeeks".equals(range)) return 43;
-        if (monthRows > 0 && monthRows <= 5) return 49;
-        return 40;
-    }
-
-    int getCellTopPadding(int itemCount) {
+    int getCellTopPadding(int itemCount, int monthRows) {
         if ("fourDays".equals(range)) {
-            if (itemCount <= 1) return 10;
-            if (itemCount == 2) return 7;
-            return 5;
-        }
-
-        if ("twoWeeks".equals(range)) {
-            if (itemCount <= 1) return 5;
+            if (itemCount <= 1) return 8;
+            if (itemCount == 2) return 5;
             return 3;
         }
 
-        if (itemCount <= 1) return 3;
-        return 2;
+        if ("twoWeeks".equals(range)) {
+            if (itemCount <= 1) return 4;
+            return 2;
+        }
+
+        if (monthRows > 0 && monthRows <= 5) return itemCount <= 1 ? 4 : 2;
+        return itemCount <= 1 ? 2 : 1;
     }
 
-    int getFirstRowTopPadding() {
-        if ("fourDays".equals(range)) return 11;
-        if ("twoWeeks".equals(range)) return 12;
-        return 2;
+    int getGridTopPadding() {
+        if ("fourDays".equals(range)) return 5;
+        if ("twoWeeks".equals(range)) return 6;
+        return 3;
     }
 
     int getVisibleRowCount() {
