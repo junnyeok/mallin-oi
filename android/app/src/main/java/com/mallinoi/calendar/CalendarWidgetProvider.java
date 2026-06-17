@@ -289,19 +289,19 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
     float getBadgeTextSize(int itemCount) {
         if ("fourDays".equals(range)) {
-            if (itemCount <= 1) return 11.5f;
-            if (itemCount == 2) return 10.5f;
+            if (itemCount <= 1) return 14.0f;
+            if (itemCount == 2) return 12.5f;
             return 9.5f;
         }
 
         if ("twoWeeks".equals(range)) {
-            if (itemCount <= 1) return 8.2f;
-            if (itemCount == 2) return 7.6f;
+            if (itemCount <= 1) return 10.5f;
+            if (itemCount == 2) return 9.3f;
             return 7.0f;
         }
 
-        if (itemCount <= 1) return 8.4f;
-        if (itemCount == 2) return 7.7f;
+        if (itemCount <= 1) return 10.5f;
+        if (itemCount == 2) return 9.4f;
         return 7.1f;
     }
 
