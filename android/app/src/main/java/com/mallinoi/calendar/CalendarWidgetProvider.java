@@ -133,7 +133,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         views.setViewVisibility(R.id.widgetGrid, View.VISIBLE);
         views.setViewPadding(R.id.widgetGrid, 0, dp(context, getGridTopPadding()), 0, dp(context, 1));
 
-        int visibleRows = getVisibleRowCount();
+        setVisibleRows(views, getVisibleRowCount());
+    }
+
+    void setVisibleRows(RemoteViews views, int visibleRows) {
         int[] rowIds = getRowIds();
         for (int index = 0; index < rowIds.length; index += 1) {
             views.setViewVisibility(rowIds[index], index < visibleRows ? View.VISIBLE : View.GONE);
@@ -147,9 +150,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 ? new SimpleDateFormat("d", Locale.KOREAN)
                 : new SimpleDateFormat("d", Locale.KOREAN);
         SimpleDateFormat weekdayFormat = new SimpleDateFormat("E", Locale.KOREAN);
+        int monthRows = "month".equals(range) ? getMonthRowCount(days.length()) : 0;
 
         views.setViewVisibility(R.id.widgetEmpty, View.GONE);
         views.setViewVisibility(R.id.widgetGrid, View.VISIBLE);
+        if ("month".equals(range)) {
+            setVisibleRows(views, monthRows);
+        }
 
         for (int index = 0; index < ids.length; index += 1) {
             int id = ids[index];
@@ -179,7 +186,6 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int itemCount = !shouldShowItems || items == null ? 0 : items.length();
             int visibleCount = Math.min(itemCount, getMaxVisibleItems());
             int moreCount = Math.max(itemCount - visibleCount, 0);
-            int monthRows = "month".equals(range) ? Math.max(1, (int) Math.ceil(days.length() / 7.0)) : 0;
 
             SpannableStringBuilder text = new SpannableStringBuilder();
             int dateStart = text.length();
@@ -334,6 +340,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     int getVisibleRowCount() {
         if ("fourDays".equals(range) || "twoWeeks".equals(range)) return 2;
         return 6;
+    }
+
+    int getMonthRowCount(int dayCount) {
+        int rowCount = (int) Math.ceil(dayCount / 7.0);
+        return Math.max(4, Math.min(rowCount, 6));
     }
 
     String truncate(String value, int length) {
