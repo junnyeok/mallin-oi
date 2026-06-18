@@ -18,9 +18,11 @@ import {
   fetchSharedPersonalGroups,
   getCalendarLabel,
   getSharedPersonalGroupName,
+} from './calendar-shared-personal.js';
+import {
   normalizeSharedPersonalDetail,
   renderSharedPersonalReadonlyDetail,
-} from './calendar-shared-personal.js';
+} from './calendar-shared-personal-readonly.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 
 const TABLE_NAME = 'event_calendar_todos';
