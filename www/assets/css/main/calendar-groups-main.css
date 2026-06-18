@@ -234,6 +234,107 @@
   box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
+.calendar-group-schedule__badge--selectable {
+  width: 100%;
+  border: 0;
+  appearance: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
+}
+
+.calendar-group-schedule__badge--selectable:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 1px;
+}
+
+.calendar-shared-personal-detail {
+  display: block;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.calendar-shared-personal-detail__body {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-8);
+}
+
+.calendar-shared-personal-detail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.calendar-shared-personal-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.calendar-shared-personal-detail__label,
+.calendar-shared-personal-detail__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.calendar-shared-personal-detail__label {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+}
+
+.calendar-shared-personal-detail__owner,
+.calendar-shared-personal-detail__memo-label {
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendar-shared-personal-detail__chip {
+  border: 1px solid var(--color-border);
+  background: var(--shared-personal-color, var(--color-surface));
+  color: var(--color-text);
+}
+
+.calendar-shared-personal-detail__title {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 900;
+  line-height: var(--line-body);
+  overflow-wrap: anywhere;
+}
+
+.calendar-shared-personal-detail__memo {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.calendar-shared-personal-detail__memo-text {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.calendar-shared-personal-detail__memo-text.is-empty {
+  color: var(--color-text-sub);
+  font-size: 12px;
+}
+
 .study-calendar-grid.is-calendar-group-mode,
 .work-calendar-grid.is-calendar-group-mode,
 .event-calendar-grid.is-calendar-group-mode {

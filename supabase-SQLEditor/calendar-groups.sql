@@ -776,7 +776,12 @@ returns table (
   memo text,
   color text,
   payload jsonb,
-  backed_up_at timestamptz
+  backed_up_at timestamptz,
+  shared_group_id uuid,
+  shared_origin_todo_id uuid,
+  shared_origin_user_id uuid,
+  shared_created_by uuid,
+  is_shared_copy boolean
 )
 language plpgsql
 security definer
@@ -817,13 +822,39 @@ begin
     e.memo,
     e.color,
     e.payload,
-    e.backed_up_at
+    e.backed_up_at,
+    coalesce(st.shared_group_id, wt.shared_group_id, et.shared_group_id) as shared_group_id,
+    coalesce(st.shared_origin_todo_id, wt.shared_origin_todo_id, et.shared_origin_todo_id) as shared_origin_todo_id,
+    coalesce(st.shared_origin_user_id, wt.shared_origin_user_id, et.shared_origin_user_id) as shared_origin_user_id,
+    coalesce(st.shared_created_by, wt.shared_created_by, et.shared_created_by) as shared_created_by,
+    coalesce(st.is_shared_copy, wt.is_shared_copy, et.is_shared_copy, false) as is_shared_copy
   from public.calendar_group_shared_events e
   join public.calendar_group_members m
     on m.group_id = e.group_id
    and m.user_id = e.user_id
    and m.status = 'active'
   left join public.profiles p on p.id = e.user_id
+  left join public.study_calendar_todos st
+    on p_calendar_type = 'study'
+   and st.id = case
+     when e.source_event_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then e.source_event_id::uuid
+     else null
+   end
+  left join public.work_calendar_todos wt
+    on p_calendar_type = 'work'
+   and wt.id = case
+     when e.source_event_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then e.source_event_id::uuid
+     else null
+   end
+  left join public.event_calendar_todos et
+    on p_calendar_type = 'event'
+   and et.id = case
+     when e.source_event_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then e.source_event_id::uuid
+     else null
+   end
   where e.group_id = p_group_id
     and e.calendar_type = p_calendar_type
     and e.event_date between p_start_date and p_end_date

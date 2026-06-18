@@ -18,6 +18,8 @@ import {
   fetchSharedPersonalGroups,
   getCalendarLabel,
   getSharedPersonalGroupName,
+  normalizeSharedPersonalDetail,
+  renderSharedPersonalReadonlyDetail,
 } from './calendar-shared-personal.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 
@@ -1074,6 +1076,7 @@ function renderTodoList({
   categories,
   onDelete,
   onSaveEdit,
+  readonlyDetail,
 }) {
   const list = document.getElementById('eventTodoList');
   const empty = document.getElementById('eventTodoEmpty');
@@ -1086,7 +1089,8 @@ function renderTodoList({
   selectedDate.textContent = getReadableDate(selectedDateKey);
   list.innerHTML = '';
 
-  empty.hidden = todos.length > 0;
+  const hasReadonlyDetail = Boolean(readonlyDetail?.isOtherUserPersonal);
+  empty.hidden = todos.length > 0 || hasReadonlyDetail;
 
   todos.forEach((todo) => {
     const item = document.createElement('li');
@@ -1276,6 +1280,12 @@ function renderTodoList({
     item.append(body, deleteButton);
     list.append(item);
   });
+
+  renderSharedPersonalReadonlyDetail({
+    list,
+    detail: readonlyDetail,
+    itemClass: 'event-todo-item',
+  });
 }
 
 function renderCategorySelect(select, categories = [], preferredValue = '') {
@@ -1457,6 +1467,7 @@ function renderPageCalendar(state) {
     {
       selectedDateKey: state.selectedDateKey,
       onSelect: state.onSelect,
+      onSelectEvent: state.onSelectGroupEvent,
     },
   );
 }
@@ -1617,6 +1628,8 @@ async function initPageCalendar() {
     sharedGroups: await fetchSharedPersonalGroups('event'),
     store: await fetchUserTodos(user.id),
     onSelect: null,
+    onSelectGroupEvent: null,
+    readonlyDetail: null,
     group: null,
   };
 
@@ -1634,6 +1647,15 @@ async function initPageCalendar() {
   }
 
   function renderAll() {
+    if (
+      state.readonlyDetail &&
+      (!isCalendarGroupActive(state.group?.state) ||
+        state.readonlyDetail.groupId !== state.group?.state?.selectedGroup?.id)
+    ) {
+      state.readonlyDetail = null;
+    }
+
+    form.hidden = Boolean(state.readonlyDetail);
     renderCategorySelect(typeSelect, state.categories);
 
     renderPageCalendar(state);
@@ -1644,6 +1666,7 @@ async function initPageCalendar() {
       categories: state.categories,
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
+      readonlyDetail: state.readonlyDetail,
     });
 
     renderCategoryList({
@@ -1658,11 +1681,41 @@ async function initPageCalendar() {
   }
 
   function selectDate(dateKey) {
+    state.readonlyDetail = null;
     state.selectedDateKey = dateKey;
 
     const [year, month] = dateKey.split('-').map(Number);
     state.viewDate = new Date(year, month - 1, 1);
 
+    renderAll();
+
+    if (mobileTodoFormQuery.matches) {
+      closeMobileTodoForm();
+    }
+  }
+
+  function selectGroupEvent(event, member, { isShared = false } = {}) {
+    const dateKey = String(event?.event_date || '').slice(0, 10);
+
+    if (isShared || member?.userId === state.userId) {
+      if (dateKey) selectDate(dateKey);
+      return;
+    }
+
+    const detail = normalizeSharedPersonalDetail(event, {
+      calendarType: 'event',
+      currentUserId: state.userId,
+      ownerName: member?.name,
+      groupId: state.group?.state?.selectedGroup?.id,
+    });
+
+    if (!detail?.date || !detail.isOtherUserPersonal) return;
+
+    state.selectedDateKey = detail.date;
+    state.readonlyDetail = detail;
+
+    const [year, month] = detail.date.split('-').map(Number);
+    state.viewDate = new Date(year, month - 1, 1);
     renderAll();
 
     if (mobileTodoFormQuery.matches) {
@@ -1760,6 +1813,7 @@ async function initPageCalendar() {
   }
 
   state.onSelect = selectDate;
+  state.onSelectGroupEvent = selectGroupEvent;
 
   state.group = await initCalendarGroupBar({
     calendarType: 'event',

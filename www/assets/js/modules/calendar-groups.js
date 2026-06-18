@@ -422,7 +422,9 @@ export function getVisiblePersonalTodos(todos = [], dateKey, groupState) {
 }
 
 function createGroupEventBadge(event, member, groupState, options = {}) {
-  const badge = document.createElement('span');
+  const badge = document.createElement(
+    options.onSelectEvent ? 'button' : 'span',
+  );
   const color = normalizeColor(
     event.color,
     groupState.selectedGroup?.color || '#eeeeee',
@@ -445,6 +447,21 @@ function createGroupEventBadge(event, member, groupState, options = {}) {
       : `${member.name || '회원'} 일정 ${badge.textContent}`,
   );
 
+  if (options.onSelectEvent) {
+    badge.type = 'button';
+    badge.classList.add('calendar-group-schedule__badge--selectable');
+
+    const selectEvent = (domEvent) => {
+      domEvent.preventDefault();
+      domEvent.stopPropagation();
+      options.onSelectEvent(event, member, {
+        isShared: Boolean(options.isShared),
+      });
+    };
+
+    badge.addEventListener('click', selectEvent);
+  }
+
   return badge;
 }
 
@@ -455,6 +472,7 @@ function appendScheduleRow({
   groupState,
   selectedDateKey,
   onSelect,
+  onSelectEvent,
   getEvents,
   isShared = false,
 }) {
@@ -476,10 +494,11 @@ function appendScheduleRow({
   row.append(name);
 
   week.forEach((item) => {
-    const cellButton = document.createElement('button');
-    cellButton.type = 'button';
+    const cellButton = document.createElement('div');
     cellButton.className = 'calendar-group-schedule__cell';
     cellButton.dataset.date = item?.dateKey || '';
+    cellButton.tabIndex = 0;
+    cellButton.setAttribute('role', 'button');
     cellButton.setAttribute(
       'aria-label',
       `${isShared ? '우리 일정' : rowMember.name || '회원'} ${
@@ -498,12 +517,24 @@ function appendScheduleRow({
     const events = getEvents(item?.dateKey) || [];
     events.forEach((event) => {
       cellButton.append(
-        createGroupEventBadge(event, rowMember, groupState, { isShared }),
+        createGroupEventBadge(event, rowMember, groupState, {
+          isShared,
+          onSelectEvent,
+        }),
       );
     });
 
     cellButton.addEventListener('click', () => {
       if (item?.dateKey) onSelect?.(item.dateKey);
+    });
+    cellButton.addEventListener('keydown', (keyboardEvent) => {
+      if (
+        keyboardEvent.target === cellButton &&
+        (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ')
+      ) {
+        keyboardEvent.preventDefault();
+        if (item?.dateKey) onSelect?.(item.dateKey);
+      }
     });
 
     row.append(cellButton);
@@ -574,6 +605,7 @@ export function appendCalendarGroupBoard(
         groupState,
         selectedDateKey: options.selectedDateKey,
         onSelect: options.onSelect,
+        onSelectEvent: options.onSelectEvent,
         getEvents: (dateKey) => sharedEventsByDate.get(dateKey) || [],
         isShared: true,
       });
@@ -587,6 +619,7 @@ export function appendCalendarGroupBoard(
         groupState,
         selectedDateKey: options.selectedDateKey,
         onSelect: options.onSelect,
+        onSelectEvent: options.onSelectEvent,
         getEvents: (dateKey) =>
           personalEventsByDateAndUser.get(`${dateKey}|${member.userId}`) || [],
       });
