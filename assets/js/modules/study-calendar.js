@@ -20,9 +20,9 @@ import {
   getSharedPersonalGroupName,
 } from './calendar-shared-personal.js';
 import {
-  collectSharedPersonalReadonlyDetails,
   renderSharedPersonalReadonlyDetail,
 } from './calendar-shared-personal-readonly.js';
+import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 
 const TABLE_NAME = 'study_calendar_todos';

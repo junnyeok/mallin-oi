@@ -76,6 +76,7 @@
 ./android/app/src/main/assets/public/assets/js/modules/bgm-player.js
 ./android/app/src/main/assets/public/assets/js/modules/bgm-preferences.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-groups.js
+./android/app/src/main/assets/public/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-shared-personal-readonly.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-widget-data.js
 ./android/app/src/main/assets/public/assets/js/modules/cursor-buddy.js
@@ -264,6 +265,7 @@
 ./assets/js/modules/bgm-player.js
 ./assets/js/modules/bgm-preferences.js
 ./assets/js/modules/calendar-groups.js
+./assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./assets/js/modules/calendar-shared-personal-readonly.js
 ./assets/js/modules/calendar-shared-personal.js
 ./assets/js/modules/calendar-widget-data.js
@@ -532,6 +534,7 @@
 ./ios/App/App/public/assets/js/modules/bgm-player.js
 ./ios/App/App/public/assets/js/modules/bgm-preferences.js
 ./ios/App/App/public/assets/js/modules/calendar-groups.js
+./ios/App/App/public/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./ios/App/App/public/assets/js/modules/calendar-shared-personal-readonly.js
 ./ios/App/App/public/assets/js/modules/calendar-widget-data.js
 ./ios/App/App/public/assets/js/modules/cursor-buddy.js
@@ -718,6 +721,7 @@
 ./www/assets/js/modules/bgm-player.js
 ./www/assets/js/modules/bgm-preferences.js
 ./www/assets/js/modules/calendar-groups.js
+./www/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./www/assets/js/modules/calendar-shared-personal-readonly.js
 ./www/assets/js/modules/calendar-shared-personal.js
 ./www/assets/js/modules/calendar-widget-data.js
