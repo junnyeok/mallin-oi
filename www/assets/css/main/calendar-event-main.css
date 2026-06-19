@@ -1815,6 +1815,35 @@ body.theme-event[data-page='calendar-event']
   border-color: #ff8fb3;
 }
 
+.event-time-picker__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: var(--space-12);
+  padding: 0 var(--space-16);
+  border: 1px solid #ff8fb3;
+  border-radius: var(--radius-btn);
+  background: #ff8fb3;
+  color: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.event-time-picker__close:hover {
+  opacity: 0.82;
+}
+
+.event-time-picker__close:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
 @media (max-width: 640px) {
   .event-todo-form {
     grid-template-columns: minmax(0, 1fr) auto;

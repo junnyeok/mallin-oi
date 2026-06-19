@@ -302,6 +302,11 @@ function openEventTimePicker({ anchorEl, initialTime, onChange }) {
     })),
   });
 
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'event-time-picker__close';
+  closeButton.textContent = '닫기';
+
   let isSaving = false;
 
   function positionPicker() {
@@ -360,9 +365,13 @@ function openEventTimePicker({ anchorEl, initialTime, onChange }) {
   periodField.select.addEventListener('change', applySelectedTime);
   hourField.select.addEventListener('change', applySelectedTime);
   minuteField.select.addEventListener('change', applySelectedTime);
+  closeButton.addEventListener('click', () => {
+    closePicker();
+    anchorEl.focus();
+  });
 
   fields.append(periodField.wrap, hourField.wrap, minuteField.wrap);
-  panel.append(title, fields);
+  panel.append(title, fields, closeButton);
   popover.append(panel);
   document.body.append(popover);
 
