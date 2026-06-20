@@ -27,6 +27,32 @@ const GROUP_COLORS = [
   '#eeeeee',
 ];
 const GROUP_DESCRIPTION_MAX_LENGTH = 100;
+const BACKUP_SOURCE_CONFIG = {
+  study: {
+    table: 'study_calendar_todos',
+    categoryRelation: 'study_calendar_categories',
+    select: `
+      id, todo_date, todo_type, todo_text, memo, is_done, shared_group_id,
+      study_calendar_categories (name, slug, color)
+    `,
+  },
+  work: {
+    table: 'work_calendar_todos',
+    categoryRelation: 'work_calendar_categories',
+    select: `
+      id, work_date, work_type, work_text, memo, is_done, shared_group_id,
+      work_calendar_categories (name, slug, color)
+    `,
+  },
+  event: {
+    table: 'event_calendar_todos',
+    categoryRelation: 'event_calendar_categories',
+    select: `
+      id, event_date, event_type, event_text, memo, event_time, is_done,
+      shared_group_id, event_calendar_categories (name, slug, color)
+    `,
+  },
+};
 
 function normalizeColor(color, fallback = '#f54260') {
   const value = String(color || '').trim();
@@ -369,6 +395,131 @@ async function rpc(name, params = {}) {
   return data;
 }
 
+function getRelatedCategory(row, relation) {
+  const category = row?.[relation];
+  return Array.isArray(category) ? category[0] || null : category || null;
+}
+
+function normalizeBackupPayload(payload = {}) {
+  return Object.keys(payload)
+    .sort()
+    .reduce((result, key) => {
+      result[key] = payload[key] ?? null;
+      return result;
+    }, {});
+}
+
+function makeBackupComparable(event) {
+  return {
+    sourceEventId: String(event.sourceEventId || ''),
+    eventDate: String(event.eventDate || '').slice(0, 10),
+    eventType: String(event.eventType || ''),
+    title: String(event.title || ''),
+    memo: String(event.memo || ''),
+    color: event.color || null,
+    payload: normalizeBackupPayload(event.payload),
+  };
+}
+
+function makeSourceBackupEvent(row, calendarType) {
+  const config = BACKUP_SOURCE_CONFIG[calendarType];
+  const category = getRelatedCategory(row, config.categoryRelation);
+
+  if (calendarType === 'study') {
+    return makeBackupComparable({
+      sourceEventId: row.id,
+      eventDate: row.todo_date,
+      eventType: category?.slug || row.todo_type,
+      title: row.todo_text,
+      memo: row.memo || '',
+      color: category?.color || null,
+      payload: {
+        isDone: Boolean(row.is_done),
+        categoryName: category?.name || null,
+      },
+    });
+  }
+
+  if (calendarType === 'work') {
+    return makeBackupComparable({
+      sourceEventId: row.id,
+      eventDate: row.work_date,
+      eventType: category?.slug || row.work_type,
+      title: category?.name || row.work_text,
+      memo: row.memo || '',
+      color: category?.color || null,
+      payload: {
+        isDone: Boolean(row.is_done),
+        workText: row.work_text || null,
+      },
+    });
+  }
+
+  return makeBackupComparable({
+    sourceEventId: row.id,
+    eventDate: row.event_date,
+    eventType: category?.slug || row.event_type,
+    title: row.event_text,
+    memo: row.memo || '',
+    color: category?.color || null,
+    payload: {
+      isDone: Boolean(row.is_done),
+      eventTime: row.event_time || null,
+      categoryName: category?.name || null,
+    },
+  });
+}
+
+function makeStoredBackupEvent(row) {
+  return makeBackupComparable({
+    sourceEventId: row.source_event_id,
+    eventDate: row.event_date,
+    eventType: row.event_type,
+    title: row.title,
+    memo: row.memo,
+    color: row.color,
+    payload: row.payload || {},
+  });
+}
+
+function serializeBackupEvents(events = []) {
+  return JSON.stringify(
+    [...events].sort((a, b) =>
+      a.sourceEventId.localeCompare(b.sourceEventId),
+    ),
+  );
+}
+
+async function checkBackupNeeded({ userId, groupId, calendarType }) {
+  const config = BACKUP_SOURCE_CONFIG[calendarType];
+  if (!config || !userId || !groupId) return false;
+
+  const [sourceResult, backupResult] = await Promise.all([
+    supabase
+      .from(config.table)
+      .select(config.select)
+      .eq('user_id', userId),
+    supabase
+      .from('calendar_group_shared_events')
+      .select(
+        'source_event_id, event_date, event_type, title, memo, color, payload',
+      )
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('calendar_type', calendarType),
+  ]);
+
+  if (sourceResult.error) throw sourceResult.error;
+  if (backupResult.error) throw backupResult.error;
+
+  const sourceEvents = (sourceResult.data || [])
+    .filter((row) => !row.shared_group_id || row.shared_group_id === groupId)
+    .map((row) => makeSourceBackupEvent(row, calendarType));
+  const backupEvents = (backupResult.data || []).map(makeStoredBackupEvent);
+
+  return serializeBackupEvents(sourceEvents) !== serializeBackupEvents(backupEvents);
+}
+
 export function isCalendarGroupActive(groupState) {
   return Boolean(
     groupState?.selectedGroup?.id &&
@@ -651,6 +802,9 @@ export async function initCalendarGroupBar({
     groups: [],
     eventsByDate: {},
     lastBackupAt: '',
+    backupNeeded: false,
+    backupChecking: false,
+    backupCheckId: 0,
   };
 
   const bar = document.createElement('section');
@@ -713,6 +867,75 @@ export async function initCalendarGroupBar({
     if (status) status.textContent = message;
   }
 
+  function updateBackupButtonState() {
+    const isActive = isCalendarGroupActive(state);
+    const canBackup =
+      isActive && state.backupNeeded && !state.backupChecking;
+    const isHighlighted = canBackup;
+    const label =
+      isActive && state.backupChecking
+        ? '백업 상태 확인 중'
+        : canBackup
+          ? '백업 필요: 그룹 캘린더에 변경사항 반영'
+          : '백업할 변경사항 없음';
+
+    backupButton.disabled = !canBackup;
+    backupButton.classList.toggle('is-backup-needed', isHighlighted);
+    backupButton.dataset.backupNeeded = isHighlighted ? 'true' : 'false';
+    backupButton.setAttribute('aria-label', label);
+    backupButton.title = label;
+  }
+
+  function setBackupNeeded(isNeeded) {
+    state.backupNeeded = Boolean(
+      isNeeded && isCalendarGroupActive(state),
+    );
+    updateBackupButtonState();
+  }
+
+  async function refreshBackupNeeded() {
+    const checkId = ++state.backupCheckId;
+    const groupId = state.selectedGroup?.id || '';
+
+    if (!isCalendarGroupActive(state)) {
+      state.backupChecking = false;
+      setBackupNeeded(false);
+      return false;
+    }
+
+    state.backupChecking = true;
+    updateBackupButtonState();
+
+    try {
+      const isNeeded = await checkBackupNeeded({
+        userId: state.userId,
+        groupId,
+        calendarType,
+      });
+
+      if (
+        checkId !== state.backupCheckId ||
+        groupId !== state.selectedGroup?.id
+      ) {
+        return state.backupNeeded;
+      }
+
+      state.backupChecking = false;
+      setBackupNeeded(isNeeded);
+      return isNeeded;
+    } catch (error) {
+      console.error('[calendar-groups] backup state check failed:', error);
+      if (
+        checkId === state.backupCheckId &&
+        groupId === state.selectedGroup?.id
+      ) {
+        state.backupChecking = false;
+        updateBackupButtonState();
+      }
+      return state.backupNeeded;
+    }
+  }
+
   function renderSelect() {
     const selectedId = state.selectedGroup?.id || '';
     select.innerHTML = '<option value="">그룹 연동 OFF</option>';
@@ -725,7 +948,7 @@ export async function initCalendarGroupBar({
     });
 
     select.value = selectedId;
-    backupButton.disabled = !selectedId || !isAllowed(state.selectedGroup, calendarType);
+    updateBackupButtonState();
   }
 
   async function loadGroupEvents() {
@@ -733,19 +956,24 @@ export async function initCalendarGroupBar({
 
     if (!state.selectedGroup?.id) {
       setStatus('그룹 연동 OFF 상태야.');
-      backupButton.disabled = true;
+      state.backupChecking = false;
+      setBackupNeeded(false);
       renderAll?.();
       return;
     }
 
     if (!isAllowed(state.selectedGroup, calendarType)) {
       setStatus(`이 그룹은 ${CALENDAR_LABELS[calendarType]} 캘린더 연동이 꺼져 있어.`);
-      backupButton.disabled = true;
+      state.backupChecking = false;
+      setBackupNeeded(false);
       renderAll?.();
       return;
     }
 
     const { startDate, endDate } = getMonthRange(getViewDate());
+    state.backupCheckId += 1;
+    state.backupChecking = false;
+    setBackupNeeded(false);
     setStatus('그룹 일정을 불러오는 중...');
 
     const rows = await rpc('get_group_calendar_view', {
@@ -756,7 +984,7 @@ export async function initCalendarGroupBar({
     });
 
     state.eventsByDate = groupEventsByDateAndUser(rows || []);
-    backupButton.disabled = false;
+    await refreshBackupNeeded();
     setStatus(
       `${state.selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 그룹 일정 표시 중`,
     );
@@ -777,6 +1005,9 @@ export async function initCalendarGroupBar({
     const groupId = select.value;
     state.selectedGroup = state.groups.find((group) => group.id === groupId) || null;
     setSelectedGroupId(groupId);
+    state.backupCheckId += 1;
+    state.backupChecking = false;
+    setBackupNeeded(false);
     renderSelect();
 
     try {
@@ -788,9 +1019,19 @@ export async function initCalendarGroupBar({
   });
 
   backupButton.addEventListener('click', async () => {
-    if (!state.selectedGroup?.id) return;
+    if (
+      !isCalendarGroupActive(state) ||
+      !state.backupNeeded ||
+      state.backupChecking ||
+      backupButton.disabled
+    ) {
+      return;
+    }
 
-    backupButton.disabled = true;
+    let backupSucceeded = false;
+    state.backupCheckId += 1;
+    state.backupChecking = true;
+    setBackupNeeded(false);
     backupButton.textContent = '백업 중';
     setStatus('내 일정을 그룹 공유 데이터로 백업하는 중...');
 
@@ -803,6 +1044,9 @@ export async function initCalendarGroupBar({
       const backedUpAt = result?.[0]?.backed_up_at || new Date().toISOString();
       const count = Number(result?.[0]?.event_count || 0);
       state.lastBackupAt = backedUpAt;
+      backupSucceeded = true;
+      state.backupChecking = false;
+      setBackupNeeded(false);
       setStatus(
         `${CALENDAR_LABELS[calendarType]} ${count}개 백업 완료 · ${new Date(
           backedUpAt,
@@ -815,6 +1059,7 @@ export async function initCalendarGroupBar({
     } finally {
       backupButton.textContent = '백업';
       renderSelect();
+      if (!backupSucceeded) await refreshBackupNeeded();
     }
   });
 
@@ -828,6 +1073,7 @@ export async function initCalendarGroupBar({
   return {
     state,
     refresh: loadGroupEvents,
+    refreshBackupNeeded,
   };
 }
 

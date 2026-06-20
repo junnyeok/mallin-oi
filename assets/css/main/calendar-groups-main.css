@@ -78,9 +78,34 @@
   background: var(--color-primary-sub);
 }
 
+.calendar-group-bar__backup.is-backup-needed:not(:disabled) {
+  animation: calendar-group-backup-needed 1.8s ease-in-out infinite;
+}
+
 .calendar-group-bar__backup:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+@keyframes calendar-group-backup-needed {
+  0%,
+  100% {
+    background-color: var(--color-primary-sub);
+    color: var(--color-text);
+  }
+
+  50% {
+    background-color: var(--color-primary);
+    color: var(--color-bg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-group-bar__backup.is-backup-needed:not(:disabled) {
+    animation: none;
+    background-color: var(--color-primary);
+    color: var(--color-bg);
+  }
 }
 
 .calendar-group-bar__status {

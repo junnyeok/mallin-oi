@@ -1341,6 +1341,10 @@ async function initPageCalendar() {
     group: null,
   };
 
+  function refreshGroupBackupNeeded() {
+    void state.group?.refreshBackupNeeded?.();
+  }
+
   function getLatestCategoryById(categoryId) {
     return (
       state.categories.find((item) => item.id === categoryId) ||
@@ -1424,6 +1428,7 @@ async function initPageCalendar() {
 
       target.done = nextDone;
       renderAll();
+      refreshGroupBackupNeeded();
     } catch (error) {
       alert('완료 상태 변경에 실패했어. 잠시 후 다시 시도해줘.');
     }
@@ -1462,6 +1467,7 @@ async function initPageCalendar() {
       }
 
       renderAll();
+      refreshGroupBackupNeeded();
     } catch (error) {
       alert('할 일 삭제에 실패했어. 잠시 후 다시 시도해줘.');
     }
@@ -1492,6 +1498,7 @@ async function initPageCalendar() {
       });
       state.store = await fetchUserTodos(state.userId);
       renderAll();
+      refreshGroupBackupNeeded();
       return;
     }
 
@@ -1511,6 +1518,7 @@ async function initPageCalendar() {
     }
     state.store = await fetchUserTodos(state.userId);
     renderAll();
+    refreshGroupBackupNeeded();
   }
 
   state.onSelect = selectDate;
@@ -1816,6 +1824,7 @@ async function initPageCalendar() {
       autoResizeTextarea(memoInput);
 
       renderAll();
+      refreshGroupBackupNeeded();
 
       if (mobileTodoFormQuery.matches) {
         closeMobileTodoForm();

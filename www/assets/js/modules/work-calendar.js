@@ -1353,6 +1353,10 @@ async function initPageCalendar() {
     group: null,
   };
 
+  function refreshGroupBackupNeeded() {
+    void state.group?.refreshBackupNeeded?.();
+  }
+
   function getLatestCategoryById(categoryId) {
     return (
       state.categories.find((item) => item.id === categoryId) ||
@@ -1531,6 +1535,7 @@ async function initPageCalendar() {
 
       state.store = await fetchUserTodos(state.userId);
       renderAll();
+      refreshGroupBackupNeeded();
 
       const message = '반복근무를 덮어쓰기 방식으로 적용했어.';
 
@@ -1578,6 +1583,7 @@ async function initPageCalendar() {
       }
 
       renderAll();
+      refreshGroupBackupNeeded();
     } catch (error) {
       alert('업무 일정 삭제에 실패했어. 잠시 후 다시 시도해줘.');
     }
@@ -1608,6 +1614,7 @@ async function initPageCalendar() {
       }
       state.store = await fetchUserTodos(state.userId);
       renderAll();
+      refreshGroupBackupNeeded();
       return;
     }
 
@@ -1623,6 +1630,7 @@ async function initPageCalendar() {
 
     state.store = await fetchUserTodos(state.userId);
     renderAll();
+    refreshGroupBackupNeeded();
   }
 
   async function saveCategory({
@@ -1861,6 +1869,7 @@ async function initPageCalendar() {
       autoResizeTextarea(memoInput);
 
       renderAll();
+      refreshGroupBackupNeeded();
       typeSelect.focus();
 
       if (mobileTodoFormQuery.matches) {
