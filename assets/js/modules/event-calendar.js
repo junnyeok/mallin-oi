@@ -165,6 +165,16 @@ function normalizeEventTime(value) {
   return `${matched[1]}:${matched[2]}`;
 }
 
+function normalizeOptionalEventTime(value) {
+  const nextValue = String(value || '').trim();
+  if (!nextValue) return '';
+
+  const matched = nextValue.match(/^([01]\d|2[0-3]):([0-5]\d)/);
+  if (!matched) return '';
+
+  return `${matched[1]}:${matched[2]}`;
+}
+
 function formatEventTimeLabel(value) {
   const time = normalizeEventTime(value);
 
@@ -185,6 +195,42 @@ function setTimeInputValue(input, value) {
 
   input.dataset.time = time;
   input.value = formatEventTimeLabel(time);
+}
+
+function setOptionalTimeInputValue(input, value) {
+  if (!input) return;
+
+  const time = normalizeOptionalEventTime(value);
+
+  input.dataset.time = time;
+  input.value = time ? formatEventTimeLabel(time) : '';
+}
+
+function formatEventTimeRange(startTime, endTime) {
+  const start = normalizeEventTime(startTime);
+  const end = normalizeOptionalEventTime(endTime);
+
+  return end ? `${start}~${end}` : start;
+}
+
+function getDateRangeKeys(startDateKey, endDateKey = '') {
+  const start = String(startDateKey || '').trim();
+  const end = String(endDateKey || '').trim() || start;
+
+  if (!start || end < start) return [];
+
+  const [startYear, startMonth, startDay] = start.split('-').map(Number);
+  const [endYear, endMonth, endDay] = end.split('-').map(Number);
+  const cursor = new Date(startYear, startMonth - 1, startDay);
+  const lastDate = new Date(endYear, endMonth - 1, endDay);
+  const dateKeys = [];
+
+  while (cursor <= lastDate) {
+    dateKeys.push(toDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dateKeys;
 }
 
 function convertPickerTimeTo24Hour({ period, hour, minute }) {
@@ -245,7 +291,12 @@ function createPickerSelect({ className, label, options, value }) {
   };
 }
 
-function openEventTimePicker({ anchorEl, initialTime, onChange }) {
+function openEventTimePicker({
+  anchorEl,
+  initialTime,
+  onChange,
+  allowEmpty = false,
+}) {
   if (!anchorEl) return;
 
   const previousPicker = document.querySelector('.event-time-picker');
@@ -307,19 +358,30 @@ function openEventTimePicker({ anchorEl, initialTime, onChange }) {
   closeButton.className = 'event-time-picker__close';
   closeButton.textContent = '닫기';
 
+  const clearButton = document.createElement('button');
+  clearButton.type = 'button';
+  clearButton.className = 'event-time-picker__clear';
+  clearButton.textContent = '시간 없음';
+
   let isSaving = false;
 
   function positionPicker() {
     const rect = anchorEl.getBoundingClientRect();
     const pickerWidth = Math.min(360, window.innerWidth - 24);
     const left = Math.min(
-      Math.max(rect.left + window.scrollX, 12),
-      window.scrollX + window.innerWidth - pickerWidth - 12,
+      Math.max(rect.left, 12),
+      window.innerWidth - pickerWidth - 12,
     );
+    const pickerHeight = popover.offsetHeight || 260;
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const top =
+      spaceBelow >= pickerHeight || rect.top < pickerHeight + 12
+        ? rect.bottom + 6
+        : Math.max(12, rect.top - pickerHeight - 6);
 
     popover.style.width = `${pickerWidth}px`;
     popover.style.left = `${left}px`;
-    popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+    popover.style.top = `${top}px`;
   }
 
   function closePicker() {
@@ -370,8 +432,23 @@ function openEventTimePicker({ anchorEl, initialTime, onChange }) {
     anchorEl.focus();
   });
 
+  clearButton.addEventListener('click', async () => {
+    if (isSaving) return;
+
+    isSaving = true;
+    try {
+      await onChange('');
+      closePicker();
+      anchorEl.focus();
+    } finally {
+      isSaving = false;
+    }
+  });
+
   fields.append(periodField.wrap, hourField.wrap, minuteField.wrap);
-  panel.append(title, fields, closeButton);
+  panel.append(title, fields);
+  if (allowEmpty) panel.append(clearButton);
+  panel.append(closeButton);
   popover.append(panel);
   document.body.append(popover);
 
@@ -436,6 +513,7 @@ function normalizeTodo(row) {
     memo: row.memo || '',
     done: Boolean(row.is_done),
     eventTime: normalizeEventTime(row.event_time),
+    eventEndTime: normalizeOptionalEventTime(row.event_end_time),
     type:
       row.event_type || row.event_calendar_categories?.slug || 'anniversary',
     categoryId: row.category_id || row.event_calendar_categories?.id || null,
@@ -483,6 +561,7 @@ async function fetchUserTodos(userId) {
     event_text,
     memo,
     event_time,
+    event_end_time,
     is_done,
     shared_origin_todo_id,
     shared_origin_user_id,
@@ -690,6 +769,7 @@ async function insertTodo({
   text,
   memo,
   eventTime,
+  eventEndTime,
   category,
 }) {
   const latestCategory = category?.id
@@ -697,6 +777,7 @@ async function insertTodo({
     : null;
   const safeCategory = latestCategory || category || DEFAULT_CATEGORIES[2];
   const safeEventTime = normalizeEventTime(eventTime);
+  const safeEventEndTime = normalizeOptionalEventTime(eventEndTime);
   const shouldShare = Boolean(
     safeCategory.is_shared_personal && safeCategory.shared_group_id,
   );
@@ -717,8 +798,16 @@ async function insertTodo({
       throw error;
     }
 
+    if (safeEventEndTime) {
+      await setSharedPersonalTodoEndTime({
+        todoId: data.id,
+        eventEndTime: safeEventEndTime,
+      });
+    }
+
     return {
       ...normalizeTodo(data),
+      eventEndTime: safeEventEndTime,
       sharedGroupId: safeCategory.shared_group_id || null,
       sharedCreatedBy: userId,
       isSharedCopy: false,
@@ -735,6 +824,7 @@ async function insertTodo({
       event_text: text,
       memo: memo || '',
       event_time: safeEventTime,
+      event_end_time: safeEventEndTime || null,
       is_done: false,
     })
     .select(
@@ -747,6 +837,7 @@ async function insertTodo({
       event_text,
       memo,
       event_time,
+      event_end_time,
       is_done,
       shared_origin_todo_id,
       shared_origin_user_id,
@@ -806,6 +897,38 @@ async function updateTodoTime({ todoId, eventTime }) {
 
   if (error) {
     console.error('[event-calendar] updateTodoTime error:', error.message);
+    throw error;
+  }
+}
+
+async function updateTodoEndTime({ todoId, eventEndTime }) {
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .update({
+      event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
+    })
+    .eq('id', todoId);
+
+  if (error) {
+    console.error('[event-calendar] updateTodoEndTime error:', error.message);
+    throw error;
+  }
+}
+
+async function setSharedPersonalTodoEndTime({ todoId, eventEndTime }) {
+  const { error } = await supabase.rpc(
+    'set_event_calendar_todo_end_time_shared_personal',
+    {
+      p_todo_id: todoId,
+      p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
+    },
+  );
+
+  if (error) {
+    console.error(
+      '[event-calendar] setSharedPersonalTodoEndTime error:',
+      error.message,
+    );
     throw error;
   }
 }
@@ -1152,6 +1275,23 @@ function renderTodoList({
 
     setTimeInputValue(timeInput, todo.eventTime);
 
+    const endTimeInput = document.createElement('input');
+    endTimeInput.className = 'event-todo-item__time-input';
+    endTimeInput.type = 'text';
+    endTimeInput.placeholder = '종료 시간';
+    endTimeInput.readOnly = true;
+    endTimeInput.inputMode = 'none';
+    endTimeInput.setAttribute('aria-label', '일정 종료 시간 수정');
+
+    setOptionalTimeInputValue(endTimeInput, todo.eventEndTime);
+
+    const timeRange = document.createElement('span');
+    timeRange.className = 'event-todo-item__time-range';
+    timeRange.textContent = formatEventTimeRange(
+      todo.eventTime,
+      todo.eventEndTime,
+    );
+
     timeInput.addEventListener('click', () => {
       openEventTimePicker({
         anchorEl: timeInput,
@@ -1160,6 +1300,26 @@ function renderTodoList({
           const safeNextTime = normalizeEventTime(nextTime);
 
           setTimeInputValue(timeInput, safeNextTime);
+          timeRange.textContent = formatEventTimeRange(
+            safeNextTime,
+            endTimeInput.dataset.time,
+          );
+          syncDirtyState();
+        },
+      });
+    });
+
+    endTimeInput.addEventListener('click', () => {
+      openEventTimePicker({
+        anchorEl: endTimeInput,
+        initialTime: endTimeInput.dataset.time || timeInput.dataset.time,
+        allowEmpty: true,
+        onChange: (nextTime) => {
+          setOptionalTimeInputValue(endTimeInput, nextTime);
+          timeRange.textContent = formatEventTimeRange(
+            timeInput.dataset.time,
+            nextTime,
+          );
           syncDirtyState();
         },
       });
@@ -1211,12 +1371,14 @@ function renderTodoList({
     const savedText = String(todo.text || '');
     const savedMemo = String(todo.memo || '');
     const savedTime = normalizeEventTime(todo.eventTime);
+    const savedEndTime = normalizeOptionalEventTime(todo.eventEndTime);
 
     const isDirty = () =>
       categorySelect.value !== savedCategoryId ||
       text.value !== savedText ||
       memoInput.value !== savedMemo ||
-      normalizeEventTime(timeInput.dataset.time) !== savedTime;
+      normalizeEventTime(timeInput.dataset.time) !== savedTime ||
+      normalizeOptionalEventTime(endTimeInput.dataset.time) !== savedEndTime;
 
     const syncDirtyState = () => {
       const dirty = isDirty();
@@ -1275,6 +1437,7 @@ function renderTodoList({
           memo: memoInput.value,
           category: nextCategory,
           eventTime: timeInput.dataset.time,
+          eventEndTime: endTimeInput.dataset.time,
         });
       } catch (error) {
         memoStatus.textContent = '저장 실패';
@@ -1283,7 +1446,7 @@ function renderTodoList({
       }
     });
 
-    controls.append(categorySelect, timeInput);
+    controls.append(categorySelect, timeRange, timeInput, endTimeInput);
     editActions.append(memoStatus, saveEditButton);
     memoBox.append(memoLabel, memoInput);
     body.append(controls, text, memoToggle, memoBox, editActions);
@@ -1551,6 +1714,12 @@ async function initPageCalendar() {
   const input = document.getElementById('eventTodoInput');
   const typeSelect = document.getElementById('eventTodoType');
   const timeInput = document.getElementById('eventTodoTime');
+  const endTimeInput = document.getElementById('eventTodoEndTime');
+  const dateToggle = document.getElementById('eventDateToggle');
+  const datePanel = document.getElementById('eventDatePanel');
+  const dateClose = document.getElementById('eventDateClose');
+  const startDateInput = document.getElementById('eventStartDate');
+  const endDateInput = document.getElementById('eventEndDate');
   const memoInput = document.getElementById('eventTodoMemo');
   const categoryToggle = document.getElementById('eventCategoryToggle');
   const categoryPanel = document.getElementById('eventCategoryPanel');
@@ -1568,12 +1737,19 @@ async function initPageCalendar() {
     !input ||
     !typeSelect ||
     !timeInput ||
+    !endTimeInput ||
+    !dateToggle ||
+    !datePanel ||
+    !dateClose ||
+    !startDateInput ||
+    !endDateInput ||
     !memoInput
   ) {
     return;
   }
 
   setTimeInputValue(timeInput, '00:00');
+  setOptionalTimeInputValue(endTimeInput, '');
 
   timeInput.addEventListener('click', () => {
     openEventTimePicker({
@@ -1583,6 +1759,44 @@ async function initPageCalendar() {
         setTimeInputValue(timeInput, nextTime);
       },
     });
+  });
+
+  endTimeInput.addEventListener('click', () => {
+    openEventTimePicker({
+      anchorEl: endTimeInput,
+      initialTime: endTimeInput.dataset.time || timeInput.dataset.time,
+      allowEmpty: true,
+      onChange: (nextTime) => {
+        setOptionalTimeInputValue(endTimeInput, nextTime);
+      },
+    });
+  });
+
+  function setDatePanelOpen(isOpen, { restoreFocus = false } = {}) {
+    datePanel.hidden = !isOpen;
+    datePanel.classList.toggle('is-open', isOpen);
+    datePanel.setAttribute('aria-hidden', String(!isOpen));
+    dateToggle.setAttribute('aria-expanded', String(isOpen));
+
+    if (isOpen) {
+      window.requestAnimationFrame(() => {
+        startDateInput.focus();
+      });
+    } else if (restoreFocus) {
+      dateToggle.focus();
+    }
+  }
+
+  dateToggle.addEventListener('click', () => {
+    setDatePanelOpen(datePanel.hidden);
+  });
+
+  dateClose.addEventListener('click', () => {
+    setDatePanelOpen(false, { restoreFocus: true });
+  });
+
+  startDateInput.addEventListener('change', () => {
+    endDateInput.min = startDateInput.value;
   });
 
   const mobileTodoFormQuery = window.matchMedia('(max-width: 640px)');
@@ -1644,6 +1858,9 @@ async function initPageCalendar() {
     group: null,
   };
 
+  startDateInput.value = state.selectedDateKey;
+  endDateInput.min = state.selectedDateKey;
+
   function refreshGroupBackupNeeded() {
     void state.group?.refreshBackupNeeded?.();
   }
@@ -1698,6 +1915,9 @@ async function initPageCalendar() {
 
   function selectDate(dateKey) {
     state.selectedDateKey = dateKey;
+    startDateInput.value = dateKey;
+    endDateInput.value = '';
+    endDateInput.min = dateKey;
 
     const [year, month] = dateKey.split('-').map(Number);
     state.viewDate = new Date(year, month - 1, 1);
@@ -1753,7 +1973,10 @@ async function initPageCalendar() {
     }
   }
 
-  async function saveTodoEdit(todoId, { text, memo, category, eventTime }) {
+  async function saveTodoEdit(
+    todoId,
+    { text, memo, category, eventTime, eventEndTime },
+  ) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
     const fallback = getFallbackCategory(state.categories);
@@ -1764,6 +1987,7 @@ async function initPageCalendar() {
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
     const nextTime = normalizeEventTime(eventTime);
+    const nextEndTime = normalizeOptionalEventTime(eventEndTime);
 
     if (!nextText || !nextCategory?.id) return;
 
@@ -1773,6 +1997,10 @@ async function initPageCalendar() {
         text: nextText,
         memo: nextMemo,
         eventTime: nextTime,
+      });
+      await setSharedPersonalTodoEndTime({
+        todoId,
+        eventEndTime: nextEndTime,
       });
       await updateTodoCategory({
         todoId,
@@ -1794,6 +2022,9 @@ async function initPageCalendar() {
     }
     if (nextTime !== normalizeEventTime(target.eventTime)) {
       await updateTodoTime({ todoId, eventTime: nextTime });
+    }
+    if (nextEndTime !== normalizeOptionalEventTime(target.eventEndTime)) {
+      await updateTodoEndTime({ todoId, eventEndTime: nextEndTime });
     }
     if (nextCategory.id !== currentCategoryId) {
       await updateTodoCategory({
@@ -2084,6 +2315,10 @@ async function initPageCalendar() {
     const text = input.value.trim();
     const memo = memoInput.value.trim();
     const eventTime = normalizeEventTime(timeInput.dataset.time);
+    const eventEndTime = normalizeOptionalEventTime(endTimeInput.dataset.time);
+    const startDateKey = startDateInput.value || state.selectedDateKey;
+    const endDateKey = endDateInput.value || startDateKey;
+    const dateKeys = getDateRangeKeys(startDateKey, endDateKey);
     const selectedCategoryId = typeSelect.value;
 
     if (!text) {
@@ -2091,25 +2326,42 @@ async function initPageCalendar() {
       return;
     }
 
+    if (endDateKey < startDateKey || dateKeys.length === 0) {
+      alert('종료 날짜는 시작 날짜보다 빠를 수 없어.');
+      endDateInput.focus();
+      return;
+    }
+
     try {
       const category = await refreshCategories(selectedCategoryId);
+      const createdTodos = [];
 
-      const nextTodo = await insertTodo({
-        userId: state.userId,
-        dateKey: state.selectedDateKey,
-        text,
-        memo,
-        eventTime,
-        category,
+      for (const dateKey of dateKeys) {
+        const nextTodo = await insertTodo({
+          userId: state.userId,
+          dateKey,
+          text,
+          memo,
+          eventTime,
+          eventEndTime,
+          category,
+        });
+        createdTodos.push(nextTodo);
+      }
+
+      createdTodos.forEach((todo) => {
+        const currentTodos = state.store[todo.date] || [];
+        state.store[todo.date] = [...currentTodos, todo].sort(
+          compareTodosByTime,
+        );
       });
-
-      const currentTodos = state.store[state.selectedDateKey] || [];
-      state.store[state.selectedDateKey] = [...currentTodos, nextTodo].sort(
-        compareTodosByTime,
-      );
       input.value = '';
       setTimeInputValue(timeInput, '00:00');
+      setOptionalTimeInputValue(endTimeInput, '');
       memoInput.value = '';
+      startDateInput.value = state.selectedDateKey;
+      endDateInput.value = '';
+      endDateInput.min = state.selectedDateKey;
       autoResizeTextarea(memoInput);
 
       renderAll();
