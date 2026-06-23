@@ -16,6 +16,7 @@ const {
   SAD_EMOTICON_PACK,
   EAT_EMOTICON_PACK,
   MOVED_EMOTICON_PACK,
+  CUCUMBER_GIRL_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -30,6 +31,7 @@ const EMOTICON_MAP = new Map(
     ...SAD_EMOTICON_PACK,
     ...EAT_EMOTICON_PACK,
     ...MOVED_EMOTICON_PACK,
+    ...CUCUMBER_GIRL_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -105,6 +107,13 @@ const PACK_META = [
     label: '감동/감격',
     iconPath: MOVED_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'moved-',
+  },
+  {
+    key: 'cucumbergirl',
+    itemId: 'emo_cucumbergirl_01',
+    label: '오이소녀',
+    iconPath: CUCUMBER_GIRL_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'cucumbergirl-',
   },
 ];
 
@@ -192,6 +201,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-moved-01') {
     return MOVED_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo_cucumbergirl_01') {
+    return CUCUMBER_GIRL_EMOTICON_PACK;
   }
 
   return [];

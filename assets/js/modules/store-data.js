@@ -268,6 +268,22 @@ export const MOVED_EMOTICON_PACK = Array.from({ length: 11 }, (_, index) => {
   };
 });
 
+export const CUCUMBER_GIRL_EMOTICON_PACK = Array.from(
+  { length: 10 },
+  (_, index) => {
+    const order = index + 1;
+
+    return {
+      code: `cucumbergirl-${order}`,
+      label: `오이소녀 이모티콘 ${order}`,
+      imagePath: withAssetVersion(
+        `./images/emoticons/emo_cucumbergirl_${order}.png`,
+      ),
+      displayOrder: 1000 + order,
+    };
+  },
+);
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -498,6 +514,23 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'emo_cucumbergirl_01',
+    name: '오이소녀 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🥒👧🏼',
+    thumbImagePath: withAssetVersion(
+      './images/emoticons/emo_cucumbergirl_1.png',
+    ),
+    price: 380,
+    state: '판매 중',
+    description: '오이소녀의 스티커 느낌의 이모티콘 팩이야.',
+    detailDescription:
+      '오이소녀의 스티커 느낌의 이모티콘 팩이야. 구매하면 10개의 오이소녀 이모티콘이 계정에 지급되고, 게시글/댓글/답글 작성할 때 바로 사용할 수 있어.',
+    previewImages: CUCUMBER_GIRL_EMOTICON_PACK,
+    isPurchasable: true,
+  },
   {
     id: 'skin-cucumberboy-01',
     name: '기동대 의무복무 오이소년',

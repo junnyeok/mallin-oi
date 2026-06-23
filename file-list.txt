@@ -380,6 +380,16 @@
 ./images/emoticons/eat-7.png
 ./images/emoticons/eat-8.png
 ./images/emoticons/eat-9.png
+./images/emoticons/emo_cucumbergirl_1.png
+./images/emoticons/emo_cucumbergirl_10.png
+./images/emoticons/emo_cucumbergirl_2.png
+./images/emoticons/emo_cucumbergirl_3.png
+./images/emoticons/emo_cucumbergirl_4.png
+./images/emoticons/emo_cucumbergirl_5.png
+./images/emoticons/emo_cucumbergirl_6.png
+./images/emoticons/emo_cucumbergirl_7.png
+./images/emoticons/emo_cucumbergirl_8.png
+./images/emoticons/emo_cucumbergirl_9.png
 ./images/emoticons/free-1.png
 ./images/emoticons/free-2.png
 ./images/emoticons/free-3.png
