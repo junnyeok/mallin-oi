@@ -33,6 +33,7 @@ const BACKUP_SOURCE_CONFIG = {
     categoryRelation: 'study_calendar_categories',
     select: `
       id, todo_date, todo_type, todo_text, memo, is_done, shared_group_id,
+      shared_origin_todo_id, shared_origin_user_id, shared_created_by, is_shared_copy,
       study_calendar_categories (name, slug, color)
     `,
   },
@@ -41,6 +42,7 @@ const BACKUP_SOURCE_CONFIG = {
     categoryRelation: 'work_calendar_categories',
     select: `
       id, work_date, work_type, work_text, memo, is_done, shared_group_id,
+      shared_origin_todo_id, shared_origin_user_id, shared_created_by, is_shared_copy,
       work_calendar_categories (name, slug, color)
     `,
   },
@@ -48,8 +50,10 @@ const BACKUP_SOURCE_CONFIG = {
     table: 'event_calendar_todos',
     categoryRelation: 'event_calendar_categories',
     select: `
-      id, event_date, event_type, event_text, memo, event_time, is_done,
-      shared_group_id, event_calendar_categories (name, slug, color)
+      id, event_date, event_type, event_text, memo, event_time, event_end_time, is_done,
+      shared_group_id, shared_origin_todo_id, shared_origin_user_id,
+      shared_created_by, is_shared_copy,
+      event_calendar_categories (name, slug, color)
     `,
   },
 };
@@ -436,6 +440,11 @@ function makeSourceBackupEvent(row, calendarType) {
       payload: {
         isDone: Boolean(row.is_done),
         categoryName: category?.name || null,
+        shared_group_id: row.shared_group_id || null,
+        shared_origin_todo_id: row.shared_origin_todo_id || null,
+        shared_origin_user_id: row.shared_origin_user_id || null,
+        shared_created_by: row.shared_created_by || null,
+        is_shared_copy: Boolean(row.is_shared_copy),
       },
     });
   }
@@ -451,6 +460,11 @@ function makeSourceBackupEvent(row, calendarType) {
       payload: {
         isDone: Boolean(row.is_done),
         workText: row.work_text || null,
+        shared_group_id: row.shared_group_id || null,
+        shared_origin_todo_id: row.shared_origin_todo_id || null,
+        shared_origin_user_id: row.shared_origin_user_id || null,
+        shared_created_by: row.shared_created_by || null,
+        is_shared_copy: Boolean(row.is_shared_copy),
       },
     });
   }
@@ -465,7 +479,13 @@ function makeSourceBackupEvent(row, calendarType) {
     payload: {
       isDone: Boolean(row.is_done),
       eventTime: row.event_time || null,
+      eventEndTime: row.event_end_time || null,
       categoryName: category?.name || null,
+      shared_group_id: row.shared_group_id || null,
+      shared_origin_todo_id: row.shared_origin_todo_id || null,
+      shared_origin_user_id: row.shared_origin_user_id || null,
+      shared_created_by: row.shared_created_by || null,
+      is_shared_copy: Boolean(row.is_shared_copy),
     },
   });
 }
@@ -513,7 +533,11 @@ async function checkBackupNeeded({ userId, groupId, calendarType }) {
   if (backupResult.error) throw backupResult.error;
 
   const sourceEvents = (sourceResult.data || [])
-    .filter((row) => !row.shared_group_id || row.shared_group_id === groupId)
+    .filter(
+      (row) =>
+        !row.is_shared_copy &&
+        (!row.shared_group_id || row.shared_group_id === groupId),
+    )
     .map((row) => makeSourceBackupEvent(row, calendarType));
   const backupEvents = (backupResult.data || []).map(makeStoredBackupEvent);
 

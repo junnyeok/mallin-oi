@@ -16996,6 +16996,719 @@ $$;
 revoke all on function public.get_my_calendar_widget_items(date, date) from public;
 grant execute on function public.get_my_calendar_widget_items(date, date) to authenticated;
 
+-- 2026-06-23 우리일정 그룹 백업 최종 구현 함수
+create or replace function public.backup_my_calendar_to_group_20260623(
+  p_group_id uuid,
+  p_calendar_type text
+)
+returns table (event_count integer, backed_up_at timestamptz)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_now timestamptz := now();
+  v_count integer := 0;
+  v_allowed boolean := false;
+begin
+  if v_uid is null then raise exception '로그인이 필요합니다.'; end if;
+  if not public.is_calendar_group_member(p_group_id, v_uid) then
+    raise exception '그룹 멤버만 백업할 수 있습니다.';
+  end if;
+
+  select case p_calendar_type
+    when 'study' then cg.allow_study
+    when 'work' then cg.allow_work
+    when 'event' then cg.allow_event
+    else false
+  end into v_allowed
+  from public.calendar_groups cg where cg.id = p_group_id;
+
+  if not coalesce(v_allowed, false) then
+    raise exception '이 그룹은 해당 캘린더 연동이 꺼져 있습니다.';
+  end if;
+
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id
+    and e.calendar_type = p_calendar_type
+    and (
+      coalesce((e.payload->>'is_shared_copy')::boolean, false)
+      or (p_calendar_type = 'study' and exists (
+        select 1 from public.study_calendar_todos t
+        where t.id::text = e.source_event_id and t.is_shared_copy = true
+      ))
+      or (p_calendar_type = 'work' and exists (
+        select 1 from public.work_calendar_todos t
+        where t.id::text = e.source_event_id and t.is_shared_copy = true
+      ))
+      or (p_calendar_type = 'event' and exists (
+        select 1 from public.event_calendar_todos t
+        where t.id::text = e.source_event_id and t.is_shared_copy = true
+      ))
+    );
+
+  if p_calendar_type = 'event' then
+    delete from public.calendar_group_shared_events stale
+    where stale.group_id = p_group_id
+      and stale.calendar_type = 'event'
+      and not exists (
+        select 1 from public.event_calendar_todos source
+        where source.id::text = stale.source_event_id
+      )
+      and exists (
+        select 1 from public.event_calendar_todos root
+        where root.shared_group_id = p_group_id
+          and root.is_shared_copy = false
+          and root.event_date = stale.event_date
+          and root.event_text = stale.title
+          and coalesce(root.event_type, '') = coalesce(stale.event_type, '')
+      );
+  end if;
+
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id
+    and e.user_id = v_uid
+    and e.calendar_type = p_calendar_type;
+
+  if p_calendar_type = 'study' then
+    insert into public.calendar_group_shared_events (
+      group_id, user_id, calendar_type, source_event_id, event_date,
+      event_type, title, memo, color, payload, backed_up_at
+    )
+    select p_group_id, t.user_id, 'study', t.id::text, t.todo_date,
+      coalesce(c.slug, t.todo_type), t.todo_text, coalesce(t.memo, ''), c.color,
+      jsonb_build_object(
+        'isDone', t.is_done, 'categoryName', c.name,
+        'shared_group_id', t.shared_group_id,
+        'shared_origin_todo_id', t.shared_origin_todo_id,
+        'shared_origin_user_id', t.shared_origin_user_id,
+        'shared_created_by', t.shared_created_by,
+        'is_shared_copy', t.is_shared_copy
+      ), v_now
+    from public.study_calendar_todos t
+    left join public.study_calendar_categories c on c.id = t.category_id
+    where t.user_id = v_uid
+      and coalesce(t.is_shared_copy, false) = false
+      and (t.shared_group_id is null or t.shared_group_id = p_group_id);
+  elsif p_calendar_type = 'work' then
+    insert into public.calendar_group_shared_events (
+      group_id, user_id, calendar_type, source_event_id, event_date,
+      event_type, title, memo, color, payload, backed_up_at
+    )
+    select p_group_id, t.user_id, 'work', t.id::text, t.work_date,
+      coalesce(c.slug, t.work_type), coalesce(c.name, t.work_text),
+      coalesce(t.memo, ''), c.color,
+      jsonb_build_object(
+        'isDone', t.is_done, 'workText', t.work_text,
+        'shared_group_id', t.shared_group_id,
+        'shared_origin_todo_id', t.shared_origin_todo_id,
+        'shared_origin_user_id', t.shared_origin_user_id,
+        'shared_created_by', t.shared_created_by,
+        'is_shared_copy', t.is_shared_copy
+      ), v_now
+    from public.work_calendar_todos t
+    left join public.work_calendar_categories c on c.id = t.category_id
+    where t.user_id = v_uid
+      and coalesce(t.is_shared_copy, false) = false
+      and (t.shared_group_id is null or t.shared_group_id = p_group_id);
+  elsif p_calendar_type = 'event' then
+    insert into public.calendar_group_shared_events (
+      group_id, user_id, calendar_type, source_event_id, event_date,
+      event_type, title, memo, color, payload, backed_up_at
+    )
+    select p_group_id, t.user_id, 'event', t.id::text, t.event_date,
+      coalesce(c.slug, t.event_type), t.event_text, coalesce(t.memo, ''), c.color,
+      jsonb_build_object(
+        'isDone', t.is_done, 'eventTime', t.event_time,
+        'eventEndTime', t.event_end_time, 'categoryName', c.name,
+        'shared_group_id', t.shared_group_id,
+        'shared_origin_todo_id', t.shared_origin_todo_id,
+        'shared_origin_user_id', t.shared_origin_user_id,
+        'shared_created_by', t.shared_created_by,
+        'is_shared_copy', t.is_shared_copy
+      ), v_now
+    from public.event_calendar_todos t
+    left join public.event_calendar_categories c on c.id = t.category_id
+    where t.user_id = v_uid
+      and coalesce(t.is_shared_copy, false) = false
+      and (t.shared_group_id is null or t.shared_group_id = p_group_id);
+  else
+    raise exception '지원하지 않는 캘린더 타입입니다.';
+  end if;
+
+  get diagnostics v_count = row_count;
+  return query select v_count::integer, v_now;
+end;
+$$;
+
+create or replace function public.get_group_calendar_view_20260623(
+  p_group_id uuid,
+  p_calendar_type text,
+  p_start_date date,
+  p_end_date date
+)
+returns table (
+  id uuid, group_id uuid, user_id uuid, user_nickname text,
+  calendar_type text, source_event_id text, event_date date,
+  event_type text, title text, memo text, color text, payload jsonb,
+  backed_up_at timestamptz, shared_group_id uuid,
+  shared_origin_todo_id uuid, shared_origin_user_id uuid,
+  shared_created_by uuid, is_shared_copy boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_allowed boolean := false;
+begin
+  if not public.is_calendar_group_member(p_group_id, auth.uid()) then
+    raise exception '그룹 멤버만 볼 수 있습니다.';
+  end if;
+  select case p_calendar_type
+    when 'study' then cg.allow_study
+    when 'work' then cg.allow_work
+    when 'event' then cg.allow_event
+    else false
+  end into v_allowed
+  from public.calendar_groups cg where cg.id = p_group_id;
+  if not coalesce(v_allowed, false) then return; end if;
+
+  return query
+  select e.id, e.group_id, e.user_id,
+    coalesce(nullif(trim(p.nickname), ''), '회원'),
+    e.calendar_type, e.source_event_id, e.event_date, e.event_type,
+    e.title, e.memo, e.color, e.payload, e.backed_up_at,
+    coalesce(
+      st.shared_group_id, wt.shared_group_id, et.shared_group_id,
+      nullif(e.payload->>'shared_group_id', '')::uuid
+    ),
+    coalesce(
+      st.shared_origin_todo_id, wt.shared_origin_todo_id,
+      et.shared_origin_todo_id,
+      nullif(e.payload->>'shared_origin_todo_id', '')::uuid
+    ),
+    coalesce(
+      st.shared_origin_user_id, wt.shared_origin_user_id,
+      et.shared_origin_user_id,
+      nullif(e.payload->>'shared_origin_user_id', '')::uuid
+    ),
+    coalesce(
+      st.shared_created_by, wt.shared_created_by, et.shared_created_by,
+      nullif(e.payload->>'shared_created_by', '')::uuid
+    ),
+    coalesce(
+      st.is_shared_copy, wt.is_shared_copy, et.is_shared_copy,
+      (e.payload->>'is_shared_copy')::boolean, false
+    )
+  from public.calendar_group_shared_events e
+  join public.calendar_group_members m
+    on m.group_id = e.group_id and m.user_id = e.user_id and m.status = 'active'
+  left join public.profiles p on p.id = e.user_id
+  left join public.study_calendar_todos st
+    on p_calendar_type = 'study' and st.id::text = e.source_event_id
+  left join public.work_calendar_todos wt
+    on p_calendar_type = 'work' and wt.id::text = e.source_event_id
+  left join public.event_calendar_todos et
+    on p_calendar_type = 'event' and et.id::text = e.source_event_id
+  where e.group_id = p_group_id
+    and e.calendar_type = p_calendar_type
+    and e.event_date between p_start_date and p_end_date
+  order by e.event_date, coalesce(nullif(trim(p.nickname), ''), '회원'), e.created_at;
+end;
+$$;
+
+revoke all on function public.backup_my_calendar_to_group(uuid, text) from public;
+revoke all on function public.backup_my_calendar_to_group(uuid, text) from anon;
+grant execute on function public.backup_my_calendar_to_group(uuid, text) to authenticated;
+revoke all on function public.get_group_calendar_view(uuid, text, date, date) from public;
+revoke all on function public.get_group_calendar_view(uuid, text, date, date) from anon;
+grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;
+
+-- 2026-06-23 이벤트 캘린더 우리일정 단일 저장 및 그룹 백업 중복 정리 실행쿼리
+-- 제목/메모/날짜/시간/카테고리를 한 번에 저장하고 공유 복제본 ID를 유지한다.
+create or replace function public.save_event_calendar_todo(
+  p_todo_id uuid,
+  p_event_text text,
+  p_memo text,
+  p_event_time time,
+  p_event_end_time time,
+  p_event_date date,
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_selected public.event_calendar_todos%rowtype;
+  v_root public.event_calendar_todos%rowtype;
+  v_target public.event_calendar_categories%rowtype;
+  v_root_category public.event_calendar_categories%rowtype;
+  v_old_group_id uuid;
+  v_new_group_id uuid;
+  v_copy record;
+  v_copy_category_id uuid;
+  v_existing_copy_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+  if nullif(trim(coalesce(p_event_text, '')), '') is null then
+    raise exception '일정 제목을 입력해 주세요.';
+  end if;
+  if p_event_date is null then
+    raise exception '일정 날짜를 입력해 주세요.';
+  end if;
+
+  select t.* into v_selected
+  from public.event_calendar_todos t
+  where t.id = p_todo_id and t.user_id = v_uid;
+  if not found then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  select t.* into v_root
+  from public.event_calendar_todos t
+  where t.id = coalesce(v_selected.shared_origin_todo_id, v_selected.id);
+  if not found then
+    raise exception '원본 일정을 찾을 수 없습니다.';
+  end if;
+
+  select c.* into v_target
+  from public.event_calendar_categories c
+  where c.id = p_category_id and c.user_id = v_uid;
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  v_old_group_id := coalesce(v_selected.shared_group_id, v_root.shared_group_id);
+  v_new_group_id := case
+    when v_target.is_shared_personal then v_target.shared_group_id
+    else null
+  end;
+
+  if v_old_group_id is not null
+     and not public.is_calendar_group_member(v_old_group_id, v_uid) then
+    raise exception '이 우리 일정을 수정할 권한이 없습니다.';
+  end if;
+
+  if v_new_group_id is not null then
+    if not public.is_calendar_group_member(v_new_group_id, v_uid)
+       or not public.is_calendar_group_member(v_new_group_id, v_root.user_id) then
+      raise exception '이 그룹에 우리 일정을 저장할 권한이 없습니다.';
+    end if;
+
+    select c.* into v_root_category
+    from public.event_calendar_categories c
+    where c.id = coalesce(v_target.shared_origin_category_id, v_target.id);
+
+    if not found or v_root_category.user_id <> v_root.user_id then
+      if v_root.user_id = v_uid then
+        v_root_category := v_target;
+      else
+        select c.* into v_root_category
+        from public.event_calendar_categories c
+        where c.id = public.ensure_shared_event_calendar_category(
+          v_root.user_id, v_target.id
+        );
+      end if;
+    end if;
+
+    if v_old_group_id is distinct from v_new_group_id then
+      if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+        raise exception '우리 일정 그룹 변경은 원본 작성자만 할 수 있습니다.';
+      end if;
+
+      delete from public.calendar_group_shared_events e
+      where e.group_id = v_old_group_id
+        and e.calendar_type = 'event'
+        and (
+          e.source_event_id = v_root.id::text
+          or e.source_event_id in (
+            select t.id::text from public.event_calendar_todos t
+            where t.shared_origin_todo_id = v_root.id
+          )
+          or e.payload->>'shared_origin_todo_id' = v_root.id::text
+        );
+
+      delete from public.event_calendar_todos t
+      where t.shared_origin_todo_id = v_root.id and t.is_shared_copy = true;
+    end if;
+
+    update public.event_calendar_todos t
+    set event_text = trim(p_event_text),
+        memo = coalesce(p_memo, ''),
+        event_time = coalesce(p_event_time, '00:00'::time),
+        event_end_time = p_event_end_time,
+        event_date = p_event_date,
+        event_type = coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+        category_id = v_root_category.id,
+        shared_origin_todo_id = null,
+        shared_origin_user_id = null,
+        shared_group_id = v_new_group_id,
+        shared_created_by = coalesce(v_root.shared_created_by, v_root.user_id),
+        is_shared_copy = false
+    where t.id = v_root.id;
+
+    delete from public.event_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id
+      and t.is_shared_copy = true
+      and (
+        t.shared_group_id is distinct from v_new_group_id
+        or not public.is_calendar_group_member(v_new_group_id, t.user_id)
+      );
+
+    for v_copy in
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_new_group_id) gm
+      where gm.member_user_id <> v_root.user_id
+    loop
+      v_copy_category_id := public.ensure_shared_event_calendar_category(
+        v_copy.user_id, v_root_category.id
+      );
+
+      select t.id into v_existing_copy_id
+      from public.event_calendar_todos t
+      where t.user_id = v_copy.user_id
+        and t.shared_origin_todo_id = v_root.id
+        and t.is_shared_copy = true
+      limit 1;
+
+      if v_existing_copy_id is null then
+        insert into public.event_calendar_todos (
+          user_id, event_date, event_type, category_id, event_text, memo,
+          event_time, event_end_time, is_done, shared_origin_todo_id,
+          shared_origin_user_id, shared_group_id, shared_created_by,
+          is_shared_copy
+        )
+        values (
+          v_copy.user_id, p_event_date,
+          coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+          v_copy_category_id, trim(p_event_text), coalesce(p_memo, ''),
+          coalesce(p_event_time, '00:00'::time), p_event_end_time,
+          v_root.is_done, v_root.id, v_root.user_id, v_new_group_id,
+          coalesce(v_root.shared_created_by, v_root.user_id), true
+        );
+      else
+        update public.event_calendar_todos t
+        set event_date = p_event_date,
+            event_type = coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+            category_id = v_copy_category_id,
+            event_text = trim(p_event_text),
+            memo = coalesce(p_memo, ''),
+            event_time = coalesce(p_event_time, '00:00'::time),
+            event_end_time = p_event_end_time,
+            is_done = v_root.is_done,
+            shared_origin_user_id = v_root.user_id,
+            shared_group_id = v_new_group_id,
+            shared_created_by = coalesce(v_root.shared_created_by, v_root.user_id),
+            is_shared_copy = true
+        where t.id = v_existing_copy_id;
+      end if;
+      v_existing_copy_id := null;
+    end loop;
+    return;
+  end if;
+
+  if v_old_group_id is not null then
+    if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+      raise exception '우리 일정을 개인 일정으로 바꾸려면 원본 작성자 계정에서 저장해야 합니다.';
+    end if;
+
+    delete from public.calendar_group_shared_events e
+    where e.group_id = v_old_group_id
+      and e.calendar_type = 'event'
+      and (
+        e.source_event_id = v_root.id::text
+        or e.source_event_id in (
+          select t.id::text from public.event_calendar_todos t
+          where t.shared_origin_todo_id = v_root.id
+        )
+        or e.payload->>'shared_origin_todo_id' = v_root.id::text
+      );
+
+    delete from public.event_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id and t.is_shared_copy = true;
+  end if;
+
+  update public.event_calendar_todos t
+  set event_text = trim(p_event_text),
+      memo = coalesce(p_memo, ''),
+      event_time = coalesce(p_event_time, '00:00'::time),
+      event_end_time = p_event_end_time,
+      event_date = p_event_date,
+      event_type = coalesce(v_target.slug, 'anniversary'),
+      category_id = v_target.id,
+      shared_origin_todo_id = null,
+      shared_origin_user_id = null,
+      shared_group_id = null,
+      shared_created_by = null,
+      is_shared_copy = false
+  where t.id = v_root.id;
+end;
+$$;
+
+revoke all on function public.save_event_calendar_todo(
+  uuid, text, text, time, time, date, uuid
+) from public;
+revoke all on function public.save_event_calendar_todo(
+  uuid, text, text, time, time, date, uuid
+) from anon;
+grant execute on function public.save_event_calendar_todo(
+  uuid, text, text, time, time, date, uuid
+) to authenticated;
+
+-- 공유 복제본은 개인 백업에서 제외하고 공유 식별자를 payload에도 보존한다.
+create or replace function public.backup_my_calendar_to_group(
+  p_group_id uuid,
+  p_calendar_type text
+)
+returns table (event_count integer, backed_up_at timestamptz)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_now timestamptz := now();
+  v_count integer := 0;
+  v_allowed boolean := false;
+begin
+  if v_uid is null then raise exception '로그인이 필요합니다.'; end if;
+  if not public.is_calendar_group_member(p_group_id, v_uid) then
+    raise exception '그룹 멤버만 백업할 수 있습니다.';
+  end if;
+
+  select case p_calendar_type
+    when 'study' then cg.allow_study
+    when 'work' then cg.allow_work
+    when 'event' then cg.allow_event
+    else false
+  end into v_allowed
+  from public.calendar_groups cg where cg.id = p_group_id;
+
+  if not coalesce(v_allowed, false) then
+    raise exception '이 그룹은 해당 캘린더 연동이 꺼져 있습니다.';
+  end if;
+
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id
+    and e.calendar_type = p_calendar_type
+    and (
+      coalesce((e.payload->>'is_shared_copy')::boolean, false)
+      or (p_calendar_type = 'study' and exists (
+        select 1 from public.study_calendar_todos t
+        where t.id::text = e.source_event_id and t.is_shared_copy = true
+      ))
+      or (p_calendar_type = 'work' and exists (
+        select 1 from public.work_calendar_todos t
+        where t.id::text = e.source_event_id and t.is_shared_copy = true
+      ))
+      or (p_calendar_type = 'event' and exists (
+        select 1 from public.event_calendar_todos t
+        where t.id::text = e.source_event_id and t.is_shared_copy = true
+      ))
+    );
+
+  if p_calendar_type = 'event' then
+    delete from public.calendar_group_shared_events stale
+    where stale.group_id = p_group_id
+      and stale.calendar_type = 'event'
+      and not exists (
+        select 1 from public.event_calendar_todos source
+        where source.id::text = stale.source_event_id
+      )
+      and exists (
+        select 1 from public.event_calendar_todos root
+        where root.shared_group_id = p_group_id
+          and root.is_shared_copy = false
+          and root.event_date = stale.event_date
+          and root.event_text = stale.title
+          and coalesce(root.event_type, '') = coalesce(stale.event_type, '')
+      );
+  end if;
+
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id
+    and e.user_id = v_uid
+    and e.calendar_type = p_calendar_type;
+
+  if p_calendar_type = 'study' then
+    insert into public.calendar_group_shared_events (
+      group_id, user_id, calendar_type, source_event_id, event_date,
+      event_type, title, memo, color, payload, backed_up_at
+    )
+    select p_group_id, t.user_id, 'study', t.id::text, t.todo_date,
+      coalesce(c.slug, t.todo_type), t.todo_text, coalesce(t.memo, ''), c.color,
+      jsonb_build_object(
+        'isDone', t.is_done, 'categoryName', c.name,
+        'shared_group_id', t.shared_group_id,
+        'shared_origin_todo_id', t.shared_origin_todo_id,
+        'shared_origin_user_id', t.shared_origin_user_id,
+        'shared_created_by', t.shared_created_by,
+        'is_shared_copy', t.is_shared_copy
+      ), v_now
+    from public.study_calendar_todos t
+    left join public.study_calendar_categories c on c.id = t.category_id
+    where t.user_id = v_uid
+      and coalesce(t.is_shared_copy, false) = false
+      and (t.shared_group_id is null or t.shared_group_id = p_group_id);
+  elsif p_calendar_type = 'work' then
+    insert into public.calendar_group_shared_events (
+      group_id, user_id, calendar_type, source_event_id, event_date,
+      event_type, title, memo, color, payload, backed_up_at
+    )
+    select p_group_id, t.user_id, 'work', t.id::text, t.work_date,
+      coalesce(c.slug, t.work_type), coalesce(c.name, t.work_text),
+      coalesce(t.memo, ''), c.color,
+      jsonb_build_object(
+        'isDone', t.is_done, 'workText', t.work_text,
+        'shared_group_id', t.shared_group_id,
+        'shared_origin_todo_id', t.shared_origin_todo_id,
+        'shared_origin_user_id', t.shared_origin_user_id,
+        'shared_created_by', t.shared_created_by,
+        'is_shared_copy', t.is_shared_copy
+      ), v_now
+    from public.work_calendar_todos t
+    left join public.work_calendar_categories c on c.id = t.category_id
+    where t.user_id = v_uid
+      and coalesce(t.is_shared_copy, false) = false
+      and (t.shared_group_id is null or t.shared_group_id = p_group_id);
+  elsif p_calendar_type = 'event' then
+    insert into public.calendar_group_shared_events (
+      group_id, user_id, calendar_type, source_event_id, event_date,
+      event_type, title, memo, color, payload, backed_up_at
+    )
+    select p_group_id, t.user_id, 'event', t.id::text, t.event_date,
+      coalesce(c.slug, t.event_type), t.event_text, coalesce(t.memo, ''), c.color,
+      jsonb_build_object(
+        'isDone', t.is_done, 'eventTime', t.event_time,
+        'eventEndTime', t.event_end_time, 'categoryName', c.name,
+        'shared_group_id', t.shared_group_id,
+        'shared_origin_todo_id', t.shared_origin_todo_id,
+        'shared_origin_user_id', t.shared_origin_user_id,
+        'shared_created_by', t.shared_created_by,
+        'is_shared_copy', t.is_shared_copy
+      ), v_now
+    from public.event_calendar_todos t
+    left join public.event_calendar_categories c on c.id = t.category_id
+    where t.user_id = v_uid
+      and coalesce(t.is_shared_copy, false) = false
+      and (t.shared_group_id is null or t.shared_group_id = p_group_id);
+  else
+    raise exception '지원하지 않는 캘린더 타입입니다.';
+  end if;
+
+  get diagnostics v_count = row_count;
+  return query select v_count::integer, v_now;
+end;
+$$;
+
+-- 이미 삭제된 예전 복제본 ID를 가리키는 이벤트 백업 중,
+-- 현재 우리일정 원본과 날짜/제목/카테고리가 같은 고아 행을 1회 정리한다.
+delete from public.calendar_group_shared_events stale
+where stale.calendar_type = 'event'
+  and not exists (
+    select 1 from public.event_calendar_todos source
+    where source.id::text = stale.source_event_id
+  )
+  and exists (
+    select 1 from public.event_calendar_todos root
+    where root.shared_group_id = stale.group_id
+      and root.is_shared_copy = false
+      and root.event_date = stale.event_date
+      and root.event_text = stale.title
+      and coalesce(root.event_type, '') = coalesce(stale.event_type, '')
+  );
+
+create or replace function public.get_group_calendar_view(
+  p_group_id uuid,
+  p_calendar_type text,
+  p_start_date date,
+  p_end_date date
+)
+returns table (
+  id uuid, group_id uuid, user_id uuid, user_nickname text,
+  calendar_type text, source_event_id text, event_date date,
+  event_type text, title text, memo text, color text, payload jsonb,
+  backed_up_at timestamptz, shared_group_id uuid,
+  shared_origin_todo_id uuid, shared_origin_user_id uuid,
+  shared_created_by uuid, is_shared_copy boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_allowed boolean := false;
+begin
+  if not public.is_calendar_group_member(p_group_id, auth.uid()) then
+    raise exception '그룹 멤버만 볼 수 있습니다.';
+  end if;
+  select case p_calendar_type
+    when 'study' then cg.allow_study
+    when 'work' then cg.allow_work
+    when 'event' then cg.allow_event
+    else false
+  end into v_allowed
+  from public.calendar_groups cg where cg.id = p_group_id;
+  if not coalesce(v_allowed, false) then return; end if;
+
+  return query
+  select e.id, e.group_id, e.user_id,
+    coalesce(nullif(trim(p.nickname), ''), '회원'),
+    e.calendar_type, e.source_event_id, e.event_date, e.event_type,
+    e.title, e.memo, e.color, e.payload, e.backed_up_at,
+    coalesce(
+      st.shared_group_id, wt.shared_group_id, et.shared_group_id,
+      nullif(e.payload->>'shared_group_id', '')::uuid
+    ),
+    coalesce(
+      st.shared_origin_todo_id, wt.shared_origin_todo_id,
+      et.shared_origin_todo_id,
+      nullif(e.payload->>'shared_origin_todo_id', '')::uuid
+    ),
+    coalesce(
+      st.shared_origin_user_id, wt.shared_origin_user_id,
+      et.shared_origin_user_id,
+      nullif(e.payload->>'shared_origin_user_id', '')::uuid
+    ),
+    coalesce(
+      st.shared_created_by, wt.shared_created_by, et.shared_created_by,
+      nullif(e.payload->>'shared_created_by', '')::uuid
+    ),
+    coalesce(
+      st.is_shared_copy, wt.is_shared_copy, et.is_shared_copy,
+      (e.payload->>'is_shared_copy')::boolean, false
+    )
+  from public.calendar_group_shared_events e
+  join public.calendar_group_members m
+    on m.group_id = e.group_id and m.user_id = e.user_id and m.status = 'active'
+  left join public.profiles p on p.id = e.user_id
+  left join public.study_calendar_todos st
+    on p_calendar_type = 'study' and st.id::text = e.source_event_id
+  left join public.work_calendar_todos wt
+    on p_calendar_type = 'work' and wt.id::text = e.source_event_id
+  left join public.event_calendar_todos et
+    on p_calendar_type = 'event' and et.id::text = e.source_event_id
+  where e.group_id = p_group_id
+    and e.calendar_type = p_calendar_type
+    and e.event_date between p_start_date and p_end_date
+  order by e.event_date, coalesce(nullif(trim(p.nickname), ''), '회원'), e.created_at;
+end;
+$$;
+
+revoke all on function public.backup_my_calendar_to_group(uuid, text) from public;
+revoke all on function public.backup_my_calendar_to_group(uuid, text) from anon;
+grant execute on function public.backup_my_calendar_to_group(uuid, text) to authenticated;
+revoke all on function public.get_group_calendar_view(uuid, text, date, date) from public;
+revoke all on function public.get_group_calendar_view(uuid, text, date, date) from anon;
+grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;
+
 -- 2026-06-23 기동대 의무복무 오이소년 스킨 판매 추가
 -- purchase_store_item 함수 전체 교체본은 store-item_purchase-functions.sql에서 관리한다.
 -- 함수 적용 전에 이미 생성된 구매 기록이 있을 경우 스킨 인벤토리를 보정한다.
@@ -23414,3 +24127,63 @@ $$;
 
 revoke all on function public.get_my_calendar_widget_items(date, date) from public;
 grant execute on function public.get_my_calendar_widget_items(date, date) to authenticated;
+
+-- 2026-06-23 우리일정 그룹 백업 최종 진입점
+create or replace function public.backup_my_calendar_to_group(
+  p_group_id uuid,
+  p_calendar_type text
+)
+returns table (event_count integer, backed_up_at timestamptz)
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from public.backup_my_calendar_to_group_20260623(p_group_id, p_calendar_type);
+$$;
+
+create or replace function public.get_group_calendar_view(
+  p_group_id uuid,
+  p_calendar_type text,
+  p_start_date date,
+  p_end_date date
+)
+returns table (
+  id uuid,
+  group_id uuid,
+  user_id uuid,
+  user_nickname text,
+  calendar_type text,
+  source_event_id text,
+  event_date date,
+  event_type text,
+  title text,
+  memo text,
+  color text,
+  payload jsonb,
+  backed_up_at timestamptz,
+  shared_group_id uuid,
+  shared_origin_todo_id uuid,
+  shared_origin_user_id uuid,
+  shared_created_by uuid,
+  is_shared_copy boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from public.get_group_calendar_view_20260623(
+    p_group_id,
+    p_calendar_type,
+    p_start_date,
+    p_end_date
+  );
+$$;
+
+revoke all on function public.backup_my_calendar_to_group(uuid, text) from public;
+revoke all on function public.backup_my_calendar_to_group(uuid, text) from anon;
+grant execute on function public.backup_my_calendar_to_group(uuid, text) to authenticated;
+revoke all on function public.get_group_calendar_view(uuid, text, date, date) from public;
+revoke all on function public.get_group_calendar_view(uuid, text, date, date) from anon;
+grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;

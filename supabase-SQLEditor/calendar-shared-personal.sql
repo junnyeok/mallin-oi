@@ -2184,3 +2184,266 @@ grant execute on function public.update_work_shared_personal_todo(uuid, text, te
 revoke all on function public.update_event_shared_personal_todo(uuid, text, text, time, date) from public;
 revoke all on function public.update_event_shared_personal_todo(uuid, text, text, time, date) from anon;
 grant execute on function public.update_event_shared_personal_todo(uuid, text, text, time, date) to authenticated;
+
+-- =========================================
+-- 2026-06-23 이벤트 우리일정 단일 저장/복제본 upsert
+-- 제목·메모·날짜·시간·카테고리를 한 트랜잭션에서 확정한다.
+-- =========================================
+
+create or replace function public.save_event_calendar_todo(
+  p_todo_id uuid,
+  p_event_text text,
+  p_memo text,
+  p_event_time time,
+  p_event_end_time time,
+  p_event_date date,
+  p_category_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_selected public.event_calendar_todos%rowtype;
+  v_root public.event_calendar_todos%rowtype;
+  v_target public.event_calendar_categories%rowtype;
+  v_root_category public.event_calendar_categories%rowtype;
+  v_old_group_id uuid;
+  v_new_group_id uuid;
+  v_copy record;
+  v_copy_category_id uuid;
+  v_existing_copy_id uuid;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다.';
+  end if;
+
+  if nullif(trim(coalesce(p_event_text, '')), '') is null then
+    raise exception '일정 제목을 입력해 주세요.';
+  end if;
+
+  if p_event_date is null then
+    raise exception '일정 날짜를 입력해 주세요.';
+  end if;
+
+  select t.*
+    into v_selected
+  from public.event_calendar_todos t
+  where t.id = p_todo_id
+    and t.user_id = v_uid;
+
+  if not found then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  select t.*
+    into v_root
+  from public.event_calendar_todos t
+  where t.id = coalesce(v_selected.shared_origin_todo_id, v_selected.id);
+
+  if not found then
+    raise exception '원본 일정을 찾을 수 없습니다.';
+  end if;
+
+  select c.*
+    into v_target
+  from public.event_calendar_categories c
+  where c.id = p_category_id
+    and c.user_id = v_uid;
+
+  if not found then
+    raise exception '카테고리를 찾을 수 없습니다.';
+  end if;
+
+  v_old_group_id := coalesce(v_selected.shared_group_id, v_root.shared_group_id);
+  v_new_group_id := case
+    when v_target.is_shared_personal then v_target.shared_group_id
+    else null
+  end;
+
+  if v_old_group_id is not null
+     and not public.is_calendar_group_member(v_old_group_id, v_uid) then
+    raise exception '이 우리 일정을 수정할 권한이 없습니다.';
+  end if;
+
+  if v_new_group_id is not null then
+    if not public.is_calendar_group_member(v_new_group_id, v_uid)
+       or not public.is_calendar_group_member(v_new_group_id, v_root.user_id) then
+      raise exception '이 그룹에 우리 일정을 저장할 권한이 없습니다.';
+    end if;
+
+    select c.*
+      into v_root_category
+    from public.event_calendar_categories c
+    where c.id = coalesce(v_target.shared_origin_category_id, v_target.id);
+
+    if not found or v_root_category.user_id <> v_root.user_id then
+      if v_root.user_id = v_uid then
+        v_root_category := v_target;
+      else
+        select c.*
+          into v_root_category
+        from public.event_calendar_categories c
+        where c.id = public.ensure_shared_event_calendar_category(
+          v_root.user_id,
+          v_target.id
+        );
+      end if;
+    end if;
+
+    if v_old_group_id is distinct from v_new_group_id then
+      if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+        raise exception '우리 일정 그룹 변경은 원본 작성자만 할 수 있습니다.';
+      end if;
+
+      delete from public.calendar_group_shared_events e
+      where e.group_id = v_old_group_id
+        and e.calendar_type = 'event'
+        and (
+          e.source_event_id = v_root.id::text
+          or e.source_event_id in (
+            select t.id::text
+            from public.event_calendar_todos t
+            where t.shared_origin_todo_id = v_root.id
+          )
+          or e.payload->>'shared_origin_todo_id' = v_root.id::text
+        );
+
+      delete from public.event_calendar_todos t
+      where t.shared_origin_todo_id = v_root.id
+        and t.is_shared_copy = true;
+    end if;
+
+    update public.event_calendar_todos t
+    set
+      event_text = trim(p_event_text),
+      memo = coalesce(p_memo, ''),
+      event_time = coalesce(p_event_time, '00:00'::time),
+      event_end_time = p_event_end_time,
+      event_date = p_event_date,
+      event_type = coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+      category_id = v_root_category.id,
+      shared_origin_todo_id = null,
+      shared_origin_user_id = null,
+      shared_group_id = v_new_group_id,
+      shared_created_by = coalesce(v_root.shared_created_by, v_root.user_id),
+      is_shared_copy = false
+    where t.id = v_root.id;
+
+    delete from public.event_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id
+      and t.is_shared_copy = true
+      and (
+        t.shared_group_id is distinct from v_new_group_id
+        or not public.is_calendar_group_member(v_new_group_id, t.user_id)
+      );
+
+    for v_copy in
+      select gm.member_user_id as user_id
+      from public.get_shared_personal_group_member_ids(v_new_group_id) gm
+      where gm.member_user_id <> v_root.user_id
+    loop
+      v_copy_category_id := public.ensure_shared_event_calendar_category(
+        v_copy.user_id,
+        v_root_category.id
+      );
+
+      select t.id
+        into v_existing_copy_id
+      from public.event_calendar_todos t
+      where t.user_id = v_copy.user_id
+        and t.shared_origin_todo_id = v_root.id
+        and t.is_shared_copy = true
+      limit 1;
+
+      if v_existing_copy_id is null then
+        insert into public.event_calendar_todos (
+          user_id, event_date, event_type, category_id, event_text, memo,
+          event_time, event_end_time, is_done, shared_origin_todo_id,
+          shared_origin_user_id, shared_group_id, shared_created_by,
+          is_shared_copy
+        )
+        values (
+          v_copy.user_id, p_event_date,
+          coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+          v_copy_category_id, trim(p_event_text), coalesce(p_memo, ''),
+          coalesce(p_event_time, '00:00'::time), p_event_end_time,
+          v_root.is_done, v_root.id, v_root.user_id, v_new_group_id,
+          coalesce(v_root.shared_created_by, v_root.user_id), true
+        );
+      else
+        update public.event_calendar_todos t
+        set
+          event_date = p_event_date,
+          event_type = coalesce(v_root_category.slug, v_target.slug, 'anniversary'),
+          category_id = v_copy_category_id,
+          event_text = trim(p_event_text),
+          memo = coalesce(p_memo, ''),
+          event_time = coalesce(p_event_time, '00:00'::time),
+          event_end_time = p_event_end_time,
+          is_done = v_root.is_done,
+          shared_origin_user_id = v_root.user_id,
+          shared_group_id = v_new_group_id,
+          shared_created_by = coalesce(v_root.shared_created_by, v_root.user_id),
+          is_shared_copy = true
+        where t.id = v_existing_copy_id;
+      end if;
+
+      v_existing_copy_id := null;
+    end loop;
+
+    return;
+  end if;
+
+  if v_old_group_id is not null then
+    if v_selected.shared_origin_todo_id is not null or v_root.user_id <> v_uid then
+      raise exception '우리 일정을 개인 일정으로 바꾸려면 원본 작성자 계정에서 저장해야 합니다.';
+    end if;
+
+    delete from public.calendar_group_shared_events e
+    where e.group_id = v_old_group_id
+      and e.calendar_type = 'event'
+      and (
+        e.source_event_id = v_root.id::text
+        or e.source_event_id in (
+          select t.id::text
+          from public.event_calendar_todos t
+          where t.shared_origin_todo_id = v_root.id
+        )
+        or e.payload->>'shared_origin_todo_id' = v_root.id::text
+      );
+
+    delete from public.event_calendar_todos t
+    where t.shared_origin_todo_id = v_root.id
+      and t.is_shared_copy = true;
+  end if;
+
+  update public.event_calendar_todos t
+  set
+    event_text = trim(p_event_text),
+    memo = coalesce(p_memo, ''),
+    event_time = coalesce(p_event_time, '00:00'::time),
+    event_end_time = p_event_end_time,
+    event_date = p_event_date,
+    event_type = coalesce(v_target.slug, 'anniversary'),
+    category_id = v_target.id,
+    shared_origin_todo_id = null,
+    shared_origin_user_id = null,
+    shared_group_id = null,
+    shared_created_by = null,
+    is_shared_copy = false
+  where t.id = v_root.id;
+end;
+$$;
+
+revoke all on function public.save_event_calendar_todo(
+  uuid, text, text, time, time, date, uuid
+) from public;
+revoke all on function public.save_event_calendar_todo(
+  uuid, text, text, time, time, date, uuid
+) from anon;
+grant execute on function public.save_event_calendar_todo(
+  uuid, text, text, time, time, date, uuid
+) to authenticated;

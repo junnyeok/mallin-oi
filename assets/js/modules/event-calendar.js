@@ -863,58 +863,6 @@ async function insertTodo({
   return normalizeTodo(data);
 }
 
-async function updateTodoMemo({ todoId, memo }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ memo: memo || '' })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[event-calendar] updateTodoMemo error:', error.message);
-    throw error;
-  }
-}
-
-async function updateTodoText({ todoId, text }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ event_text: text })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[event-calendar] updateTodoText error:', error.message);
-    throw error;
-  }
-}
-
-async function updateTodoTime({ todoId, eventTime }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({
-      event_time: normalizeEventTime(eventTime),
-    })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[event-calendar] updateTodoTime error:', error.message);
-    throw error;
-  }
-}
-
-async function updateTodoEndTime({ todoId, eventEndTime }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({
-      event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
-    })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[event-calendar] updateTodoEndTime error:', error.message);
-    throw error;
-  }
-}
-
 async function setSharedPersonalTodoEndTime({ todoId, eventEndTime }) {
   const { error } = await supabase.rpc(
     'set_event_calendar_todo_end_time_shared_personal',
@@ -933,39 +881,29 @@ async function setSharedPersonalTodoEndTime({ todoId, eventEndTime }) {
   }
 }
 
-async function updateSharedPersonalTodo({ todoId, text, memo, eventTime }) {
-  const payload = { p_todo_id: todoId };
-
-  if (text !== undefined) payload.p_event_text = text;
-  if (memo !== undefined) payload.p_memo = memo;
-  if (eventTime !== undefined) {
-    payload.p_event_time = normalizeEventTime(eventTime);
-  }
-
-  const { error } = await supabase.rpc(
-    'update_event_shared_personal_todo',
-    payload,
-  );
-
-  if (error) {
-    console.error('[event-calendar] updateSharedPersonalTodo error:', error.message);
-    throw error;
-  }
-}
-
-async function updateTodoCategory({ todoId, category }) {
+async function saveTodoWithSharedPersonal({
+  todoId,
+  text,
+  memo,
+  eventTime,
+  eventEndTime,
+  eventDate,
+  category,
+}) {
   const safeCategory = category || getFallbackCategory([]);
 
-  const { error } = await supabase.rpc(
-    'update_event_calendar_todo_category_with_shared_personal',
-    {
-      p_todo_id: todoId,
-      p_category_id: safeCategory?.id || null,
-    },
-  );
+  const { error } = await supabase.rpc('save_event_calendar_todo', {
+    p_todo_id: todoId,
+    p_event_text: String(text || '').trim(),
+    p_memo: String(memo || ''),
+    p_event_time: normalizeEventTime(eventTime),
+    p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
+    p_event_date: eventDate,
+    p_category_id: safeCategory?.id || null,
+  });
 
   if (error) {
-    console.error('[event-calendar] updateTodoCategory error:', error.message);
+    console.error('[event-calendar] saveTodoWithSharedPersonal error:', error.message);
     throw error;
   }
 }
@@ -1265,6 +1203,12 @@ function renderTodoList({
       getCategoryTextColor(category.color),
     );
 
+    const dateInput = document.createElement('input');
+    dateInput.className = 'event-todo-item__date-input';
+    dateInput.type = 'date';
+    dateInput.value = todo.date;
+    dateInput.setAttribute('aria-label', '일정 날짜 수정');
+
     const timeInput = document.createElement('input');
     timeInput.className = 'event-todo-item__time-input';
     timeInput.type = 'text';
@@ -1368,6 +1312,7 @@ function renderTodoList({
     saveEditButton.disabled = true;
 
     const savedCategoryId = getTodoCategorySelectValue(todo, categories);
+    const savedDate = String(todo.date || '');
     const savedText = String(todo.text || '');
     const savedMemo = String(todo.memo || '');
     const savedTime = normalizeEventTime(todo.eventTime);
@@ -1375,6 +1320,7 @@ function renderTodoList({
 
     const isDirty = () =>
       categorySelect.value !== savedCategoryId ||
+      dateInput.value !== savedDate ||
       text.value !== savedText ||
       memoInput.value !== savedMemo ||
       normalizeEventTime(timeInput.dataset.time) !== savedTime ||
@@ -1392,6 +1338,7 @@ function renderTodoList({
     };
 
     categorySelect.addEventListener('change', syncDirtyState);
+    dateInput.addEventListener('change', syncDirtyState);
     text.addEventListener('input', syncDirtyState);
 
     memoToggle.addEventListener('click', () => {
@@ -1436,6 +1383,7 @@ function renderTodoList({
           text: nextText,
           memo: memoInput.value,
           category: nextCategory,
+          eventDate: dateInput.value,
           eventTime: timeInput.dataset.time,
           eventEndTime: endTimeInput.dataset.time,
         });
@@ -1446,7 +1394,13 @@ function renderTodoList({
       }
     });
 
-    controls.append(categorySelect, timeRange, timeInput, endTimeInput);
+    controls.append(
+      categorySelect,
+      dateInput,
+      timeRange,
+      timeInput,
+      endTimeInput,
+    );
     editActions.append(memoStatus, saveEditButton);
     memoBox.append(memoLabel, memoInput);
     body.append(controls, text, memoToggle, memoBox, editActions);
@@ -1975,7 +1929,7 @@ async function initPageCalendar() {
 
   async function saveTodoEdit(
     todoId,
-    { text, memo, category, eventTime, eventEndTime },
+    { text, memo, category, eventDate, eventTime, eventEndTime },
   ) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
@@ -1986,52 +1940,21 @@ async function initPageCalendar() {
 
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
+    const nextDate = String(eventDate || target.date || '').trim();
     const nextTime = normalizeEventTime(eventTime);
     const nextEndTime = normalizeOptionalEventTime(eventEndTime);
 
-    if (!nextText || !nextCategory?.id) return;
+    if (!nextText || !nextDate || !nextCategory?.id) return;
 
-    if (isSharedPersonalTodo(target)) {
-      await updateSharedPersonalTodo({
-        todoId,
-        text: nextText,
-        memo: nextMemo,
-        eventTime: nextTime,
-      });
-      await setSharedPersonalTodoEndTime({
-        todoId,
-        eventEndTime: nextEndTime,
-      });
-      await updateTodoCategory({
-        todoId,
-        category: nextCategory,
-      });
-      state.store = await fetchUserTodos(state.userId);
-      renderAll();
-      refreshGroupBackupNeeded();
-      return;
-    }
-
-    const currentCategoryId = getTodoCategorySelectValue(target, state.categories);
-
-    if (nextText !== String(target.text || '')) {
-      await updateTodoText({ todoId, text: nextText });
-    }
-    if (nextMemo !== String(target.memo || '')) {
-      await updateTodoMemo({ todoId, memo: nextMemo });
-    }
-    if (nextTime !== normalizeEventTime(target.eventTime)) {
-      await updateTodoTime({ todoId, eventTime: nextTime });
-    }
-    if (nextEndTime !== normalizeOptionalEventTime(target.eventEndTime)) {
-      await updateTodoEndTime({ todoId, eventEndTime: nextEndTime });
-    }
-    if (nextCategory.id !== currentCategoryId) {
-      await updateTodoCategory({
-        todoId,
-        category: nextCategory,
-      });
-    }
+    await saveTodoWithSharedPersonal({
+      todoId,
+      text: nextText,
+      memo: nextMemo,
+      eventDate: nextDate,
+      eventTime: nextTime,
+      eventEndTime: nextEndTime,
+      category: nextCategory,
+    });
     state.store = await fetchUserTodos(state.userId);
     renderAll();
     refreshGroupBackupNeeded();

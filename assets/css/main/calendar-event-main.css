@@ -1767,6 +1767,7 @@ body.theme-event[data-page='calendar-event']
   margin-left: 0;
 }
 
+.event-todo-item__date-input,
 .event-todo-item__time-input {
   width: 118px;
   min-height: 30px;
@@ -1780,6 +1781,10 @@ body.theme-event[data-page='calendar-event']
   cursor: pointer;
 }
 
+.event-todo-item__date-input {
+  width: 136px;
+}
+
 .event-todo-item__time-range {
   color: var(--color-text-sub);
   font-size: 12px;
@@ -1787,6 +1792,7 @@ body.theme-event[data-page='calendar-event']
   white-space: nowrap;
 }
 
+.event-todo-item__date-input:focus,
 .event-todo-item__time-input:focus {
   outline: 2px solid #fff0f6;
   border-color: #ff8fb3;
@@ -1998,6 +2004,7 @@ body.theme-event[data-page='calendar-event']
     max-width: 100%;
   }
 
+  .event-todo-item__date-input,
   .event-todo-item__time-input {
     width: 118px;
     font-size: 16px;
