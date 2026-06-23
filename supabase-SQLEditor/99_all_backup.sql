@@ -16996,6 +16996,36 @@ $$;
 revoke all on function public.get_my_calendar_widget_items(date, date) from public;
 grant execute on function public.get_my_calendar_widget_items(date, date) to authenticated;
 
+-- 2026-06-23 기동대 의무복무 오이소년 스킨 판매 추가
+-- purchase_store_item 함수 전체 교체본은 store-item_purchase-functions.sql에서 관리한다.
+-- 함수 적용 전에 이미 생성된 구매 기록이 있을 경우 스킨 인벤토리를 보정한다.
+insert into public.user_character_skins (
+  user_id,
+  character_code,
+  skin_code,
+  skin_name,
+  image_path,
+  display_order,
+  acquired_reason
+)
+select
+  usi.user_id,
+  'char-cucumber-boy',
+  'char-cucumber-boy-police',
+  '기동대 의무복무 오이소년',
+  './images/skins/cucumberboy_police.png',
+  502,
+  'store_purchase'
+from public.user_store_items usi
+where usi.item_id = 'skin-cucumberboy-01'
+  and exists (
+    select 1
+    from public.user_characters uc
+    where uc.user_id = usi.user_id
+      and uc.character_code = 'char-cucumber-boy'
+  )
+on conflict (user_id, skin_code) do nothing;
+
 -- =========================================
 -- 이벤트 캘린더 기간 일정/종료시간 추가 작업
 -- 실행일: 2026-06-23

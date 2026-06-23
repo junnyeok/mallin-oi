@@ -454,6 +454,7 @@
 ./images/skins/avocado-cafe.png
 ./images/skins/cucumber-owner.png
 ./images/skins/cucumber-soldier.png
+./images/skins/cucumberboy_police.png
 ./images/skins/cucumbergirl-police.png
 ./images/skins/eggpotato-police.png
 ./images/skins/grilledegg-PT.png

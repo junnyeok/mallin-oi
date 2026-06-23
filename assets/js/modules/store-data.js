@@ -295,6 +295,15 @@ export const CUCUMBER_GIRL_POLICE_SKIN_PREVIEW = [
   },
 ];
 
+export const CUCUMBER_BOY_POLICE_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-boy-police',
+    label: '기동대 의무복무 오이소년',
+    imagePath: withAssetVersion('./images/skins/cucumberboy_police.png'),
+    displayOrder: 1,
+  },
+];
+
 export const GRILLED_EGG_TRAINER_SKIN_PREVIEW = [
   {
     code: 'char-grilled-egg-trainer',
@@ -489,6 +498,23 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'skin-cucumberboy-01',
+    name: '기동대 의무복무 오이소년',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥒👮‍♂️',
+    thumbImagePath: withAssetVersion(
+      './images/skins/cucumberboy_police.png',
+    ),
+    price: 875,
+    state: '판매 중',
+    description: '기동대 의무복무에 끌려간 오이소년이야.',
+    detailDescription:
+      '오이소년은 거점근무를 제일 선호해. <br>(구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.)',
+    previewImages: CUCUMBER_BOY_POLICE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
   {
     id: 'BF-01',
     name: '무지개 프로필 테두리',
@@ -1173,6 +1199,14 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/cucumberboy.png'),
     display_order: 501,
     store_item_id: 'character-cucumberboy-01',
+  },
+  {
+    character_code: 'char-cucumber-boy',
+    skin_code: 'char-cucumber-boy-police',
+    skin_name: '기동대 의무복무 오이소년',
+    image_path: withAssetVersion('./images/skins/cucumberboy_police.png'),
+    display_order: 502,
+    store_item_id: 'skin-cucumberboy-01',
   },
   {
     character_code: 'char-egg-potato',

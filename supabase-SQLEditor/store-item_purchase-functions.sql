@@ -130,6 +130,13 @@ begin
     v_required_character_code := 'char-cucumber-girl';
     v_required_character_name := '오이소녀 캐릭터';
 
+  elsif p_item_id = 'skin-cucumberboy-01' then
+    v_price := 875;
+    v_name := '기동대 의무복무 오이소년';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber-boy';
+    v_required_character_name := '오이소년 캐릭터';
+
   elsif p_item_id = 'character-fat-avocado-01' then
     v_price := 580;
     v_name := '아보카도 캐릭터';
@@ -630,6 +637,21 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+  elsif p_item_id = 'skin-cucumberboy-01' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber-boy',
+      'char-cucumber-boy-police',
+      '기동대 의무복무 오이소년',
+      './images/skins/cucumberboy_police.png',
+      502,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
   elsif p_item_id = 'skin-grilledegg-01' then
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
@@ -852,6 +874,8 @@ begin
         then '슬픈오이 이모티콘팩 구매가 완료됐어. 210피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-cucumbergirl-01'
         then '오이소녀 경찰스킨 구매가 완료됐어. 923피클이 차감됐고 내프로필 오이소녀 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumberboy-01'
+        then '기동대 의무복무 오이소년 구매가 완료됐어. 875피클이 차감됐고 내프로필 오이소년 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'bgm-tetocarrot-01'
         then '테토당근 BGM 구매가 완료됐어. 420피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-grilledegg-01'
