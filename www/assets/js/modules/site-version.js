@@ -6,6 +6,36 @@ export const SITE_VERSION = String(
   window.__SITE_VERSION__ || FALLBACK_SITE_VERSION,
 ).trim();
 const VERSION_STORAGE_KEY = 'mallin_site_version';
+const ACKNOWLEDGED_VERSION_STORAGE_KEY = 'mallin_site_acknowledged_version';
+const PENDING_VERSION_STORAGE_KEY = 'mallin_site_pending_update_version';
+
+function getStoredVersion(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    console.warn('[site-version] storage read failed:', error);
+    return null;
+  }
+}
+
+function setStoredVersion(key, version) {
+  const normalizedVersion = String(version || '').trim();
+  if (!normalizedVersion) return;
+
+  try {
+    localStorage.setItem(key, normalizedVersion);
+  } catch (error) {
+    console.warn('[site-version] storage write failed:', error);
+  }
+}
+
+function removeStoredVersion(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn('[site-version] storage remove failed:', error);
+  }
+}
 
 function isExternalPath(path = '') {
   return /^(https?:)?\/\//i.test(path);
@@ -92,13 +122,20 @@ export function withAssetVersion(path = '') {
 }
 
 export function getVersionChangeInfo() {
-  const prevVersion = localStorage.getItem(VERSION_STORAGE_KEY);
+  const prevVersion = getStoredVersion(VERSION_STORAGE_KEY);
+  const acknowledgedVersion = getStoredVersion(ACKNOWLEDGED_VERSION_STORAGE_KEY);
+  const pendingVersion = getStoredVersion(PENDING_VERSION_STORAGE_KEY);
   const changed = prevVersion !== null && prevVersion !== SITE_VERSION;
+  const alreadyAcknowledged =
+    acknowledgedVersion === SITE_VERSION || pendingVersion === SITE_VERSION;
 
   return {
     prevVersion,
     currentVersion: SITE_VERSION,
+    acknowledgedVersion,
+    pendingVersion,
     changed,
+    shouldShowUpdate: changed && !alreadyAcknowledged,
     firstVisit: prevVersion === null,
   };
 }
@@ -125,15 +162,29 @@ export async function clearOldStaticCaches() {
   }
 }
 
-export function markCurrentVersionApplied() {
-  localStorage.setItem(VERSION_STORAGE_KEY, SITE_VERSION);
+export function markVersionUpdateAcknowledged(version = SITE_VERSION) {
+  const targetVersion = String(version || SITE_VERSION).trim();
+  setStoredVersion(ACKNOWLEDGED_VERSION_STORAGE_KEY, targetVersion);
+  setStoredVersion(PENDING_VERSION_STORAGE_KEY, targetVersion);
 }
 
-export async function applyVersionUpdateAndReload() {
+export function markCurrentVersionApplied(version = SITE_VERSION) {
+  const targetVersion = String(version || SITE_VERSION).trim();
+  setStoredVersion(VERSION_STORAGE_KEY, targetVersion);
+
+  if (getStoredVersion(PENDING_VERSION_STORAGE_KEY) === targetVersion) {
+    removeStoredVersion(PENDING_VERSION_STORAGE_KEY);
+  }
+}
+
+export async function applyVersionUpdateAndReload(version = SITE_VERSION) {
+  const targetVersion = String(version || SITE_VERSION).trim();
+  markVersionUpdateAcknowledged(targetVersion);
+
   await clearOldStaticCaches();
-  markCurrentVersionApplied();
+  markCurrentVersionApplied(targetVersion);
 
   const url = new URL(window.location.href);
-  url.searchParams.set('_updated', SITE_VERSION);
+  url.searchParams.set('_updated', targetVersion);
   window.location.replace(url.toString());
 }

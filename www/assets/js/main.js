@@ -454,10 +454,14 @@ async function initGlobalModules(modules) {
     await runSafe('site version check', async () => {
       const versionInfo = getVersionChangeInfo();
 
-      if (versionInfo.changed) {
-        showUpdateBanner(async () => {
-          await applyVersionUpdateAndReload();
+      if (versionInfo.shouldShowUpdate) {
+        showUpdateBanner(async (targetVersion) => {
+          await applyVersionUpdateAndReload(targetVersion);
+        }, {
+          targetVersion: versionInfo.currentVersion,
         });
+      } else if (versionInfo.changed) {
+        markCurrentVersionApplied(versionInfo.currentVersion);
       } else if (versionInfo.firstVisit) {
         markCurrentVersionApplied();
       }
