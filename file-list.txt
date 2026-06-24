@@ -212,7 +212,6 @@
 ./android/gradle/wrapper/gradle-wrapper.properties
 ./android/gradlew
 ./android/gradlew.bat
-./android/local.properties
 ./android/settings.gradle
 ./android/variables.gradle
 ./APP_RELEASE_GUIDE.md
@@ -801,8 +800,10 @@
 ./www/images/logo-word.png
 ./www/images/logo-work.png
 ./www/index.html
+./www/inventory.html
 ./www/login.html
 ./www/mypage.html
+./www/post.html
 ./www/prev-mypage.html
 ./www/partials/footer.html
 ./www/partials/header.html

@@ -5613,6 +5613,7 @@ create table if not exists public.user_emoticons (
   emoticon_label text not null,
   image_path text not null,
   display_order integer not null default 0,
+  is_equipped boolean not null default false,
   acquired_at timestamptz not null default now(),
   unique (user_id, emoticon_code)
 );
@@ -5633,6 +5634,16 @@ to authenticated
 using (auth.uid() = user_id);
 
 grant select on public.user_emoticons to authenticated;
+
+drop policy if exists "내 이모티콘 장착상태 수정" on public.user_emoticons;
+create policy "내 이모티콘 장착상태 수정"
+on public.user_emoticons
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+grant update (is_equipped) on public.user_emoticons to authenticated;
 
 create or replace function public.purchase_store_item(p_item_id text)
 returns table (
@@ -17225,6 +17236,20 @@ grant execute on function public.backup_my_calendar_to_group(uuid, text) to auth
 revoke all on function public.get_group_calendar_view(uuid, text, date, date) from public;
 revoke all on function public.get_group_calendar_view(uuid, text, date, date) from anon;
 grant execute on function public.get_group_calendar_view(uuid, text, date, date) to authenticated;
+
+-- 2026-06-24 이모티콘팩 장착/해제 인벤토리 기능
+alter table public.user_emoticons
+  add column if not exists is_equipped boolean not null default false;
+
+drop policy if exists "내 이모티콘 장착상태 수정" on public.user_emoticons;
+create policy "내 이모티콘 장착상태 수정"
+on public.user_emoticons
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+grant update (is_equipped) on public.user_emoticons to authenticated;
 
 -- 2026-06-23 이벤트 캘린더 우리일정 단일 저장 및 그룹 백업 중복 정리 실행쿼리
 -- 제목/메모/날짜/시간/카테고리를 한 번에 저장하고 공유 복제본 ID를 유지한다.

@@ -527,7 +527,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '오이소녀의 스티커 느낌의 이모티콘 팩이야.',
     detailDescription:
-      '오이소녀의 스티커 느낌의 이모티콘 팩이야. 구매하면 10개의 오이소녀 이모티콘이 계정에 지급되고, 게시글/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '오이소녀의 스티커 느낌의 이모티콘 팩이야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: CUCUMBER_GIRL_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -591,7 +591,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '감동/감격 받은 오이 이모티콘팩.',
     detailDescription:
-      '감동/감격 받은 오이 이모티콘팩야. 구매하면 11개의 감동/감격오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '감동/감격 받은 오이 이모티콘팩야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: MOVED_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -924,7 +924,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '눈물을 흘리는 오이 이모티콘팩.',
     detailDescription:
-      '슬퍼하는 오이 이모티콘 세트야. 구매하면 7개의 슬픈오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '슬퍼하는 오이 이모티콘 세트야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: SAD_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1006,7 +1006,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '밥먹는 오이 이모티콘팩.',
     detailDescription:
-      '밥먹는 오이 이모티콘 세트야. 구매하면 10개의 먹방오이 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '밥먹는 오이 이모티콘 세트야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: EAT_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1021,7 +1021,7 @@ export const STORE_ITEMS = [
     state: '무료 지급',
     description: '사이트 기본 지급용 이모티콘 7종 묶음.',
     detailDescription:
-      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 게시물/댓글/답글 작성 시 사용할 수 있어.',
+      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 게시글/댓글/답글 작성할 때 항상 사용할 수 있어.',
     previewImages: BASIC_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1036,7 +1036,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '축하, 응원, 박수 반응용 이모티콘 세트.',
     detailDescription:
-      '응원, 축하, 박수 반응에 쓰기 좋은 응원 이모티콘팩이야. 구매하면 5개의 응원 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '응원, 축하, 박수 반응에 쓰기 좋은 응원 이모티콘팩이야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: CHEER_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1051,7 +1051,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '경찰 모자, 장비 등이 들어간 이모티콘 세트.',
     detailDescription:
-      '경찰 테마 이모티콘팩이야. 경찰 모자, 장비, 순찰차 등을 넣어봤어. 구매하면 8개의 경찰 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '경찰 테마 이모티콘팩이야. 경찰 모자, 장비, 순찰차 등을 넣어봤어. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: POLICE_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1066,7 +1066,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '감사인사를 하는 오이 이모티콘 세트.',
     detailDescription:
-      '오이 캐릭터가 감사인사를 하는 이모티콘 세트야. 구매하면 5개의 감사 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '오이 캐릭터가 감사인사를 하는 이모티콘 세트야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: THANKS_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1081,7 +1081,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '사과를 하는 오이 이모티콘 세트.',
     detailDescription:
-      '오이 캐릭터가 사과를 하는 이모티콘 세트야. 구매하면 6개의 사과 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '오이 캐릭터가 사과를 하는 이모티콘 세트야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: SORRY_EMOTICON_PACK,
     isPurchasable: true,
   },
@@ -1096,7 +1096,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '특별제작한 당근을 이모티콘으로 사용할 수 있는 세트.',
     detailDescription:
-      '특별제작한 당근 캐릭터를 이모티콘으로 사용할 수 있는 세트야. 구매하면 13개의 당근 이모티콘이 계정에 지급되고, 게시물/댓글/답글 작성할 때 바로 사용할 수 있어.',
+      '특별제작한 당근 캐릭터를 이모티콘으로 사용할 수 있는 세트야. 구매 후 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: CARROT_EMOTICON_PACK,
     isPurchasable: true,
   },

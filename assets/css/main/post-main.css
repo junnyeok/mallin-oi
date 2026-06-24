@@ -1422,6 +1422,33 @@
   cursor: not-allowed;
 }
 
+.emoticon-tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.emoticon-setting-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.emoticon-setting-link:hover {
+  border-color: var(--color-primary);
+  background: rgba(170, 208, 94, 0.12);
+}
+
 .inline-emoticon--comment {
   width: 100px;
   height: 100px;

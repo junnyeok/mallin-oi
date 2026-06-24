@@ -25,7 +25,11 @@ const MODULE_VERSION = encodeURIComponent(
 );
 
 const [
-  { renderTextWithEmoticons },
+  {
+    loadOwnedEmoticonPacks,
+    renderTextWithEmoticons,
+    setEmoticonPackEquipped,
+  },
   {
     BGM_CATALOG,
     CHARACTER_CATALOG,
@@ -938,8 +942,16 @@ const INVENTORY_LIMIT_TARGETS = [
     listId: 'profileBackgroundList',
   },
   {
+    wrapId: 'profileFrameWrap',
+    listId: 'profileFrameList',
+  },
+  {
     wrapId: 'profileBgmWrap',
     listId: 'profileBgmList',
+  },
+  {
+    wrapId: 'profileEmoticonWrap',
+    listId: 'profileEmoticonList',
   },
 ];
 
@@ -948,7 +960,17 @@ const INVENTORY_HASH_TARGET_MAP = {
   'skin-inventory': 'profileCharacterSkinWrap',
   'character-effect-inventory': 'profileCharacterEffectWrap',
   'profile-background-inventory': 'profileBackgroundWrap',
+  'profile-frame-inventory': 'profileFrameWrap',
   'bgm-inventory': 'profileBgmWrap',
+  'emoticon-inventory': 'profileEmoticonWrap',
+};
+
+const INVENTORY_VISIBLE_LIMITS = {
+  profileCharacterSkinList: 6,
+  profileBackgroundList: 4,
+  profileFrameList: 4,
+  profileBgmList: 8,
+  profileEmoticonList: 10,
 };
 
 let inventoryResizeTimer = null;
@@ -987,6 +1009,9 @@ function getInventoryGridColumnCount(listEl) {
 }
 
 function getInventoryVisibleLimitByViewport(listEl) {
+  const fixedLimit = INVENTORY_VISIBLE_LIMITS[listEl?.id];
+  if (Number.isFinite(fixedLimit)) return fixedLimit;
+
   const isMobile = window.matchMedia(INVENTORY_MOBILE_QUERY).matches;
 
   if (isMobile) {
@@ -1845,6 +1870,107 @@ function renderBgmSection({
   renderList();
 }
 
+function renderEmoticonPackCard(pack) {
+  const isEquipped = pack?.isEquipped === true;
+  const isDefault = pack?.isDefault === true;
+  const metaText = isDefault
+    ? '기본팩 · 항상 사용 가능'
+    : isEquipped
+      ? '장착됨 · 클릭하면 해제'
+      : '미장착 · 클릭하면 장착';
+
+  return `
+    <button
+      type="button"
+      class="profile-character-card profile-emoticon-card ${isEquipped ? 'is-equipped' : ''}"
+      data-emoticon-pack-item-id="${escapeHtml(pack?.itemId || '')}"
+      data-equipped="${isEquipped ? 'true' : 'false'}"
+      data-default="${isDefault ? 'true' : 'false'}"
+    >
+      <img
+        class="profile-character-card__thumb profile-emoticon-card__thumb"
+        src="${escapeHtml(pack?.iconPath || '')}"
+        alt="${escapeHtml(pack?.label || '이모티콘팩')}"
+      />
+      <div class="profile-character-card__name">
+        ${escapeHtml(pack?.label || '이모티콘팩')}
+      </div>
+      <div class="profile-character-card__meta">
+        ${escapeHtml(metaText)}
+      </div>
+    </button>
+  `;
+}
+
+async function renderEmoticonInventorySection({
+  isOwnProfile = false,
+  currentUser = null,
+} = {}) {
+  const wrapEl = $('profileEmoticonWrap');
+  const listEl = $('profileEmoticonList');
+
+  if (!wrapEl || !listEl) return;
+
+  wrapEl.hidden = !isOwnProfile;
+  if (!isOwnProfile) return;
+
+  const userId = String(currentUser?.id || '').trim();
+  if (!userId) {
+    listEl.innerHTML = `<div class="profile-character-empty">로그인 후 이모티콘 인벤토리를 사용할 수 있어.</div>`;
+    return;
+  }
+
+  const packs = await loadOwnedEmoticonPacks(userId);
+
+  if (!packs.length) {
+    listEl.innerHTML = `<div class="profile-character-empty">보유한 이모티콘팩이 없어.</div>`;
+    applyInventoryLimitByIds('profileEmoticonWrap', 'profileEmoticonList');
+    return;
+  }
+
+  const sortedPacks = sortEquippedItemFirst(
+    packs,
+    (pack) => pack?.isEquipped === true,
+  );
+
+  listEl.innerHTML = sortedPacks.map(renderEmoticonPackCard).join('');
+
+  applyInventoryLimitByIds('profileEmoticonWrap', 'profileEmoticonList');
+
+  Array.from(listEl.querySelectorAll('[data-emoticon-pack-item-id]')).forEach(
+    (button) => {
+      button.addEventListener('click', async () => {
+        const itemId = String(button.dataset.emoticonPackItemId || '').trim();
+        const isDefault = button.dataset.default === 'true';
+        const isEquipped = button.dataset.equipped === 'true';
+
+        if (!itemId || isDefault) return;
+
+        setMsg(isEquipped ? '이모티콘팩 해제 중...' : '이모티콘팩 장착 중...');
+
+        try {
+          await setEmoticonPackEquipped(userId, itemId, !isEquipped);
+          await renderEmoticonInventorySection({ isOwnProfile, currentUser });
+
+          setMsg(
+            isEquipped ? '이모티콘팩 해제 완료!' : '이모티콘팩 장착 완료!',
+            'green',
+          );
+
+          emitEquipmentChanged({
+            userId,
+            source: 'profile-emoticon',
+            changed: ['emoticons'],
+          });
+        } catch (error) {
+          console.error('[profile] save emoticon pack equipment failed:', error);
+          setMsg('이모티콘팩 장착 상태 저장 중 오류가 발생했어.', 'red');
+        }
+      });
+    },
+  );
+}
+
 function shouldAutoScrollToBgmInventory() {
   const hash = decodeURIComponent(
     String(window.location.hash || '').replace('#', ''),
@@ -2650,6 +2776,11 @@ export async function initProfile() {
     ownedStoreItemIds,
     currentUser,
     profileRow,
+  });
+
+  await renderEmoticonInventorySection({
+    isOwnProfile,
+    currentUser,
   });
 
   refreshInventoryLimits();

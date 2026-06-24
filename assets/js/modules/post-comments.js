@@ -37,6 +37,7 @@ const commentCharacterImageCache = new Map();
 const commentCharacterEffectCache = new Map();
 let ownedCommentEmoticons = [];
 let commentEmoticonDocumentBound = false;
+let commentEmoticonUserLoggedIn = false;
 async function hasCommentPickleReward(userId, commentId) {
   if (!userId || !commentId) return false;
 
@@ -724,13 +725,22 @@ function renderCommentItem(
           >${escapeHtml(comment.body || '')}</textarea>
 
           <div class="comment-edit-form__tools emoticon-picker-box">
-            <button
-              type="button"
-              class="comment-emoticon-toggle"
-              data-action="toggle-emoticon"
-            >
-              🥒 이모티콘
-            </button>
+            <div class="emoticon-tool-actions">
+              <button
+                type="button"
+                class="comment-emoticon-toggle"
+                data-action="toggle-emoticon"
+              >
+                🥒 이모티콘
+              </button>
+
+              <a
+                class="emoticon-setting-link"
+                href="./inventory.html#emoticon-inventory"
+              >
+                설정
+              </a>
+            </div>
 
             <div
               class="emoticon-picker"
@@ -738,7 +748,8 @@ function renderCommentItem(
               hidden
             >
               ${renderOwnedEmoticonPicker(ownedCommentEmoticons, {
-                emptyText: '보유한 이모티콘이 없어.',
+                emptyText:
+                  '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
               })}
             </div>
           </div>
@@ -787,13 +798,22 @@ function renderCommentItem(
         </label>
 
                 <div class="comment-reply-form__tools emoticon-picker-box">
-          <button
-            type="button"
-            class="comment-emoticon-toggle"
-            data-action="toggle-emoticon"
-          >
-            🥒 이모티콘
-          </button>
+          <div class="emoticon-tool-actions">
+            <button
+              type="button"
+              class="comment-emoticon-toggle"
+              data-action="toggle-emoticon"
+            >
+              🥒 이모티콘
+            </button>
+
+            <a
+              class="emoticon-setting-link"
+              href="./inventory.html#emoticon-inventory"
+            >
+              설정
+            </a>
+          </div>
 
           <div
             class="emoticon-picker"
@@ -801,7 +821,8 @@ function renderCommentItem(
             hidden
           >
             ${renderOwnedEmoticonPicker(ownedCommentEmoticons, {
-              emptyText: '보유한 이모티콘이 없어.',
+              emptyText:
+                '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
             })}
           </div>
         </div>
@@ -1127,7 +1148,8 @@ function closeAllEmoticonPanels() {
 
 function refreshCommentEmoticonUi() {
   const html = renderOwnedEmoticonPicker(ownedCommentEmoticons, {
-    emptyText: '보유한 이모티콘이 없어.',
+    emptyText:
+      '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
   });
 
   document
@@ -1140,7 +1162,7 @@ function refreshCommentEmoticonUi() {
   document
     .querySelectorAll('.comment-emoticon-toggle[data-action="toggle-emoticon"]')
     .forEach((button) => {
-      button.disabled = ownedCommentEmoticons.length === 0;
+      button.disabled = !commentEmoticonUserLoggedIn;
     });
 }
 
@@ -1148,11 +1170,13 @@ async function syncOwnedCommentEmoticons() {
   const user = await getCurrentUser();
 
   if (!user?.id) {
+    commentEmoticonUserLoggedIn = false;
     ownedCommentEmoticons = [];
     refreshCommentEmoticonUi();
     return;
   }
 
+  commentEmoticonUserLoggedIn = true;
   ownedCommentEmoticons = await loadOwnedEmoticons(user.id);
   refreshCommentEmoticonUi();
 }

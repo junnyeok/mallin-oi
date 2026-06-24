@@ -527,12 +527,13 @@ async function initWriteEmoticonPicker(user) {
   const ownedEmoticons = await loadOwnedEmoticons(user.id);
 
   panel.innerHTML = renderOwnedEmoticonPicker(ownedEmoticons, {
-    emptyText: '보유한 이모티콘이 없어.',
+    emptyText:
+      '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
   });
 
   switchEmoticonPickerPack(panel);
 
-  toggleBtn.disabled = ownedEmoticons.length === 0;
+  toggleBtn.disabled = false;
 
   const keepEditorSelection = (event) => {
     preserveEditorSelectionFromEvent(event);
@@ -569,8 +570,6 @@ async function initWriteEmoticonPicker(user) {
   });
 
   toggleBtn.addEventListener('click', () => {
-    if (!ownedEmoticons.length) return;
-
     restoreSavedSelectionRange();
     panel.hidden = !panel.hidden;
   });

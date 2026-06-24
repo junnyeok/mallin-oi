@@ -139,6 +139,28 @@ function getPackKeyByEmoticonCode(code = '') {
   return found?.key || 'etc';
 }
 
+function getPackMetaByItemId(itemId = '') {
+  const safeItemId = String(itemId || '').trim();
+  return PACK_META.find((pack) => pack.itemId === safeItemId) || null;
+}
+
+function isBasicEmoticonPack(itemId = '') {
+  return String(itemId || '').trim() === 'emo-basic-01';
+}
+
+function normalizeEmoticonRow(row = {}) {
+  const itemId = String(row?.item_id || '').trim();
+
+  return {
+    item_id: itemId,
+    emoticon_code: String(row?.emoticon_code || '').trim(),
+    emoticon_label: String(row?.emoticon_label || '이모티콘').trim(),
+    image_path: withAssetVersion(String(row?.image_path || '').trim()),
+    display_order: Number(row?.display_order || 0),
+    is_equipped: isBasicEmoticonPack(itemId) || row?.is_equipped === true,
+  };
+}
+
 function groupOwnedEmoticonsByPack(emoticons = []) {
   const grouped = new Map();
 
@@ -158,6 +180,40 @@ function groupOwnedEmoticonsByPack(emoticons = []) {
     ...pack,
     emoticons: grouped.get(pack.key) || [],
   })).filter((pack) => pack.emoticons.length > 0);
+}
+
+async function loadOwnedEmoticonRows(userId) {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId) return [];
+
+  const baseQuery = supabase
+    .from('user_emoticons')
+    .select(
+      'item_id, emoticon_code, emoticon_label, image_path, display_order, is_equipped',
+    )
+    .eq('user_id', safeUserId)
+    .order('display_order', { ascending: true });
+
+  const { data, error } = await baseQuery;
+
+  if (!error) {
+    return (data || []).map(normalizeEmoticonRow);
+  }
+
+  const message = String(error?.message || '').toLowerCase();
+  if (!message.includes('is_equipped')) {
+    throw error;
+  }
+
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from('user_emoticons')
+    .select('item_id, emoticon_code, emoticon_label, image_path, display_order')
+    .eq('user_id', safeUserId)
+    .order('display_order', { ascending: true });
+
+  if (fallbackError) throw fallbackError;
+
+  return (fallbackData || []).map(normalizeEmoticonRow);
 }
 
 export function getEmoticonPackByItemId(itemId = '') {
@@ -211,26 +267,68 @@ export function getEmoticonPackByItemId(itemId = '') {
 }
 
 export async function loadOwnedEmoticons(userId) {
-  const safeUserId = String(userId || '').trim();
-  if (!safeUserId) return [];
-
-  const { data, error } = await supabase
-    .from('user_emoticons')
-    .select('emoticon_code, emoticon_label, image_path, display_order')
-    .eq('user_id', safeUserId)
-    .order('display_order', { ascending: true });
-
-  if (error) {
+  try {
+    return (await loadOwnedEmoticonRows(userId)).filter(
+      (row) => row.is_equipped,
+    );
+  } catch (error) {
     console.error('[emoticons] loadOwnedEmoticons failed:', error);
     return [];
   }
+}
 
-  return (data || []).map((row) => ({
-    emoticon_code: String(row?.emoticon_code || '').trim(),
-    emoticon_label: String(row?.emoticon_label || '이모티콘').trim(),
-    image_path: withAssetVersion(String(row?.image_path || '').trim()),
-    display_order: Number(row?.display_order || 0),
-  }));
+export async function loadOwnedEmoticonPacks(userId) {
+  try {
+    const rows = await loadOwnedEmoticonRows(userId);
+    const grouped = new Map();
+
+    rows.forEach((row) => {
+      const itemId = String(row?.item_id || '').trim();
+      if (!itemId) return;
+
+      if (!grouped.has(itemId)) {
+        grouped.set(itemId, []);
+      }
+
+      grouped.get(itemId).push(row);
+    });
+
+    return [...grouped.entries()]
+      .map(([itemId, packRows]) => {
+        const meta = getPackMetaByItemId(itemId);
+        const first = packRows[0] || {};
+        const isBasic = isBasicEmoticonPack(itemId);
+
+        return {
+          itemId,
+          label: meta?.label || first.emoticon_label || '이모티콘팩',
+          iconPath: withAssetVersion(meta?.iconPath || first.image_path || ''),
+          count: packRows.length,
+          isDefault: isBasic,
+          isEquipped: isBasic || packRows.some((row) => row.is_equipped),
+          displayOrder: Number(first.display_order || 9999),
+        };
+      })
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  } catch (error) {
+    console.error('[emoticons] loadOwnedEmoticonPacks failed:', error);
+    return [];
+  }
+}
+
+export async function setEmoticonPackEquipped(userId, itemId, isEquipped) {
+  const safeUserId = String(userId || '').trim();
+  const safeItemId = String(itemId || '').trim();
+
+  if (!safeUserId || !safeItemId || isBasicEmoticonPack(safeItemId)) return;
+
+  const { error } = await supabase
+    .from('user_emoticons')
+    .update({ is_equipped: !!isEquipped })
+    .eq('user_id', safeUserId)
+    .eq('item_id', safeItemId);
+
+  if (error) throw error;
 }
 
 export function createInlineEmoticonNode(emoticon) {
