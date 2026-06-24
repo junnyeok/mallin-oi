@@ -1,0 +1,121 @@
+/* assets/css/components/calendar-app-download-popup.css */
+
+.calendar-app-download-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.calendar-app-download-popup__dialog {
+  position: relative;
+  width: min(100%, 440px);
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+}
+
+.calendar-app-download-popup__close {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: var(--text-h2);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendar-app-download-popup__title {
+  margin: 0 var(--space-32) var(--space-12) 0;
+  font-size: var(--text-h2);
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.calendar-app-download-popup__desc {
+  margin: 0 0 var(--space-24);
+  color: var(--color-text-sub);
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+}
+
+.calendar-app-download-popup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.calendar-app-download-popup__button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.calendar-app-download-popup__button--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.calendar-app-download-popup__button--quiet {
+  color: var(--color-text-sub);
+}
+
+.calendar-app-download-popup__button:focus-visible,
+.calendar-app-download-popup__close:focus-visible {
+  outline: 3px solid var(--color-primary-sub);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .calendar-app-download-popup {
+    align-items: flex-end;
+    padding: var(--space-12);
+    padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom));
+  }
+
+  .calendar-app-download-popup__dialog {
+    padding: var(--space-16);
+  }
+
+  .calendar-app-download-popup__title {
+    margin-right: var(--space-32);
+    font-size: var(--text-body);
+  }
+
+  .calendar-app-download-popup__desc {
+    margin-bottom: var(--space-16);
+    font-size: var(--text-small);
+  }
+
+  .calendar-app-download-popup__actions {
+    flex-direction: column;
+  }
+
+  .calendar-app-download-popup__button {
+    width: 100%;
+  }
+}

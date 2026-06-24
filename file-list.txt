@@ -33,6 +33,7 @@
 ./android/app/src/main/assets/public/assets/css/02-base.css
 ./android/app/src/main/assets/public/assets/css/03-layout.css
 ./android/app/src/main/assets/public/assets/css/components/auth-links.css
+./android/app/src/main/assets/public/assets/css/components/calendar-app-download-popup.css
 ./android/app/src/main/assets/public/assets/css/components/character-effects.css
 ./android/app/src/main/assets/public/assets/css/components/cursor-buddy.css
 ./android/app/src/main/assets/public/assets/css/components/footer.css
@@ -75,6 +76,7 @@
 ./android/app/src/main/assets/public/assets/js/modules/auth-store.js
 ./android/app/src/main/assets/public/assets/js/modules/bgm-player.js
 ./android/app/src/main/assets/public/assets/js/modules/bgm-preferences.js
+./android/app/src/main/assets/public/assets/js/modules/calendar-app-download-popup.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-groups.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-shared-personal-readonly.js
@@ -221,6 +223,7 @@
 ./assets/css/02-base.css
 ./assets/css/03-layout.css
 ./assets/css/components/auth-links.css
+./assets/css/components/calendar-app-download-popup.css
 ./assets/css/components/character-effects.css
 ./assets/css/components/cursor-buddy.css
 ./assets/css/components/footer.css
@@ -263,6 +266,7 @@
 ./assets/js/modules/auth-store.js
 ./assets/js/modules/bgm-player.js
 ./assets/js/modules/bgm-preferences.js
+./assets/js/modules/calendar-app-download-popup.js
 ./assets/js/modules/calendar-groups.js
 ./assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./assets/js/modules/calendar-shared-personal-readonly.js
@@ -501,6 +505,7 @@
 ./ios/App/App/public/assets/css/02-base.css
 ./ios/App/App/public/assets/css/03-layout.css
 ./ios/App/App/public/assets/css/components/auth-links.css
+./ios/App/App/public/assets/css/components/calendar-app-download-popup.css
 ./ios/App/App/public/assets/css/components/character-effects.css
 ./ios/App/App/public/assets/css/components/cursor-buddy.css
 ./ios/App/App/public/assets/css/components/footer.css
@@ -543,6 +548,7 @@
 ./ios/App/App/public/assets/js/modules/auth-store.js
 ./ios/App/App/public/assets/js/modules/bgm-player.js
 ./ios/App/App/public/assets/js/modules/bgm-preferences.js
+./ios/App/App/public/assets/js/modules/calendar-app-download-popup.js
 ./ios/App/App/public/assets/js/modules/calendar-groups.js
 ./ios/App/App/public/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./ios/App/App/public/assets/js/modules/calendar-shared-personal-readonly.js
@@ -688,6 +694,7 @@
 ./www/assets/css/02-base.css
 ./www/assets/css/03-layout.css
 ./www/assets/css/components/auth-links.css
+./www/assets/css/components/calendar-app-download-popup.css
 ./www/assets/css/components/character-effects.css
 ./www/assets/css/components/cursor-buddy.css
 ./www/assets/css/components/footer.css
@@ -730,6 +737,7 @@
 ./www/assets/js/modules/auth-store.js
 ./www/assets/js/modules/bgm-player.js
 ./www/assets/js/modules/bgm-preferences.js
+./www/assets/js/modules/calendar-app-download-popup.js
 ./www/assets/js/modules/calendar-groups.js
 ./www/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./www/assets/js/modules/calendar-shared-personal-readonly.js

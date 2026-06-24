@@ -29,6 +29,10 @@ const CORE_MODULE_SPECS = [
   ['updateBannerModule', './modules/update-banner.js'],
   ['refreshControlModule', './modules/refresh-control.js'],
   ['appCalendarModeModule', './modules/app-calendar-mode.js'],
+  [
+    'calendarAppDownloadPopupModule',
+    './modules/calendar-app-download-popup.js',
+  ],
   ['pwaInstallModule', './modules/pwa-install.js'],
   ['cursorBuddyModule', './modules/cursor-buddy.js'],
   ['postsUiModule', './modules/posts-ui.js'],
@@ -389,6 +393,7 @@ async function initGlobalModules(modules) {
     refreshControlModule,
     pwaInstallModule,
     appCalendarModeModule,
+    calendarAppDownloadPopupModule,
     cursorBuddyModule,
     searchNavModule,
     layoutIncludesModule,
@@ -418,6 +423,8 @@ async function initGlobalModules(modules) {
   const { initRefreshControls = () => {} } = refreshControlModule;
   const { initPwaInstall = async () => {} } = pwaInstallModule;
   const { initCalendarAppMode = () => false } = appCalendarModeModule;
+  const { initCalendarAppDownloadPopup = () => {} } =
+    calendarAppDownloadPopupModule;
   const { initCursorBuddy = () => {} } = cursorBuddyModule;
   const { initSearchNav = () => {} } = searchNavModule;
   const {
@@ -441,6 +448,10 @@ async function initGlobalModules(modules) {
     : initCalendarAppMode();
 
   if (!calendarAppMode) {
+    await runSafe('calendar app download popup', async () => {
+      initCalendarAppDownloadPopup();
+    });
+
     await runSafe('pwa install', async () => {
       await initPwaInstall();
     });
