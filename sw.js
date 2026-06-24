@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260624-07';
+const SITE_VERSION = '20260624-08';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;

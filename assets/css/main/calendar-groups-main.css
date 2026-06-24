@@ -83,6 +83,9 @@
 }
 
 .calendar-group-bar__backup:disabled {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-sub);
   opacity: 0.55;
   cursor: not-allowed;
 }

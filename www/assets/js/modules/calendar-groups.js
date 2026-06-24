@@ -27,6 +27,13 @@ const GROUP_COLORS = [
   '#eeeeee',
 ];
 const GROUP_DESCRIPTION_MAX_LENGTH = 100;
+const BACKUP_STATUS = {
+  IDLE: 'idle',
+  PENDING: 'pending',
+  CHECKING: 'checking',
+  RUNNING: 'running',
+};
+const BACKUP_BOOLEAN_PAYLOAD_KEYS = new Set(['isDone', 'is_shared_copy']);
 const BACKUP_SOURCE_CONFIG = {
   study: {
     table: 'study_calendar_todos',
@@ -408,7 +415,14 @@ function normalizeBackupPayload(payload = {}) {
   return Object.keys(payload)
     .sort()
     .reduce((result, key) => {
-      result[key] = payload[key] ?? null;
+      const value = payload[key];
+      if (BACKUP_BOOLEAN_PAYLOAD_KEYS.has(key)) {
+        result[key] =
+          value === true || value === 'true' || value === 1 || value === '1';
+        return result;
+      }
+
+      result[key] = value ?? null;
       return result;
     }, {});
 }
@@ -829,6 +843,7 @@ export async function initCalendarGroupBar({
     backupNeeded: false,
     backupChecking: false,
     backupCheckId: 0,
+    backupStatus: BACKUP_STATUS.IDLE,
   };
 
   const bar = document.createElement('section');
@@ -893,19 +908,33 @@ export async function initCalendarGroupBar({
 
   function updateBackupButtonState() {
     const isActive = isCalendarGroupActive(state);
+    const isChecking = state.backupStatus === BACKUP_STATUS.CHECKING;
+    const isRunning = state.backupStatus === BACKUP_STATUS.RUNNING;
+    const hasPendingPersonalCalendarChanges =
+      state.backupStatus === BACKUP_STATUS.PENDING ||
+      (state.backupNeeded && !isChecking && !isRunning);
     const canBackup =
-      isActive && state.backupNeeded && !state.backupChecking;
+      isActive &&
+      hasPendingPersonalCalendarChanges &&
+      !isChecking &&
+      !isRunning;
     const isHighlighted = canBackup;
     const label =
-      isActive && state.backupChecking
-        ? '백업 상태 확인 중'
-        : canBackup
-          ? '백업 필요: 그룹 캘린더에 변경사항 반영'
-          : '백업할 변경사항 없음';
+      !isActive
+        ? '백업할 변경사항 없음'
+        : isRunning
+          ? '백업 중'
+          : isChecking
+            ? '백업 상태 확인 중'
+            : canBackup
+              ? '백업 필요: 그룹 캘린더에 변경사항 반영'
+              : '백업할 변경사항 없음';
 
     backupButton.disabled = !canBackup;
     backupButton.classList.toggle('is-backup-needed', isHighlighted);
     backupButton.dataset.backupNeeded = isHighlighted ? 'true' : 'false';
+    backupButton.dataset.backupStatus = state.backupStatus;
+    backupButton.setAttribute('aria-disabled', canBackup ? 'false' : 'true');
     backupButton.setAttribute('aria-label', label);
     backupButton.title = label;
   }
@@ -914,6 +943,9 @@ export async function initCalendarGroupBar({
     state.backupNeeded = Boolean(
       isNeeded && isCalendarGroupActive(state),
     );
+    state.backupStatus = state.backupNeeded
+      ? BACKUP_STATUS.PENDING
+      : BACKUP_STATUS.IDLE;
     updateBackupButtonState();
   }
 
@@ -928,6 +960,7 @@ export async function initCalendarGroupBar({
     }
 
     state.backupChecking = true;
+    state.backupStatus = BACKUP_STATUS.CHECKING;
     updateBackupButtonState();
 
     try {
@@ -954,6 +987,9 @@ export async function initCalendarGroupBar({
         groupId === state.selectedGroup?.id
       ) {
         state.backupChecking = false;
+        state.backupStatus = state.backupNeeded
+          ? BACKUP_STATUS.PENDING
+          : BACKUP_STATUS.IDLE;
         updateBackupButtonState();
       }
       return state.backupNeeded;
@@ -1055,7 +1091,8 @@ export async function initCalendarGroupBar({
     let backupSucceeded = false;
     state.backupCheckId += 1;
     state.backupChecking = true;
-    setBackupNeeded(false);
+    state.backupStatus = BACKUP_STATUS.RUNNING;
+    updateBackupButtonState();
     backupButton.textContent = '백업 중';
     setStatus('내 일정을 그룹 공유 데이터로 백업하는 중...');
 
