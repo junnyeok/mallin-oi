@@ -3,6 +3,8 @@
 ========================= */
 
 .character-effect-wrap {
+  --character-effect-top: -4px;
+
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -19,14 +21,14 @@
 .character-effect-img {
   position: absolute;
   left: 50%;
-  top: 0;
+  top: var(--character-effect-top);
   width: var(--character-effect-size, 58px);
   height: auto;
   pointer-events: none;
   user-select: none;
   z-index: 2;
   opacity: 0.25;
-  transform: translate(-50%, -58%) translateY(4px);
+  transform: translate(-50%, -100%) translateY(4px);
   animation: characterEffectFloat 2.4s ease-in-out infinite;
 }
 
@@ -37,30 +39,33 @@
 @keyframes characterEffectFloat {
   0% {
     opacity: 0.25;
-    transform: translate(-50%, -50%) translateY(4px) scale(0.96);
+    transform: translate(-50%, -100%) translateY(4px) scale(0.96);
   }
 
   50% {
     opacity: 1;
-    transform: translate(-50%, -68%) translateY(-4px) scale(1);
+    transform: translate(-50%, -100%) translateY(-4px) scale(1);
   }
 
   100% {
     opacity: 0.25;
-    transform: translate(-50%, -50%) translateY(4px) scale(0.96);
+    transform: translate(-50%, -100%) translateY(4px) scale(0.96);
   }
 }
 
 .profile-character-preview.character-effect-wrap {
   --character-effect-size: 72px;
+  --character-effect-top: -6px;
 }
 
 .post-author__character-effect-wrap {
   --character-effect-size: 44px;
+  --character-effect-top: -2px;
 }
 
 .comment-author-character-effect-wrap {
   --character-effect-size: 44px;
+  --character-effect-top: -2px;
 }
 
 @media (max-width: 700px) {
@@ -78,7 +83,7 @@
   .character-effect-img {
     animation: none;
     opacity: 0.8;
-    transform: translate(-50%, -62%);
+    transform: translate(-50%, -100%);
   }
 }
 
@@ -101,6 +106,7 @@
 
 .store-item-preview__effect-stage {
   --character-effect-size: 72px;
+  --character-effect-top: -6px;
 
   position: relative;
   display: inline-flex;
@@ -124,7 +130,7 @@
 
 .store-item-preview__effect-img {
   left: 50%;
-  top: 0;
+  top: var(--character-effect-top);
 }
 
 .store-item-preview__effect-help {
