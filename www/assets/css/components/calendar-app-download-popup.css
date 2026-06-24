@@ -78,6 +78,7 @@
 .calendar-app-download-popup__button--primary {
   border-color: var(--color-primary);
   background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .calendar-app-download-popup__button--quiet {

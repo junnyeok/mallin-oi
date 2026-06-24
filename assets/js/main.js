@@ -23,6 +23,13 @@ let globalInitialized = false;
 let calendarAppModeInitialized = false;
 let calendarAppModeEarlyResult = false;
 
+const CALENDAR_APP_DOWNLOAD_POPUP_PAGES = new Set([
+  'calendar-study',
+  'calendar-work',
+  'calendar-event',
+  'calendar-groups',
+]);
+
 const CORE_MODULE_SPECS = [
   ['mobileStabilityModule', './modules/mobile-stability.js'],
   ['siteVersionModule', './modules/site-version.js'],
@@ -171,6 +178,7 @@ async function initPageModules(modules) {
     eventCalendarModule,
     workCalendarModule,
     calendarGroupsModule,
+    calendarAppDownloadPopupModule,
   } = modules;
 
   const { initPostsUI } = postsUiModule;
@@ -197,6 +205,8 @@ async function initPageModules(modules) {
   const { initEventCalendar } = eventCalendarModule;
   const { initWorkCalendar } = workCalendarModule;
   const { initCalendarGroupsPage } = calendarGroupsModule;
+  const { initCalendarAppDownloadPopup = () => {} } =
+    calendarAppDownloadPopupModule;
   // 공통
   await runSafe('scroll buttons', async () => {
     initScrollButtons();
@@ -377,6 +387,12 @@ async function initPageModules(modules) {
 
     default:
       break;
+  }
+
+  if (CALENDAR_APP_DOWNLOAD_POPUP_PAGES.has(page)) {
+    await runSafe('calendar app download popup page retry', async () => {
+      initCalendarAppDownloadPopup();
+    });
   }
 
   const y = document.querySelector('#year');

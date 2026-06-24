@@ -278,14 +278,16 @@ function shouldShowPopup() {
 
 export function initCalendarAppDownloadPopup() {
   if (initialized) return;
-  initialized = true;
-
   if (!shouldShowPopup()) return;
-  if (document.getElementById(POPUP_ID)) return;
+  if (document.getElementById(POPUP_ID)) {
+    initialized = true;
+    return;
+  }
 
   previousActiveElement = document.activeElement;
 
   const popup = createPopup();
+  initialized = true;
   document.body.append(popup);
   document.addEventListener('keydown', handleDocumentKeydown);
 
