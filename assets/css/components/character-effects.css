@@ -71,6 +71,7 @@
 @media (max-width: 700px) {
   .profile-character-preview.character-effect-wrap {
     --character-effect-size: 58px;
+    --character-effect-top: -28px;
   }
 
   .post-author__character-effect-wrap,
@@ -147,6 +148,7 @@
 @media (max-width: 700px) {
   .store-item-preview__effect-stage {
     --character-effect-size: 58px;
+    --character-effect-top: -24px;
 
     width: 160px;
   }
