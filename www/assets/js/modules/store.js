@@ -55,6 +55,14 @@ let storeItemPreviewHasControl = false;
 
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
 const BEFORE_PJAX_SWAP_EVENT = 'mallin:before-pjax-swap';
+const CHARACTER_EFFECT_PREVIEW_PLACEMENTS = new Set([
+  'overhead',
+  'behind',
+  'side-left',
+  'side-right',
+  'aura-back',
+  'front-small',
+]);
 
 function $(selector) {
   return document.querySelector(selector);
@@ -66,6 +74,22 @@ function $all(selector) {
 
 function formatPrice(price) {
   return `${Number(price || 0).toLocaleString('ko-KR')} 🥒`;
+}
+
+function escapeAttribute(value = '') {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function normalizeCharacterEffectPreviewPlacement(placement = '') {
+  const safePlacement = String(placement || '').trim();
+  return CHARACTER_EFFECT_PREVIEW_PLACEMENTS.has(safePlacement)
+    ? safePlacement
+    : 'overhead';
 }
 
 function updateStoreItemBgmPreviewUi(isPlaying = false, itemName = 'BGM') {
@@ -748,23 +772,31 @@ function renderStoreItemPreview(item, options = {}) {
     const effectImagePath =
       String(preview?.imagePath || '').trim() ||
       './images/character-effects/cucumber-heart.png';
+    const effectPlacement = normalizeCharacterEffectPreviewPlacement(
+      preview?.placement,
+    );
 
     return `
       <div class="store-item-preview__character-effect">
         <figure class="store-item-preview__character-effect-card">
           <span class="character-effect-wrap store-item-preview__effect-stage">
             <img
-              src="${characterImagePath}"
+              src="${escapeAttribute(characterImagePath)}"
               alt="현재 착용 캐릭터"
               class="store-item-preview__effect-character"
               loading="lazy"
             />
-            <img
-              class="character-effect-img character-effect-img--heart store-item-preview__effect-img"
-              src="${effectImagePath}"
-              alt=""
+            <span
+              class="character-effect-layer store-item-preview__effect-layer"
+              data-character-effect-placement="${escapeAttribute(effectPlacement)}"
               aria-hidden="true"
-            />
+            >
+              <img
+                class="character-effect-img character-effect-img--heart store-item-preview__effect-img"
+                src="${escapeAttribute(effectImagePath)}"
+                alt=""
+              />
+            </span>
           </span>
         </figure>
         <p class="store-item-preview__effect-help">

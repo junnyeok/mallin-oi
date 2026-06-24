@@ -812,6 +812,7 @@
 ./www/login.html
 ./www/mypage.html
 ./www/post.html
+./www/profile.html
 ./www/prev-mypage.html
 ./www/partials/footer.html
 ./www/partials/header.html

@@ -10,6 +10,9 @@ const calendarLauncherFile = 'app-calendar.html';
 const filesToCopy = [
   'login.html',
   'write.html',
+  'inventory.html',
+  'post.html',
+  'profile.html',
   calendarLauncherFile,
   'prev-mypage.html',
   'mypage.html',

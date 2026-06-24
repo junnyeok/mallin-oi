@@ -13,7 +13,7 @@ const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
 
-const { getCharacterEffectByItemId } = await import(
+const { getCharacterEffectRenderMeta } = await import(
   `./store-data.js?v=${MODULE_VERSION}`
 );
 
@@ -161,6 +161,17 @@ function escapeHtml(str) {
     .replaceAll("'", '&#39;');
 }
 
+function renderCharacterEffectStyle(cssVars = {}) {
+  if (!cssVars || typeof cssVars !== 'object') return '';
+
+  const styleText = Object.entries(cssVars)
+    .filter(([name]) => /^--character-effect-[a-z0-9-]+$/.test(name))
+    .map(([name, value]) => `${name}: ${escapeHtml(value)}`)
+    .join('; ');
+
+  return styleText ? ` style="${styleText}"` : '';
+}
+
 function formatDateTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '-';
@@ -187,15 +198,23 @@ function renderAuthorProfileLink(
   const avatarSrc = escapeHtml(getProfileImageSrc(profileImageUrl));
   const characterSrc = escapeHtml(getCharacterImageSrc(characterImageUrl));
 
-  const effect = getCharacterEffectByItemId(characterEffectItemId);
+  const effect = getCharacterEffectRenderMeta(characterEffectItemId);
+  const effectClassName = effect?.className
+    ? ` ${escapeHtml(effect.className)}`
+    : '';
   const characterEffectHtml = effect
     ? `
-      <img
-        class="character-effect-img character-effect-img--heart"
-        src="${escapeHtml(effect.imagePath)}"
-        alt=""
-        aria-hidden="true"
-      />
+      <span
+        class="character-effect-layer"
+        data-character-effect-placement="${escapeHtml(effect.placement)}"
+        aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
+      >
+        <img
+          class="character-effect-img${effectClassName}"
+          src="${escapeHtml(effect.imagePath)}"
+          alt=""
+        />
+      </span>
     `
     : '';
 

@@ -38,7 +38,7 @@ const [
     PROFILE_BACKGROUND_CATALOG,
     getStoreItemDetailHref,
     getSkinParentRequirementBySkinCode,
-    getCharacterEffectByItemId,
+    getCharacterEffectRenderMeta,
     getProfileBackgroundByItemId,
     PROFILE_FRAME_CATALOG,
     getProfileFrameByItemId,
@@ -61,6 +61,17 @@ function escapeHtml(str) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function renderCharacterEffectStyle(cssVars = {}) {
+  if (!cssVars || typeof cssVars !== 'object') return '';
+
+  const styleText = Object.entries(cssVars)
+    .filter(([name]) => /^--character-effect-[a-z0-9-]+$/.test(name))
+    .map(([name, value]) => `${name}: ${escapeHtml(value)}`)
+    .join('; ');
+
+  return styleText ? ` style="${styleText}"` : '';
 }
 
 function getTargetUserIdFromUrl() {
@@ -533,16 +544,25 @@ async function loadOwnedStoreItemIdsByUserId(userId) {
 }
 
 function renderCharacterEffectImage(effectItemId = '') {
-  const effect = getCharacterEffectByItemId(effectItemId);
+  const effect = getCharacterEffectRenderMeta(effectItemId);
   if (!effect) return '';
 
+  const effectClassName = effect.className
+    ? ` ${escapeHtml(effect.className)}`
+    : '';
+
   return `
-    <img
-      class="character-effect-img character-effect-img--heart"
-      src="${escapeHtml(effect.imagePath)}"
-      alt=""
-      aria-hidden="true"
-    />
+    <span
+      class="character-effect-layer"
+      data-character-effect-placement="${escapeHtml(effect.placement)}"
+      aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
+    >
+      <img
+        class="character-effect-img${effectClassName}"
+        src="${escapeHtml(effect.imagePath)}"
+        alt=""
+      />
+    </span>
   `;
 }
 
@@ -554,7 +574,7 @@ function renderEquippedCharacterEffectOnPreview(effectItemId = '') {
   if (!wrapEl) return;
 
   wrapEl
-    .querySelectorAll('.character-effect-img')
+    .querySelectorAll('.character-effect-layer, .character-effect-img')
     .forEach((node) => node.remove());
 
   const effectHtml = renderCharacterEffectImage(effectItemId);

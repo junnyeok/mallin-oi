@@ -30,7 +30,7 @@
 }
 
 .inventory-card .profile-section + .profile-section {
-  margin-top: var(--space-20);
+  margin-top: 20px;
   padding-top: 0;
   border-top: 0;
 }
@@ -165,7 +165,7 @@
 ========================= */
 .inventory-main .profile-character-inventory {
   width: 100%;
-  padding: var(--space-20);
+  padding: 20px;
   border-radius: var(--radius-card);
   background: var(--color-surface);
 }
@@ -184,7 +184,7 @@
   .inventory-profile-preview {
     max-width: 100%;
     min-height: 560px;
-    padding: var(--space-20);
+    padding: 20px;
   }
 
   .inventory-profile-preview::before {

@@ -381,6 +381,7 @@ export const CUCUMBER_HEART_CHARACTER_EFFECT_PREVIEW = [
     imagePath: withAssetVersion(
       './images/character-effects/cucumber-heart.png',
     ),
+    placement: 'overhead',
     displayOrder: 1,
   },
 ];
@@ -392,6 +393,14 @@ export const CHARACTER_EFFECT_CATALOG = [
     imagePath: withAssetVersion(
       './images/character-effects/cucumber-heart.png',
     ),
+    placement: 'overhead',
+    className: 'character-effect-img--heart',
+    cssVars: {
+      '--character-effect-width': '46%',
+      '--character-effect-y': '-8%',
+      '--character-effect-z': '20',
+      '--character-effect-origin': '50% 100%',
+    },
     displayOrder: 1,
   },
 ];
@@ -402,6 +411,34 @@ export function getCharacterEffectByItemId(itemId = '') {
   return (
     CHARACTER_EFFECT_CATALOG.find((item) => item.itemId === safeItemId) || null
   );
+}
+
+const CHARACTER_EFFECT_PLACEMENTS = new Set([
+  'overhead',
+  'behind',
+  'side-left',
+  'side-right',
+  'aura-back',
+  'front-small',
+]);
+
+export function getCharacterEffectRenderMeta(itemId = '') {
+  const effect = getCharacterEffectByItemId(itemId);
+  if (!effect?.imagePath) return null;
+
+  const placement = CHARACTER_EFFECT_PLACEMENTS.has(effect.placement)
+    ? effect.placement
+    : 'overhead';
+
+  return {
+    ...effect,
+    placement,
+    className: String(effect.className || '').trim(),
+    cssVars:
+      effect.cssVars && typeof effect.cssVars === 'object'
+        ? effect.cssVars
+        : {},
+  };
 }
 
 export const FAT_AVOCADO_CHARACTER_PREVIEW = [

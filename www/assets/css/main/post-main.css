@@ -404,7 +404,7 @@
 
 .post-attachments {
   margin-top: var(--space-24);
-  padding-top: var(--space-20);
+  padding-top: 20px;
   border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -1269,7 +1269,7 @@
 
 .post-body__text .write-embed,
 .post-body__text figure[data-media-id] {
-  margin: var(--space-20) auto;
+  margin: 20px auto;
   width: fit-content;
   max-width: 100%;
   border: none;

@@ -3,7 +3,12 @@
 ========================= */
 
 .character-effect-wrap {
-  --character-effect-top: -4px;
+  --character-effect-x: 0px;
+  --character-effect-y: -8%;
+  --character-effect-width: 46%;
+  --character-effect-z: 20;
+  --character-effect-origin: 50% 100%;
+  --character-effect-transform: translate(-50%, -100%);
 
   position: relative;
   display: inline-flex;
@@ -11,25 +16,78 @@
   justify-content: center;
   flex-shrink: 0;
   overflow: visible;
+  isolation: isolate;
 }
 
 .character-effect-wrap > img:not(.character-effect-img) {
   position: relative;
-  z-index: 1;
+  z-index: 10;
+}
+
+.character-effect-layer {
+  position: absolute;
+  left: calc(50% + var(--character-effect-x));
+  top: var(--character-effect-y);
+  width: var(--character-effect-width);
+  pointer-events: none;
+  user-select: none;
+  z-index: var(--character-effect-z);
+  opacity: 0.25;
+  transform: var(--character-effect-transform) translateY(4px);
+  transform-origin: var(--character-effect-origin);
+  animation: characterEffectFloat 2.4s ease-in-out infinite;
+}
+
+.character-effect-layer[data-character-effect-placement='overhead'] {
+  left: calc(50% + var(--character-effect-x));
+  top: var(--character-effect-y);
+  --character-effect-transform: translate(-50%, -100%);
+  transform-origin: var(--character-effect-origin);
+}
+
+.character-effect-layer[data-character-effect-placement='behind'],
+.character-effect-layer[data-character-effect-placement='aura-back'] {
+  --character-effect-width: 118%;
+  --character-effect-z: 0;
+
+  left: calc(50% + var(--character-effect-x));
+  top: calc(50% + var(--character-effect-y));
+  --character-effect-transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+.character-effect-layer[data-character-effect-placement='front-small'] {
+  --character-effect-width: 34%;
+  --character-effect-z: 30;
+
+  left: calc(50% + var(--character-effect-x));
+  top: calc(58% + var(--character-effect-y));
+  --character-effect-transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+.character-effect-layer[data-character-effect-placement='side-left'] {
+  --character-effect-width: 42%;
+
+  left: calc(0px + var(--character-effect-x));
+  top: calc(42% + var(--character-effect-y));
+  --character-effect-transform: translate(-70%, -50%);
+  transform-origin: 100% 50%;
+}
+
+.character-effect-layer[data-character-effect-placement='side-right'] {
+  --character-effect-width: 42%;
+
+  left: calc(100% + var(--character-effect-x));
+  top: calc(42% + var(--character-effect-y));
+  --character-effect-transform: translate(-30%, -50%);
+  transform-origin: 0 50%;
 }
 
 .character-effect-img {
-  position: absolute;
-  left: 50%;
-  top: var(--character-effect-top);
-  width: var(--character-effect-size, 58px);
+  display: block;
+  width: 100%;
   height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 2;
-  opacity: 0.25;
-  transform: translate(-50%, -100%) translateY(4px);
-  animation: characterEffectFloat 2.4s ease-in-out infinite;
 }
 
 .character-effect-img--heart {
@@ -39,52 +97,52 @@
 @keyframes characterEffectFloat {
   0% {
     opacity: 0.25;
-    transform: translate(-50%, -100%) translateY(4px) scale(0.96);
+    transform: var(--character-effect-transform) translateY(4px) scale(0.96);
   }
 
   50% {
     opacity: 1;
-    transform: translate(-50%, -100%) translateY(-4px) scale(1);
+    transform: var(--character-effect-transform) translateY(-4px) scale(1);
   }
 
   100% {
     opacity: 0.25;
-    transform: translate(-50%, -100%) translateY(4px) scale(0.96);
+    transform: var(--character-effect-transform) translateY(4px) scale(0.96);
   }
 }
 
-.profile-character-preview.character-effect-wrap {
-  --character-effect-size: 72px;
-  --character-effect-top: -6px;
+.profile-character-effect-anchor {
+  --character-effect-width: 46%;
+  --character-effect-y: -8%;
 }
 
 .post-author__character-effect-wrap {
-  --character-effect-size: 44px;
-  --character-effect-top: -2px;
+  --character-effect-width: 46%;
+  --character-effect-y: -8%;
 }
 
 .comment-author-character-effect-wrap {
-  --character-effect-size: 44px;
-  --character-effect-top: -2px;
+  --character-effect-width: 46%;
+  --character-effect-y: -8%;
 }
 
 @media (max-width: 700px) {
-  .profile-character-preview.character-effect-wrap {
-    --character-effect-size: 58px;
-    --character-effect-top: -28px;
+  .profile-character-effect-anchor {
+    --character-effect-width: 46%;
+    --character-effect-y: -8%;
   }
 
   .post-author__character-effect-wrap,
   .comment-author-character-effect-wrap {
-    --character-effect-size: 36px;
+    --character-effect-width: 46%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .character-effect-img {
+  .character-effect-layer {
     animation: none;
     opacity: 0.8;
-    transform: translate(-50%, -100%);
+    transform: var(--character-effect-transform);
   }
 }
 
@@ -106,8 +164,8 @@
 }
 
 .store-item-preview__effect-stage {
-  --character-effect-size: 72px;
-  --character-effect-top: -6px;
+  --character-effect-width: 46%;
+  --character-effect-y: -8%;
 
   position: relative;
   display: inline-flex;
@@ -130,8 +188,7 @@
 }
 
 .store-item-preview__effect-img {
-  left: 50%;
-  top: var(--character-effect-top);
+  width: 100%;
 }
 
 .store-item-preview__effect-help {
@@ -142,13 +199,13 @@
 }
 
 .profile-character-effect-card__preview {
-  --character-effect-size: 42px;
+  --character-effect-width: 46%;
 }
 
 @media (max-width: 700px) {
   .store-item-preview__effect-stage {
-    --character-effect-size: 58px;
-    --character-effect-top: -24px;
+    --character-effect-width: 46%;
+    --character-effect-y: -8%;
 
     width: 160px;
   }
