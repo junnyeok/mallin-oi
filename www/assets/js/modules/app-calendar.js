@@ -108,6 +108,13 @@ function renderLoggedIn(accountEl, user) {
       <span>로그인 중</span>
     </p>
     <div class="app-calendar-account__actions">
+      <a
+        class="app-calendar-account__btn"
+        href="https://mallin-oi.com/"
+        aria-label="말린오이닷컴 사이트로 이동"
+      >
+        사이트로
+      </a>
       <button class="app-calendar-account__btn" type="button" data-app-calendar-logout>
         로그아웃
       </button>

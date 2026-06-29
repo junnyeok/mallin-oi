@@ -276,6 +276,7 @@ html.is-calendar-app-mode .home-section {
   min-width: 0;
 }
 
+.calendar-app-shell__site,
 .calendar-app-shell__auth,
 .calendar-app-shell__actions .auth-nickname {
   display: inline-flex;
@@ -344,6 +345,7 @@ html.is-calendar-app-mode .home-section {
 
   .app-calendar-card:hover,
   .calendar-app-shell__home:hover,
+  .calendar-app-shell__site:hover,
   .calendar-app-shell__auth:hover,
   .calendar-app-shell__tab:hover {
     border-color: var(--color-primary);
@@ -355,6 +357,7 @@ html.is-calendar-app-mode .home-section {
     display: none;
   }
 
+  .calendar-app-shell__site,
   .calendar-app-shell__auth,
   .calendar-app-shell__actions .auth-nickname {
     flex-basis: auto;

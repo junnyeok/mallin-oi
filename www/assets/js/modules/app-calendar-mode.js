@@ -128,6 +128,13 @@ function createCalendarAppShell() {
         </a>
         <div class="calendar-app-shell__actions" aria-label="캘린더 앱 작업">
           <p class="calendar-app-shell__title">말린오이 캘린더</p>
+          <a
+            class="calendar-app-shell__site"
+            href="https://mallin-oi.com/"
+            aria-label="말린오이닷컴 사이트로 이동"
+          >
+            사이트로
+          </a>
           <a class="calendar-app-shell__auth" data-auth-link href="./login.html?app=calendar">
             <span data-auth-text>로그인</span>
           </a>
