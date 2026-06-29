@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <TextView
+        style="@style/MallinoiWidgetPreviewTitle"
+        android:text="말린오이 이벤트 2주" />
+
+    <TextView
+        style="@style/MallinoiWidgetPreviewSubtitle"
+        android:text="6월 29일 – 7월 12일" />
+
+    <TextView
+        style="@style/MallinoiWidgetPreviewBody"
+        android:background="@drawable/widget_preview_grid_event"
+        android:text="29   30    1    2    3    4    5\n\n 6     7    8    9   10   11   12" />
+
+    <TextView
+        style="@style/MallinoiWidgetPreviewSample"
+        android:text="약속  ·  전시  ·  공연  ·  모임"
+        android:textColor="#D95773" />
+</LinearLayout>
