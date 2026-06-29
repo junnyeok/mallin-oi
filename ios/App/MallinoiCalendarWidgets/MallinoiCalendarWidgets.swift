@@ -248,13 +248,13 @@ struct DayGridView: View {
     var body: some View {
         LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: widget.range == "fourDays" ? 4 : 2), count: columns),
-            spacing: widget.range == "fourDays" ? 4 : 2
+            spacing: widget.range == "fourDays" ? 3 : 4
         ) {
             ForEach(widget.days.prefix(widget.range == "fourDays" ? 4 : 14)) { day in
                 DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", monthRows: 0, theme: theme)
             }
         }
-        .padding(.top, widget.range == "fourDays" ? 10 : 12)
+        .padding(.top, widget.range == "fourDays" ? 7 : 8)
     }
 }
 
@@ -263,30 +263,45 @@ struct MonthGridView: View {
     let theme: CalendarWidgetTheme
 
     var body: some View {
-        VStack(spacing: 2) {
-            HStack {
-                ForEach(["일", "월", "화", "수", "목", "금", "토"], id: \.self) { text in
-                    Text(text)
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(text == "일" ? .red.opacity(0.8) : text == "토" ? .blue.opacity(0.8) : theme.mutedText)
-                        .frame(maxWidth: .infinity)
-                }
-            }
+        GeometryReader { proxy in
+            let weekdayHeight: CGFloat = 12
+            let rowSpacing = monthRowSpacing(for: proxy.size.height)
+            let gridHeight = max(0, proxy.size.height - weekdayHeight - 2)
+            let cellHeight = max(45, (gridHeight - rowSpacing * CGFloat(max(monthRows - 1, 0))) / CGFloat(monthRows))
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
-                spacing: 3
-            ) {
-                ForEach(widget.days) { day in
-                    DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, monthRows: monthRows, theme: theme)
+            VStack(spacing: 2) {
+                HStack {
+                    ForEach(["일", "월", "화", "수", "목", "금", "토"], id: \.self) { text in
+                        Text(text)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(text == "일" ? .red.opacity(0.8) : text == "토" ? .blue.opacity(0.8) : theme.mutedText)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(height: weekdayHeight)
+
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
+                    spacing: rowSpacing
+                ) {
+                    ForEach(widget.days) { day in
+                        DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, monthRows: monthRows, availableCellHeight: cellHeight, theme: theme)
+                    }
                 }
             }
         }
-        .padding(.top, 12)
+        .padding(.top, 6)
     }
 
     private var monthRows: Int {
         max(1, Int(ceil(Double(widget.days.count) / 7.0)))
+    }
+
+    private func monthRowSpacing(for availableHeight: CGFloat) -> CGFloat {
+        let minimumCellHeight: CGFloat = 45
+        let weekdayHeight: CGFloat = 12
+        let distributable = availableHeight - weekdayHeight - 2 - minimumCellHeight * CGFloat(monthRows)
+        return max(3, min(10, distributable / CGFloat(max(monthRows - 1, 1))))
     }
 }
 
@@ -296,6 +311,7 @@ struct DayCellView: View {
     let range: String
     let compact: Bool
     let monthRows: Int
+    var availableCellHeight: CGFloat? = nil
     let theme: CalendarWidgetTheme
 
     var body: some View {
@@ -320,7 +336,7 @@ struct DayCellView: View {
 
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
-                    .font(.system(size: badgeFontSize, weight: .semibold))
+                    .font(.system(size: moreFontSize, weight: .bold))
                     .foregroundStyle(day.isToday ? .white : theme.mutedText)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -330,11 +346,10 @@ struct DayCellView: View {
                     .lineLimit(1)
             }
         }
+        .padding(.vertical, range == "month" ? 1 : 2)
+        .padding(.horizontal, 2)
         .frame(height: cellHeight, alignment: .top)
         .frame(maxWidth: .infinity, alignment: .top)
-        .clipped()
-        .padding(.vertical, range == "month" ? 2 : 3)
-        .padding(.horizontal, 2)
         .background(day.isToday ? theme.primary : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
@@ -358,20 +373,26 @@ struct DayCellView: View {
 
     private var badgeFontSize: CGFloat {
         if range == "fourDays" {
-            if itemCount <= 1 { return 11 }
-            if itemCount == 2 { return 10 }
-            return 8.5
+            if itemCount <= 1 { return 12 }
+            if itemCount == 2 { return 11 }
+            return 9.5
         }
 
         if range == "twoWeeks" {
-            if itemCount <= 1 { return 8.5 }
-            if itemCount == 2 { return 7.8 }
-            return 7.2
+            if itemCount <= 1 { return 9.5 }
+            if itemCount == 2 { return 9 }
+            return 8.5
         }
 
-        if itemCount <= 1 { return 8.5 }
-        if itemCount == 2 { return 7.8 }
-        return 7.2
+        if itemCount <= 1 { return 9.5 }
+        if itemCount == 2 { return 9 }
+        return 8.5
+    }
+
+    private var moreFontSize: CGFloat {
+        if range == "fourDays" { return 10.5 }
+        if range == "twoWeeks" { return 9 }
+        return 9
     }
 
     private var dateFontSize: CGFloat {
@@ -381,18 +402,20 @@ struct DayCellView: View {
     }
 
     private var cellHeight: CGFloat {
-        if range == "fourDays" { return 52 }
-        if range == "twoWeeks" { return 41 }
-        return monthRows <= 5 ? 49 : 40
+        if let availableCellHeight { return availableCellHeight }
+        if range == "fourDays" { return 54 }
+        if range == "twoWeeks" { return 47 }
+        return monthRows <= 5 ? 51 : 44
     }
 
     private var badgeVerticalPadding: CGFloat {
         if range == "fourDays" {
             if itemCount <= 2 { return 2 }
-            return 1
+            return 0
         }
 
-        return itemCount <= 1 ? 1.5 : 1
+        if itemCount <= 1 { return 1.5 }
+        return itemCount == 2 ? 1 : 0
     }
 
     private var itemSpacing: CGFloat {
@@ -401,7 +424,8 @@ struct DayCellView: View {
             return 3
         }
 
-        if range == "twoWeeks" { return 2 }
+        if range == "twoWeeks" { return itemCount >= 3 ? 1 : 2 }
+        if itemCount >= 3 { return 1 }
         return itemCount <= 1 ? 3 : 2
     }
 

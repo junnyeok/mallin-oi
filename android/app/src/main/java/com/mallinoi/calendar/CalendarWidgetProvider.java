@@ -12,6 +12,7 @@ import android.text.Spanned;
 import android.text.style.AbsoluteSizeSpan;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.LineBackgroundSpan;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -215,7 +216,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
                 text.append("\n");
                 int itemStart = text.length();
-                text.append(truncate(title, getTitleLimit()));
+                String displayTitle = truncate(title, getTitleLimit(itemCount));
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                    displayTitle = padTitleForBackground(displayTitle, getTitleLimit(itemCount));
+                }
+                text.append(preventLineBreaks(displayTitle));
                 int itemEnd = text.length();
                 int badgeColor = parseColor(item.optString("displayColor", item.optString("categoryColor", "")), theme.secondary);
                 text.setSpan(
@@ -224,7 +229,14 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                         itemEnd,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 );
-                text.setSpan(new BackgroundColorSpan(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    // Fill the complete event line, matching the full-width event rows on iOS.
+                    text.setSpan(new LineBackgroundSpan.Standard(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } else {
+                    // Older launchers cannot parcel LineBackgroundSpan.Standard; padded no-break
+                    // text keeps the fallback background close to the available row width.
+                    text.setSpan(new BackgroundColorSpan(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
                 text.setSpan(new ForegroundColorSpan(theme.text), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
 
@@ -275,10 +287,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return 2;
     }
 
-    int getTitleLimit() {
-        if ("fourDays".equals(range)) return 7;
-        if ("twoWeeks".equals(range)) return 5;
-        return 6;
+    int getTitleLimit(int itemCount) {
+        if ("fourDays".equals(range)) return itemCount <= 1 ? 7 : 6;
+        if ("twoWeeks".equals(range)) return itemCount <= 1 ? 5 : 4;
+        return itemCount <= 1 ? 6 : 5;
     }
 
     float getDateTextSize(int itemCount) {
@@ -289,26 +301,26 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
     float getBadgeTextSize(int itemCount) {
         if ("fourDays".equals(range)) {
-            if (itemCount <= 1) return 14.0f;
-            if (itemCount == 2) return 12.5f;
-            return 9.5f;
+            if (itemCount <= 1) return 14.8f;
+            if (itemCount == 2) return 13.2f;
+            return 10.5f;
         }
 
         if ("twoWeeks".equals(range)) {
-            if (itemCount <= 1) return 10.5f;
-            if (itemCount == 2) return 9.3f;
-            return 7.0f;
+            if (itemCount <= 1) return 11.2f;
+            if (itemCount == 2) return 10.0f;
+            return 8.4f;
         }
 
-        if (itemCount <= 1) return 10.5f;
-        if (itemCount == 2) return 9.4f;
-        return 7.1f;
+        if (itemCount <= 1) return 11.2f;
+        if (itemCount == 2) return 10.0f;
+        return 8.5f;
     }
 
     float getMoreTextSize() {
-        if ("fourDays".equals(range)) return 9.5f;
-        if ("twoWeeks".equals(range)) return 7.0f;
-        return 7.1f;
+        if ("fourDays".equals(range)) return 10.5f;
+        if ("twoWeeks".equals(range)) return 8.8f;
+        return 9.0f;
     }
 
     int getMaxLines() {
@@ -351,6 +363,23 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (value == null) return "";
         if (value.length() <= length) return value;
         return value.substring(0, Math.max(length - 1, 1)) + "…";
+    }
+
+    String preventLineBreaks(String value) {
+        if (value == null || value.length() < 2) return value == null ? "" : value;
+
+        StringBuilder result = new StringBuilder(value.length() * 2 - 1);
+        for (int index = 0; index < value.length(); index += 1) {
+            if (index > 0) result.append('\u2060'); // WORD JOINER: never wrap inside an event title.
+            result.append(value.charAt(index));
+        }
+        return result.toString();
+    }
+
+    String padTitleForBackground(String value, int length) {
+        StringBuilder result = new StringBuilder(value == null ? "" : value);
+        while (result.length() < length) result.append('\u2007');
+        return result.toString();
     }
 
     java.util.Date parseDate(SimpleDateFormat formatter, String value) {
