@@ -4,23 +4,180 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:paddingLeft="8dp"
+    android:paddingTop="10dp"
+    android:paddingRight="8dp"
+    android:paddingBottom="10dp">
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewTitle"
-        android:text="말린오이 이벤트 2주" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="5dp"
+        android:paddingRight="5dp">
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewSubtitle"
-        android:text="6월 29일 – 7월 12일" />
+        <TextView
+            style="@style/MallinoiWidgetPreviewTitle"
+            android:text="이벤트 2주" />
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewBody"
-        android:background="@drawable/widget_preview_grid_event"
-        android:text="29   30    1    2    3    4    5\n\n 6     7    8    9   10   11   12" />
+        <TextView
+            style="@style/MallinoiWidgetPreviewSubtitle"
+            android:text="2주" />
+    </LinearLayout>
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewSample"
-        android:text="약속  ·  전시  ·  공연  ·  모임"
-        android:textColor="#D95773" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+    <LinearLayout
+        style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="29 월" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay"
+            android:background="@drawable/widget_today_event_background">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="30 화"
+                android:textColor="#FFFFFF" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_event"
+                android:text="약속" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="1 수" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="2 목" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_event"
+                android:text="전시" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="3 금" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="4 토" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="5 일" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_event"
+                android:text="모임" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="6 월" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="7 화" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_event"
+                android:text="공연" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="8 수" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="9 목" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="10 금" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_event"
+                android:text="약속" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="11 토" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="12 일" />
+        </LinearLayout>
+    </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

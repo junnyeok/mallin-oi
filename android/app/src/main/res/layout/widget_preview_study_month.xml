@@ -4,23 +4,395 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:paddingLeft="8dp"
+    android:paddingTop="10dp"
+    android:paddingRight="8dp"
+    android:paddingBottom="10dp">
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewTitle"
-        android:text="말린오이 자기개발 한 달" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="5dp"
+        android:paddingRight="5dp">
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewSubtitle"
-        android:text="2026년 7월" />
+        <TextView
+            style="@style/MallinoiWidgetPreviewTitle"
+            android:text="자기개발 한 달" />
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewBody"
-        android:background="@drawable/widget_preview_grid_study"
-        android:text="일      월      화      수      목      금      토\n\n28     29     30      1       2       3       4\n 5       6       7       8       9      10     11\n12     13     14     15     16     17     18\n19     20     21     22     23     24     25\n26     27     28     29     30     31      1" />
+        <TextView
+            style="@style/MallinoiWidgetPreviewSubtitle"
+            android:text="7월" />
+    </LinearLayout>
 
-    <TextView
-        style="@style/MallinoiWidgetPreviewSample"
-        android:text="독서  ·  운동  ·  회고  ·  강의"
-        android:textColor="#3C3C3C" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="일"
+            android:textColor="#CC3333" />
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="월" />
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="화" />
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="수" />
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="목" />
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="금" />
+        <TextView
+            style="@style/MallinoiWidgetWeekday"
+            android:text="토"
+            android:textColor="#3366CC" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="3dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="28" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay"
+            android:background="@drawable/widget_today_study_background">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="29"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="30" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="1" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_study"
+                android:text="독서" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="2" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="3" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="4" />
+        </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="5" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="6" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_study"
+                android:text="운동" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="7" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="8" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="9" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="10" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_study"
+                android:text="강의" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="11" />
+        </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="12" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="13" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="14" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="15" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_study"
+                android:text="회고" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="16" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="17" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="18" />
+        </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="19" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="20" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_study"
+                android:text="헬스" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="21" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="22" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="23" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="24" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="25" />
+        </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewRow">
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="26" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="27" />
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewChip"
+                android:background="@drawable/widget_preview_chip_study"
+                android:text="독서" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="28" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="29" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="30" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="31" />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/MallinoiWidgetPreviewDay">
+
+            <TextView
+                style="@style/MallinoiWidgetPreviewDate"
+                android:text="1" />
+        </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

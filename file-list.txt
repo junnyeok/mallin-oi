@@ -834,9 +834,9 @@
 ./android/app/src/main/java/com/mallinoi/calendar/WorkTwoWeekWidgetProvider.java
 ./android/app/src/main/res/drawable/widget_background.xml
 ./android/app/src/main/res/drawable/widget_day_background.xml
-./android/app/src/main/res/drawable/widget_preview_grid_event.xml
-./android/app/src/main/res/drawable/widget_preview_grid_study.xml
-./android/app/src/main/res/drawable/widget_preview_grid_work.xml
+./android/app/src/main/res/drawable/widget_preview_chip_event.xml
+./android/app/src/main/res/drawable/widget_preview_chip_study.xml
+./android/app/src/main/res/drawable/widget_preview_chip_work.xml
 ./android/app/src/main/res/drawable/widget_preview_image_event_four_days.xml
 ./android/app/src/main/res/drawable/widget_preview_image_event_month.xml
 ./android/app/src/main/res/drawable/widget_preview_image_event_two_weeks.xml
