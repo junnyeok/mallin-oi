@@ -822,6 +822,7 @@
 ./assets/js/modules/calendar-native-widgets.js
 ./www/assets/js/modules/calendar-native-widgets.js
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetProvider.java
+./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetRefreshReceiver.java
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetsPlugin.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventFourDayWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventMonthWidgetProvider.java

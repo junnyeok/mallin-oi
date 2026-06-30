@@ -69,6 +69,21 @@ struct CalendarWidgetDay: Decodable, Identifiable {
     let items: [CalendarWidgetItem]
 
     var id: String { date }
+
+    func isToday(at referenceDate: Date, calendar: Calendar = .current) -> Bool {
+        let components = date.split(separator: "-").compactMap { Int($0) }
+        guard components.count == 3 else { return false }
+
+        var dayComponents = DateComponents()
+        dayComponents.calendar = calendar
+        dayComponents.timeZone = calendar.timeZone
+        dayComponents.year = components[0]
+        dayComponents.month = components[1]
+        dayComponents.day = components[2]
+
+        guard let dayDate = calendar.date(from: dayComponents) else { return false }
+        return calendar.isDate(dayDate, inSameDayAs: referenceDate)
+    }
 }
 
 struct CalendarWidgetMonth: Decodable {
@@ -114,19 +129,27 @@ struct CalendarWidgetProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CalendarWidgetEntry>) -> Void) {
-        let entry = loadEntry()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date()
-        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+        let calendar = Calendar.current
+        let now = Date()
+        let nextMidnight = calendar.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0, second: 0),
+            matchingPolicy: .nextTime
+        ) ?? calendar.date(byAdding: .day, value: 1, to: now) ?? now
+        let refreshAfterMidnight = calendar.date(byAdding: .minute, value: 1, to: nextMidnight) ?? nextMidnight
+        let entries = [loadEntry(at: now), loadEntry(at: nextMidnight)]
+
+        completion(Timeline(entries: entries, policy: .after(refreshAfterMidnight)))
     }
 
-    private func loadEntry() -> CalendarWidgetEntry {
+    private func loadEntry(at date: Date = Date()) -> CalendarWidgetEntry {
         let defaults = UserDefaults(suiteName: appGroupName) ?? .standard
         let isLoggedIn = defaults.bool(forKey: "is_logged_in")
         let json = defaults.string(forKey: "payload_json") ?? ""
         let widget = decodeWidget(from: json)
 
         return CalendarWidgetEntry(
-            date: Date(),
+            date: date,
             isLoggedIn: isLoggedIn,
             widget: widget,
             calendarType: calendarType,
@@ -192,9 +215,9 @@ struct CalendarWidgetView: View {
             .padding(.horizontal, 6)
 
             if entry.range == "month" {
-                MonthGridView(widget: widget, theme: theme)
+                MonthGridView(widget: widget, referenceDate: entry.date, theme: theme)
             } else {
-                DayGridView(widget: widget, columns: entry.range == "fourDays" ? 2 : 7, theme: theme)
+                DayGridView(widget: widget, columns: entry.range == "fourDays" ? 2 : 7, referenceDate: entry.date, theme: theme)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -243,6 +266,7 @@ struct EmptyWidgetView: View {
 struct DayGridView: View {
     let widget: CalendarWidgetData
     let columns: Int
+    let referenceDate: Date
     let theme: CalendarWidgetTheme
 
     var body: some View {
@@ -251,7 +275,7 @@ struct DayGridView: View {
             spacing: widget.range == "fourDays" ? 3 : 4
         ) {
             ForEach(widget.days.prefix(widget.range == "fourDays" ? 4 : 14)) { day in
-                DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", monthRows: 0, theme: theme)
+                DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: widget.range == "twoWeeks", monthRows: 0, referenceDate: referenceDate, theme: theme)
             }
         }
         .padding(.top, widget.range == "fourDays" ? 7 : 8)
@@ -260,6 +284,7 @@ struct DayGridView: View {
 
 struct MonthGridView: View {
     let widget: CalendarWidgetData
+    let referenceDate: Date
     let theme: CalendarWidgetTheme
 
     var body: some View {
@@ -285,7 +310,7 @@ struct MonthGridView: View {
                     spacing: rowSpacing
                 ) {
                     ForEach(widget.days) { day in
-                        DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, monthRows: monthRows, availableCellHeight: cellHeight, theme: theme)
+                        DayCellView(day: day, calendarType: widget.calendarType, range: widget.range, compact: true, monthRows: monthRows, availableCellHeight: cellHeight, referenceDate: referenceDate, theme: theme)
                     }
                 }
             }
@@ -312,12 +337,17 @@ struct DayCellView: View {
     let compact: Bool
     let monthRows: Int
     var availableCellHeight: CGFloat? = nil
+    let referenceDate: Date
     let theme: CalendarWidgetTheme
+
+    private var isToday: Bool {
+        day.isToday(at: referenceDate)
+    }
 
     var body: some View {
         VStack(spacing: itemSpacing) {
             Text(dayNumber)
-                .font(.system(size: dateFontSize, weight: day.isToday ? .bold : .semibold))
+                .font(.system(size: dateFontSize, weight: isToday ? .bold : .semibold))
                 .foregroundStyle(dayNumberColor)
                 .lineLimit(1)
 
@@ -337,7 +367,7 @@ struct DayCellView: View {
             if calendarType == "work", let item = visibleItems.first, !workMemo(for: item).isEmpty {
                 Text(workMemo(for: item))
                     .font(.system(size: memoFontSize, weight: .medium))
-                    .foregroundStyle(day.isToday ? .white : theme.mutedText)
+                    .foregroundStyle(isToday ? .white : theme.mutedText)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity)
@@ -346,7 +376,7 @@ struct DayCellView: View {
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
                     .font(.system(size: moreFontSize, weight: .bold))
-                    .foregroundStyle(day.isToday ? .white : theme.mutedText)
+                    .foregroundStyle(isToday ? .white : theme.mutedText)
                     .lineLimit(1)
                     .truncationMode(.tail)
             } else if visibleItems.isEmpty {
@@ -359,7 +389,7 @@ struct DayCellView: View {
         .padding(.horizontal, 2)
         .frame(height: cellHeight, alignment: .top)
         .frame(maxWidth: .infinity, alignment: .top)
-        .background(day.isToday ? theme.primary : Color.clear)
+        .background(isToday ? theme.primary : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
@@ -451,7 +481,7 @@ struct DayCellView: View {
     }
 
     private var dayNumberColor: Color {
-        if day.isToday { return .white }
+        if isToday { return .white }
         return day.isCurrentMonth ? theme.text : theme.mutedText.opacity(0.55)
     }
 

@@ -38,6 +38,17 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         for (int appWidgetId : appWidgetIds) {
             appWidgetManager.updateAppWidget(appWidgetId, buildViews(context));
         }
+        CalendarWidgetRefreshReceiver.scheduleNextMidnight(context);
+    }
+
+    @Override
+    public void onEnabled(Context context) {
+        CalendarWidgetRefreshReceiver.scheduleNextMidnight(context);
+    }
+
+    @Override
+    public void onDisabled(Context context) {
+        CalendarWidgetRefreshReceiver.cancelIfNoWidgets(context);
     }
 
     RemoteViews buildViews(Context context) {
@@ -145,6 +156,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 ? new SimpleDateFormat("d", Locale.KOREAN)
                 : new SimpleDateFormat("d", Locale.KOREAN);
         SimpleDateFormat weekdayFormat = new SimpleDateFormat("E", Locale.KOREAN);
+        String todayKey = input.format(Calendar.getInstance().getTime());
         int monthRows = "month".equals(range) ? getMonthRowCount(days.length()) : 0;
 
         views.setViewVisibility(R.id.widgetEmpty, View.GONE);
@@ -175,7 +187,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 weekday = weekdayFormat.format(localDate);
             }
             JSONArray items = day.optJSONArray("items");
-            boolean isToday = day.optBoolean("isToday", false);
+            boolean isToday = todayKey.equals(date);
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
             boolean shouldShowItems = !"month".equals(range) || isCurrentMonth;
             int itemCount = !shouldShowItems || items == null ? 0 : items.length();

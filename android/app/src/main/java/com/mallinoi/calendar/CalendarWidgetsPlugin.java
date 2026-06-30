@@ -18,6 +18,17 @@ public class CalendarWidgetsPlugin extends Plugin {
     static final String KEY_LOGGED_IN = "is_logged_in";
     static final String KEY_PAYLOAD = "payload_json";
     static final String KEY_PENDING_TYPE = "pending_calendar_type";
+    static final Class<?>[] WIDGET_PROVIDERS = new Class<?>[] {
+            StudyFourDayWidgetProvider.class,
+            StudyTwoWeekWidgetProvider.class,
+            StudyMonthWidgetProvider.class,
+            WorkFourDayWidgetProvider.class,
+            WorkTwoWeekWidgetProvider.class,
+            WorkMonthWidgetProvider.class,
+            EventFourDayWidgetProvider.class,
+            EventTwoWeekWidgetProvider.class,
+            EventMonthWidgetProvider.class
+    };
 
     @PluginMethod
     public void saveWidgetData(PluginCall call) {
@@ -31,6 +42,7 @@ public class CalendarWidgetsPlugin extends Plugin {
                 .apply();
 
         refreshAllWidgets(getContext());
+        CalendarWidgetRefreshReceiver.scheduleNextMidnight(getContext());
         call.resolve();
     }
 
@@ -54,19 +66,7 @@ public class CalendarWidgetsPlugin extends Plugin {
 
     static void refreshAllWidgets(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        Class<?>[] providers = new Class<?>[] {
-                StudyFourDayWidgetProvider.class,
-                StudyTwoWeekWidgetProvider.class,
-                StudyMonthWidgetProvider.class,
-                WorkFourDayWidgetProvider.class,
-                WorkTwoWeekWidgetProvider.class,
-                WorkMonthWidgetProvider.class,
-                EventFourDayWidgetProvider.class,
-                EventTwoWeekWidgetProvider.class,
-                EventMonthWidgetProvider.class
-        };
-
-        for (Class<?> provider : providers) {
+        for (Class<?> provider : WIDGET_PROVIDERS) {
             ComponentName name = new ComponentName(context, provider);
             int[] ids = manager.getAppWidgetIds(name);
             if (ids.length > 0) {
