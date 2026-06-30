@@ -77,73 +77,73 @@
         <LinearLayout
             android:id="@+id/widgetRow01"
             style="@style/MallinoiWidgetRow">
-            <TextView android:id="@+id/widgetDay01" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay02" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay03" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay04" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay05" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay06" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay07" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay01" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay02" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay03" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay04" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay05" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay06" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay07" style="@style/MallinoiWidgetDay" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widgetRow02"
             style="@style/MallinoiWidgetRow">
-            <TextView android:id="@+id/widgetDay08" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay09" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay10" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay11" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay12" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay13" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay14" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay08" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay09" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay10" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay11" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay12" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay13" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay14" style="@style/MallinoiWidgetDay" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widgetRow03"
             style="@style/MallinoiWidgetRow">
-            <TextView android:id="@+id/widgetDay15" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay16" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay17" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay18" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay19" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay20" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay21" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay15" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay16" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay17" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay18" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay19" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay20" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay21" style="@style/MallinoiWidgetDay" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widgetRow04"
             style="@style/MallinoiWidgetRow">
-            <TextView android:id="@+id/widgetDay22" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay23" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay24" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay25" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay26" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay27" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay28" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay22" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay23" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay24" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay25" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay26" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay27" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay28" style="@style/MallinoiWidgetDay" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widgetRow05"
             style="@style/MallinoiWidgetRow">
-            <TextView android:id="@+id/widgetDay29" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay30" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay31" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay32" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay33" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay34" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay35" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay29" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay30" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay31" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay32" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay33" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay34" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay35" style="@style/MallinoiWidgetDay" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widgetRow06"
             style="@style/MallinoiWidgetRow">
-            <TextView android:id="@+id/widgetDay36" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay37" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay38" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay39" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay40" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay41" style="@style/MallinoiWidgetDay" />
-            <TextView android:id="@+id/widgetDay42" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay36" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay37" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay38" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay39" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay40" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay41" style="@style/MallinoiWidgetDay" />
+            <FrameLayout android:id="@+id/widgetDay42" style="@style/MallinoiWidgetDay" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

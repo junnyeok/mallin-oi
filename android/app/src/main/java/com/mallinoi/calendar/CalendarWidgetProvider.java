@@ -7,12 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
-import android.text.style.AbsoluteSizeSpan;
-import android.text.style.BackgroundColorSpan;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.LineBackgroundSpan;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -188,83 +182,58 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int visibleCount = Math.min(itemCount, getMaxVisibleItems());
             int moreCount = Math.max(itemCount - visibleCount, 0);
 
-            SpannableStringBuilder text = new SpannableStringBuilder();
-            int dateStart = text.length();
-            text.append(dateText);
+            RemoteViews dayViews = new RemoteViews(context.getPackageName(), R.layout.widget_calendar_day);
+            String fullDateText = dateText;
             if (!"month".equals(range)) {
-                text.append(" ").append(weekday);
+                fullDateText += " " + weekday;
             }
-            text.setSpan(
-                    new AbsoluteSizeSpan(Math.round(getDateTextSize(itemCount)), true),
-                    dateStart,
-                    text.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+
+            dayViews.setTextViewText(R.id.widgetDayDate, fullDateText);
+            dayViews.setTextViewTextSize(R.id.widgetDayDate, TypedValue.COMPLEX_UNIT_SP, getDateTextSize(itemCount));
+            dayViews.setTextColor(R.id.widgetDayDate, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
+            dayViews.setInt(R.id.widgetDayContent, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
+            dayViews.setViewPadding(
+                    R.id.widgetDayContent,
+                    dp(context, 1),
+                    dp(context, getCellTopPadding(itemCount, monthRows)),
+                    dp(context, 1),
+                    dp(context, 1)
             );
-            text.setSpan(
-                    new ForegroundColorSpan(isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText),
-                    dateStart,
-                    text.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            );
+
+            int[] eventRowIds = { R.id.widgetDayEventRow1, R.id.widgetDayEventRow2 };
+            int[] eventBackgroundIds = { R.id.widgetDayEventBackground1, R.id.widgetDayEventBackground2 };
+            int[] eventTextIds = { R.id.widgetDayEventText1, R.id.widgetDayEventText2 };
 
             for (int itemIndex = 0; itemIndex < visibleCount; itemIndex += 1) {
                 JSONObject item = items.optJSONObject(itemIndex);
                 if (item == null) continue;
 
-                String title = getDisplayTitle(item);
+                String title = sanitizeDisplayTitle(getDisplayTitle(item));
                 if (title.isEmpty()) continue;
 
-                text.append("\n");
-                int itemStart = text.length();
-                String displayTitle = truncate(title, getTitleLimit(itemCount));
-                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-                    displayTitle = padTitleForBackground(displayTitle, getTitleLimit(itemCount));
-                }
-                text.append(preventLineBreaks(displayTitle));
-                int itemEnd = text.length();
                 int badgeColor = parseColor(item.optString("displayColor", item.optString("categoryColor", "")), theme.secondary);
-                text.setSpan(
-                        new AbsoluteSizeSpan(Math.round(getBadgeTextSize(itemCount)), true),
-                        itemStart,
-                        itemEnd,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                );
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    // Fill the complete event line, matching the full-width event rows on iOS.
-                    text.setSpan(new LineBackgroundSpan.Standard(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                } else {
-                    // Older launchers cannot parcel LineBackgroundSpan.Standard; padded no-break
-                    // text keeps the fallback background close to the available row width.
-                    text.setSpan(new BackgroundColorSpan(badgeColor), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-                text.setSpan(new ForegroundColorSpan(theme.text), itemStart, itemEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                int rowId = eventRowIds[itemIndex];
+                int backgroundId = eventBackgroundIds[itemIndex];
+                int textId = eventTextIds[itemIndex];
+
+                dayViews.setTextViewText(textId, title);
+                dayViews.setTextViewTextSize(textId, TypedValue.COMPLEX_UNIT_SP, getBadgeTextSize(itemCount));
+                dayViews.setTextColor(textId, theme.text);
+                dayViews.setBoolean(textId, "setSingleLine", true);
+                dayViews.setInt(textId, "setMaxLines", 1);
+                dayViews.setInt(backgroundId, "setColorFilter", badgeColor);
+                dayViews.setViewVisibility(rowId, View.VISIBLE);
             }
 
             if (moreCount > 0) {
-                text.append("\n");
-                int moreStart = text.length();
-                text.append("+").append(String.valueOf(moreCount));
-                text.setSpan(
-                        new AbsoluteSizeSpan(Math.round(getMoreTextSize()), true),
-                        moreStart,
-                        text.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                );
-                text.setSpan(new ForegroundColorSpan(isToday ? Color.WHITE : theme.mutedText), moreStart, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                dayViews.setTextViewText(R.id.widgetDayMore, "+" + moreCount);
+                dayViews.setTextViewTextSize(R.id.widgetDayMore, TypedValue.COMPLEX_UNIT_SP, getMoreTextSize());
+                dayViews.setTextColor(R.id.widgetDayMore, isToday ? Color.WHITE : theme.mutedText);
+                dayViews.setViewVisibility(R.id.widgetDayMore, View.VISIBLE);
             }
 
-            views.setTextViewText(id, text);
-            views.setTextColor(id, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
-            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, getDateTextSize(itemCount));
-            views.setInt(id, "setMaxLines", getMaxLines());
-            views.setInt(id, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
-            views.setViewPadding(
-                    id,
-                    dp(context, 1),
-                    dp(context, getCellTopPadding(itemCount, monthRows)),
-                    dp(context, 1),
-                    dp(context, 2)
-            );
+            views.removeAllViews(id);
+            views.addView(id, dayViews);
             views.setViewVisibility(id, View.VISIBLE);
         }
     }
@@ -285,12 +254,6 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
     int getMaxVisibleItems() {
         return 2;
-    }
-
-    int getTitleLimit(int itemCount) {
-        if ("fourDays".equals(range)) return itemCount <= 1 ? 7 : 6;
-        if ("twoWeeks".equals(range)) return itemCount <= 1 ? 5 : 4;
-        return itemCount <= 1 ? 6 : 5;
     }
 
     float getDateTextSize(int itemCount) {
@@ -321,10 +284,6 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if ("fourDays".equals(range)) return 10.5f;
         if ("twoWeeks".equals(range)) return 8.8f;
         return 9.0f;
-    }
-
-    int getMaxLines() {
-        return 4;
     }
 
     int getCellTopPadding(int itemCount, int monthRows) {
@@ -359,27 +318,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return Math.max(4, Math.min(rowCount, 6));
     }
 
-    String truncate(String value, int length) {
+    String sanitizeDisplayTitle(String value) {
         if (value == null) return "";
-        if (value.length() <= length) return value;
-        return value.substring(0, Math.max(length - 1, 1)) + "…";
-    }
-
-    String preventLineBreaks(String value) {
-        if (value == null || value.length() < 2) return value == null ? "" : value;
-
-        StringBuilder result = new StringBuilder(value.length() * 2 - 1);
-        for (int index = 0; index < value.length(); index += 1) {
-            if (index > 0) result.append('\u2060'); // WORD JOINER: never wrap inside an event title.
-            result.append(value.charAt(index));
-        }
-        return result.toString();
-    }
-
-    String padTitleForBackground(String value, int length) {
-        StringBuilder result = new StringBuilder(value == null ? "" : value);
-        while (result.length() < length) result.append('\u2007');
-        return result.toString();
+        return value.replace('\n', ' ').replace('\r', ' ').trim();
     }
 
     java.util.Date parseDate(SimpleDateFormat formatter, String value) {
