@@ -637,7 +637,7 @@ body.work-repeat-modal-open {
 }
 
 .work-todo-item__save:disabled {
-  cursor: wait;
+  cursor: default;
   opacity: 0.7;
 }
 

@@ -1122,7 +1122,7 @@ function renderTodoList({
 
     detail.hidden = true;
     detailActions.append(editStatus, saveMemoButton);
-    detail.append(memoInput, detailActions);
+    detail.append(memoInput);
 
     editButton.addEventListener('click', () => {
       detail.hidden = !detail.hidden;
@@ -1169,7 +1169,7 @@ function renderTodoList({
 
     actions.append(editButton, deleteButton);
     top.append(categorySelect, summary, actions);
-    item.append(top, detail);
+    item.append(top, detail, detailActions);
     root.append(item);
   });
 
