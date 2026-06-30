@@ -310,6 +310,8 @@ export async function initDailyAttendancePopup() {
         originEl: popup.claimBtn,
         count: result.weeklyBonusAwarded ? 18 : 12,
       });
+
+      window.dispatchEvent(new Event('pickle-balance-changed'));
     }
 
     renderCompletedState(popup, result);

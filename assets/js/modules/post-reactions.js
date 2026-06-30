@@ -127,6 +127,7 @@ async function handleReactionClick(type, postId) {
             safeType === 'like' ? $('postLikeBtn') : $('postDislikeBtn'),
           count: 8,
         });
+        window.dispatchEvent(new Event('pickle-balance-changed'));
 
         setMessage(
           safeType === 'like'

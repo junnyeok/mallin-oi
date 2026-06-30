@@ -1460,6 +1460,7 @@ async function handleCreateComment(postId) {
         originEl: submitBtn,
         count: 9,
       });
+      window.dispatchEvent(new Event('pickle-balance-changed'));
     }
 
     await syncCommentFormUser(false);
@@ -1541,6 +1542,7 @@ async function handleCreateReply(replyForm, postId, parentCommentId) {
       originEl: submitBtn,
       count: 9,
     });
+    window.dispatchEvent(new Event('pickle-balance-changed'));
   }
 
   await renderComments(postId, currentSecretPassword);

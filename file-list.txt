@@ -669,6 +669,7 @@
 ./supabase-SQLEditor/calendar-shared-personal.sql
 ./supabase-SQLEditor/calendar-study.sql
 ./supabase-SQLEditor/calendar-work.sql
+./supabase-SQLEditor/pickle-reward-policy-20260630.sql
 ./supabase-SQLEditor/store-item_purchase-functions.sql
 ./supabase-SQLEditor/suggestion&QnA.sql
 ./supabase/.temp/cli-latest

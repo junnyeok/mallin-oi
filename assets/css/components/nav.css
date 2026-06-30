@@ -925,6 +925,17 @@ body[data-page='post'] .logo #siteLogoImg {
   white-space: nowrap;
 }
 
+.pickle-panel__guide {
+  margin: 0;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: rgba(170, 208, 94, 0.14);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
 @media (max-width: 700px) {
   .pickle-menu {
     position: fixed;

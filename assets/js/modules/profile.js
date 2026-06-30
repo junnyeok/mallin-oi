@@ -197,13 +197,8 @@ function updateTodayPickleStatus(entries = []) {
       entry?.reason_code === 'post_create' && Number(entry?.amount || 0) > 0,
   ).length;
 
-  const todayCommentCount = todayEntries.filter(
-    (entry) =>
-      entry?.reason_code === 'comment_post' && Number(entry?.amount || 0) > 0,
-  ).length;
-
-  postEl.textContent = `${todayPostCount} / 5`;
-  commentEl.textContent = `${todayCommentCount} / 10`;
+  postEl.textContent = `${Math.min(todayPostCount, 3)} / 3`;
+  commentEl.textContent = '게시물당 1회';
 }
 
 function getTodayPicklePopupStats(entries = []) {
@@ -292,11 +287,11 @@ function initPicklePopup({
   }
 
   if (postEl) {
-    postEl.textContent = `${postCount} / 5`;
+    postEl.textContent = `${Math.min(postCount, 3)} / 3`;
   }
 
   if (commentEl) {
-    commentEl.textContent = `${commentCount} / 20`;
+    commentEl.textContent = '게시물당 1회';
   }
 
   btn.onclick = (event) => {

@@ -2405,6 +2405,7 @@ export async function initWrite() {
         } catch (effectError) {
           console.warn('[write] pickle burst failed:', effectError);
         }
+        window.dispatchEvent(new Event('pickle-balance-changed'));
       }
 
       shouldRestoreSubmit = false;

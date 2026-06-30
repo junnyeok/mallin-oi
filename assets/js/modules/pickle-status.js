@@ -38,15 +38,9 @@ function getTodayPicklePopupStats(entries = []) {
       entry?.reason_code === 'post_create' && Number(entry?.amount || 0) > 0,
   ).length;
 
-  const commentCount = todayEntries.filter(
-    (entry) =>
-      entry?.reason_code === 'comment_post' && Number(entry?.amount || 0) > 0,
-  ).length;
-
   return {
     attendanceDone,
     postCount,
-    commentCount,
   };
 }
 
@@ -103,8 +97,7 @@ function renderPickleStatus({ balance = 0, entries = [] } = {}) {
   const postEl = $('picklePostStatus');
   const commentEl = $('pickleCommentStatus');
 
-  const { attendanceDone, postCount, commentCount } =
-    getTodayPicklePopupStats(entries);
+  const { attendanceDone, postCount } = getTodayPicklePopupStats(entries);
 
   if (balanceEl) {
     balanceEl.textContent = formatPickleAmount(balance);
@@ -115,11 +108,11 @@ function renderPickleStatus({ balance = 0, entries = [] } = {}) {
   }
 
   if (postEl) {
-    postEl.textContent = `${postCount} / 5`;
+    postEl.textContent = `${Math.min(postCount, 3)} / 3`;
   }
 
   if (commentEl) {
-    commentEl.textContent = `${commentCount} / 10`;
+    commentEl.textContent = '게시물당 1회';
   }
 }
 
@@ -237,6 +230,12 @@ export async function initPickleStatus() {
   window.addEventListener('auth-changed', () => {
     refreshPickleStatus({ keepPanelOpen: false }).catch((error) => {
       console.error('[pickle-status] auth refresh failed:', error);
+    });
+  });
+
+  window.addEventListener('pickle-balance-changed', () => {
+    refreshPickleStatus({ keepPanelOpen: !panel.hidden }).catch((error) => {
+      console.error('[pickle-status] reward refresh failed:', error);
     });
   });
 
