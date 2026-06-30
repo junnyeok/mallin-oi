@@ -179,8 +179,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
             boolean shouldShowItems = !"month".equals(range) || isCurrentMonth;
             int itemCount = !shouldShowItems || items == null ? 0 : items.length();
-            int visibleCount = Math.min(itemCount, getMaxVisibleItems());
-            int moreCount = Math.max(itemCount - visibleCount, 0);
+            int visibleCount = Math.min(itemCount, "work".equals(calendarType) ? 1 : getMaxVisibleItems());
+            int moreCount = "work".equals(calendarType) ? 0 : Math.max(itemCount - visibleCount, 0);
+            int layoutItemCount = "work".equals(calendarType) && itemCount > 0 ? 1 : itemCount;
 
             RemoteViews dayViews = new RemoteViews(context.getPackageName(), R.layout.widget_calendar_day);
             String fullDateText = dateText;
@@ -189,13 +190,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             }
 
             dayViews.setTextViewText(R.id.widgetDayDate, fullDateText);
-            dayViews.setTextViewTextSize(R.id.widgetDayDate, TypedValue.COMPLEX_UNIT_SP, getDateTextSize(itemCount));
+            dayViews.setTextViewTextSize(R.id.widgetDayDate, TypedValue.COMPLEX_UNIT_SP, getDateTextSize(layoutItemCount));
             dayViews.setTextColor(R.id.widgetDayDate, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
             dayViews.setInt(R.id.widgetDayContent, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
             dayViews.setViewPadding(
                     R.id.widgetDayContent,
                     dp(context, 1),
-                    dp(context, getCellTopPadding(itemCount, monthRows)),
+                    dp(context, getCellTopPadding(layoutItemCount, monthRows)),
                     dp(context, 1),
                     dp(context, 1)
             );
@@ -217,12 +218,27 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 int textId = eventTextIds[itemIndex];
 
                 dayViews.setTextViewText(textId, title);
-                dayViews.setTextViewTextSize(textId, TypedValue.COMPLEX_UNIT_SP, getBadgeTextSize(itemCount));
+                dayViews.setTextViewTextSize(textId, TypedValue.COMPLEX_UNIT_SP, getBadgeTextSize(layoutItemCount));
                 dayViews.setTextColor(textId, theme.text);
                 dayViews.setBoolean(textId, "setSingleLine", true);
                 dayViews.setInt(textId, "setMaxLines", 1);
                 dayViews.setInt(backgroundId, "setColorFilter", badgeColor);
                 dayViews.setViewVisibility(rowId, View.VISIBLE);
+            }
+
+            if ("work".equals(calendarType) && visibleCount > 0) {
+                JSONObject workItem = items.optJSONObject(0);
+                String memo = workItem == null ? "" : sanitizeDisplayTitle(workItem.optString("memo", ""));
+
+                if (!memo.isEmpty()) {
+                    dayViews.setTextViewText(R.id.widgetDayEventText2, memo);
+                    dayViews.setTextViewTextSize(R.id.widgetDayEventText2, TypedValue.COMPLEX_UNIT_SP, getMemoTextSize());
+                    dayViews.setTextColor(R.id.widgetDayEventText2, isToday ? Color.WHITE : theme.mutedText);
+                    dayViews.setBoolean(R.id.widgetDayEventText2, "setSingleLine", true);
+                    dayViews.setInt(R.id.widgetDayEventText2, "setMaxLines", 1);
+                    dayViews.setViewVisibility(R.id.widgetDayEventBackground2, View.GONE);
+                    dayViews.setViewVisibility(R.id.widgetDayEventRow2, View.VISIBLE);
+                }
             }
 
             if (moreCount > 0) {
@@ -284,6 +300,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if ("fourDays".equals(range)) return 10.5f;
         if ("twoWeeks".equals(range)) return 8.8f;
         return 9.0f;
+    }
+
+    float getMemoTextSize() {
+        if ("fourDays".equals(range)) return 11.0f;
+        if ("twoWeeks".equals(range)) return 8.5f;
+        return 8.2f;
     }
 
     int getCellTopPadding(int itemCount, int monthRows) {

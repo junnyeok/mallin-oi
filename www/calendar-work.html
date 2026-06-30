@@ -164,7 +164,11 @@
                     설정
                   </button>
 
-                  <button class="work-todo-form__button" type="submit">
+                  <button
+                    class="work-todo-form__button"
+                    id="workTodoAddButton"
+                    type="submit"
+                  >
                     추가
                   </button>
 
@@ -174,6 +178,15 @@
                     rows="1"
                     placeholder="메모를 입력하세요."
                   ></textarea>
+
+                  <p
+                    class="work-todo-form__limit-message"
+                    id="workTodoLimitMessage"
+                    aria-live="polite"
+                    hidden
+                  >
+                    업무 캘린더에는 하나의 근무형태만 추가할 수 있습니다.
+                  </p>
                 </form>
 
                 <section class="work-repeat" aria-labelledby="workRepeatTitle">

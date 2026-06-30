@@ -334,6 +334,15 @@ struct DayCellView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             }
 
+            if calendarType == "work", let item = visibleItems.first, !workMemo(for: item).isEmpty {
+                Text(workMemo(for: item))
+                    .font(.system(size: memoFontSize, weight: .medium))
+                    .foregroundStyle(day.isToday ? .white : theme.mutedText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity)
+            }
+
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
                     .font(.system(size: moreFontSize, weight: .bold))
@@ -355,15 +364,17 @@ struct DayCellView: View {
     }
 
     private var maxVisibleItems: Int {
-        return 2
+        return calendarType == "work" ? 1 : 2
     }
 
     private var overflowCount: Int {
-        max(visibleItems.count - maxVisibleItems, 0)
+        if calendarType == "work" { return 0 }
+        return max(visibleItems.count - maxVisibleItems, 0)
     }
 
     private var itemCount: Int {
-        visibleItems.count
+        if calendarType == "work" { return min(visibleItems.count, 1) }
+        return visibleItems.count
     }
 
     private var visibleItems: [CalendarWidgetItem] {
@@ -395,6 +406,12 @@ struct DayCellView: View {
         return 9
     }
 
+    private var memoFontSize: CGFloat {
+        if range == "fourDays" { return 10.5 }
+        if range == "twoWeeks" { return 8.5 }
+        return 8
+    }
+
     private var dateFontSize: CGFloat {
         if range == "fourDays" { return itemCount <= 1 ? 12.5 : 11.5 }
         if range == "twoWeeks" { return 8 }
@@ -409,6 +426,8 @@ struct DayCellView: View {
     }
 
     private var badgeVerticalPadding: CGFloat {
+        if hasWorkMemo { return range == "fourDays" ? 1 : 0.5 }
+
         if range == "fourDays" {
             if itemCount <= 2 { return 2 }
             return 0
@@ -419,6 +438,8 @@ struct DayCellView: View {
     }
 
     private var itemSpacing: CGFloat {
+        if hasWorkMemo { return 1 }
+
         if range == "fourDays" {
             if itemCount <= 1 { return 4 }
             return 3
@@ -432,6 +453,10 @@ struct DayCellView: View {
     private var dayNumberColor: Color {
         if day.isToday { return .white }
         return day.isCurrentMonth ? theme.text : theme.mutedText.opacity(0.55)
+    }
+
+    private var hasWorkMemo: Bool {
+        calendarType == "work" && visibleItems.first.map { !workMemo(for: $0).isEmpty } == true
     }
 
     private var dayNumber: String {
@@ -452,6 +477,13 @@ struct DayCellView: View {
         }
 
         return item.title.isEmpty ? item.categoryName : item.title
+    }
+
+    private func workMemo(for item: CalendarWidgetItem) -> String {
+        item.memo
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func textColor(for hex: String) -> Color {

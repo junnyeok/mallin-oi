@@ -1310,6 +1310,8 @@ async function initPageCalendar() {
   const form = document.getElementById('workTodoForm');
   const typeSelect = document.getElementById('workTodoType');
   const memoInput = document.getElementById('workTodoMemo');
+  const addButton = document.getElementById('workTodoAddButton');
+  const limitMessage = document.getElementById('workTodoLimitMessage');
   const todoList = document.getElementById('workTodoList');
   const todoEmpty = document.getElementById('workTodoEmpty');
 
@@ -1348,6 +1350,7 @@ async function initPageCalendar() {
     categories: await ensureDefaultCategories(user.id),
     sharedGroups: await fetchSharedPersonalGroups('work'),
     store: await fetchUserTodos(user.id),
+    isAddingTodo: false,
     onSelect: null,
     onSelectGroupEvent: null,
     group: null,
@@ -1381,6 +1384,12 @@ async function initPageCalendar() {
       : [];
 
     form.hidden = false;
+    const hasTodoForSelectedDate =
+      (state.store[state.selectedDateKey] || []).length > 0;
+    if (addButton) {
+      addButton.disabled = hasTodoForSelectedDate || state.isAddingTodo;
+    }
+    if (limitMessage) limitMessage.hidden = !hasTodoForSelectedDate;
     renderCategorySelect(typeSelect, state.categories);
     renderPageCalendar(state);
 
@@ -1496,18 +1505,17 @@ async function initPageCalendar() {
 
       if (!patternDay || patternDay.todos.length === 0) return;
 
-      patternDay.todos.forEach((todo) => {
-        const category = getCategoryByTodo(todo, state.categories);
+      const todo = patternDay.todos[0];
+      const category = getCategoryByTodo(todo, state.categories);
 
-        rowsToInsert.push({
-          user_id: state.userId,
-          work_date: targetDateKey,
-          work_type: todo.type || category?.slug || 'etc',
-          category_id: todo.categoryId || category?.id || null,
-          work_text: String(category?.name || todo.text || '기타').trim(),
-          memo: String(todo.memo || '').trim(),
-          is_done: false,
-        });
+      rowsToInsert.push({
+        user_id: state.userId,
+        work_date: targetDateKey,
+        work_type: todo.type || category?.slug || 'etc',
+        category_id: todo.categoryId || category?.id || null,
+        work_text: String(category?.name || todo.text || '기타').trim(),
+        memo: String(todo.memo || '').trim(),
+        is_done: false,
       });
     });
 
@@ -1843,13 +1851,25 @@ async function initPageCalendar() {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
+    if (
+      state.isAddingTodo ||
+      (state.store[state.selectedDateKey] || []).length > 0
+    ) {
+      renderAll();
+      return;
+    }
+
     const memo = memoInput.value.trim();
     const selectedCategoryId = typeSelect.value;
+    state.isAddingTodo = true;
+    renderAll();
 
     try {
       const category = await refreshCategories(selectedCategoryId);
 
       if (!category?.id) {
+        state.isAddingTodo = false;
+        renderAll();
         alert('근무형태를 선택해줘.');
         typeSelect.focus();
         return;
@@ -1864,6 +1884,7 @@ async function initPageCalendar() {
 
       const currentTodos = state.store[state.selectedDateKey] || [];
       state.store[state.selectedDateKey] = [...currentTodos, nextTodo];
+      state.isAddingTodo = false;
 
       memoInput.value = '';
       autoResizeTextarea(memoInput);
@@ -1876,6 +1897,8 @@ async function initPageCalendar() {
         closeMobileTodoForm();
       }
     } catch (error) {
+      state.isAddingTodo = false;
+      renderAll();
       alert('업무 일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
     }
   });

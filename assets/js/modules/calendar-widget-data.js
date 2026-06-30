@@ -283,6 +283,12 @@ function groupItemsByDate(items = []) {
   }, {});
 }
 
+function getWidgetDayItems(calendarType, items = []) {
+  if (calendarType === 'work') return items.slice(0, 1);
+
+  return items;
+}
+
 function getRangeDateKeys(range, baseDate) {
   if (range === 'fourDays') return getDateKeys(baseDate, 4);
   if (range === 'twoWeeks') return getDateKeys(getTwoWeekRange(baseDate).startDate, 14);
@@ -336,7 +342,10 @@ export function buildCalendarWidgetPayload(items = [], options = {}) {
             weekday: KOREAN_WEEKDAYS[(parseDateKey(dateKey) || baseDate).getDay()],
             isToday: dateKey === today,
             isCurrentMonth,
-            items: range === 'month' && !isCurrentMonth ? [] : typeGroups[dateKey] || [],
+            items:
+              range === 'month' && !isCurrentMonth
+                ? []
+                : getWidgetDayItems(calendarType, typeGroups[dateKey] || []),
           };
         }),
       };

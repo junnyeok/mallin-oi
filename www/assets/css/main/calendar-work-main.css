@@ -356,6 +356,27 @@
   opacity: 0.82;
 }
 
+.work-todo-form__button:disabled,
+.work-todo-form__button:disabled:hover {
+  border-color: var(--color-border);
+  background: var(--color-border);
+  color: var(--color-text-sub);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.work-todo-form__limit-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
+.work-todo-form__limit-message[hidden] {
+  display: none;
+}
+
 /* =========================
   Work Repeat
 ========================= */
