@@ -350,6 +350,7 @@ struct DayCellView: View {
                 .font(.system(size: dateFontSize, weight: isToday ? .bold : .semibold))
                 .foregroundStyle(dayNumberColor)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             ForEach(Array(visibleItems.prefix(maxVisibleItems))) { item in
                 Text(displayTitle(for: item))
@@ -452,9 +453,9 @@ struct DayCellView: View {
 
     private var dateFontSize: CGFloat {
         if range == "fourDays" {
-            if itemCount <= 1 { return 12.5 }
-            if itemCount == 2 { return 11 }
-            return 10
+            if itemCount <= 1 { return 11.5 }
+            if itemCount == 2 { return 10 }
+            return 8.5
         }
         if range == "twoWeeks" { return 8 }
         return 9
