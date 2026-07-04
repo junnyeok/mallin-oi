@@ -549,6 +549,7 @@ function renderCharacterEffectImage(effectItemId = '') {
   return `
     <span
       class="character-effect-layer"
+      data-character-effect-id="${escapeHtml(effect.itemId)}"
       data-character-effect-placement="${escapeHtml(effect.placement)}"
       aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
     >

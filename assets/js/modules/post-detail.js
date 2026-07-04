@@ -139,6 +139,7 @@ function renderCharacterEffectImg(effectItemId = '') {
   return `
     <span
       class="character-effect-layer"
+      data-character-effect-id="${escapeHtml(effect.itemId)}"
       data-character-effect-placement="${escapeHtml(effect.placement)}"
       aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
     >
@@ -359,7 +360,7 @@ async function renderAuthor(post) {
     >${nickname}</a>${privateMark}
     <span class="character-effect-wrap post-author__character-effect-wrap">
   <img
-    class="post-author__character"
+    class="post-author__character character-effect-character"
     src="${escapeHtml(characterImageUrl)}"
     alt="${nickname} 캐릭터"
   />
@@ -383,7 +384,7 @@ async function renderAuthor(post) {
     <span>${nickname}</span>${privateMark}
     <span class="character-effect-wrap post-author__character-effect-wrap">
   <img
-    class="post-author__character"
+    class="post-author__character character-effect-character"
     src="${escapeHtml(DEFAULT_CHARACTER_IMAGE)}"
     alt="${nickname} 캐릭터"
   />

@@ -206,6 +206,7 @@ function renderAuthorProfileLink(
     ? `
       <span
         class="character-effect-layer"
+        data-character-effect-id="${escapeHtml(effect.itemId)}"
         data-character-effect-placement="${escapeHtml(effect.placement)}"
         aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
       >
@@ -221,7 +222,7 @@ function renderAuthorProfileLink(
   const characterHtml = `
   <span class="character-effect-wrap comment-author-character-effect-wrap">
     <img
-      class="comment-author-character"
+      class="comment-author-character character-effect-character"
       src="${characterSrc}"
       alt="${nickname} 캐릭터"
     />
