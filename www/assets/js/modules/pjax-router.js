@@ -260,6 +260,17 @@ export async function initPjaxRouter({
 
     const nextUrl = new URL(rawUrl, window.location.href);
 
+    const beforeNavigateEvent = new CustomEvent('mallin:before-pjax-navigate', {
+      cancelable: true,
+      detail: {
+        from: window.location.href,
+        to: nextUrl.toString(),
+        options,
+      },
+    });
+
+    if (!window.dispatchEvent(beforeNavigateEvent)) return;
+
     if (!isPjaxAllowedUrl(nextUrl)) {
       window.location.href = nextUrl.toString();
       return;

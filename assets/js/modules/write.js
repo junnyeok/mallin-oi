@@ -22,6 +22,210 @@ let savedSelectionRange = null;
 let activeEmbedId = '';
 let isEditorComposing = false;
 
+const WRITE_LEAVE_MESSAGE = '글이 삭제됩니다. 이동하시겠습니까?';
+const WRITE_HISTORY_GUARD_KEY = '__mallinWriteGuard';
+
+function createWriteLeaveGuard(form) {
+  window.__mallinDisposeWriteLeaveGuard?.();
+
+  let baseline = '';
+  let dirty = false;
+  let navigationAllowed = false;
+  let historyArmed = false;
+  let handlingGuardPop = false;
+  let skipNextPop = false;
+
+  const editor = $('#bodyEditor');
+  const watchedSelectors = [
+    '#title',
+    '#excerpt',
+    '#tags',
+    '#body',
+    '#category',
+    '#isPrivate',
+    '#privatePassword',
+    '#pinned',
+    '#writeImage',
+    '#writeVideo',
+    '#writeFile',
+    '#writeVideoLink',
+  ];
+
+  const getSnapshot = () =>
+    JSON.stringify({
+      fields: watchedSelectors.map((selector) => {
+        const element = $(selector);
+        if (!element) return null;
+        if (element.type === 'checkbox') return element.checked;
+        if (element.type === 'file') {
+          return Array.from(element.files || [], (file) => [
+            file.name,
+            file.size,
+            file.lastModified,
+          ]);
+        }
+        return element.value;
+      }),
+      editor: editor?.innerHTML || '',
+      attachments: attachmentState.map((item) => [
+        item.id,
+        item.type,
+        item.fileName,
+        item.url,
+        item.path,
+      ]),
+      removedStoragePaths: [...removedStoragePaths].sort(),
+    });
+
+  const armHistoryGuard = () => {
+    if (historyArmed || navigationAllowed) return;
+    historyArmed = true;
+    window.history.pushState(
+      { ...(window.history.state || {}), [WRITE_HISTORY_GUARD_KEY]: true },
+      '',
+      window.location.href,
+    );
+  };
+
+  const refreshDirty = () => {
+    dirty = getSnapshot() !== baseline;
+    if (dirty) armHistoryGuard();
+    return dirty;
+  };
+
+  const confirmLeave = () =>
+    !refreshDirty() || window.confirm(WRITE_LEAVE_MESSAGE);
+
+  const permitNavigation = () => {
+    navigationAllowed = true;
+    dirty = false;
+  };
+
+  const onBeforeUnload = (event) => {
+    if (navigationAllowed || !refreshDirty()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  };
+
+  const onDocumentClick = (event) => {
+    const anchor = event.target.closest?.('a[href]');
+    if (!anchor || navigationAllowed || event.defaultPrevented) return;
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) return;
+    if (
+      anchor.hasAttribute('download') ||
+      anchor.getAttribute('target') === '_blank'
+    ) return;
+
+    const href = anchor.getAttribute('href') || '';
+    if (
+      !href ||
+      href.startsWith('#') ||
+      /^(?:javascript:|mailto:|tel:)/i.test(href)
+    ) return;
+
+    const nextUrl = new URL(href, window.location.href);
+    const currentUrl = new URL(window.location.href);
+    if (
+      nextUrl.pathname === currentUrl.pathname &&
+      nextUrl.search === currentUrl.search &&
+      nextUrl.hash !== currentUrl.hash
+    ) return;
+
+    if (!confirmLeave()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    permitNavigation();
+  };
+
+  const onBeforePjaxNavigate = (event) => {
+    if (navigationAllowed) return;
+    if (!confirmLeave()) {
+      event.preventDefault();
+      return;
+    }
+    permitNavigation();
+  };
+
+  const onPopState = (event) => {
+    if (skipNextPop) {
+      skipNextPop = false;
+      event.stopImmediatePropagation();
+      return;
+    }
+    if (navigationAllowed || !historyArmed) return;
+
+    event.stopImmediatePropagation();
+
+    if (!refreshDirty()) {
+      navigationAllowed = true;
+      window.history.back();
+      return;
+    }
+
+    if (handlingGuardPop) return;
+    handlingGuardPop = true;
+
+    if (window.confirm(WRITE_LEAVE_MESSAGE)) {
+      permitNavigation();
+      window.history.back();
+      return;
+    }
+
+    skipNextPop = true;
+    window.history.forward();
+    handlingGuardPop = false;
+  };
+
+  const onInput = () => refreshDirty();
+  const observer = editor
+    ? new MutationObserver(() => refreshDirty())
+    : null;
+
+  form.addEventListener('input', onInput);
+  form.addEventListener('change', onInput);
+  document.addEventListener('click', onDocumentClick, true);
+  window.addEventListener('beforeunload', onBeforeUnload);
+  window.addEventListener('mallin:before-pjax-navigate', onBeforePjaxNavigate);
+  window.addEventListener('popstate', onPopState, true);
+  observer?.observe(editor, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+
+  const resetBaseline = () => {
+    baseline = getSnapshot();
+    dirty = false;
+    navigationAllowed = false;
+  };
+
+  const dispose = () => {
+    observer?.disconnect();
+    form.removeEventListener('input', onInput);
+    form.removeEventListener('change', onInput);
+    document.removeEventListener('click', onDocumentClick, true);
+    window.removeEventListener('beforeunload', onBeforeUnload);
+    window.removeEventListener('mallin:before-pjax-navigate', onBeforePjaxNavigate);
+    window.removeEventListener('popstate', onPopState, true);
+    if (window.__mallinDisposeWriteLeaveGuard === dispose) {
+      delete window.__mallinDisposeWriteLeaveGuard;
+    }
+  };
+
+  window.__mallinDisposeWriteLeaveGuard = dispose;
+  resetBaseline();
+
+  return { permitNavigation, resetBaseline };
+}
+
 function navigateWithPjax(url) {
   const href = String(url || '').trim();
   if (!href) return;
@@ -2194,6 +2398,7 @@ export async function initWrite() {
   const submitBtn = $('#writeSubmitBtn');
   const editPostId = getEditPostId();
   const editor = getBodyEditor();
+  const leaveGuard = createWriteLeaveGuard(form);
 
   setWriteModeUi(!!editPostId);
   if (editor) {
@@ -2250,6 +2455,8 @@ export async function initWrite() {
       return;
     }
   }
+
+  leaveGuard.resetBaseline();
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2353,6 +2560,7 @@ export async function initWrite() {
         if (note) note.textContent = '수정 완료! 상세 페이지로 이동할게.';
 
         shouldRestoreSubmit = false;
+        leaveGuard.permitNavigation();
         setTimeout(() => {
           navigateWithPjax(`./post.html?id=${editPostId}`);
         }, 400);
@@ -2409,6 +2617,7 @@ export async function initWrite() {
       }
 
       shouldRestoreSubmit = false;
+      leaveGuard.permitNavigation();
       setTimeout(() => {
         navigateWithPjax(`./post.html?id=${data.id}`);
       }, 700);
