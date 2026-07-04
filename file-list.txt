@@ -662,6 +662,7 @@
 ./study.html
 ./suggestion.html
 ./supabase-SQLEditor/99_all_backup.sql
+./supabase-SQLEditor/20260704-calendar-group-leave-backup-cleanup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
 ./supabase-SQLEditor/calendar-groups-ambiguous-fix.sql

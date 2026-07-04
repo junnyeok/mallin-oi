@@ -458,6 +458,11 @@ begin
     raise exception '그룹장은 바로 나갈 수 없습니다. 그룹을 삭제해 주세요.';
   end if;
 
+  -- 탈퇴 처리와 같은 트랜잭션에서 현재 그룹에 백업한 본인 일정만 정리한다.
+  delete from public.calendar_group_shared_events e
+  where e.group_id = p_group_id
+    and e.user_id = v_uid;
+
   update public.calendar_group_members
   set status = 'left',
       updated_at = now()
@@ -1398,6 +1403,8 @@ $$;
 
 grant execute on function public.create_calendar_group(text, text, boolean, boolean, boolean, text, text, boolean) to authenticated;
 grant execute on function public.join_calendar_group(uuid, text) to authenticated;
+revoke all on function public.leave_calendar_group(uuid) from public;
+revoke all on function public.leave_calendar_group(uuid) from anon;
 grant execute on function public.leave_calendar_group(uuid) to authenticated;
 grant execute on function public.set_calendar_group_hidden(uuid, boolean) to authenticated;
 grant execute on function public.update_calendar_group(uuid, text, text, boolean, boolean, boolean, text, text, boolean) to authenticated;
