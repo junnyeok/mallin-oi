@@ -24,6 +24,7 @@ import {
 } from './calendar-shared-personal-readonly.js';
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
+import { CALENDAR_MODES, canEditCommonGroup, createCommonGroupEvent, deleteCommonGroupEvent, deleteCommonGroupEventsByDates, getCalendarMode, groupCommonRows, isCommonGroupMode, makeCommonCategoryPayload, setCommonGroupReadonlyUi, updateCommonGroupEvent } from './calendar-common-group.js';
 
 const TABLE_NAME = 'work_calendar_todos';
 const CATEGORY_TABLE_NAME = 'work_calendar_categories';
@@ -211,6 +212,7 @@ function getTodoCategorySelectValue(todo, categories = []) {
 }
 
 function getCategoryByTodo(todo, categories = []) {
+  if (todo?.isCommonGroupEvent && todo.category) return todo.category;
   return (
     categories.find((category) => category.id === todo.categoryId) ||
     categories.find((category) => category.slug === todo.type) ||
@@ -1016,7 +1018,7 @@ function renderCalendarGrid({
     });
   }
 
-  if (!isMini) {
+  if (!isMini && isGroupMode) {
     appendCalendarGroupBoard(
       root,
       cells.map((cell) => ({
@@ -1350,11 +1352,35 @@ async function initPageCalendar() {
     categories: await ensureDefaultCategories(user.id),
     sharedGroups: await fetchSharedPersonalGroups('work'),
     store: await fetchUserTodos(user.id),
+    personalStore: null,
     isAddingTodo: false,
     onSelect: null,
     onSelectGroupEvent: null,
     group: null,
+    calendarMode: CALENDAR_MODES.PERSONAL,
   };
+  state.personalStore = state.store;
+
+  async function handleGroupModeChange({ group, rows }) {
+    const mode = getCalendarMode(group);
+    state.calendarMode = mode;
+    if (mode === CALENDAR_MODES.COMMON_GROUP) {
+      state.store = groupCommonRows(Array.isArray(rows) ? rows : [], 'work');
+    } else {
+      state.personalStore = await fetchUserTodos(state.userId);
+      state.store = state.personalStore;
+    }
+    setCommonGroupReadonlyUi(pageRoot, { active: mode === CALENDAR_MODES.COMMON_GROUP, canEdit: group?.role === 'owner' });
+  }
+
+  async function reloadStoreForMode() {
+    if (state.calendarMode === CALENDAR_MODES.COMMON_GROUP) {
+      await state.group?.refresh?.();
+      return;
+    }
+    state.personalStore = await fetchUserTodos(state.userId);
+    state.store = state.personalStore;
+  }
 
   function refreshGroupBackupNeeded() {
     void state.group?.refreshBackupNeeded?.();
@@ -1534,14 +1560,20 @@ async function initPageCalendar() {
     setRepeatMessage('반복근무를 적용하는 중이야.');
 
     try {
-      await deleteTodosByDateKeys({
-        userId: state.userId,
-        dateKeys: [...targetDateKeys],
-      });
-
-      await insertRepeatTodos(rowsToInsert);
-
-      state.store = await fetchUserTodos(state.userId);
+      if (isCommonGroupMode(state.group?.state)) {
+        if (!canEditCommonGroup(state.group.state)) return;
+        const groupId = state.group.state.selectedGroup.id;
+        await deleteCommonGroupEventsByDates(groupId, 'work', [...targetDateKeys]);
+        for (const row of rowsToInsert) {
+          const category = state.categories.find((item) => item.id === row.category_id) || getFallbackCategory(state.categories);
+          await createCommonGroupEvent({ groupId, calendarType: 'work', dateKey: row.work_date, scheduleType: row.work_type, title: row.work_text, memo: row.memo, color: category?.color, payload: makeCommonCategoryPayload(category) });
+        }
+        await state.group.refresh();
+      } else {
+        await deleteTodosByDateKeys({ userId: state.userId, dateKeys: [...targetDateKeys] });
+        await insertRepeatTodos(rowsToInsert);
+        await reloadStoreForMode();
+      }
       renderAll();
       refreshGroupBackupNeeded();
 
@@ -1575,9 +1607,15 @@ async function initPageCalendar() {
     }
 
     try {
+      if (isCommonGroupMode(state.group?.state)) {
+        if (!canEditCommonGroup(state.group.state)) return;
+        await deleteCommonGroupEvent(todoId);
+        await state.group.refresh();
+        return;
+      }
       if (isSharedTodo) {
         await deleteSharedPersonalTodoById(todoId);
-        state.store = await fetchUserTodos(state.userId);
+        await reloadStoreForMode();
       } else {
         await deleteTodoById(todoId);
 
@@ -1608,6 +1646,13 @@ async function initPageCalendar() {
     const nextMemo = String(memo || '').trim();
     const currentCategoryId = getTodoCategorySelectValue(target, state.categories);
 
+    if (isCommonGroupMode(state.group?.state)) {
+      if (!canEditCommonGroup(state.group.state)) return;
+      await updateCommonGroupEvent(todoId, { schedule_type: nextCategory.slug, title: nextCategory.name, memo: nextMemo, color: nextCategory.color, payload: makeCommonCategoryPayload(nextCategory) });
+      await state.group.refresh();
+      return;
+    }
+
     if (isSharedPersonalTodo(target)) {
       await updateSharedPersonalTodo({
         todoId,
@@ -1620,7 +1665,7 @@ async function initPageCalendar() {
           category: nextCategory,
         });
       }
-      state.store = await fetchUserTodos(state.userId);
+      await reloadStoreForMode();
       renderAll();
       refreshGroupBackupNeeded();
       return;
@@ -1636,7 +1681,7 @@ async function initPageCalendar() {
       });
     }
 
-    state.store = await fetchUserTodos(state.userId);
+    await reloadStoreForMode();
     renderAll();
     refreshGroupBackupNeeded();
   }
@@ -1712,7 +1757,7 @@ async function initPageCalendar() {
       try {
         await deleteSharedPersonalCategoryById(category.id);
         state.categories = await fetchUserCategories(state.userId);
-        state.store = await fetchUserTodos(state.userId);
+        await reloadStoreForMode();
         renderAll();
       } catch (error) {
         alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
@@ -1823,6 +1868,7 @@ async function initPageCalendar() {
     pageRoot,
     getViewDate: () => state.viewDate,
     renderAll,
+    onModeChange: handleGroupModeChange,
   });
   renderAll();
 
@@ -1875,6 +1921,14 @@ async function initPageCalendar() {
         return;
       }
 
+      if (isCommonGroupMode(state.group?.state)) {
+        if (!canEditCommonGroup(state.group.state)) return;
+        await createCommonGroupEvent({ groupId: state.group.state.selectedGroup.id, calendarType: 'work', dateKey: state.selectedDateKey, scheduleType: category.slug, title: category.name, memo, color: category.color, payload: makeCommonCategoryPayload(category) });
+        state.isAddingTodo = false;
+        memoInput.value = '';
+        await state.group.refresh();
+        return;
+      }
       const nextTodo = await insertTodo({
         userId: state.userId,
         dateKey: state.selectedDateKey,

@@ -112,10 +112,16 @@
 }
 
 .calendar-group-bar__status {
+  display: grid;
+  gap: var(--space-4);
   margin: var(--space-8) 0 0;
   color: var(--color-text-sub);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.calendar-group-bar__status-guide {
+  color: var(--color-text);
 }
 
 .calendar-group-schedule {
@@ -466,6 +472,27 @@
 .calendar-group-form__set {
   display: grid;
   gap: var(--space-8);
+}
+
+.calendar-group-form__set--common p {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+.is-common-group-readonly [class$="-todo-form"],
+.is-common-group-readonly [class$="-repeat"],
+.is-common-group-readonly [class$="-category-panel"] {
+  display: none !important;
+}
+
+.is-common-group-readonly [class*="-todo-item__edit"],
+.is-common-group-readonly [class*="-todo-item__save"],
+.is-common-group-readonly [class*="-todo-item__delete"],
+.is-common-group-readonly [class*="-todo-item__check"],
+.is-common-group-readonly [class*="-todo-item__category-select"] {
+  display: none !important;
 }
 
 #calendarGroupCreatePanel {

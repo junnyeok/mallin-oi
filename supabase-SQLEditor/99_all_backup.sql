@@ -24791,3 +24791,281 @@ $$;
 revoke all on function public.leave_calendar_group(uuid) from public;
 revoke all on function public.leave_calendar_group(uuid) from anon;
 grant execute on function public.leave_calendar_group(uuid) to authenticated;
+-- 실행 쿼리 원본: 20260704-common-group-calendar.sql
+-- 20260704 공통 그룹 캘린더 기능 추가
+
+alter table if exists public.calendar_groups
+  add column if not exists is_common_calendar boolean not null default false;
+
+create table if not exists public.calendar_common_group_events (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.calendar_groups(id) on delete cascade,
+  calendar_type text not null check (calendar_type in ('study', 'work', 'event')),
+  date_key date not null,
+  schedule_type text not null default 'etc',
+  title text not null check (char_length(trim(title)) between 1 and 100),
+  memo text not null default '',
+  color text,
+  payload jsonb not null default '{}'::jsonb,
+  created_by uuid not null default auth.uid() references auth.users(id),
+  updated_by uuid not null default auth.uid() references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists calendar_common_group_events_view_idx
+  on public.calendar_common_group_events (group_id, calendar_type, date_key, created_at);
+
+create or replace function public.handle_common_group_event_write()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception '로그인이 필요합니다.'; end if;
+  if not exists (select 1 from public.calendar_groups g where g.id = new.group_id and g.owner_id = auth.uid() and g.is_common_calendar) then
+    raise exception '공통 그룹 캘린더는 그룹장만 수정할 수 있습니다.';
+  end if;
+  if tg_op = 'INSERT' then new.created_by := auth.uid(); end if;
+  new.updated_by := auth.uid(); new.updated_at := now();
+  return new;
+end; $$;
+
+drop trigger if exists trg_common_group_event_write on public.calendar_common_group_events;
+create trigger trg_common_group_event_write before insert or update on public.calendar_common_group_events
+for each row execute function public.handle_common_group_event_write();
+
+alter table public.calendar_common_group_events enable row level security;
+drop policy if exists "common_group_events_select_member" on public.calendar_common_group_events;
+create policy "common_group_events_select_member" on public.calendar_common_group_events
+for select to authenticated using (public.is_calendar_group_member(group_id, auth.uid()));
+drop policy if exists "common_group_events_insert_owner" on public.calendar_common_group_events;
+create policy "common_group_events_insert_owner" on public.calendar_common_group_events
+for insert to authenticated with check (exists (select 1 from public.calendar_groups g where g.id = group_id and g.owner_id = auth.uid() and g.is_common_calendar));
+drop policy if exists "common_group_events_update_owner" on public.calendar_common_group_events;
+create policy "common_group_events_update_owner" on public.calendar_common_group_events
+for update to authenticated using (exists (select 1 from public.calendar_groups g where g.id = group_id and g.owner_id = auth.uid() and g.is_common_calendar))
+with check (exists (select 1 from public.calendar_groups g where g.id = group_id and g.owner_id = auth.uid() and g.is_common_calendar));
+drop policy if exists "common_group_events_delete_owner" on public.calendar_common_group_events;
+create policy "common_group_events_delete_owner" on public.calendar_common_group_events
+for delete to authenticated using (exists (select 1 from public.calendar_groups g where g.id = group_id and g.owner_id = auth.uid() and g.is_common_calendar));
+
+grant select, insert, update, delete on public.calendar_common_group_events to authenticated;
+
+drop function if exists public.create_calendar_group(text, text, text, boolean, boolean, boolean, text, text, boolean);
+create or replace function public.create_calendar_group(
+  p_name text, p_description text default '', p_color text default '#f54260',
+  p_allow_study boolean default true, p_allow_work boolean default true, p_allow_event boolean default false,
+  p_visibility text default 'public', p_password text default null, p_is_hidden boolean default false,
+  p_is_common_calendar boolean default false
+) returns uuid language plpgsql security definer set search_path = public, extensions as $$
+declare v_uid uuid := auth.uid(); v_group_id uuid; v_visibility text := case when p_visibility = 'private' then 'private' else 'public' end;
+begin
+  if v_uid is null then raise exception '로그인이 필요합니다.'; end if;
+  if not (coalesce(p_allow_study,false) or coalesce(p_allow_work,false) or coalesce(p_allow_event,false)) then raise exception '연동할 캘린더를 하나 이상 선택해야 합니다.'; end if;
+  insert into public.calendar_groups(owner_id,name,description,color,visibility,password_hash,is_hidden,allow_study,allow_work,allow_event,is_common_calendar)
+  values(v_uid,trim(p_name),nullif(left(trim(coalesce(p_description,'')),100),''),case when coalesce(p_color,'') ~ '^#[0-9A-Fa-f]{6}$' then lower(p_color) else '#f54260' end,
+    v_visibility,case when v_visibility='private' and nullif(p_password,'') is not null then crypt(p_password,gen_salt('bf')) else null end,
+    coalesce(p_is_hidden,false),coalesce(p_allow_study,false),coalesce(p_allow_work,false),coalesce(p_allow_event,false),coalesce(p_is_common_calendar,false)) returning id into v_group_id;
+  insert into public.calendar_group_members(group_id,user_id,role,status) values(v_group_id,v_uid,'owner','active'); return v_group_id;
+end; $$;
+
+drop function if exists public.update_calendar_group(uuid, text, text, text, boolean, boolean, boolean, text, text, boolean);
+create or replace function public.update_calendar_group(
+  p_group_id uuid, p_name text, p_description text, p_color text,
+  p_allow_study boolean, p_allow_work boolean, p_allow_event boolean,
+  p_visibility text, p_password text default null, p_is_hidden boolean default false,
+  p_is_common_calendar boolean default false
+) returns void language plpgsql security definer set search_path = public, extensions as $$
+declare v_visibility text := case when p_visibility='private' then 'private' else 'public' end;
+begin
+  if not public.is_calendar_group_manager(p_group_id, auth.uid()) then raise exception '그룹 관리자만 수정할 수 있습니다.'; end if;
+  if not (coalesce(p_allow_study,false) or coalesce(p_allow_work,false) or coalesce(p_allow_event,false)) then raise exception '연동할 캘린더를 하나 이상 선택해야 합니다.'; end if;
+  update public.calendar_groups set name=trim(p_name),description=nullif(left(trim(coalesce(p_description,'')),100),''),
+    color=case when coalesce(p_color,'') ~ '^#[0-9A-Fa-f]{6}$' then lower(p_color) else color end,
+    allow_study=coalesce(p_allow_study,false),allow_work=coalesce(p_allow_work,false),allow_event=coalesce(p_allow_event,false),visibility=v_visibility,
+    password_hash=case when v_visibility='private' and nullif(p_password,'') is not null then crypt(p_password,gen_salt('bf')) when v_visibility='public' then null else password_hash end,
+    is_hidden=coalesce(p_is_hidden,false),is_common_calendar=coalesce(p_is_common_calendar,false),updated_at=now() where id=p_group_id;
+end; $$;
+
+drop function if exists public.get_my_calendar_groups();
+create or replace function public.get_my_calendar_groups()
+returns table(id uuid,name text,description text,color text,visibility text,is_hidden boolean,allow_study boolean,allow_work boolean,allow_event boolean,is_common_calendar boolean,role text,member_count bigint,can_manage boolean,joined_at timestamptz)
+language sql security definer set search_path=public as $$
+select g.id,g.name,g.description,g.color,g.visibility,g.is_hidden,g.allow_study,g.allow_work,g.allow_event,g.is_common_calendar,m.role,
+ (select count(*) from public.calendar_group_members cm where cm.group_id=g.id and cm.status='active'),m.role in ('owner','admin'),m.joined_at
+from public.calendar_group_members m join public.calendar_groups g on g.id=m.group_id where m.user_id=auth.uid() and m.status='active' order by m.joined_at desc; $$;
+
+drop function if exists public.get_visible_calendar_groups(boolean);
+create or replace function public.get_visible_calendar_groups(p_include_hidden boolean default false)
+returns table(id uuid,name text,description text,color text,visibility text,is_hidden boolean,allow_study boolean,allow_work boolean,allow_event boolean,is_common_calendar boolean,role text,member_count bigint,can_manage boolean,joined_at timestamptz)
+language sql security definer set search_path=public as $$
+select g.id,g.name,g.description,g.color,g.visibility,g.is_hidden,g.allow_study,g.allow_work,g.allow_event,g.is_common_calendar,coalesce(m.role,''),
+ (select count(*) from public.calendar_group_members cm where cm.group_id=g.id and cm.status='active'),coalesce(m.role in ('owner','admin'),false),m.joined_at
+from public.calendar_groups g left join public.calendar_group_members m on m.group_id=g.id and m.user_id=auth.uid() and m.status='active'
+where g.visibility in ('public','private') and (p_include_hidden or not g.is_hidden) order by g.created_at desc; $$;
+
+grant execute on function public.create_calendar_group(text,text,text,boolean,boolean,boolean,text,text,boolean,boolean) to authenticated;
+grant execute on function public.update_calendar_group(uuid,text,text,text,boolean,boolean,boolean,text,text,boolean,boolean) to authenticated;
+grant execute on function public.get_my_calendar_groups() to authenticated;
+grant execute on function public.get_visible_calendar_groups(boolean) to authenticated;
+-- 20260704 공통 그룹 캘린더 백업/공개 상태 수정
+
+alter table if exists public.calendar_common_group_events
+  add column if not exists is_deleted boolean not null default false,
+  add column if not exists published_date_key date,
+  add column if not exists published_schedule_type text,
+  add column if not exists published_title text,
+  add column if not exists published_memo text,
+  add column if not exists published_color text,
+  add column if not exists published_payload jsonb,
+  add column if not exists published_is_deleted boolean not null default false,
+  add column if not exists published_at timestamptz;
+
+-- 마이그레이션 중 기존 트리거가 auth.uid() null로 막지 않도록 잠시 해제한다.
+drop trigger if exists trg_common_group_event_write on public.calendar_common_group_events;
+
+-- 1차 구현으로 이미 저장된 일정은 데이터 손실 없이 공개 완료 상태로 이관한다.
+-- 기존 1차 일정의 카테고리 ID를 이름/slug/색상 스냅샷으로 보강한다.
+update public.calendar_common_group_events e
+set payload = coalesce(e.payload,'{}'::jsonb) || jsonb_build_object(
+  'categoryName',c.name,'categorySlug',c.slug,'categoryColor',c.color
+)
+from public.work_calendar_categories c
+where e.calendar_type='work' and c.id::text=e.payload->>'categoryId'
+  and not (e.payload ? 'categoryName');
+
+update public.calendar_common_group_events e
+set payload = coalesce(e.payload,'{}'::jsonb) || jsonb_build_object(
+  'categoryName',c.name,'categorySlug',c.slug,'categoryColor',c.color
+)
+from public.study_calendar_categories c
+where e.calendar_type='study' and c.id::text=e.payload->>'categoryId'
+  and not (e.payload ? 'categoryName');
+
+update public.calendar_common_group_events e
+set payload = coalesce(e.payload,'{}'::jsonb) || jsonb_build_object(
+  'categoryName',c.name,'categorySlug',c.slug,'categoryColor',c.color
+)
+from public.event_calendar_categories c
+where e.calendar_type='event' and c.id::text=e.payload->>'categoryId'
+  and not (e.payload ? 'categoryName');
+
+
+update public.calendar_common_group_events
+set published_date_key = coalesce(published_date_key, date_key),
+    published_schedule_type = coalesce(published_schedule_type, schedule_type),
+    published_title = coalesce(published_title, title),
+    published_memo = coalesce(published_memo, memo),
+    published_color = coalesce(published_color, color),
+    published_payload = coalesce(published_payload, payload, '{}'::jsonb),
+    published_is_deleted = false,
+    published_at = coalesce(published_at, updated_at, created_at, now())
+where published_at is null;
+
+-- 마이그레이션 데이터 보강 후 쓰기 검증 트리거를 다시 연결한다.
+drop trigger if exists trg_common_group_event_write on public.calendar_common_group_events;
+create trigger trg_common_group_event_write before insert or update on public.calendar_common_group_events
+for each row execute function public.handle_common_group_event_write();
+
+drop policy if exists "common_group_events_select_member" on public.calendar_common_group_events;
+drop policy if exists "common_group_events_select_owner" on public.calendar_common_group_events;
+create policy "common_group_events_select_owner"
+on public.calendar_common_group_events for select to authenticated
+using (exists (
+  select 1 from public.calendar_groups g
+  where g.id = group_id and g.owner_id = auth.uid() and g.is_common_calendar
+));
+
+create or replace function public.get_common_group_calendar_events(
+  p_group_id uuid,
+  p_calendar_type text
+)
+returns table (
+  id uuid, group_id uuid, calendar_type text, date_key date,
+  schedule_type text, title text, memo text, color text, payload jsonb,
+  created_by uuid, updated_by uuid, created_at timestamptz, updated_at timestamptz
+)
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_owner boolean;
+begin
+  if v_uid is null then raise exception '로그인이 필요합니다.'; end if;
+  if not public.is_calendar_group_member(p_group_id, v_uid) then
+    raise exception '그룹 참여자만 공통 캘린더를 볼 수 있습니다.';
+  end if;
+  select exists(select 1 from public.calendar_groups g where g.id = p_group_id and g.owner_id = v_uid)
+    into v_is_owner;
+
+  if v_is_owner then
+    return query
+    select e.id,e.group_id,e.calendar_type,e.date_key,e.schedule_type,e.title,e.memo,e.color,e.payload,
+           e.created_by,e.updated_by,e.created_at,e.updated_at
+    from public.calendar_common_group_events e
+    where e.group_id=p_group_id and e.calendar_type=p_calendar_type and not e.is_deleted
+    order by e.date_key,e.created_at;
+  else
+    return query
+    select e.id,e.group_id,e.calendar_type,e.published_date_key,e.published_schedule_type,
+           e.published_title,e.published_memo,e.published_color,coalesce(e.published_payload,'{}'::jsonb),
+           e.created_by,e.updated_by,e.created_at,e.published_at
+    from public.calendar_common_group_events e
+    where e.group_id=p_group_id and e.calendar_type=p_calendar_type
+      and e.published_at is not null and not e.published_is_deleted
+    order by e.published_date_key,e.created_at;
+  end if;
+end; $$;
+
+create or replace function public.common_group_calendar_has_changes(
+  p_group_id uuid,
+  p_calendar_type text
+)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if not exists(select 1 from public.calendar_groups g where g.id=p_group_id and g.owner_id=auth.uid() and g.is_common_calendar) then
+    return false;
+  end if;
+  return exists (
+    select 1 from public.calendar_common_group_events e
+    where e.group_id=p_group_id and e.calendar_type=p_calendar_type and (
+      e.published_at is null or e.is_deleted is distinct from e.published_is_deleted or
+      e.date_key is distinct from e.published_date_key or
+      e.schedule_type is distinct from e.published_schedule_type or
+      e.title is distinct from e.published_title or
+      e.memo is distinct from e.published_memo or
+      e.color is distinct from e.published_color or
+      coalesce(e.payload,'{}'::jsonb) is distinct from coalesce(e.published_payload,'{}'::jsonb)
+    )
+  );
+end; $$;
+
+create or replace function public.publish_common_group_calendar(
+  p_group_id uuid,
+  p_calendar_type text
+)
+returns table (event_count bigint, backed_up_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+declare v_now timestamptz := now(); v_count bigint;
+begin
+  if not exists(select 1 from public.calendar_groups g where g.id=p_group_id and g.owner_id=auth.uid() and g.is_common_calendar) then
+    raise exception '공통 그룹 캘린더는 그룹장만 백업할 수 있습니다.';
+  end if;
+  update public.calendar_common_group_events e
+  set published_date_key=e.date_key,
+      published_schedule_type=e.schedule_type,
+      published_title=e.title,
+      published_memo=e.memo,
+      published_color=e.color,
+      published_payload=coalesce(e.payload,'{}'::jsonb),
+      published_is_deleted=e.is_deleted,
+      published_at=v_now
+  where e.group_id=p_group_id and e.calendar_type=p_calendar_type;
+  select count(*) into v_count from public.calendar_common_group_events e
+  where e.group_id=p_group_id and e.calendar_type=p_calendar_type and not e.published_is_deleted;
+  return query select v_count,v_now;
+end; $$;
+
+revoke all on function public.get_common_group_calendar_events(uuid,text) from public, anon;
+revoke all on function public.common_group_calendar_has_changes(uuid,text) from public, anon;
+revoke all on function public.publish_common_group_calendar(uuid,text) from public, anon;
+grant execute on function public.get_common_group_calendar_events(uuid,text) to authenticated;
+grant execute on function public.common_group_calendar_has_changes(uuid,text) to authenticated;
+grant execute on function public.publish_common_group_calendar(uuid,text) to authenticated;

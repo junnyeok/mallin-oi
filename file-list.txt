@@ -883,3 +883,9 @@
 ./ios/App/App/public/assets/js/modules/calendar-native-widgets.js
 ./ios/App/App/MainViewController.swift
 ./ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme
+./assets/js/modules/calendar-common-group.js
+./www/assets/js/modules/calendar-common-group.js
+./android/app/src/main/assets/public/assets/js/modules/calendar-common-group.js
+./ios/App/App/public/assets/js/modules/calendar-common-group.js
+./supabase-SQLEditor/20260704-common-group-calendar.sql
+./supabase-SQLEditor/20260704-common-group-calendar-publish-fix.sql
