@@ -94,11 +94,14 @@ async function saveLoggedOutPayload(plugin) {
   });
 }
 
-export async function refreshCalendarWidgets() {
+export async function refreshCalendarWidgets({ force = false } = {}) {
   const plugin = getPlugin();
   if (!plugin?.saveWidgetData) return false;
 
-  if (refreshPromise) return refreshPromise;
+  if (refreshPromise) {
+    if (!force) return refreshPromise;
+    await refreshPromise;
+  }
 
   refreshPromise = (async () => {
     try {

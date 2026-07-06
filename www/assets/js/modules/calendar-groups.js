@@ -8,7 +8,10 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
-import { CALENDAR_MODES, commonGroupCalendarHasChanges, fetchCommonGroupEvents, getCalendarMode, isCommonCalendarGroup, publishCommonGroupCalendar } from './calendar-common-group.js';
+import { initCalendarCopyPaste } from './calendar-group-copy-paste.js';
+
+const CALENDAR_MODES = Object.freeze({ PERSONAL: 'personal', SHARED_GROUP: 'shared-group' });
+const getCalendarMode = (group) => group?.id ? CALENDAR_MODES.SHARED_GROUP : CALENDAR_MODES.PERSONAL;
 
 const SELECTED_GROUP_KEY = 'mallin:calendar:selected-group';
 const CALENDAR_LABELS = {
@@ -861,7 +864,7 @@ export async function initCalendarGroupBar({
       aria-expanded="false"
       aria-controls="${panelId}"
     >
-      그룹
+      그룹 설정
     </button>
     <div class="calendar-group-bar__panel" id="${panelId}" hidden>
     <div class="calendar-group-bar__main">
@@ -877,10 +880,10 @@ export async function initCalendarGroupBar({
     </div>
     <div class="calendar-group-bar__status" aria-live="polite">
       <span class="calendar-group-bar__status-main">그룹 일정을 함께 보려면 그룹을 선택해줘.</span>
-      <span class="calendar-group-bar__status-guide" hidden></span>
     </div>
     </div>
   `;
+  const copyPaste = initCalendarCopyPaste({ bar, calendarType });
 
   if (head) {
     head.append(bar);
@@ -891,7 +894,6 @@ export async function initCalendarGroupBar({
   const select = bar.querySelector('.calendar-group-bar__select');
   const backupButton = bar.querySelector('.calendar-group-bar__backup');
   const status = bar.querySelector('.calendar-group-bar__status-main');
-  const statusGuide = bar.querySelector('.calendar-group-bar__status-guide');
   const toggleButton = bar.querySelector('.calendar-group-bar__toggle');
   const closeButton = bar.querySelector('.calendar-group-bar__close');
   const panel = bar.querySelector('.calendar-group-bar__panel');
@@ -914,35 +916,7 @@ export async function initCalendarGroupBar({
     if (status) status.textContent = message;
   }
 
-  function setCommonGuide(group = state.selectedGroup) {
-    if (!statusGuide) return;
-    const isCommon = isCommonCalendarGroup(group);
-    statusGuide.hidden = !isCommon;
-    statusGuide.textContent = !isCommon
-      ? ''
-      : group?.role === 'owner'
-        ? '그룹장이 일정을 관리하고 백업으로 공유 상태를 확인해요.'
-        : '그룹장만 공통 캘린더를 수정할 수 있어요.';
-  }
-
   function updateBackupButtonState() {
-    const isCommon = isCommonCalendarGroup(state.selectedGroup);
-    const commonOwner = isCommon && state.selectedGroup?.role === 'owner';
-    if (isCommon) {
-      backupButton.hidden = !commonOwner;
-      const isChecking = state.backupStatus === BACKUP_STATUS.CHECKING;
-      const isRunning = state.backupStatus === BACKUP_STATUS.RUNNING;
-      const canBackup = commonOwner && state.backupNeeded && !isChecking && !isRunning;
-      const label = isRunning ? '백업 중' : isChecking ? '백업 상태 확인 중' : canBackup ? '백업 필요: 공통 캘린더 공개' : '백업할 변경사항 없음';
-      backupButton.disabled = !canBackup;
-      backupButton.classList.toggle('is-backup-needed', canBackup);
-      backupButton.dataset.backupNeeded = canBackup ? 'true' : 'false';
-      backupButton.dataset.backupStatus = state.backupStatus;
-      backupButton.setAttribute('aria-disabled', canBackup ? 'false' : 'true');
-      backupButton.setAttribute('aria-label', label);
-      backupButton.title = label;
-      return;
-    }
     backupButton.hidden = false;
     const isActive = isCalendarGroupActive(state);
     const isChecking = state.backupStatus === BACKUP_STATUS.CHECKING;
@@ -977,8 +951,7 @@ export async function initCalendarGroupBar({
   }
 
   function setBackupNeeded(isNeeded) {
-    const commonOwner = isCommonCalendarGroup(state.selectedGroup) && state.selectedGroup?.role === 'owner';
-    state.backupNeeded = Boolean(isNeeded && (isCalendarGroupActive(state) || commonOwner));
+    state.backupNeeded = Boolean(isNeeded && isCalendarGroupActive(state));
     state.backupStatus = state.backupNeeded
       ? BACKUP_STATUS.PENDING
       : BACKUP_STATUS.IDLE;
@@ -989,8 +962,7 @@ export async function initCalendarGroupBar({
     const checkId = ++state.backupCheckId;
     const groupId = state.selectedGroup?.id || '';
 
-    const commonOwner = isCommonCalendarGroup(state.selectedGroup) && state.selectedGroup?.role === 'owner';
-    if (!isCalendarGroupActive(state) && !commonOwner) {
+    if (!isCalendarGroupActive(state)) {
       state.backupChecking = false;
       setBackupNeeded(false);
       return false;
@@ -1001,9 +973,7 @@ export async function initCalendarGroupBar({
     updateBackupButtonState();
 
     try {
-      const isNeeded = commonOwner
-        ? await commonGroupCalendarHasChanges(groupId, calendarType)
-        : await checkBackupNeeded({ userId: state.userId, groupId, calendarType });
+      const isNeeded = await checkBackupNeeded({ userId: state.userId, groupId, calendarType });
 
       if (
         checkId !== state.backupCheckId ||
@@ -1051,7 +1021,7 @@ export async function initCalendarGroupBar({
     state.mode = getCalendarMode(state.selectedGroup);
 
     if (!state.selectedGroup?.id) {
-      setCommonGuide(null);
+      copyPaste?.setGroup(null);
       setStatus('그룹 연동 OFF 상태야.');
       state.backupChecking = false;
       setBackupNeeded(false);
@@ -1060,12 +1030,9 @@ export async function initCalendarGroupBar({
       return;
     }
 
-    setCommonGuide(state.selectedGroup);
+    copyPaste?.setGroup(state.selectedGroup);
 
     if (!isAllowed(state.selectedGroup, calendarType)) {
-      if (state.mode === CALENDAR_MODES.COMMON_GROUP) {
-        await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.COMMON_GROUP });
-      }
       setStatus(`이 그룹은 ${CALENDAR_LABELS[calendarType]} 캘린더 연동이 꺼져 있어.`);
       state.backupChecking = false;
       setBackupNeeded(false);
@@ -1073,22 +1040,6 @@ export async function initCalendarGroupBar({
       return;
     }
 
-    if (isCommonCalendarGroup(state.selectedGroup)) {
-      state.eventsByDate = {};
-      state.backupChecking = false;
-      setStatus('공통 캘린더 일정을 불러오는 중...');
-      await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.COMMON_GROUP });
-      renderAll?.();
-      const rows = await fetchCommonGroupEvents(state.selectedGroup.id, calendarType);
-      await onModeChange?.({ group: state.selectedGroup, rows, mode: CALENDAR_MODES.COMMON_GROUP });
-      await refreshBackupNeeded();
-      setStatus(`${state.selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 공통 캘린더 표시 중`);
-      updateBackupButtonState();
-      renderAll?.();
-      return;
-    }
-
-    setCommonGuide(null);
     await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.SHARED_GROUP });
 
     const { startDate, endDate } = getMonthRange(getViewDate());
@@ -1114,27 +1065,7 @@ export async function initCalendarGroupBar({
 
   async function loadGroups() {
     const groups = await rpc('get_my_calendar_groups');
-    const groupIds = (groups || []).map((group) => group.id).filter(Boolean);
-    let modeByGroupId = new Map();
-    if (groupIds.length > 0) {
-      const { data: modeRows, error: modeError } = await supabase
-        .from('calendar_groups')
-        .select('id, is_common_calendar')
-        .in('id', groupIds);
-      if (modeError) {
-        console.warn('[calendar-groups] group mode enrichment failed:', modeError.message);
-      } else {
-        modeByGroupId = new Map(
-          (modeRows || []).map((row) => [row.id, isCommonCalendarGroup(row)]),
-        );
-      }
-    }
-    state.groups = (groups || []).map((group) => ({
-      ...group,
-      is_common_calendar: modeByGroupId.has(group.id)
-        ? modeByGroupId.get(group.id)
-        : isCommonCalendarGroup(group),
-    }));
+    state.groups = groups || [];
     const selectedId = getSelectedGroupId();
     state.selectedGroup =
       state.groups.find((group) => group.id === selectedId) || null;
@@ -1161,28 +1092,6 @@ export async function initCalendarGroupBar({
   });
 
   backupButton.addEventListener('click', async () => {
-    if (isCommonCalendarGroup(state.selectedGroup)) {
-      if (state.selectedGroup.role !== 'owner' || !state.backupNeeded || backupButton.disabled) return;
-      state.backupStatus = BACKUP_STATUS.RUNNING;
-      updateBackupButtonState();
-      backupButton.textContent = '백업 중';
-      setStatus('공통 캘린더 변경사항을 공개하는 중...');
-      try {
-        const result = await publishCommonGroupCalendar(state.selectedGroup.id, calendarType);
-        state.backupNeeded = false;
-        state.backupStatus = BACKUP_STATUS.IDLE;
-        await loadGroupEvents();
-        setStatus(`공통 캘린더 백업 완료 · ${Number(result.event_count || 0)}개 일정 공개`);
-      } catch (error) {
-        console.error('[calendar-groups] common calendar publish failed:', error);
-        state.backupStatus = BACKUP_STATUS.PENDING;
-        setStatus('공통 캘린더 백업에 실패했어. SQL 적용 여부를 확인해줘.');
-      } finally {
-        backupButton.textContent = '백업';
-        updateBackupButtonState();
-      }
-      return;
-    }
     if (
       !isCalendarGroupActive(state) ||
       !state.backupNeeded ||
@@ -1274,7 +1183,7 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
           }
           <p class="calendar-group-card__meta">${isPrivate ? '비공개' : '공개'} · ${
             calendars || '연동 꺼짐'
-          }${group.is_common_calendar ? ' · 공통 그룹 캘린더' : ''}</p>
+          }</p>
         </div>
       </div>
       <div class="calendar-group-card__actions">
@@ -1383,7 +1292,6 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
                 <label><input data-edit-private type="checkbox" ${isPrivate ? 'checked' : ''} /> 비공개</label>
                 <label><input data-edit-hidden type="checkbox" ${group.is_hidden ? 'checked' : ''} /> 숨기기</label>
               </fieldset>
-              <label><input data-edit-common type="checkbox" ${group.is_common_calendar ? 'checked' : ''} /> 공통 그룹 캘린더</label>
               <input data-edit-password type="password" placeholder="새 비밀번호" />
               <button type="button" data-action="save-edit">저장</button>
             </details>
@@ -1531,7 +1439,6 @@ export async function initCalendarGroupsPage() {
     const color = String(formData.get('color') || '#f54260');
     const isPrivate = Boolean(formData.get('isPrivate'));
     const isHidden = Boolean(formData.get('isHidden'));
-    const isCommonCalendar = Boolean(formData.get('isCommonCalendar'));
     const password = String(formData.get('password') || '');
     const flags = getCalendarTypeFlags(form);
 
@@ -1557,7 +1464,6 @@ export async function initCalendarGroupsPage() {
         p_visibility: isPrivate ? 'private' : 'public',
         p_password: isPrivate ? password : null,
         p_is_hidden: isHidden,
-        p_is_common_calendar: isCommonCalendar,
       });
 
       form.reset();
@@ -1694,7 +1600,6 @@ export async function initCalendarGroupsPage() {
         const isPrivate = Boolean(card.querySelector('[data-edit-private]')?.checked);
         const isHidden = Boolean(card.querySelector('[data-edit-hidden]')?.checked);
         const password = card.querySelector('[data-edit-password]')?.value || null;
-        const isCommonCalendar = Boolean(card.querySelector('[data-edit-common]')?.checked);
 
         await rpc('update_calendar_group', {
           p_group_id: groupId,
@@ -1707,7 +1612,6 @@ export async function initCalendarGroupsPage() {
           p_visibility: isPrivate ? 'private' : 'public',
           p_password: password,
           p_is_hidden: isHidden,
-          p_is_common_calendar: isCommonCalendar,
         });
         setStatus('그룹 설정을 저장했어.');
       }
