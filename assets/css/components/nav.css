@@ -800,6 +800,36 @@ body[data-page='post'] .logo #siteLogoImg {
     transform 0.18s ease;
 }
 
+/* =========================
+  SITE STATS
+========================= */
+
+.site-stats {
+  position: absolute;
+  top: 27px;
+  left: 306px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  white-space: nowrap;
+}
+
+.site-stats[hidden] {
+  display: none;
+}
+
+.site-stats__item strong {
+  font-weight: 800;
+}
+
 .pickle-btn {
   position: relative;
   display: inline-flex;
@@ -937,6 +967,16 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 @media (max-width: 700px) {
+  .site-stats {
+    top: 199px;
+    left: auto;
+    right: calc(var(--space-24) * 3);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-12);
+    font-size: 12px;
+  }
+
   .pickle-menu {
     position: fixed;
     top: auto;

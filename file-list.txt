@@ -903,3 +903,6 @@
 ./ios/App/App/public/assets/app-version.json
 ./ios/App/App/public/assets/css/components/app-update-popup.css
 ./ios/App/App/public/assets/js/modules/app-update-popup.js
+./assets/js/modules/site-stats.js
+./supabase-SQLEditor/20260706-site-stats.sql
+./www/assets/js/modules/site-stats.js

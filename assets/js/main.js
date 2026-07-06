@@ -70,6 +70,7 @@ const CORE_MODULE_SPECS = [
   ['notificationsModule', './modules/notifications.js'],
   ['bgmPlayerModule', './modules/bgm-player.js'],
   ['pickleStatusModule', './modules/pickle-status.js'],
+  ['siteStatsModule', './modules/site-stats.js'],
   ['pjaxRouterModule', './modules/pjax-router.js'],
   ['qnaBoardModule', './modules/qna-board.js'],
   ['studyCalendarModule', './modules/study-calendar.js'],
@@ -422,6 +423,7 @@ async function initGlobalModules(modules) {
     notificationsModule,
     bgmPlayerModule,
     pickleStatusModule,
+    siteStatsModule,
     pjaxRouterModule,
   } = modules;
 
@@ -458,6 +460,7 @@ async function initGlobalModules(modules) {
   const { initNotifications = async () => {} } = notificationsModule;
   const { initBgmPlayer = async () => {} } = bgmPlayerModule;
   const { initPickleStatus = async () => {} } = pickleStatusModule;
+  const { initSiteStats = async () => {} } = siteStatsModule;
   const { initPjaxRouter = async () => {} } = pjaxRouterModule;
 
   applyVersionToStaticLinks(withAssetVersion);
@@ -552,6 +555,10 @@ async function initGlobalModules(modules) {
 
     await runSafe('pickle status module', async () => {
       await initPickleStatus();
+    });
+
+    await runSafe('site stats', async () => {
+      void initSiteStats();
     });
 
     await runSafe('pjax router', async () => {
