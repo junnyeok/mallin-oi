@@ -9,6 +9,7 @@ import {
 } from './auth-store.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
 import { initCalendarCopyPaste } from './calendar-group-copy-paste.js';
+import { openCalendarManagePopup } from './service-menu.js';
 
 const CALENDAR_MODES = Object.freeze({ PERSONAL: 'personal', SHARED_GROUP: 'shared-group' });
 const getCalendarMode = (group) => group?.id ? CALENDAR_MODES.SHARED_GROUP : CALENDAR_MODES.PERSONAL;
@@ -1359,6 +1360,12 @@ export async function initCalendarGroupsPage() {
   const backLink = page.querySelector('.calendar-groups-page__back');
   if (backLink) {
     backLink.setAttribute('href', getCalendarSelectHref());
+    backLink.addEventListener('click', (event) => {
+      if (isCalendarAppMode()) return;
+
+      event.preventDefault();
+      openCalendarManagePopup();
+    });
   }
 
   function setCreatePanelOpen(isOpen) {

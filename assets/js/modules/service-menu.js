@@ -1,6 +1,7 @@
 // assets/js/modules/service-menu.js
 
 const MOBILE_QUERY = '(max-width: 700px)';
+let calendarManageController = null;
 
 function isMobileViewport() {
   return window.matchMedia(MOBILE_QUERY).matches;
@@ -8,6 +9,10 @@ function isMobileViewport() {
 
 function clampNumber(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+export function openCalendarManagePopup() {
+  return calendarManageController?.open() === true;
 }
 
 export function initServiceMenu() {
@@ -155,7 +160,7 @@ export function initServiceMenu() {
   };
 
   const openCalendarManage = () => {
-    if (!calendarManagePanel || !calendarManageBackdrop) return;
+    if (!calendarManagePanel || !calendarManageBackdrop) return false;
 
     closeMenu();
 
@@ -168,6 +173,8 @@ export function initServiceMenu() {
       calendarManageBtn?.setAttribute('aria-expanded', 'true');
       calendarManageCloseBtn?.focus();
     });
+
+    return true;
   };
 
   const closeCalendarManage = ({ restoreFocus = false } = {}) => {
@@ -187,6 +194,10 @@ export function initServiceMenu() {
     if (restoreFocus) {
       calendarManageBtn?.focus();
     }
+  };
+
+  calendarManageController = {
+    open: openCalendarManage,
   };
 
   const toggleMenu = () => {
