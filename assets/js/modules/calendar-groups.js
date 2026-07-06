@@ -1319,7 +1319,8 @@ function renderColorChoices(root) {
 
 export async function initCalendarGroupsPage() {
   const page = document.getElementById('calendarGroupsPage');
-  if (!page) return;
+  if (!page || page.dataset.calendarGroupsInitialized === 'true') return;
+  page.dataset.calendarGroupsInitialized = 'true';
 
   const user = await getCurrentUser();
   if (!user?.id) {
@@ -1345,6 +1346,10 @@ export async function initCalendarGroupsPage() {
   const privateToggle = document.getElementById('calendarGroupPrivate');
   const passwordInput = document.getElementById('calendarGroupPassword');
   const hiddenToggle = document.getElementById('calendarGroupHiddenToggle');
+  const hiddenShortcut = document.getElementById('calendarGroupHiddenShortcut');
+  const createShortcut = document.getElementById('calendarGroupCreateShortcut');
+  const hiddenPanel = document.getElementById('calendarHiddenGroupsPanel');
+  const createSection = document.getElementById('calendarGroupCreateSection');
   const state = {
     myGroups: [],
   };
@@ -1360,10 +1365,16 @@ export async function initCalendarGroupsPage() {
     if (!createToggle || !createPanel) return;
     createPanel.hidden = !isOpen;
     createToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    createShortcut?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
 
   createToggle?.addEventListener('click', () => {
     setCreatePanelOpen(Boolean(createPanel?.hidden));
+  });
+
+  createShortcut?.addEventListener('click', () => {
+    setCreatePanelOpen(true);
+    createSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   function setStatus(message) {
@@ -1423,11 +1434,21 @@ export async function initCalendarGroupsPage() {
   });
   privateToggle?.dispatchEvent(new Event('change'));
 
+  function setHiddenGroupsOpen(isOpen) {
+    if (!hiddenToggle || !hiddenList) return;
+    hiddenList.hidden = !isOpen;
+    hiddenToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    hiddenShortcut?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    hiddenToggle.textContent = isOpen ? '숨긴 그룹 접기' : '숨긴 그룹 보기';
+  }
+
   hiddenToggle?.addEventListener('click', () => {
-    const willShow = hiddenList.hidden;
-    hiddenList.hidden = !willShow;
-    hiddenToggle.setAttribute('aria-expanded', willShow ? 'true' : 'false');
-    hiddenToggle.textContent = willShow ? '숨긴 그룹 접기' : '숨긴 그룹 보기';
+    setHiddenGroupsOpen(Boolean(hiddenList?.hidden));
+  });
+
+  hiddenShortcut?.addEventListener('click', () => {
+    setHiddenGroupsOpen(true);
+    hiddenPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   form?.addEventListener('submit', async (event) => {

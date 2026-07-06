@@ -72,7 +72,27 @@
                   자기개발, 업무, 이벤트 캘린더 중 선택한 종류만 그룹 멤버와 함께 볼 수 있어.
                 </p>
               </div>
-              <a class="calendar-groups-page__back" href="./calendar-study.html">캘린더 선택</a>
+              <div class="calendar-groups-page__actions">
+                <a class="calendar-groups-page__back" href="./calendar-study.html">캘린더 선택</a>
+                <button
+                  class="calendar-groups-page__action"
+                  id="calendarGroupHiddenShortcut"
+                  type="button"
+                  aria-controls="calendarHiddenGroups"
+                  aria-expanded="false"
+                >
+                  숨긴 그룹 보기
+                </button>
+                <button
+                  class="calendar-groups-page__action"
+                  id="calendarGroupCreateShortcut"
+                  type="button"
+                  aria-controls="calendarGroupCreatePanel"
+                  aria-expanded="false"
+                >
+                  + 그룹 만들기
+                </button>
+              </div>
             </div>
 
             <p class="calendar-groups-status" id="calendarGroupsStatus" aria-live="polite">
@@ -106,7 +126,7 @@
                 <div class="calendar-group-list" id="calendarHiddenGroups" hidden></div>
               </section>
 
-              <section class="panel calendar-groups-panel">
+              <section class="panel calendar-groups-panel" id="calendarGroupCreateSection">
                 <div class="calendar-groups-panel__head">
                   <h2 class="calendar-groups-panel__title">그룹 만들기</h2>
                   <button

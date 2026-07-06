@@ -427,7 +427,15 @@
   line-height: var(--line-body);
 }
 
-.calendar-groups-page__back {
+.calendar-groups-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.calendar-groups-page__back,
+.calendar-groups-page__action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -437,9 +445,14 @@
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-text);
+  font: inherit;
   font-size: var(--text-small);
   font-weight: 800;
   text-decoration: none;
+}
+
+.calendar-groups-page__action {
+  cursor: pointer;
 }
 
 .calendar-groups-status {
@@ -910,6 +923,11 @@
   .calendar-groups-page__head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .calendar-groups-page__actions {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .calendar-group-schedule__header,
