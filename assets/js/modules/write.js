@@ -21,6 +21,7 @@ let removedStoragePaths = new Set();
 let savedSelectionRange = null;
 let activeEmbedId = '';
 let isEditorComposing = false;
+let editorCompositionSequence = 0;
 
 const WRITE_LEAVE_MESSAGE = '글이 삭제됩니다. 이동하시겠습니까?';
 const WRITE_HISTORY_GUARD_KEY = '__mallinWriteGuard';
@@ -1133,6 +1134,8 @@ function buildPersistedBodyHtml(mediaItems = []) {
     if (link) link.setAttribute('href', url);
   });
 
+  removeEmptyNodesAroundAttachments(clone);
+
   return clone.innerHTML.trim();
 }
 
@@ -1234,7 +1237,72 @@ function removeStoredAttachmentMetaHtml(html = '') {
     .querySelectorAll('.write-embed__meta, .write-embed__file-desc')
     .forEach((node) => node.remove());
 
+  removeEmptyNodesAroundAttachments(doc.body);
+
   return doc.body.innerHTML;
+}
+
+function isDiscardableAttachmentSpacingNode(node) {
+  if (!node) return false;
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    return !String(node.textContent || '')
+      .replace(/\u00a0/g, ' ')
+      .trim();
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) return false;
+  if (node.matches('br')) return true;
+  if (!node.matches('p, div')) return false;
+  if (node.matches('.write-embed, [data-media-id]')) return false;
+
+  const clone = node.cloneNode(true);
+  clone.querySelectorAll('br').forEach((br) => br.remove());
+
+  return (
+    !clone.querySelector(
+      '.write-embed, [data-media-id], img, iframe, video, a[href]',
+    ) &&
+    !String(clone.textContent || '')
+      .replace(/\u00a0/g, ' ')
+      .trim()
+  );
+}
+
+function getAttachmentSpacingTarget(embed, root) {
+  let target = embed;
+
+  while (target.parentElement && target.parentElement !== root) {
+    const parent = target.parentElement;
+    if (!parent.matches('p, div') || parent.matches('.write-embed')) break;
+
+    const otherMeaningfulNode = Array.from(parent.childNodes).some(
+      (node) => node !== target && !isDiscardableAttachmentSpacingNode(node),
+    );
+    if (otherMeaningfulNode) break;
+
+    target = parent;
+  }
+
+  return target;
+}
+
+function removeEmptyNodesAroundAttachments(root) {
+  if (!root) return;
+
+  Array.from(root.querySelectorAll('.write-embed, [data-media-id]')).forEach(
+    (embed) => {
+      const target = getAttachmentSpacingTarget(embed, root);
+
+      while (isDiscardableAttachmentSpacingNode(target.previousSibling)) {
+        target.previousSibling.remove();
+      }
+
+      while (isDiscardableAttachmentSpacingNode(target.nextSibling)) {
+        target.nextSibling.remove();
+      }
+    },
+  );
 }
 
 function isMobileRichEditorInputDevice() {
@@ -1466,8 +1534,8 @@ function insertSingleParagraphAtCaret() {
   block.insertAdjacentElement('afterend', newBlock);
 
   const caretRange = document.createRange();
-  caretRange.selectNodeContents(newBlock);
-  caretRange.collapse(false);
+  caretRange.setStart(newBlock, 0);
+  caretRange.collapse(true);
 
   safeSel.removeAllRanges();
   safeSel.addRange(caretRange);
@@ -1981,13 +2049,20 @@ function bindAttachmentInputs(note) {
 
   editor.addEventListener('compositionstart', () => {
     isEditorComposing = true;
+    editorCompositionSequence += 1;
   });
 
   editor.addEventListener('compositionend', () => {
     isEditorComposing = false;
-    saveCurrentSelectionRange();
-    syncBodyFromEditor({ normalize: false });
-    refreshEditorToolbarState();
+    const sequence = editorCompositionSequence;
+
+    requestAnimationFrame(() => {
+      if (isEditorComposing || sequence !== editorCompositionSequence) return;
+
+      saveCurrentSelectionRange();
+      syncBodyFromEditor({ normalize: false });
+      refreshEditorToolbarState();
+    });
   });
 
   editor.addEventListener('click', (e) => {
@@ -2055,6 +2130,7 @@ function bindAttachmentInputs(note) {
   });
 
   editor.addEventListener('blur', () => {
+    if (isEditorComposing) return;
     syncBodyFromEditor();
     refreshEditorToolbarState();
   });
@@ -2321,11 +2397,10 @@ function appendMissingExistingAttachmentsToEditor(items = []) {
     const node = createInlineEmbedNode(item, item.url);
     if (!node) return;
 
-    editor.insertAdjacentHTML('beforeend', '<p><br></p>');
     editor.appendChild(node);
-    editor.insertAdjacentHTML('beforeend', '<p><br></p>');
   });
 
+  removeEmptyNodesAroundAttachments(editor);
   syncBodyFromEditor();
 }
 
@@ -2347,6 +2422,7 @@ function fillWriteForm(post, isAdmin) {
   if (editorEl) {
     editorEl.innerHTML = bodyToEditorHtml(post.body || '');
     normalizeEditorFontTags(editorEl);
+    removeEmptyNodesAroundAttachments(editorEl);
     updateEditorEmptyState(editorEl);
   }
 
