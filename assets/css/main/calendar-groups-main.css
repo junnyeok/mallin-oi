@@ -451,6 +451,7 @@
   text-decoration: none;
 }
 
+.calendar-groups-page__back,
 .calendar-groups-page__action {
   cursor: pointer;
 }

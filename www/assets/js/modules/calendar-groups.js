@@ -15,6 +15,7 @@ const CALENDAR_MODES = Object.freeze({ PERSONAL: 'personal', SHARED_GROUP: 'shar
 const getCalendarMode = (group) => group?.id ? CALENDAR_MODES.SHARED_GROUP : CALENDAR_MODES.PERSONAL;
 
 const SELECTED_GROUP_KEY = 'mallin:calendar:selected-group';
+let calendarManagePopupOpening = false;
 const CALENDAR_LABELS = {
   study: '자기개발',
   work: '업무',
@@ -144,6 +145,43 @@ function getCalendarSelectHref() {
   return isCalendarAppMode()
     ? './app-calendar.html?app=calendar'
     : './calendar-study.html';
+}
+
+function openCalendarManagePopupFromGroupPage() {
+  const menu = document.getElementById('serviceMenu');
+  if (calendarManagePopupOpening) return true;
+  if (menu?.classList.contains('is-calendar-manage-open')) return true;
+
+  calendarManagePopupOpening = true;
+
+  if (openCalendarManagePopup() === true) {
+    requestAnimationFrame(() => {
+      calendarManagePopupOpening = false;
+    });
+    return true;
+  }
+
+  const panel = document.getElementById('calendarManagePanel');
+  const backdrop = document.getElementById('calendarManageBackdrop');
+  if (!menu || !panel || !backdrop) {
+    calendarManagePopupOpening = false;
+    return false;
+  }
+
+  panel.hidden = false;
+  backdrop.hidden = false;
+
+  requestAnimationFrame(() => {
+    menu.classList.add('is-calendar-manage-open');
+    document.body.classList.add('calendar-manage-open');
+    document
+      .getElementById('calendarManageBtn')
+      ?.setAttribute('aria-expanded', 'true');
+    document.getElementById('calendarManageCloseBtn')?.focus();
+    calendarManagePopupOpening = false;
+  });
+
+  return true;
 }
 
 function normalizeComparable(value) {
@@ -1359,13 +1397,30 @@ export async function initCalendarGroupsPage() {
 
   const backLink = page.querySelector('.calendar-groups-page__back');
   if (backLink) {
-    backLink.setAttribute('href', getCalendarSelectHref());
-    backLink.addEventListener('click', (event) => {
-      if (isCalendarAppMode()) return;
+    if (isCalendarAppMode()) {
+      backLink.setAttribute('href', getCalendarSelectHref());
+    } else {
+      backLink.removeAttribute('href');
+      backLink.setAttribute('role', 'button');
+      backLink.setAttribute('tabindex', '0');
+      backLink.setAttribute('aria-haspopup', 'dialog');
+      backLink.setAttribute('aria-controls', 'calendarManagePanel');
 
-      event.preventDefault();
-      openCalendarManagePopup();
-    });
+      const openCalendarManage = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        openCalendarManagePopupFromGroupPage();
+      };
+
+      backLink.addEventListener('click', openCalendarManage, {
+        capture: true,
+      });
+      backLink.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        openCalendarManage(event);
+      }, { capture: true });
+    }
   }
 
   function setCreatePanelOpen(isOpen) {
