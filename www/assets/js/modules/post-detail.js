@@ -987,9 +987,96 @@ async function applyPost(post) {
   document.title = `${post.title} | 말린오이닷컴`;
 }
 
+let shareToastTimer = null;
+
+function getShareUrl() {
+  const currentUrl = new URL(window.location.href);
+  const postId = currentUrl.searchParams.get('id');
+
+  if (!postId) return window.location.href;
+
+  const shareUrl = new URL(currentUrl.pathname, currentUrl.origin);
+  shareUrl.searchParams.set('id', postId);
+  return shareUrl.href;
+}
+
+function copyWithTextarea(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    textarea.remove();
+  }
+}
+
+async function copyPostUrl() {
+  const shareUrl = getShareUrl();
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      return true;
+    } catch (error) {
+      console.warn('[post-detail] clipboard API failed, trying fallback:', error);
+    }
+  }
+
+  return copyWithTextarea(shareUrl);
+}
+
+function showShareToast(message) {
+  let toast = document.getElementById('postShareToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'postShareToast';
+    toast.className = 'post-share-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  requestAnimationFrame(() => toast.classList.add('is-visible'));
+  window.clearTimeout(shareToastTimer);
+  shareToastTimer = window.setTimeout(() => {
+    toast.classList.remove('is-visible');
+  }, 2400);
+}
+
+function bindShareButton() {
+  const button = document.getElementById('postShareBtn');
+  if (!button || button.dataset.shareBound === 'true') return;
+
+  button.dataset.shareBound = 'true';
+  button.addEventListener('click', async () => {
+    try {
+      const copied = await copyPostUrl();
+      showShareToast(
+        copied
+          ? '게시물 링크가 복사됐어.'
+          : '링크 복사에 실패했어. 주소창의 링크를 직접 복사해줘.',
+      );
+    } catch (error) {
+      console.error('[post-detail] copy post URL failed:', error);
+      showShareToast('링크 복사에 실패했어. 주소창의 링크를 직접 복사해줘.');
+    }
+  });
+}
+
 export async function initPostDetail() {
   const bodyEl = document.getElementById('postBody');
   if (!bodyEl) return;
+
+  bindShareButton();
 
   const sp = new URLSearchParams(window.location.search);
   const postId = sp.get('id');
