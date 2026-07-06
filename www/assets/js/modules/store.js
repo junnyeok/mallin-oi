@@ -582,12 +582,86 @@ async function initStorePage() {
 
   let currentCategory = 'all';
   let currentPage = 1;
+  let currentSortKey = 'releaseDate';
+  let currentSortDirection = 'desc';
+
+  function getSortableValue(item, sortKey) {
+    if (sortKey === 'price') {
+      if (item?.price === null || String(item?.price ?? '').trim() === '') {
+        return null;
+      }
+      const price = Number(item?.price);
+      return Number.isFinite(price) ? price : null;
+    }
+
+    const releaseTime = Date.parse(String(item?.releaseDate || ''));
+    return Number.isFinite(releaseTime) ? releaseTime : null;
+  }
+
+  function sortStoreItems(items) {
+    return items
+      .map((item, index) => ({ item, index }))
+      .sort((left, right) => {
+        const leftValue = getSortableValue(left.item, currentSortKey);
+        const rightValue = getSortableValue(right.item, currentSortKey);
+
+        if (leftValue === null && rightValue === null) {
+          return left.index - right.index;
+        }
+        if (leftValue === null) return 1;
+        if (rightValue === null) return -1;
+
+        const difference = leftValue - rightValue;
+        if (difference === 0) return left.index - right.index;
+        return currentSortDirection === 'asc' ? difference : -difference;
+      })
+      .map(({ item }) => item);
+  }
 
   function getFilteredItems(category = currentCategory) {
-    return category === 'all'
+    const filteredItems = category === 'all'
       ? STORE_ITEMS
       : STORE_ITEMS.filter((item) => item.category === category);
+
+    return sortStoreItems(filteredItems);
   }
+
+  function updateSortControls() {
+    const sortKeyButtons = $all('[data-store-sort-key]');
+    const directionButton = $('[data-store-sort-direction]');
+
+    sortKeyButtons.forEach((button) => {
+      const isActive = button.dataset.storeSortKey === currentSortKey;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    if (!directionButton) return;
+
+    const label = currentSortDirection === 'asc' ? '오름차순' : '내림차순';
+
+    directionButton.textContent = label;
+    directionButton.setAttribute('aria-label', `정렬 방향: ${label}`);
+    directionButton.setAttribute(
+      'aria-pressed',
+      currentSortDirection === 'desc' ? 'true' : 'false',
+    );
+  }
+
+  $all('[data-store-sort-key]').forEach((button) => {
+    button.addEventListener('click', () => {
+      currentSortKey = button.dataset.storeSortKey || 'releaseDate';
+      updateSortControls();
+      render(currentCategory, { page: 1, shouldScroll: false });
+    });
+  });
+
+  const sortDirectionButton = $('[data-store-sort-direction]');
+  sortDirectionButton?.addEventListener('click', () => {
+    currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    updateSortControls();
+    render(currentCategory, { page: 1, shouldScroll: false });
+  });
 
   function getTotalPages(items) {
     return Math.max(1, Math.ceil(items.length / STORE_PAGE_SIZE));

@@ -83,64 +83,96 @@
               </div>
             </div>
 
-            <nav class="store-filter" aria-label="상점 품목 필터">
-              <button
-                type="button"
-                class="store-filter__btn is-active"
-                data-store-filter="all"
-                aria-pressed="true"
-              >
-                전체
-              </button>
-              <button
+            <div class="store-toolbar">
+              <nav class="store-filter" aria-label="상점 품목 필터">
+                <button
+                  type="button"
+                  class="store-filter__btn is-active"
+                  data-store-filter="all"
+                  aria-pressed="true"
+                >
+                  전체
+                </button>
+                <button
                 type="button"
                 class="store-filter__btn"
                 data-store-filter="emoticon"
                 aria-pressed="false"
               >
                 이모티콘
-              </button>
-              <button
+                </button>
+                <button
                 type="button"
                 class="store-filter__btn"
                 data-store-filter="character"
                 aria-pressed="false"
               >
                 캐릭터
-              </button>
-              <button
+                </button>
+                <button
                 type="button"
                 class="store-filter__btn"
                 data-store-filter="skin"
                 aria-pressed="false"
               >
                 스킨
-              </button>
-              <button
+                </button>
+                <button
                 type="button"
                 class="store-filter__btn"
                 data-store-filter="bgm"
                 aria-pressed="false"
               >
                 BGM
-              </button>
-              <button
+                </button>
+                <button
                 type="button"
                 class="store-filter__btn"
                 data-store-filter="profile"
                 aria-pressed="false"
               >
                 프로필
-              </button>
-              <button
+                </button>
+                <button
                 type="button"
                 class="store-filter__btn"
                 data-store-filter="cha-effects"
                 aria-pressed="false"
               >
                 캐릭터효과
-              </button>
-            </nav>
+                </button>
+              </nav>
+
+              <div class="store-sort" aria-label="상점 품목 정렬">
+                <div class="store-sort__criteria" role="group" aria-label="정렬 기준">
+                  <button
+                    type="button"
+                    class="store-sort__btn is-active"
+                    data-store-sort-key="releaseDate"
+                    aria-pressed="true"
+                  >
+                    출시일
+                  </button>
+                  <button
+                    type="button"
+                    class="store-sort__btn"
+                    data-store-sort-key="price"
+                    aria-pressed="false"
+                  >
+                    가격
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="store-sort__btn store-sort__direction"
+                  data-store-sort-direction
+                  aria-label="정렬 방향: 내림차순"
+                  aria-pressed="true"
+                >
+                  내림차순
+                </button>
+              </div>
+            </div>
 
             <div class="store-grid" id="storeGrid"></div>
             <div class="store-empty" id="storeEmpty" hidden>

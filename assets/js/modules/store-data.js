@@ -1137,7 +1137,13 @@ export const STORE_ITEMS = [
     previewImages: CARROT_EMOTICON_PACK,
     isPurchasable: true,
   },
-];
+].map((item, index) => ({
+  ...item,
+  // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
+  releaseDate:
+    item.releaseDate ||
+    new Date(Date.UTC(2026, 6, 6 - index)).toISOString().slice(0, 10),
+}));
 
 export function getFeaturedStoreItems(limit = 15) {
   return STORE_ITEMS.slice(0, limit);
