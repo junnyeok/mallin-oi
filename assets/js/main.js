@@ -34,6 +34,7 @@ const CORE_MODULE_SPECS = [
   ['mobileStabilityModule', './modules/mobile-stability.js'],
   ['siteVersionModule', './modules/site-version.js'],
   ['updateBannerModule', './modules/update-banner.js'],
+  ['appUpdatePopupModule', './modules/app-update-popup.js'],
   ['refreshControlModule', './modules/refresh-control.js'],
   ['appCalendarModeModule', './modules/app-calendar-mode.js'],
   [
@@ -406,6 +407,7 @@ async function initGlobalModules(modules) {
     mobileStabilityModule,
     siteVersionModule,
     updateBannerModule,
+    appUpdatePopupModule,
     refreshControlModule,
     pwaInstallModule,
     appCalendarModeModule,
@@ -436,6 +438,7 @@ async function initGlobalModules(modules) {
   } = siteVersionModule;
 
   const { showUpdateBanner = () => {} } = updateBannerModule;
+  const { initAppUpdatePopup = async () => {} } = appUpdatePopupModule;
   const { initRefreshControls = () => {} } = refreshControlModule;
   const { initPwaInstall = async () => {} } = pwaInstallModule;
   const { initCalendarAppMode = () => false } = appCalendarModeModule;
@@ -475,6 +478,10 @@ async function initGlobalModules(modules) {
 
   await runSafe('mobile stability', async () => {
     initMobileStability();
+  });
+
+  await runSafe('app update popup', async () => {
+    await initAppUpdatePopup();
   });
 
   if (!calendarAppMode) {

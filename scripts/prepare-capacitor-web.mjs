@@ -22,6 +22,7 @@ const filesToCopy = [
   'calendar-groups.html',
   'privacy.html',
   'assets/version.json',
+  'assets/app-version.json',
   'site.webmanifest',
 ];
 
@@ -201,6 +202,7 @@ function assertPreparedOutput() {
     'login.html',
     'write.html',
     'assets/version.json',
+    'assets/app-version.json',
     'assets/css/01-tokens.css',
     'assets/css/components/forms.css',
     'assets/css/components/nav.css',
@@ -210,6 +212,7 @@ function assertPreparedOutput() {
     'assets/css/components/write-btn.css',
     'assets/css/components/auth-links.css',
     'assets/css/components/update-banner.css',
+    'assets/css/components/app-update-popup.css',
     'assets/css/components/refresh-control.css',
     'assets/css/main/app-calendar-main.css',
     'assets/css/main/calendar-study-main.css',
@@ -219,6 +222,7 @@ function assertPreparedOutput() {
     'assets/js/boot.js',
     'assets/js/main.js',
     'assets/js/modules/site-version.js',
+    'assets/js/modules/app-update-popup.js',
     'assets/js/modules/mobile-stability.js',
     'assets/js/modules/app-calendar-mode.js',
     'assets/js/modules/app-calendar.js',

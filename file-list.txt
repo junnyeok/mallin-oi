@@ -891,3 +891,15 @@
 ./ios/App/App/public/assets/js/modules/calendar-group-copy-paste.js
 ./supabase-SQLEditor/20260705-calendar-copy-paste.sql
 ./supabase-SQLEditor/20260706-calendar-copy-paste-range.sql
+./assets/app-version.json
+./assets/css/components/app-update-popup.css
+./assets/js/modules/app-update-popup.js
+./www/assets/app-version.json
+./www/assets/css/components/app-update-popup.css
+./www/assets/js/modules/app-update-popup.js
+./android/app/src/main/assets/public/assets/app-version.json
+./android/app/src/main/assets/public/assets/css/components/app-update-popup.css
+./android/app/src/main/assets/public/assets/js/modules/app-update-popup.js
+./ios/App/App/public/assets/app-version.json
+./ios/App/App/public/assets/css/components/app-update-popup.css
+./ios/App/App/public/assets/js/modules/app-update-popup.js

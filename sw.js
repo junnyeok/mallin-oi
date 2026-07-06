@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260706-03';
+const SITE_VERSION = '20260706-04';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -22,6 +22,7 @@ const APP_SHELL_FILES = [
 
   './site.webmanifest',
   './assets/version.json',
+  './assets/app-version.json',
 
   './assets/css/00-reset.css',
   './assets/css/01-tokens.css',
@@ -38,6 +39,7 @@ const APP_SHELL_FILES = [
   './assets/css/components/write-btn.css',
   './assets/css/components/auth-links.css',
   './assets/css/components/update-banner.css',
+  './assets/css/components/app-update-popup.css',
   './assets/css/components/pwa-install.css',
   './assets/css/components/refresh-control.css',
 
@@ -53,6 +55,7 @@ const APP_SHELL_FILES = [
 
   './assets/js/boot.js',
   './assets/js/main.js',
+  './assets/js/modules/app-update-popup.js',
   './assets/js/modules/mypage.js',
   './assets/js/modules/pwa-install.js',
   './assets/js/modules/refresh-control.js',

@@ -1,0 +1,74 @@
+.app-update-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--space-24) + env(safe-area-inset-top))
+    calc(var(--space-16) + env(safe-area-inset-right))
+    calc(var(--space-24) + env(safe-area-inset-bottom))
+    calc(var(--space-16) + env(safe-area-inset-left));
+  background: rgba(17, 17, 17, 0.48);
+}
+
+.app-update-popup__card {
+  width: min(100%, 360px);
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.app-update-popup__icon {
+  margin-bottom: var(--space-8);
+  font-size: var(--text-h1);
+}
+
+.app-update-popup__card h2 {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-h2);
+  line-height: 1.35;
+}
+
+.app-update-popup__card p {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
+.app-update-popup__actions {
+  display: grid;
+  gap: var(--space-8);
+  margin-top: var(--space-24);
+}
+
+.app-update-popup__actions button {
+  min-height: 44px;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-btn);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-update-popup__update {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-text);
+}
+
+.app-update-popup__later {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+}
+
+@media (max-width: 360px) {
+  .app-update-popup__card {
+    padding: var(--space-16);
+  }
+}
