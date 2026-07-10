@@ -1504,7 +1504,10 @@ export async function initCalendarGroupsPage() {
     hiddenToggle.textContent = isOpen ? '숨긴 그룹 접기' : '숨긴 그룹 보기';
   }
 
-  hiddenToggle?.addEventListener('click', () => setHiddenGroupsOpen(Boolean(hiddenList?.hidden)));
+  hiddenToggle?.addEventListener('click', () => {
+    setHiddenGroupsOpen(Boolean(hiddenList?.hidden));
+  });
+
   hiddenShortcut?.addEventListener('click', () => {
     setHiddenGroupsOpen(true);
     hiddenPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });

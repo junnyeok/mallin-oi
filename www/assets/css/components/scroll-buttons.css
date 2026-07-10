@@ -18,6 +18,12 @@
   pointer-events: auto;
 }
 
+body.service-menu-open .scroll-fab {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .scroll-fab__btn {
   display: inline-flex;
   align-items: center;
