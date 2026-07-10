@@ -30,6 +30,10 @@ function formatReadonlyTime(value) {
   return `${period} ${hour12}:${matched[2]}`;
 }
 
+function normalizeReadonlyBoolean(value) {
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
+
 export function normalizeSharedPersonalDetail(
   event,
   {
@@ -76,6 +80,7 @@ export function normalizeSharedPersonalDetail(
     categoryName,
     type: String(event.event_type || '').trim(),
     color: String(event.color || '').trim(),
+    isDone: normalizeReadonlyBoolean(getEventValue(event, 'isDone', 'is_done')),
     readonly: true,
     isSharedPersonal: true,
     isOtherUserPersonal: Boolean(
@@ -94,6 +99,9 @@ export function renderSharedPersonalReadonlyDetail({
   const item = document.createElement('li');
   item.className = `${itemClass} calendar-shared-personal-detail`;
   item.dataset.readonly = 'true';
+  if (detail.isDone) {
+    item.classList.add('is-done');
+  }
 
   const body = document.createElement('div');
   body.className = 'calendar-shared-personal-detail__body';

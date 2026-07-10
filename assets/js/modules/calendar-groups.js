@@ -288,6 +288,7 @@ function groupEventsByDateAndUser(rows = []) {
     const event = {
       ...row,
       event_date: dateKey,
+      isDone: getGroupEventDone(row),
     };
 
     if (!byDate[dateKey]) byDate[dateKey] = [];
@@ -321,6 +322,14 @@ function getEventPayloadValue(event, key) {
   const payload = event?.payload;
   if (!payload || typeof payload !== 'object') return undefined;
   return payload[key];
+}
+
+function getGroupEventDone(event) {
+  return normalizeSharedBoolean(
+    event?.isDone ??
+      getEventPayloadValue(event, 'isDone') ??
+      getEventPayloadValue(event, 'is_done'),
+  );
 }
 
 function getEventSharedValue(event, snakeKey, camelKey) {
@@ -666,6 +675,9 @@ function createGroupEventBadge(event, member, groupState, options = {}) {
   badge.className = 'calendar-group-schedule__badge';
   if (options.isShared) {
     badge.classList.add('calendar-group-schedule__badge--shared');
+  }
+  if (event?.isDone) {
+    badge.classList.add('calendar-group-schedule__badge--completed');
   }
   badge.style.setProperty('--calendar-group-event-color', color);
   badge.style.setProperty('--calendar-group-event-text', getTextColor(color));

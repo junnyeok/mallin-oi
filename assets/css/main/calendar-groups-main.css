@@ -291,6 +291,11 @@
   word-break: keep-all;
 }
 
+.calendar-group-schedule__badge--completed {
+  opacity: 0.62;
+  text-decoration: line-through;
+}
+
 .calendar-group-schedule__badge--selectable {
   width: 100%;
   border: 0;
@@ -371,6 +376,11 @@
   font-weight: 900;
   line-height: var(--line-body);
   overflow-wrap: anywhere;
+}
+
+.calendar-shared-personal-detail.is-done .calendar-shared-personal-detail__title {
+  color: var(--color-text-sub);
+  text-decoration: line-through;
 }
 
 .calendar-shared-personal-detail__memo {
