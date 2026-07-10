@@ -478,6 +478,10 @@ function getAttachmentLimitLabel(type) {
   return formatBytes(getAttachmentLimitBytes(type));
 }
 
+function isStoredAttachment(item) {
+  return !!item?.path && !item.file;
+}
+
 function formatAttachmentLimitMessage(file, type) {
   const label = getAttachmentLabel(type);
   const name = file?.name || '이름 없는 파일';
@@ -1134,6 +1138,10 @@ function buildPersistedBodyHtml(mediaItems = []) {
     if (link) link.setAttribute('href', url);
   });
 
+  clone
+    .querySelectorAll('.write-editor__tail-placeholder')
+    .forEach((node) => node.remove());
+
   removeEmptyNodesAroundAttachments(clone);
 
   return clone.innerHTML.trim();
@@ -1305,6 +1313,89 @@ function removeEmptyNodesAroundAttachments(root) {
   );
 }
 
+function getLastMeaningfulEditorChild(root) {
+  if (!root) return null;
+
+  const nodes = Array.from(root.childNodes).reverse();
+  return (
+    nodes.find((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return !!String(node.textContent || '')
+          .replace(/\u00a0/g, ' ')
+          .trim();
+      }
+
+      if (node.nodeType !== Node.ELEMENT_NODE) return false;
+      if (node.matches('.write-editor__tail-placeholder')) return false;
+      return !isDiscardableAttachmentSpacingNode(node);
+    }) || null
+  );
+}
+
+function isAttachmentEmbedNode(node) {
+  return !!(
+    node?.nodeType === Node.ELEMENT_NODE &&
+    (node.matches?.('.write-embed, [data-media-id]') ||
+      node.querySelector?.('.write-embed, [data-media-id]'))
+  );
+}
+
+function isValidEditableTailPlaceholder(node) {
+  if (!node?.matches?.('.write-editor__tail-placeholder')) return false;
+  if (node.getAttribute('data-align') !== 'left') return false;
+
+  const children = Array.from(node.childNodes);
+  if (children.length !== 1) return false;
+
+  const child = children[0];
+  return child.nodeType === Node.ELEMENT_NODE && child.matches('br');
+}
+
+function ensureEditableTailAfterAttachment(root = getBodyEditor()) {
+  if (!root) return;
+
+  const placeholders = Array.from(
+    root.querySelectorAll(':scope > .write-editor__tail-placeholder'),
+  );
+  const lastMeaningful = getLastMeaningfulEditorChild(root);
+  const needsTail = isAttachmentEmbedNode(lastMeaningful);
+
+  if (!needsTail) {
+    placeholders.forEach((node) => node.remove());
+    return;
+  }
+
+  if (
+    placeholders.length === 1 &&
+    placeholders[0] === root.lastElementChild &&
+    isValidEditableTailPlaceholder(placeholders[0])
+  ) {
+    return;
+  }
+
+  const keep = placeholders.pop() || document.createElement('p');
+
+  placeholders.forEach((node) => node.remove());
+
+  if (!keep.classList.contains('write-editor__tail-placeholder')) {
+    keep.classList.add('write-editor__tail-placeholder');
+  }
+
+  if (keep.getAttribute('data-align') !== 'left') {
+    keep.setAttribute('data-align', 'left');
+  }
+
+  if (!isValidEditableTailPlaceholder(keep)) {
+    keep.replaceChildren(document.createElement('br'));
+  }
+
+  if (keep.parentNode !== root) {
+    root.appendChild(keep);
+  } else if (keep !== root.lastElementChild) {
+    root.appendChild(keep);
+  }
+}
+
 function isMobileRichEditorInputDevice() {
   const ua = String(navigator.userAgent || '');
 
@@ -1368,6 +1459,7 @@ function normalizeEditorParagraphs(root) {
     root.innerHTML = '';
   }
 
+  ensureEditableTailAfterAttachment(root);
   updateEditorEmptyState(root);
 }
 
@@ -1740,6 +1832,51 @@ function createEmbedRemoveButton(mediaId, label) {
   return button;
 }
 
+function findAttachmentById(id) {
+  const safeId = String(id || '').trim();
+  if (!safeId) return null;
+  return attachmentState.find((item) => String(item.id || '') === safeId) || null;
+}
+
+function markAttachmentForRemoval(item) {
+  if (!item) return;
+  if (isStoredAttachment(item)) {
+    removedStoragePaths.add(item.path);
+    return;
+  }
+  revokePreviewUrl(item);
+}
+
+function removeAttachmentById(id, options = {}) {
+  const { removeDom = true, sync = true } = options;
+  const safeId = String(id || '').trim();
+  if (!safeId) return false;
+  const editor = getBodyEditor();
+
+  const found = findAttachmentById(safeId);
+  if (found) markAttachmentForRemoval(found);
+
+  if (removeDom && editor) {
+    editor
+      .querySelectorAll(`[data-media-id="${CSS.escape(safeId)}"]`)
+      .forEach((node) => node.remove());
+  }
+
+  const beforeLength = attachmentState.length;
+  attachmentState = attachmentState.filter(
+    (item) => String(item.id || '') !== safeId,
+  );
+
+  if (activeEmbedId === safeId) clearActiveEmbed();
+
+  renderAttachmentList();
+
+  if (editor) ensureEditableTailAfterAttachment(editor);
+  if (sync) syncBodyFromEditor({ normalize: false });
+
+  return !!found || beforeLength !== attachmentState.length;
+}
+
 function createMediaEmbedNode(item, url, title, type) {
   const figure = document.createElement('figure');
   figure.className = 'write-embed write-embed--media';
@@ -1874,13 +2011,7 @@ function buildInlineEmbedHtml(item, urlOverride = '') {
 }
 
 function removeEmbedById(id) {
-  if (!id) return;
-
-  document
-    .querySelectorAll(`[data-media-id="${CSS.escape(id)}"]`)
-    .forEach((node) => node.remove());
-
-  syncBodyFromEditor();
+  removeAttachmentById(id);
 }
 
 function insertAttachmentIntoEditor(item) {
@@ -2047,6 +2178,34 @@ function bindAttachmentInputs(note) {
 
   if (!editor) return;
 
+  const reconcileEditorAttachmentsSoon = () => {
+    requestAnimationFrame(() => {
+      reconcileAttachmentStateWithEditor();
+      saveCurrentSelectionRange();
+      syncBodyFromEditor({ normalize: false });
+      refreshEditorToolbarState();
+    });
+  };
+
+  const editorObserver = new MutationObserver(() => {
+    reconcileAttachmentStateWithEditor({ sync: false });
+    ensureEditableTailAfterAttachment(editor);
+  });
+
+  editorObserver.observe(editor, {
+    childList: true,
+    subtree: true,
+  });
+
+  const disposeEditorObserver = () => {
+    editorObserver.disconnect();
+    if (window.__mallinDisposeWriteEditorObserver === disposeEditorObserver) {
+      delete window.__mallinDisposeWriteEditorObserver;
+    }
+  };
+
+  window.__mallinDisposeWriteEditorObserver = disposeEditorObserver;
+
   editor.addEventListener('compositionstart', () => {
     isEditorComposing = true;
     editorCompositionSequence += 1;
@@ -2069,17 +2228,7 @@ function bindAttachmentInputs(note) {
     const removeBtn = e.target.closest('[data-embed-remove]');
     if (removeBtn) {
       const id = removeBtn.getAttribute('data-embed-remove');
-      const found = attachmentState.find((item) => item.id === id);
-
-      if (found?.path) {
-        removedStoragePaths.add(found.path);
-      }
-
-      if (found) revokePreviewUrl(found);
-      removeEmbedById(id);
-      attachmentState = attachmentState.filter((item) => item.id !== id);
-      renderAttachmentList();
-      clearActiveEmbed();
+      removeAttachmentById(id);
       refreshEditorToolbarState();
       return;
     }
@@ -2103,6 +2252,9 @@ function bindAttachmentInputs(note) {
 
   editor.addEventListener('keyup', (event) => {
     if (isEditorComposing || event.isComposing) return;
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      reconcileAttachmentStateWithEditor();
+    }
     saveCurrentSelectionRange();
     syncBodyFromEditor({ normalize: false });
     refreshEditorToolbarState();
@@ -2116,6 +2268,7 @@ function bindAttachmentInputs(note) {
   editor.addEventListener('input', (event) => {
     if (isEditorComposing || event.isComposing) return;
 
+    reconcileAttachmentStateWithEditor();
     saveCurrentSelectionRange();
     syncBodyFromEditor({ normalize: false });
     refreshEditorToolbarState();
@@ -2131,6 +2284,7 @@ function bindAttachmentInputs(note) {
 
   editor.addEventListener('blur', () => {
     if (isEditorComposing) return;
+    reconcileAttachmentStateWithEditor();
     syncBodyFromEditor();
     refreshEditorToolbarState();
   });
@@ -2139,6 +2293,11 @@ function bindAttachmentInputs(note) {
     if (event.isComposing || event.nativeEvent?.isComposing) return;
 
     const inputType = String(event.inputType || '');
+
+    if (inputType === 'deleteContentBackward' || inputType === 'deleteContentForward') {
+      reconcileEditorAttachmentsSoon();
+      return;
+    }
 
     if (inputType !== 'insertParagraph' && inputType !== 'insertLineBreak') {
       return;
@@ -2175,6 +2334,35 @@ function bindAttachmentInputs(note) {
     event.preventDefault();
     insertSingleParagraphAtCaret();
   });
+}
+
+function reconcileAttachmentStateWithEditor(options = {}) {
+  const { sync = true } = options;
+  const editor = getBodyEditor();
+  if (!editor) return [];
+
+  const currentIds = getEditorMediaIds(editor);
+  const removed = [];
+
+  attachmentState = attachmentState.filter((item) => {
+    const id = String(item?.id || '').trim();
+    if (!id || currentIds.has(id)) return true;
+
+    removed.push(item);
+    markAttachmentForRemoval(item);
+    return false;
+  });
+
+  if (removed.length) {
+    renderAttachmentList();
+    if (removed.some((item) => String(item.id || '') === activeEmbedId)) {
+      clearActiveEmbed();
+    }
+  }
+
+  ensureEditableTailAfterAttachment(editor);
+  if (sync && removed.length) syncBodyFromEditor({ normalize: false });
+  return removed;
 }
 
 async function uploadSingleAttachment(user, item) {
@@ -2377,12 +2565,65 @@ async function loadEditablePost(postId, userId) {
   return data;
 }
 
-function getEditorMediaIds() {
+function getEditorMediaIds(root = document) {
   return new Set(
-    [...document.querySelectorAll('[data-media-id]')]
+    [...root.querySelectorAll('[data-media-id]')]
       .map((el) => el.getAttribute('data-media-id'))
       .filter(Boolean),
   );
+}
+
+function hydrateStoredAttachmentEmbeds(items = []) {
+  const editor = getBodyEditor();
+  if (!editor) return;
+
+  const itemMap = new Map(
+    (Array.isArray(items) ? items : [])
+      .filter((item) => item?.id)
+      .map((item) => [String(item.id), item]),
+  );
+
+  editor.querySelectorAll('[data-media-id]').forEach((node) => {
+    const id = String(node.getAttribute('data-media-id') || '').trim();
+    const item = itemMap.get(id);
+    if (!item) return;
+
+    if (!node.classList.contains('write-embed')) {
+      node.classList.add('write-embed');
+    }
+
+    const type = String(item.type || node.getAttribute('data-media-type') || '').trim();
+    if (type) {
+      node.setAttribute('data-media-type', type);
+      if (type !== 'file') node.classList.add('write-embed--media');
+      if (type === 'file') node.classList.add('write-embed--file');
+      if (type === 'video-link') node.classList.add('write-embed--video-link');
+    }
+
+    if (!node.getAttribute('data-align')) {
+      node.setAttribute('data-align', 'left');
+    }
+
+    node.contentEditable = 'false';
+
+    node
+      .querySelectorAll('.write-embed__remove')
+      .forEach((button) => button.remove());
+
+    node.insertBefore(
+      createEmbedRemoveButton(
+        id,
+        type === 'image'
+          ? '이미지 삭제'
+          : type === 'video' || type === 'video-link'
+            ? '동영상 삭제'
+            : '파일 삭제',
+      ),
+      node.firstChild,
+    );
+  });
+
+  ensureEditableTailAfterAttachment(editor);
 }
 
 function appendMissingExistingAttachmentsToEditor(items = []) {
@@ -2401,6 +2642,7 @@ function appendMissingExistingAttachmentsToEditor(items = []) {
   });
 
   removeEmptyNodesAroundAttachments(editor);
+  hydrateStoredAttachmentEmbeds(items);
   syncBodyFromEditor();
 }
 
@@ -2459,6 +2701,7 @@ function fillWriteForm(post, isAdmin) {
 
   removedStoragePaths = new Set();
   renderAttachmentList();
+  hydrateStoredAttachmentEmbeds(attachmentState);
   appendMissingExistingAttachmentsToEditor(attachmentState);
   syncBodyFromEditor({ normalize: false });
   syncPrivatePasswordUi(true);
@@ -2468,6 +2711,7 @@ export async function initWrite() {
   const form = $('#writeForm');
   if (!form) return;
   if (form.dataset.writeInitialized === 'true') return;
+  window.__mallinDisposeWriteEditorObserver?.();
   form.dataset.writeInitialized = 'true';
 
   const note = $('#writeNote');
@@ -2475,6 +2719,11 @@ export async function initWrite() {
   const editPostId = getEditPostId();
   const editor = getBodyEditor();
   const leaveGuard = createWriteLeaveGuard(form);
+
+  attachmentState = [];
+  removedStoragePaths = new Set();
+  savedSelectionRange = null;
+  activeEmbedId = '';
 
   setWriteModeUi(!!editPostId);
   if (editor) {
@@ -2542,6 +2791,7 @@ export async function initWrite() {
       return;
     }
 
+    reconcileAttachmentStateWithEditor();
     const title = $('#title')?.value?.trim() || '';
     const excerpt = $('#excerpt')?.value?.trim() || '';
     const body = syncBodyFromEditor().trim();
