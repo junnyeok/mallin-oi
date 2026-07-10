@@ -1537,6 +1537,71 @@ function ensureEditableBlockPlaceholder(block) {
   block.innerHTML = '<br>';
 }
 
+function createEmptyEditorParagraph() {
+  const p = document.createElement('p');
+  p.setAttribute('data-align', 'left');
+  p.innerHTML = '<br>';
+  return p;
+}
+
+function placeCaretInsideEditableBlock(block) {
+  if (!block) return null;
+
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  range.collapse(true);
+
+  const sel = window.getSelection();
+  if (!sel) return null;
+
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return range;
+}
+
+function insertBlockAttachmentAtRange(editor, range, node, sel) {
+  if (!editor || !range || !node || !sel) return null;
+
+  if (!range.collapsed) {
+    range.deleteContents();
+  }
+
+  const block = findClosestEditableBlock(range.startContainer);
+  const caretBlock = createEmptyEditorParagraph();
+
+  if (!block || block.parentNode !== editor) {
+    range.insertNode(node);
+    node.after(caretBlock);
+    return placeCaretInsideEditableBlock(caretBlock);
+  }
+
+  const align = block.getAttribute('data-align') || 'left';
+  caretBlock.setAttribute('data-align', align);
+
+  const afterBlock = document.createElement(block.tagName.toLowerCase());
+  afterBlock.setAttribute('data-align', align);
+
+  const afterRange = range.cloneRange();
+  afterRange.setEndAfter(block.lastChild || block);
+  const moved = afterRange.extractContents();
+  const hasMovedContent = moved.childNodes.length && !isNodeVisuallyEmpty(moved);
+
+  if (hasMovedContent) {
+    afterBlock.appendChild(moved);
+  }
+
+  ensureEditableBlockPlaceholder(block);
+
+  block.insertAdjacentElement('afterend', node);
+  node.insertAdjacentElement('afterend', caretBlock);
+
+  if (hasMovedContent) {
+    caretBlock.insertAdjacentElement('afterend', afterBlock);
+  }
+
+  return placeCaretInsideEditableBlock(caretBlock);
+}
+
 function insertSingleParagraphAtCaret() {
   const editor = getBodyEditor();
   if (!editor) return;
@@ -1758,14 +1823,30 @@ function insertNodeAtCaret(node) {
   if (!sel2 || !sel2.rangeCount) return;
 
   const safeRange = sel2.getRangeAt(0);
+
+  if (isAttachmentEmbedNode(node)) {
+    const attachmentRange = insertBlockAttachmentAtRange(
+      editor,
+      safeRange,
+      node,
+      sel2,
+    );
+
+    if (attachmentRange) {
+      savedSelectionRange = attachmentRange.cloneRange();
+    } else {
+      saveCurrentSelectionRange();
+    }
+
+    syncBodyFromEditor({ normalize: false });
+    return;
+  }
+
   safeRange.deleteContents();
   safeRange.insertNode(node);
 
-  const br = document.createElement('br');
-  node.after(br);
-
   const afterRange = document.createRange();
-  afterRange.setStartAfter(br);
+  afterRange.setStartAfter(node);
   afterRange.collapse(true);
 
   sel2.removeAllRanges();
@@ -2188,6 +2269,7 @@ function bindAttachmentInputs(note) {
   };
 
   const editorObserver = new MutationObserver(() => {
+    if (isEditorComposing) return;
     reconcileAttachmentStateWithEditor({ sync: false });
     ensureEditableTailAfterAttachment(editor);
   });
