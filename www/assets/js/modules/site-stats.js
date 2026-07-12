@@ -3,10 +3,13 @@ import { supabase } from './supabase-client.js';
 const SEOUL_TIME_ZONE = 'Asia/Seoul';
 const VISIT_STORAGE_PREFIX = 'mallin:site-visit:';
 const GUEST_VISITOR_ID_STORAGE_KEY = 'mallin:site-visitor-id';
+const MEMORY_GUEST_VISITOR_ID_KEY = '__mallinGuestVisitorId';
 
 let initPromise = null;
 let refreshPromise = null;
+let visitRecordQueue = Promise.resolve();
 let authListenerInitialized = false;
+const recordedVisitKeys = new Set();
 
 function getSeoulDateKey() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -19,17 +22,26 @@ function getSeoulDateKey() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function wasVisitRecorded(userId) {
+function wasVisitRecorded(visitorKey) {
+  const storageKey = `${VISIT_STORAGE_PREFIX}${visitorKey}`;
+  const dateKey = getSeoulDateKey();
+
+  if (recordedVisitKeys.has(`${storageKey}:${dateKey}`)) return true;
+
   try {
-    return localStorage.getItem(`${VISIT_STORAGE_PREFIX}${userId}`) === getSeoulDateKey();
+    return localStorage.getItem(storageKey) === dateKey;
   } catch {
     return false;
   }
 }
 
-function markVisitRecorded(userId) {
+function markVisitRecorded(visitorKey) {
+  const storageKey = `${VISIT_STORAGE_PREFIX}${visitorKey}`;
+  const dateKey = getSeoulDateKey();
+  recordedVisitKeys.add(`${storageKey}:${dateKey}`);
+
   try {
-    localStorage.setItem(`${VISIT_STORAGE_PREFIX}${userId}`, getSeoulDateKey());
+    localStorage.setItem(storageKey, dateKey);
   } catch {
     // 저장소를 사용할 수 없어도 DB의 unique 제약이 중복 집계를 막는다.
   }
@@ -78,7 +90,13 @@ function getGuestVisitorId() {
     localStorage.setItem(GUEST_VISITOR_ID_STORAGE_KEY, nextId);
     return nextId;
   } catch {
-    return createUuid();
+    const globalScope = globalThis;
+    const storedId = normalizeUuidV4(globalScope[MEMORY_GUEST_VISITOR_ID_KEY]);
+    if (storedId) return storedId;
+
+    const nextId = normalizeUuidV4(createUuid()) || createUuid();
+    globalScope[MEMORY_GUEST_VISITOR_ID_KEY] = nextId;
+    return nextId;
   }
 }
 
@@ -91,11 +109,12 @@ async function getSessionUserId() {
   }
 }
 
-async function recordVisit() {
+async function recordVisitOnce(userIdOverride = null) {
   const guestVisitorId = getGuestVisitorId();
-  const userId = await getSessionUserId();
+  const userId = userIdOverride || (await getSessionUserId());
   const guestVisitorKey = `guest:${guestVisitorId}`;
   const visitorKey = userId ? `user:${userId}` : `guest:${guestVisitorId}`;
+
   if (wasVisitRecorded(visitorKey)) {
     if (userId) markVisitRecorded(guestVisitorKey);
     return;
@@ -104,10 +123,25 @@ async function recordVisit() {
   const { data: recorded, error } = await supabase.rpc('record_today_site_visit', {
     p_guest_id: guestVisitorId,
   });
+
+  if (error) {
+    console.warn('[site-stats] visit record failed:', error.message || error);
+    return;
+  }
+
   if (!error && recorded) {
     markVisitRecorded(visitorKey);
     if (userId) markVisitRecorded(guestVisitorKey);
   }
+}
+
+function ensureTodayVisitRecorded(userIdOverride = null) {
+  visitRecordQueue = visitRecordQueue
+    .catch(() => {})
+    .then(() => recordVisitOnce(userIdOverride))
+    .catch(() => {});
+
+  return visitRecordQueue;
 }
 
 function renderStats(stats) {
@@ -125,7 +159,6 @@ function renderStats(stats) {
 }
 
 async function loadSiteStats() {
-  await recordVisit().catch(() => {});
   const { data, error } = await supabase.rpc('get_site_stats');
   if (error) return;
   renderStats(Array.isArray(data) ? data[0] : data);
@@ -147,7 +180,12 @@ function initAuthRefreshListener() {
   authListenerInitialized = true;
 
   try {
-    supabase.auth.onAuthStateChange(() => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user?.id) {
+        void ensureTodayVisitRecorded(session.user.id).then(() => refreshSiteStats());
+        return;
+      }
+
       void refreshSiteStats();
     });
   } catch {
@@ -157,6 +195,8 @@ function initAuthRefreshListener() {
 
 export function initSiteStats() {
   initAuthRefreshListener();
-  if (!initPromise) initPromise = refreshSiteStats();
+  if (!initPromise) {
+    initPromise = ensureTodayVisitRecorded().then(() => refreshSiteStats());
+  }
   return initPromise;
 }
