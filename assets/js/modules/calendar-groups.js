@@ -1569,7 +1569,7 @@ export async function initCalendarGroupsPage() {
       await load();
     } catch (error) {
       console.error('[calendar-groups] create failed:', error);
-      setStatus(error.message || '그룹 생성에 실패했어.');
+      setStatus('그룹 생성에 실패했어. 잠시 후 다시 시도해줘.');
     }
   });
 
@@ -1714,7 +1714,7 @@ export async function initCalendarGroupsPage() {
       await load();
     } catch (error) {
       console.error('[calendar-groups] action failed:', error);
-      setStatus(error.message || '작업에 실패했어.');
+      setStatus('작업에 실패했어. 잠시 후 다시 시도해줘.');
     } finally {
       button.disabled = false;
     }

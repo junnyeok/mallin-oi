@@ -1,5 +1,7 @@
 // assets/js/modules/auth-store.js
 
+import { supabase } from './supabase-client.js';
+
 export const SUPABASE_AUTH_STORAGE_KEY = 'sb-tfztkeihdqkfzwpilyky-auth-token';
 export const REDIRECT_KEY = 'authRedirectTo';
 export const MYPAGE_VERIFY_KEY = 'mypageVerified_v1';
@@ -8,23 +10,13 @@ export const AUTO_LOGIN_POLICY_KEY = AUTH_POLICY_KEY;
 const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
 const APP_MODE_PARAM = 'app';
 const APP_MODE_VALUE = 'calendar';
-let supabaseClientModule = null;
+const AUTH_STATE_KEY = '__mallinAuthStoreState';
 
-function getRuntimeVersion() {
-  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
-}
-
-function importVersioned(path) {
-  return import(`${path}?v=${getRuntimeVersion()}`);
-}
-
-async function getSupabaseClient() {
-  if (!supabaseClientModule) {
-    supabaseClientModule = await importVersioned('./supabase-client.js');
-  }
-
-  return supabaseClientModule.supabase;
-}
+const authState = (globalThis[AUTH_STATE_KEY] ||= {
+  authUiBound: false,
+  authChangedBound: false,
+  cachedSession: null,
+});
 
 function readAuthPolicy() {
   try {
@@ -387,7 +379,6 @@ export function isMypageVerified() {
 }
 
 export async function getCurrentSession() {
-  const supabase = await getSupabaseClient();
   const {
     data: { session },
     error,
@@ -395,10 +386,16 @@ export async function getCurrentSession() {
 
   if (error) {
     console.error('[auth-store] getCurrentSession error:', error.message);
-    return null;
+    return authState.cachedSession || null;
   }
 
-  return session;
+  if (session?.user) {
+    authState.cachedSession = session;
+    return session;
+  }
+
+  authState.cachedSession = null;
+  return null;
 }
 
 export async function getCurrentUser() {
@@ -408,7 +405,6 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const supabase = await getSupabaseClient();
   const {
     data: { user },
     error,
@@ -466,12 +462,12 @@ export function getDisplayName(user) {
 
 export async function signOutUser() {
   try {
-    const supabase = await getSupabaseClient();
     const { error } = await supabase.auth.signOut();
     if (error) {
       throw error;
     }
   } finally {
+    authState.cachedSession = null;
     clearMypageVerified();
     clearLoginPolicy();
     clearSupabaseAuthStorage();
@@ -496,7 +492,6 @@ export async function verifyCurrentPassword(password) {
     return { ok: false, message: '현재 로그인 사용자 정보를 찾지 못했어.' };
   }
 
-  const supabase = await getSupabaseClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: user.email,
     password,
@@ -635,20 +630,22 @@ export async function updateAuthUI() {
   }
 }
 
-let authUiBound = false;
-
 export async function initAuthUI() {
-  const enforced = await enforceLoginPolicy();
+  await enforceLoginPolicy();
   await updateAuthUI();
 
-  if (authUiBound) return;
-  authUiBound = true;
+  if (authState.authUiBound) return;
+  authState.authUiBound = true;
 
-  const supabase = await getSupabaseClient();
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
+      authState.cachedSession = null;
       clearLoginPolicy();
       clearMypageVerified();
+    }
+
+    if (session?.user) {
+      authState.cachedSession = session;
     }
 
     if (event === 'SIGNED_IN' && session?.user) {
@@ -665,8 +662,12 @@ export async function initAuthUI() {
   });
 }
 
-window.addEventListener('auth-changed', () => {
-  updateAuthUI().catch((err) => {
-    console.error('[auth-store] auth-changed update failed:', err);
+if (!authState.authChangedBound) {
+  authState.authChangedBound = true;
+
+  window.addEventListener('auth-changed', () => {
+    updateAuthUI().catch((err) => {
+      console.error('[auth-store] auth-changed update failed:', err);
+    });
   });
-});
+}

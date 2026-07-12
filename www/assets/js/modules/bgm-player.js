@@ -1,5 +1,9 @@
 import { supabase } from './supabase-client.js';
 import {
+  getCurrentSession,
+  showLoginRequiredPopup,
+} from './auth-store.js';
+import {
   getLocalSelectedBgmTrackIds,
   hydrateBgmPreferencesFromRemote,
   saveRemoteBgmPreferences,
@@ -7,10 +11,6 @@ import {
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
-);
-
-const { getCurrentSession, showLoginRequiredPopup } = await import(
-  `./auth-store.js?v=${MODULE_VERSION}`
 );
 
 const { BGM_CATALOG } = await import(`./store-data.js?v=${MODULE_VERSION}`);
@@ -380,6 +380,10 @@ function bindAuthWatcher() {
   supabase.auth.onAuthStateChange((event, session) => {
     if (session?.user?.id) {
       setAuthenticatedUser(session.user);
+      return;
+    }
+
+    if (event !== 'SIGNED_OUT') {
       return;
     }
 

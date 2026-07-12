@@ -10,6 +10,8 @@ const SUPABASE_PUBLISHABLE_KEY =
 
 export const SUPABASE_AUTH_STORAGE_KEY = 'sb-tfztkeihdqkfzwpilyky-auth-token';
 
+const SUPABASE_SINGLETON_KEY = '__mallinSupabaseClient';
+
 const memoryStorage = new Map();
 
 function getLocalStorage() {
@@ -50,12 +52,22 @@ const authStorage = {
   },
 };
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: SUPABASE_AUTH_STORAGE_KEY,
-    storage: authStorage,
-  },
-});
+function createSupabaseSingleton() {
+  return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: SUPABASE_AUTH_STORAGE_KEY,
+      storage: authStorage,
+    },
+  });
+}
+
+const globalScope = globalThis;
+
+if (!globalScope[SUPABASE_SINGLETON_KEY]) {
+  globalScope[SUPABASE_SINGLETON_KEY] = createSupabaseSingleton();
+}
+
+export const supabase = globalScope[SUPABASE_SINGLETON_KEY];

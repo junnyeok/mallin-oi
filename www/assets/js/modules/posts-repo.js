@@ -1,21 +1,6 @@
+import { supabase } from './supabase-client.js';
+
 export const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
-let supabaseClientModule = null;
-
-function getRuntimeVersion() {
-  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
-}
-
-function importVersioned(path) {
-  return import(`${path}?v=${getRuntimeVersion()}`);
-}
-
-async function getSupabaseClient() {
-  if (!supabaseClientModule) {
-    supabaseClientModule = await importVersioned('./supabase-client.js');
-  }
-
-  return supabaseClientModule.supabase;
-}
 
 function normalizeCategory(category) {
   const value = String(category || '')
@@ -114,7 +99,6 @@ async function loadCommentCountMap(postIds = []) {
 
   if (!safeIds.length) return new Map();
 
-  const supabase = await getSupabaseClient();
   const { data, error } = await supabase.rpc('get_post_comment_counts', {
     p_post_ids: safeIds,
   });
@@ -182,7 +166,6 @@ export function sortByDateDesc(posts) {
 }
 
 export async function loadPosts() {
-  const supabase = await getSupabaseClient();
   const { data, error } = await supabase
     .from('posts_public_list')
     .select(
@@ -213,7 +196,6 @@ export async function loadPostById(id, secretPassword = null) {
   const safeId = Number(id);
   if (!Number.isFinite(safeId)) return null;
 
-  const supabase = await getSupabaseClient();
   const { data, error } = await supabase.rpc('get_post_detail', {
     p_post_id: safeId,
     p_secret_password: secretPassword || null,
@@ -233,8 +215,6 @@ export async function loadEditablePostById(id) {
   if (!Number.isFinite(safeId)) return null;
 
   let row = null;
-  const supabase = await getSupabaseClient();
-
   try {
     const { data, error } = await supabase.rpc('get_post_for_edit', {
       p_post_id: safeId,
@@ -276,7 +256,6 @@ export async function loadEditablePostById(id) {
 export async function loadPostsByAuthorId(authorId) {
   if (!authorId) return [];
 
-  const supabase = await getSupabaseClient();
   const { data, error } = await supabase
     .from('posts_public_list')
     .select(

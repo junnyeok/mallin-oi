@@ -176,7 +176,8 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
         renderCopyMode(dialog, source);
       };
     } catch (error) {
-      dialog.querySelector('[data-list]').textContent = error.message || '복사 대상을 불러오지 못했어.';
+      console.error('[calendar-copy-paste] copy sources load failed:', error);
+      dialog.querySelector('[data-list]').textContent = '복사 대상을 불러오지 못했어.';
     }
   }
 
@@ -211,7 +212,8 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
       await onPasted?.();
       window.location.reload();
     } catch (error) {
-      window.alert(error.message || '캘린더를 붙여넣지 못했어.');
+      console.error('[calendar-copy-paste] paste failed:', error);
+      window.alert('캘린더를 붙여넣지 못했어. 잠시 후 다시 시도해줘.');
       render();
     }
   }

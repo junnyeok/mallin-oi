@@ -1,6 +1,6 @@
-let supabase;
-let getCurrentUser;
-let loginHref;
+import { supabase } from './supabase-client.js';
+import { getCurrentUser, loginHref } from './auth-store.js';
+
 let STORE_ITEMS;
 let getFeaturedStoreItems;
 let getStoreItemById;
@@ -17,9 +17,6 @@ function importVersioned(path) {
 
 async function ensureStoreDeps() {
   if (
-    supabase &&
-    getCurrentUser &&
-    loginHref &&
     STORE_ITEMS &&
     getFeaturedStoreItems &&
     getStoreItemById &&
@@ -28,15 +25,8 @@ async function ensureStoreDeps() {
     return;
   }
 
-  const [supabaseModule, authStoreModule, storeDataModule] = await Promise.all([
-    importVersioned('./supabase-client.js'),
-    importVersioned('./auth-store.js'),
-    importVersioned('./store-data.js'),
-  ]);
+  const storeDataModule = await importVersioned('./store-data.js');
 
-  supabase = supabaseModule.supabase;
-  getCurrentUser = authStoreModule.getCurrentUser;
-  loginHref = authStoreModule.loginHref;
   STORE_ITEMS = storeDataModule.STORE_ITEMS;
   getFeaturedStoreItems = storeDataModule.getFeaturedStoreItems;
   getStoreItemById = storeDataModule.getStoreItemById;
