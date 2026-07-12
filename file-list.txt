@@ -906,6 +906,7 @@
 ./assets/js/modules/site-stats.js
 ./supabase-SQLEditor/20260706-site-stats.sql
 ./supabase-SQLEditor/20260710-anonymous-site-visits.sql
+./supabase-SQLEditor/20260712-event-calendar-date-range-edit.sql
 ./www/assets/js/modules/site-stats.js
 ./images/services/Q&A_button.png
 ./images/services/calendar_button.png

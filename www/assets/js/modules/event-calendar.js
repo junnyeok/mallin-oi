@@ -233,6 +233,30 @@ function getDateRangeKeys(startDateKey, endDateKey = '') {
   return dateKeys;
 }
 
+function getTodoDateRange(todo, store = {}) {
+  const dateKey = String(todo?.date || '').trim();
+  const eventRangeId = String(todo?.eventRangeId || '').trim();
+
+  if (!dateKey) return [];
+
+  if (!eventRangeId) {
+    return [{ dateKey, todo }];
+  }
+
+  return Object.values(store)
+    .flat()
+    .filter(
+      (item) =>
+        item.id === todo.id ||
+        String(item?.eventRangeId || '').trim() === eventRangeId,
+    )
+    .sort((left, right) => String(left.date).localeCompare(String(right.date)))
+    .map((item) => ({
+      dateKey: item.date,
+      todo: item,
+    }));
+}
+
 function convertPickerTimeTo24Hour({ period, hour, minute }) {
   const safePeriod = period === 'PM' ? 'PM' : 'AM';
   const safeHour = Math.min(Math.max(Number(hour) || 12, 1), 12);
@@ -514,6 +538,7 @@ function normalizeTodo(row) {
     done: Boolean(row.is_done),
     eventTime: normalizeEventTime(row.event_time),
     eventEndTime: normalizeOptionalEventTime(row.event_end_time),
+    eventRangeId: row.event_range_id || null,
     type:
       row.event_type || row.event_calendar_categories?.slug || 'anniversary',
     categoryId: row.category_id || row.event_calendar_categories?.id || null,
@@ -562,6 +587,7 @@ async function fetchUserTodos(userId) {
     memo,
     event_time,
     event_end_time,
+    event_range_id,
     is_done,
     shared_origin_todo_id,
     shared_origin_user_id,
@@ -763,147 +789,58 @@ async function deleteCategoryById(categoryId) {
   }
 }
 
-async function insertTodo({
-  userId,
-  dateKey,
+async function createTodoRange({
+  startDateKey,
+  endDateKey,
   text,
   memo,
   eventTime,
   eventEndTime,
   category,
 }) {
-  const latestCategory = category?.id
-    ? await fetchCategoryById(userId, category.id)
-    : null;
-  const safeCategory = latestCategory || category || DEFAULT_CATEGORIES[2];
-  const safeEventTime = normalizeEventTime(eventTime);
-  const safeEventEndTime = normalizeOptionalEventTime(eventEndTime);
-  const shouldShare = Boolean(
-    safeCategory.is_shared_personal && safeCategory.shared_group_id,
-  );
+  const safeCategory = category || getFallbackCategory([]);
 
-  if (shouldShare) {
-    const { data, error } = await supabase
-      .rpc('create_event_calendar_todo_with_shared_personal', {
-        p_event_date: dateKey,
-        p_category_id: safeCategory.id || null,
-        p_event_text: text,
-        p_memo: memo || '',
-        p_event_time: safeEventTime,
-      })
-      .single();
-
-    if (error) {
-      console.error('[event-calendar] shared insertTodo error:', error.message);
-      throw error;
-    }
-
-    if (safeEventEndTime) {
-      await setSharedPersonalTodoEndTime({
-        todoId: data.id,
-        eventEndTime: safeEventEndTime,
-      });
-    }
-
-    return {
-      ...normalizeTodo(data),
-      eventEndTime: safeEventEndTime,
-      sharedGroupId: safeCategory.shared_group_id || null,
-      sharedCreatedBy: userId,
-      isSharedCopy: false,
-    };
-  }
-
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .insert({
-      user_id: userId,
-      event_date: dateKey,
-      event_type: safeCategory.slug || 'anniversary',
-      category_id: safeCategory.id || null,
-      event_text: text,
-      memo: memo || '',
-      event_time: safeEventTime,
-      event_end_time: safeEventEndTime || null,
-      is_done: false,
-    })
-    .select(
-      `
-      id,
-      user_id,
-      event_date,
-      event_type,
-      category_id,
-      event_text,
-      memo,
-      event_time,
-      event_end_time,
-      is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
-      created_at,
-      event_calendar_categories (
-        id,
-        name,
-        slug,
-        color
-      )
-    `,
-    )
-    .single();
+  const { error } = await supabase.rpc('create_event_calendar_todo_range', {
+    p_start_date: startDateKey,
+    p_end_date: endDateKey || startDateKey,
+    p_category_id: safeCategory?.id || null,
+    p_event_text: String(text || '').trim(),
+    p_memo: String(memo || ''),
+    p_event_time: normalizeEventTime(eventTime),
+    p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
+  });
 
   if (error) {
-    console.error('[event-calendar] insertTodo error:', error.message);
-    throw error;
-  }
-
-  return normalizeTodo(data);
-}
-
-async function setSharedPersonalTodoEndTime({ todoId, eventEndTime }) {
-  const { error } = await supabase.rpc(
-    'set_event_calendar_todo_end_time_shared_personal',
-    {
-      p_todo_id: todoId,
-      p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
-    },
-  );
-
-  if (error) {
-    console.error(
-      '[event-calendar] setSharedPersonalTodoEndTime error:',
-      error.message,
-    );
+    console.error('[event-calendar] createTodoRange error:', error.message);
     throw error;
   }
 }
 
-async function saveTodoWithSharedPersonal({
+async function saveTodoRange({
   todoId,
   text,
   memo,
   eventTime,
   eventEndTime,
-  eventDate,
+  startDateKey,
+  endDateKey,
   category,
 }) {
   const safeCategory = category || getFallbackCategory([]);
 
-  const { error } = await supabase.rpc('save_event_calendar_todo', {
+  const { error } = await supabase.rpc('save_event_calendar_todo_range', {
     p_todo_id: todoId,
     p_event_text: String(text || '').trim(),
     p_memo: String(memo || ''),
     p_event_time: normalizeEventTime(eventTime),
     p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
-    p_event_date: eventDate,
+    p_start_date: startDateKey,
+    p_end_date: endDateKey || startDateKey,
     p_category_id: safeCategory?.id || null,
   });
 
   if (error) {
-    console.error('[event-calendar] saveTodoWithSharedPersonal error:', error.message);
+    console.error('[event-calendar] saveTodoRange error:', error.message);
     throw error;
   }
 }
@@ -922,25 +859,13 @@ async function syncSharedPersonalCategory(categoryId) {
   }
 }
 
-async function deleteTodoById(todoId) {
-  const { error } = await supabase.from(TABLE_NAME).delete().eq('id', todoId);
-
-  if (error) {
-    console.error('[event-calendar] deleteTodoById error:', error.message);
-    throw error;
-  }
-}
-
-async function deleteSharedPersonalTodoById(todoId) {
-  const { error } = await supabase.rpc('delete_event_shared_personal_todo', {
+async function deleteTodoRange(todoId) {
+  const { error } = await supabase.rpc('delete_event_calendar_todo_range', {
     p_todo_id: todoId,
   });
 
   if (error) {
-    console.error(
-      '[event-calendar] deleteSharedPersonalTodoById error:',
-      error.message,
-    );
+    console.error('[event-calendar] deleteTodoRange error:', error.message);
     throw error;
   }
 }
@@ -1203,11 +1128,54 @@ function renderTodoList({
       getCategoryTextColor(category.color),
     );
 
-    const dateInput = document.createElement('input');
-    dateInput.className = 'event-todo-item__date-input';
-    dateInput.type = 'date';
-    dateInput.value = todo.date;
-    dateInput.setAttribute('aria-label', '일정 날짜 수정');
+    const todoDateRange = getTodoDateRange(todo, store);
+    const savedStartDate = todoDateRange[0]?.dateKey || String(todo.date || '');
+    const savedEndDate =
+      todoDateRange.length > 1
+        ? todoDateRange[todoDateRange.length - 1].dateKey
+        : '';
+
+    const dateRange = document.createElement('div');
+    dateRange.className = 'event-todo-item__date-range';
+
+    const startDateLabel = document.createElement('label');
+    startDateLabel.className = 'event-todo-item__date-field';
+
+    const startDateText = document.createElement('span');
+    startDateText.className = 'event-todo-item__date-label';
+    startDateText.textContent = '시작 날짜';
+
+    const startDateInput = document.createElement('input');
+    startDateInput.className = 'event-todo-item__date-input';
+    startDateInput.type = 'date';
+    startDateInput.value = savedStartDate;
+    startDateInput.required = true;
+    startDateInput.setAttribute('aria-label', '일정 시작 날짜 수정');
+
+    startDateLabel.append(startDateText, startDateInput);
+
+    const endDateLabel = document.createElement('label');
+    endDateLabel.className = 'event-todo-item__date-field';
+
+    const endDateText = document.createElement('span');
+    endDateText.className = 'event-todo-item__date-label';
+    endDateText.textContent = '종료 날짜';
+
+    const endDateInput = document.createElement('input');
+    endDateInput.className = 'event-todo-item__date-input';
+    endDateInput.type = 'date';
+    endDateInput.value = savedEndDate;
+    endDateInput.min = savedStartDate;
+    endDateInput.setAttribute('aria-label', '일정 종료 날짜 수정');
+
+    endDateLabel.append(endDateText, endDateInput);
+
+    const clearEndDateButton = document.createElement('button');
+    clearEndDateButton.type = 'button';
+    clearEndDateButton.className = 'event-todo-item__date-clear';
+    clearEndDateButton.textContent = '종료 날짜 없음';
+
+    dateRange.append(startDateLabel, endDateLabel, clearEndDateButton);
 
     const timeInput = document.createElement('input');
     timeInput.className = 'event-todo-item__time-input';
@@ -1312,7 +1280,6 @@ function renderTodoList({
     saveEditButton.disabled = true;
 
     const savedCategoryId = getTodoCategorySelectValue(todo, categories);
-    const savedDate = String(todo.date || '');
     const savedText = String(todo.text || '');
     const savedMemo = String(todo.memo || '');
     const savedTime = normalizeEventTime(todo.eventTime);
@@ -1320,7 +1287,8 @@ function renderTodoList({
 
     const isDirty = () =>
       categorySelect.value !== savedCategoryId ||
-      dateInput.value !== savedDate ||
+      startDateInput.value !== savedStartDate ||
+      endDateInput.value !== savedEndDate ||
       text.value !== savedText ||
       memoInput.value !== savedMemo ||
       normalizeEventTime(timeInput.dataset.time) !== savedTime ||
@@ -1338,7 +1306,21 @@ function renderTodoList({
     };
 
     categorySelect.addEventListener('change', syncDirtyState);
-    dateInput.addEventListener('change', syncDirtyState);
+    startDateInput.addEventListener('change', () => {
+      endDateInput.min = startDateInput.value;
+
+      if (endDateInput.value && endDateInput.value < startDateInput.value) {
+        endDateInput.value = startDateInput.value;
+      }
+
+      syncDirtyState();
+    });
+    endDateInput.addEventListener('change', syncDirtyState);
+    clearEndDateButton.addEventListener('click', () => {
+      endDateInput.value = '';
+      syncDirtyState();
+      startDateInput.focus();
+    });
     text.addEventListener('input', syncDirtyState);
 
     memoToggle.addEventListener('click', () => {
@@ -1383,7 +1365,8 @@ function renderTodoList({
           text: nextText,
           memo: memoInput.value,
           category: nextCategory,
-          eventDate: dateInput.value,
+          eventStartDate: startDateInput.value,
+          eventEndDate: endDateInput.value,
           eventTime: timeInput.dataset.time,
           eventEndTime: endTimeInput.dataset.time,
         });
@@ -1396,7 +1379,7 @@ function renderTodoList({
 
     controls.append(
       categorySelect,
-      dateInput,
+      dateRange,
       timeRange,
       timeInput,
       endTimeInput,
@@ -1899,37 +1882,33 @@ async function initPageCalendar() {
   }
 
   async function deleteTodo(todoId) {
-    const todos = state.store[state.selectedDateKey] || [];
-    const target = todos.find((todo) => todo.id === todoId);
+    const target = (state.store[state.selectedDateKey] || []).find(
+      (todo) => todo.id === todoId,
+    );
 
     if (!target) return;
 
     const isSharedTodo = isSharedPersonalTodo(target);
+    const targetRange = getTodoDateRange(target, state.store);
+    const isRangeTodo = targetRange.length > 1;
+
+    let confirmMessage = '';
 
     if (isSharedTodo) {
-      const ok = window.confirm(
-        '우리 일정이라 같은 그룹 참여자 캘린더에서도 함께 삭제돼. 삭제할까?',
-      );
+      confirmMessage = isRangeTodo
+        ? '이 기간 우리 일정 전체가 그룹 참여자 캘린더에서도 삭제돼. 삭제할까?'
+        : '우리 일정이라 같은 그룹 참여자 캘린더에서도 함께 삭제돼. 삭제할까?';
+    } else if (isRangeTodo) {
+      confirmMessage = '이 기간 일정 전체를 삭제할까?';
+    }
 
-      if (!ok) return;
+    if (confirmMessage && !window.confirm(confirmMessage)) {
+      return;
     }
 
     try {
-      if (isSharedTodo) {
-        await deleteSharedPersonalTodoById(todoId);
-        await reloadStoreForMode();
-      } else {
-        await deleteTodoById(todoId);
-
-        state.store[state.selectedDateKey] = todos.filter(
-          (todo) => todo.id !== todoId,
-        );
-
-        if (state.store[state.selectedDateKey].length === 0) {
-          delete state.store[state.selectedDateKey];
-        }
-      }
-
+      await deleteTodoRange(todoId);
+      await reloadStoreForMode();
       renderAll();
       refreshGroupBackupNeeded();
     } catch (error) {
@@ -1939,7 +1918,15 @@ async function initPageCalendar() {
 
   async function saveTodoEdit(
     todoId,
-    { text, memo, category, eventDate, eventTime, eventEndTime },
+    {
+      text,
+      memo,
+      category,
+      eventStartDate,
+      eventEndDate,
+      eventTime,
+      eventEndTime,
+    },
   ) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
@@ -1950,22 +1937,38 @@ async function initPageCalendar() {
 
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
-    const nextDate = String(eventDate || target.date || '').trim();
+    const nextStartDate = String(eventStartDate || target.date || '').trim();
+    const nextEndDate = String(eventEndDate || nextStartDate).trim();
+    const nextDateKeys = getDateRangeKeys(nextStartDate, nextEndDate);
     const nextTime = normalizeEventTime(eventTime);
     const nextEndTime = normalizeOptionalEventTime(eventEndTime);
 
-    if (!nextText || !nextDate || !nextCategory?.id) return;
+    if (!nextText || !nextStartDate || !nextCategory?.id) return;
 
-    await saveTodoWithSharedPersonal({
+    if (nextEndDate < nextStartDate || nextDateKeys.length === 0) {
+      alert('종료 날짜는 시작 날짜보다 빠를 수 없어.');
+      throw new Error('Invalid event date range');
+    }
+
+    await saveTodoRange({
       todoId,
       text: nextText,
       memo: nextMemo,
-      eventDate: nextDate,
+      startDateKey: nextStartDate,
+      endDateKey: nextEndDate,
       eventTime: nextTime,
       eventEndTime: nextEndTime,
       category: nextCategory,
     });
+
     await reloadStoreForMode();
+
+    if (!nextDateKeys.includes(state.selectedDateKey)) {
+      state.selectedDateKey = nextStartDate;
+      const [year, month] = nextStartDate.split('-').map(Number);
+      state.viewDate = new Date(year, month - 1, 1);
+    }
+
     renderAll();
     refreshGroupBackupNeeded();
   }
@@ -2268,28 +2271,18 @@ async function initPageCalendar() {
 
     try {
       const category = await refreshCategories(selectedCategoryId);
-      const createdTodos = [];
 
-
-      for (const dateKey of dateKeys) {
-        const nextTodo = await insertTodo({
-          userId: state.userId,
-          dateKey,
-          text,
-          memo,
-          eventTime,
-          eventEndTime,
-          category,
-        });
-        createdTodos.push(nextTodo);
-      }
-
-      createdTodos.forEach((todo) => {
-        const currentTodos = state.store[todo.date] || [];
-        state.store[todo.date] = [...currentTodos, todo].sort(
-          compareTodosByTime,
-        );
+      await createTodoRange({
+        startDateKey,
+        endDateKey,
+        text,
+        memo,
+        eventTime,
+        eventEndTime,
+        category,
       });
+      await reloadStoreForMode();
+
       input.value = '';
       setTimeInputValue(timeInput, '00:00');
       setOptionalTimeInputValue(endTimeInput, '');

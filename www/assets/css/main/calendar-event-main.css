@@ -1767,6 +1767,27 @@ body.theme-event[data-page='calendar-event']
   margin-left: 0;
 }
 
+.event-todo-item__date-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.event-todo-item__date-field {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.event-todo-item__date-label {
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .event-todo-item__date-input,
 .event-todo-item__time-input {
   width: 118px;
@@ -1783,6 +1804,26 @@ body.theme-event[data-page='calendar-event']
 
 .event-todo-item__date-input {
   width: 136px;
+}
+
+.event-todo-item__date-clear {
+  min-height: 30px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.event-todo-item__date-clear:hover,
+.event-todo-item__date-clear:focus-visible {
+  color: var(--color-text);
+  background: #fff0f6;
+  border-color: #ff8fb3;
 }
 
 .event-todo-item__time-range {
@@ -2004,11 +2045,28 @@ body.theme-event[data-page='calendar-event']
     max-width: 100%;
   }
 
+  .event-todo-item__date-range {
+    width: 100%;
+  }
+
+  .event-todo-item__date-field {
+    flex: 1 1 140px;
+  }
+
   .event-todo-item__date-input,
   .event-todo-item__time-input {
     width: 118px;
     font-size: 16px;
     line-height: 1.45;
+  }
+
+  .event-todo-item__date-input {
+    width: 100%;
+  }
+
+  .event-todo-item__date-clear {
+    min-height: 34px;
+    font-size: 13px;
   }
 
   .event-time-picker__fields {

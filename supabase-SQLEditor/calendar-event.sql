@@ -257,3 +257,13 @@ alter table public.event_calendar_todos
 create unique index if not exists event_calendar_todos_shared_copy_uidx
   on public.event_calendar_todos (user_id, shared_origin_todo_id)
   where is_shared_copy = true and shared_origin_todo_id is not null;
+
+alter table public.event_calendar_todos
+  add column if not exists event_range_id uuid;
+
+create index if not exists event_calendar_todos_user_range_date_idx
+  on public.event_calendar_todos (user_id, event_range_id, event_date);
+
+create index if not exists event_calendar_todos_range_date_idx
+  on public.event_calendar_todos (event_range_id, event_date)
+  where event_range_id is not null;
