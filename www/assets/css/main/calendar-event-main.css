@@ -786,7 +786,6 @@
 
 .event-todo-item__type {
   max-width: calc(100% - 92px);
-  margin-left: 32px;
 }
 
 .event-todo-item__text-input {
@@ -883,7 +882,6 @@
 
   .event-todo-item__type {
     max-width: calc(100% - 92px);
-    margin-left: 32px;
   }
 
   .event-todo-item__text-input {
