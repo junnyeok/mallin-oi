@@ -13,16 +13,6 @@ import {
   initCalendarGroupBar,
   isCalendarGroupActive,
 } from './calendar-groups.js';
-import {
-  createSharedPersonalControls,
-  fetchSharedPersonalGroups,
-  getCalendarLabel,
-  getSharedPersonalGroupName,
-} from './calendar-shared-personal.js';
-import {
-  renderSharedPersonalReadonlyDetail,
-} from './calendar-shared-personal-readonly.js';
-import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import {
   openCalendarDetailSheet,
@@ -111,10 +101,6 @@ function isWorkDateUniqueConflict(error) {
     errorText.includes('work_calendar_todos_user_date_uidx') ||
     errorText.includes('duplicate key value violates unique constraint')
   );
-}
-
-function isWorkDateForeignConflict(error) {
-  return getCalendarErrorText(error).includes('WORK_DATE_FOREIGN_CONFLICT');
 }
 
 function isWorkDateConflict(error) {
@@ -260,12 +246,6 @@ function getCategoryByTodo(todo, categories = []) {
   );
 }
 
-function isSharedPersonalTodo(todo) {
-  return Boolean(
-    todo?.sharedGroupId || todo?.sharedOriginTodoId || todo?.isSharedCopy,
-  );
-}
-
 function normalizeTodo(row) {
   return {
     id: row.id,
@@ -276,11 +256,6 @@ function normalizeTodo(row) {
     type: row.work_type || row.work_calendar_categories?.slug || 'etc',
     categoryId: row.category_id || row.work_calendar_categories?.id || null,
     date: row.work_date,
-    sharedOriginTodoId: row.shared_origin_todo_id || null,
-    sharedOriginUserId: row.shared_origin_user_id || null,
-    sharedGroupId: row.shared_group_id || null,
-    sharedCreatedBy: row.shared_created_by || null,
-    isSharedCopy: Boolean(row.is_shared_copy),
   };
 }
 
@@ -366,7 +341,7 @@ async function fetchUserCategories(userId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .eq('user_id', userId)
     .order('sort_order', { ascending: true })
@@ -386,7 +361,7 @@ async function fetchCategoryById(userId, categoryId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .eq('user_id', userId)
     .eq('id', categoryId)
@@ -461,11 +436,6 @@ async function fetchUserTodos(userId) {
       work_text,
       memo,
       is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
       created_at,
       work_calendar_categories (
         id,
@@ -504,11 +474,6 @@ async function fetchUserTodosInMonth(userId, viewDate) {
       work_text,
       memo,
       is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
       created_at,
       work_calendar_categories (
         id,
@@ -541,32 +506,6 @@ async function insertTodo({ userId, dateKey, memo, category }) {
     : null;
   const safeCategory = latestCategory || category || DEFAULT_CATEGORIES[4];
   const workText = String(safeCategory.name || '기타').trim();
-  const shouldShare = Boolean(
-    safeCategory.is_shared_personal && safeCategory.shared_group_id,
-  );
-
-  if (shouldShare) {
-    const { data, error } = await supabase
-      .rpc('create_work_calendar_todo_with_shared_personal', {
-        p_work_date: dateKey,
-        p_category_id: safeCategory.id || null,
-        p_memo: memo || '',
-      })
-      .single();
-
-    if (error) {
-      console.error('[work-calendar] shared insertTodo error:', error.message);
-      throw error;
-    }
-
-    return {
-      ...normalizeTodo(data),
-      sharedGroupId: safeCategory.shared_group_id || null,
-      sharedCreatedBy: userId,
-      isSharedCopy: false,
-    };
-  }
-
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .insert({
@@ -588,11 +527,6 @@ async function insertTodo({ userId, dateKey, memo, category }) {
       work_text,
       memo,
       is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
       created_at,
       work_calendar_categories (
         id,
@@ -637,11 +571,6 @@ async function insertRepeatTodos(rows = []) {
       work_text,
       memo,
       is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
       created_at,
       work_calendar_categories (
         id,
@@ -678,35 +607,6 @@ async function deleteTodosByDateKeys({ userId, dateKeys }) {
   }
 }
 
-async function updateTodoMemo({ todoId, memo }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ memo: memo || '' })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[work-calendar] updateTodoMemo error:', error.message);
-    throw error;
-  }
-}
-
-async function updateSharedPersonalTodo({ todoId, workText, memo }) {
-  const payload = { p_todo_id: todoId };
-
-  if (workText !== undefined) payload.p_work_text = workText;
-  if (memo !== undefined) payload.p_memo = memo;
-
-  const { error } = await supabase.rpc(
-    'update_work_shared_personal_todo',
-    payload,
-  );
-
-  if (error) {
-    console.error('[work-calendar] updateSharedPersonalTodo error:', error.message);
-    throw error;
-  }
-}
-
 async function saveTodoAtomic({
   todoId,
   workText,
@@ -730,73 +630,11 @@ async function saveTodoAtomic({
   }
 }
 
-async function updateTodoCategory({ todoId, category }) {
-  const safeCategory = category || getFallbackCategory([]);
-
-  const { error } = await supabase.rpc(
-    'update_work_calendar_todo_category_with_shared_personal',
-    {
-      p_todo_id: todoId,
-      p_category_id: safeCategory?.id || null,
-    },
-  );
-
-  if (error) {
-    console.error('[work-calendar] updateTodoCategory error:', error.message);
-    throw error;
-  }
-}
-
-async function syncSharedPersonalCategory(categoryId) {
-  const { error } = await supabase.rpc('sync_work_shared_personal_category', {
-    p_category_id: categoryId,
-  });
-
-  if (error) {
-    console.error(
-      '[work-calendar] syncSharedPersonalCategory error:',
-      error.message,
-    );
-    throw error;
-  }
-}
-
 async function deleteTodoById(todoId) {
   const { error } = await supabase.from(TABLE_NAME).delete().eq('id', todoId);
 
   if (error) {
     console.error('[work-calendar] deleteTodoById error:', error.message);
-    throw error;
-  }
-}
-
-async function deleteSharedPersonalTodoById(todoId) {
-  const { error } = await supabase.rpc('delete_work_shared_personal_todo', {
-    p_todo_id: todoId,
-  });
-
-  if (error) {
-    console.error(
-      '[work-calendar] deleteSharedPersonalTodoById error:',
-      error.message,
-    );
-    throw error;
-  }
-}
-
-async function deleteSharedPersonalCategoryById(categoryId) {
-  const { error } = await supabase.rpc(
-    'delete_work_shared_personal_category',
-    {
-      p_category_id: categoryId,
-    },
-  );
-
-  if (error) {
-    console.error(
-      '[work-calendar] deleteSharedPersonalCategoryById error:',
-      error.message,
-    );
     throw error;
   }
 }
@@ -811,11 +649,9 @@ async function insertCategory({ userId, name, color, sortOrder }) {
       color: normalizeColor(color),
       is_default: false,
       sort_order: sortOrder || 100,
-      is_shared_personal: false,
-      shared_group_id: null,
     })
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .single();
 
@@ -827,24 +663,16 @@ async function insertCategory({ userId, name, color, sortOrder }) {
   return data;
 }
 
-async function updateCategory({
-  categoryId,
-  name,
-  color,
-  isSharedPersonal,
-  sharedGroupId,
-}) {
+async function updateCategory({ categoryId, name, color }) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .update({
       name: normalizeCategoryName(name),
       color: normalizeColor(color),
-      is_shared_personal: Boolean(isSharedPersonal),
-      shared_group_id: isSharedPersonal ? sharedGroupId : null,
     })
     .eq('id', categoryId)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .single();
 
@@ -938,7 +766,6 @@ function renderCategoryPalette({ root, colorInput }) {
 function renderCategoryList({
   root,
   categories,
-  groups,
   onSave,
   onDelete,
 }) {
@@ -970,31 +797,11 @@ function renderCategoryList({
     deleteButton.type = 'button';
     deleteButton.disabled = Boolean(category.is_default);
 
-    const sharedControls = createSharedPersonalControls({
-      prefix: 'work',
-      groups,
-      category,
-      selectLabel: `${getCalendarLabel('work')} 우리 일정 그룹 선택`,
-    });
-    const sharedGroupName = getSharedPersonalGroupName(category, groups);
-
-    if (sharedGroupName) {
-      sharedControls.element.title = `${sharedGroupName} 그룹 멤버 개인 캘린더에 함께 추가돼.`;
-    }
-
     saveButton.addEventListener('click', () => {
-      const sharedValue = sharedControls.getValue();
-
-      if (sharedValue.isSharedPersonal && !sharedValue.sharedGroupId) {
-        alert('우리 일정으로 쓸 그룹을 선택해줘.');
-        return;
-      }
-
       onSave?.({
         category,
         name: input.value,
         color: color.value,
-        ...sharedValue,
       });
     });
 
@@ -1002,7 +809,7 @@ function renderCategoryList({
       onDelete?.(category);
     });
 
-    item.append(dot, input, color, saveButton, deleteButton, sharedControls.element);
+    item.append(dot, input, color, saveButton, deleteButton);
     root.append(item);
   });
 }
@@ -1109,14 +916,13 @@ function renderTodoList({
   onDelete,
   onSaveEdit,
   onOpenDetail,
-  readonlyDetails = [],
 }) {
   if (!root) return;
 
   const todos = store[selectedDateKey] || [];
   root.innerHTML = '';
 
-  if (empty) empty.hidden = todos.length > 0 || readonlyDetails.length > 0;
+  if (empty) empty.hidden = todos.length > 0;
 
   todos.forEach((todo) => {
     const category = getCategoryByTodo(todo, categories);
@@ -1142,13 +948,6 @@ function renderTodoList({
     root.append(item);
   });
 
-  readonlyDetails.forEach((detail) => {
-    renderSharedPersonalReadonlyDetail({
-      list: root,
-      detail,
-      itemClass: 'work-todo-item',
-    });
-  });
 }
 
 function renderPageCalendar(state) {
@@ -1314,7 +1113,6 @@ async function initPageCalendar() {
     viewDate: new Date(),
     selectedDateKey: todayKey,
     categories: await ensureDefaultCategories(user.id),
-    sharedGroups: await fetchSharedPersonalGroups('work'),
     store: await fetchUserTodos(user.id),
     personalStore: null,
     isAddingTodo: false,
@@ -1352,15 +1150,6 @@ async function initPageCalendar() {
   }
 
   function renderAll() {
-    const readonlyDetails = isCalendarGroupActive(state.group?.state)
-      ? collectSharedPersonalReadonlyDetails({
-          groupState: state.group.state,
-          dateKey: state.selectedDateKey,
-          calendarType: 'work',
-          currentUserId: state.userId,
-        })
-      : [];
-
     form.hidden = false;
     const hasTodoForSelectedDate =
       (state.store[state.selectedDateKey] || []).length > 0;
@@ -1380,13 +1169,11 @@ async function initPageCalendar() {
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
       onOpenDetail: openTodoDetail,
-      readonlyDetails,
     });
 
     renderCategoryList({
       root: categoryList,
       categories: state.categories,
-      groups: state.sharedGroups,
       onSave: saveCategory,
       onDelete: removeCategory,
     });
@@ -1534,30 +1321,15 @@ async function initPageCalendar() {
 
     if (!target) return;
 
-    const isSharedTodo = isSharedPersonalTodo(target);
+    try {
+      await deleteTodoById(todoId);
 
-    if (isSharedTodo) {
-      const ok = window.confirm(
-        '우리 일정이라 같은 그룹 참여자 캘린더에서도 함께 삭제돼. 삭제할까?',
+      state.store[state.selectedDateKey] = todos.filter(
+        (todo) => todo.id !== todoId,
       );
 
-      if (!ok) return;
-    }
-
-    try {
-      if (isSharedTodo) {
-        await deleteSharedPersonalTodoById(todoId);
-        await reloadStoreForMode();
-      } else {
-        await deleteTodoById(todoId);
-
-        state.store[state.selectedDateKey] = todos.filter(
-          (todo) => todo.id !== todoId,
-        );
-
-        if (state.store[state.selectedDateKey].length === 0) {
-          delete state.store[state.selectedDateKey];
-        }
+      if (state.store[state.selectedDateKey].length === 0) {
+        delete state.store[state.selectedDateKey];
       }
 
       renderAll();
@@ -1592,10 +1364,6 @@ async function initPageCalendar() {
     try {
       await saveTodoAtomic(payload);
     } catch (error) {
-      if (isWorkDateForeignConflict(error)) {
-        alert('다른 사용자의 일정이 있어 이 날짜로 변경할 수 없습니다.');
-        throw createHandledCalendarError('Foreign work date conflict.');
-      }
       if (!isWorkDateConflict(error)) {
         alert('일정 저장에 실패했어. 잠시 후 다시 시도해줘.');
         throw createHandledCalendarError('Work calendar save failed.');
@@ -1722,13 +1490,7 @@ async function initPageCalendar() {
     );
   }
 
-  async function saveCategory({
-    category,
-    name,
-    color,
-    isSharedPersonal,
-    sharedGroupId,
-  }) {
+  async function saveCategory({ category, name, color }) {
     const safeName = normalizeCategoryName(name);
     const safeColor = normalizeColor(color);
 
@@ -1753,8 +1515,6 @@ async function initPageCalendar() {
         categoryId: category.id,
         name: safeName,
         color: safeColor,
-        isSharedPersonal,
-        sharedGroupId,
       });
 
       const selectedCategoryId = typeSelect.value;
@@ -1762,13 +1522,6 @@ async function initPageCalendar() {
       state.categories = state.categories.map((item) =>
         item.id === updatedCategory.id ? updatedCategory : item,
       );
-
-      if (
-        updatedCategory.is_shared_personal &&
-        updatedCategory.shared_group_id
-      ) {
-        await syncSharedPersonalCategory(updatedCategory.id);
-      }
 
       await refreshCategories(selectedCategoryId);
       renderAll();
@@ -1780,25 +1533,6 @@ async function initPageCalendar() {
   async function removeCategory(category) {
     if (!category || category.is_default) {
       alert('기본 카테고리는 삭제할 수 없어.');
-      return;
-    }
-
-    if (category.is_shared_personal && category.shared_group_id) {
-      const ok = window.confirm(
-        `"${category.name}" 카테고리는 우리 일정 카테고리라 같은 그룹 참여자 카테고리도 함께 삭제돼. 삭제할까?`,
-      );
-
-      if (!ok) return;
-
-      try {
-        await deleteSharedPersonalCategoryById(category.id);
-        state.categories = await fetchUserCategories(state.userId);
-        await reloadStoreForMode();
-        renderAll();
-      } catch (error) {
-        alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
-      }
-
       return;
     }
 

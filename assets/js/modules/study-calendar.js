@@ -13,16 +13,6 @@ import {
   initCalendarGroupBar,
   isCalendarGroupActive,
 } from './calendar-groups.js';
-import {
-  createSharedPersonalControls,
-  fetchSharedPersonalGroups,
-  getCalendarLabel,
-  getSharedPersonalGroupName,
-} from './calendar-shared-personal.js';
-import {
-  renderSharedPersonalReadonlyDetail,
-} from './calendar-shared-personal-readonly.js';
-import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import {
   initCalendarEntrySheet,
@@ -109,12 +99,6 @@ function getCategoryByTodo(todo, categories = []) {
     categories.find((category) => category.id === todo.categoryId) ||
     categories.find((category) => category.slug === todo.type) ||
     getFallbackCategory(categories)
-  );
-}
-
-function isSharedPersonalTodo(todo) {
-  return Boolean(
-    todo?.sharedGroupId || todo?.sharedOriginTodoId || todo?.isSharedCopy,
   );
 }
 
@@ -208,11 +192,6 @@ function normalizeTodo(row) {
     type: row.todo_type || row.study_calendar_categories?.slug || 'etc',
     categoryId: row.category_id || row.study_calendar_categories?.id || null,
     date: row.todo_date,
-    sharedOriginTodoId: row.shared_origin_todo_id || null,
-    sharedOriginUserId: row.shared_origin_user_id || null,
-    sharedGroupId: row.shared_group_id || null,
-    sharedCreatedBy: row.shared_created_by || null,
-    isSharedCopy: Boolean(row.is_shared_copy),
   };
 }
 
@@ -245,11 +224,6 @@ async function fetchUserTodos(userId) {
       todo_text,
       memo,
       is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
       created_at,
       study_calendar_categories (
         id,
@@ -277,7 +251,7 @@ async function fetchUserCategories(userId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .eq('user_id', userId)
     .order('sort_order', { ascending: true })
@@ -297,7 +271,7 @@ async function fetchCategoryById(userId, categoryId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .eq('user_id', userId)
     .eq('id', categoryId)
@@ -370,11 +344,9 @@ async function insertCategory({ userId, name, color, sortOrder }) {
       color: safeColor,
       is_default: false,
       sort_order: sortOrder || 100,
-      is_shared_personal: false,
-      shared_group_id: null,
     })
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .single();
 
@@ -386,24 +358,16 @@ async function insertCategory({ userId, name, color, sortOrder }) {
   return data;
 }
 
-async function updateCategory({
-  categoryId,
-  name,
-  color,
-  isSharedPersonal,
-  sharedGroupId,
-}) {
+async function updateCategory({ categoryId, name, color }) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .update({
       name: normalizeCategoryName(name),
       color: normalizeColor(color),
-      is_shared_personal: Boolean(isSharedPersonal),
-      shared_group_id: isSharedPersonal ? sharedGroupId : null,
     })
     .eq('id', categoryId)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, is_shared_personal, shared_group_id, shared_origin_category_id, shared_origin_user_id, is_shared_copy_category, created_at',
+      'id, user_id, name, slug, color, is_default, sort_order, created_at',
     )
     .single();
 
@@ -449,33 +413,6 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
     ? await fetchCategoryById(userId, category.id)
     : null;
   const safeCategory = latestCategory || category || DEFAULT_CATEGORIES[2];
-  const shouldShare = Boolean(
-    safeCategory.is_shared_personal && safeCategory.shared_group_id,
-  );
-
-  if (shouldShare) {
-    const { data, error } = await supabase
-      .rpc('create_study_calendar_todo_with_shared_personal', {
-        p_todo_date: dateKey,
-        p_category_id: safeCategory.id || null,
-        p_todo_text: text,
-        p_memo: memo || '',
-      })
-      .single();
-
-    if (error) {
-      console.error('[study-calendar] shared insertTodo error:', error.message);
-      throw error;
-    }
-
-    return {
-      ...normalizeTodo(data),
-      sharedGroupId: safeCategory.shared_group_id || null,
-      sharedCreatedBy: userId,
-      isSharedCopy: false,
-    };
-  }
-
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .insert({
@@ -497,11 +434,6 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
       todo_text,
       memo,
       is_done,
-      shared_origin_todo_id,
-      shared_origin_user_id,
-      shared_group_id,
-      shared_created_by,
-      is_shared_copy,
       created_at,
       study_calendar_categories (
         id,
@@ -533,47 +465,6 @@ async function updateTodoDone({ todoId, done }) {
   }
 }
 
-async function updateTodoMemo({ todoId, memo }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ memo: memo || '' })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[study-calendar] updateTodoMemo error:', error.message);
-    throw error;
-  }
-}
-
-async function updateTodoText({ todoId, text }) {
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .update({ todo_text: text })
-    .eq('id', todoId);
-
-  if (error) {
-    console.error('[study-calendar] updateTodoText error:', error.message);
-    throw error;
-  }
-}
-
-async function updateSharedPersonalTodo({ todoId, text, memo }) {
-  const payload = { p_todo_id: todoId };
-
-  if (text !== undefined) payload.p_todo_text = text;
-  if (memo !== undefined) payload.p_memo = memo;
-
-  const { error } = await supabase.rpc(
-    'update_study_shared_personal_todo',
-    payload,
-  );
-
-  if (error) {
-    console.error('[study-calendar] updateSharedPersonalTodo error:', error.message);
-    throw error;
-  }
-}
-
 async function saveTodoAtomic({ todoId, text, memo, dateKey, categoryId }) {
   const { error } = await supabase.rpc('save_study_calendar_todo', {
     p_todo_id: todoId,
@@ -589,73 +480,11 @@ async function saveTodoAtomic({ todoId, text, memo, dateKey, categoryId }) {
   }
 }
 
-async function updateTodoCategory({ todoId, category }) {
-  const safeCategory = category || getFallbackCategory([]);
-
-  const { error } = await supabase.rpc(
-    'update_study_calendar_todo_category_with_shared_personal',
-    {
-      p_todo_id: todoId,
-      p_category_id: safeCategory?.id || null,
-    },
-  );
-
-  if (error) {
-    console.error('[study-calendar] updateTodoCategory error:', error.message);
-    throw error;
-  }
-}
-
-async function syncSharedPersonalCategory(categoryId) {
-  const { error } = await supabase.rpc('sync_study_shared_personal_category', {
-    p_category_id: categoryId,
-  });
-
-  if (error) {
-    console.error(
-      '[study-calendar] syncSharedPersonalCategory error:',
-      error.message,
-    );
-    throw error;
-  }
-}
-
 async function deleteTodoById(todoId) {
   const { error } = await supabase.from(TABLE_NAME).delete().eq('id', todoId);
 
   if (error) {
     console.error('[study-calendar] deleteTodoById error:', error.message);
-    throw error;
-  }
-}
-
-async function deleteSharedPersonalTodoById(todoId) {
-  const { error } = await supabase.rpc('delete_study_shared_personal_todo', {
-    p_todo_id: todoId,
-  });
-
-  if (error) {
-    console.error(
-      '[study-calendar] deleteSharedPersonalTodoById error:',
-      error.message,
-    );
-    throw error;
-  }
-}
-
-async function deleteSharedPersonalCategoryById(categoryId) {
-  const { error } = await supabase.rpc(
-    'delete_study_shared_personal_category',
-    {
-      p_category_id: categoryId,
-    },
-  );
-
-  if (error) {
-    console.error(
-      '[study-calendar] deleteSharedPersonalCategoryById error:',
-      error.message,
-    );
     throw error;
   }
 }
@@ -848,7 +677,6 @@ function renderTodoList({
   onDelete,
   onSaveEdit,
   onOpenDetail,
-  readonlyDetails = [],
 }) {
   const list = document.getElementById('studyTodoList');
   const empty = document.getElementById('studyTodoEmpty');
@@ -861,7 +689,7 @@ function renderTodoList({
   selectedDate.textContent = getReadableDate(selectedDateKey);
   list.innerHTML = '';
 
-  empty.hidden = todos.length > 0 || readonlyDetails.length > 0;
+  empty.hidden = todos.length > 0;
 
   todos.forEach((todo) => {
     const item = document.createElement('li');
@@ -910,13 +738,6 @@ function renderTodoList({
     list.append(item);
   });
 
-  readonlyDetails.forEach((detail) => {
-    renderSharedPersonalReadonlyDetail({
-      list,
-      detail,
-      itemClass: 'study-todo-item',
-    });
-  });
 }
 
 function renderCategorySelect(select, categories = [], preferredValue = '') {
@@ -974,7 +795,6 @@ function renderCategoryPalette({ root, colorInput }) {
 function renderCategoryList({
   root,
   categories,
-  groups,
   onSave,
   onDelete,
 }) {
@@ -1008,31 +828,11 @@ function renderCategoryList({
     saveButton.className = 'study-category-item__button';
     saveButton.textContent = '저장';
 
-    const sharedControls = createSharedPersonalControls({
-      prefix: 'study',
-      groups,
-      category,
-      selectLabel: `${getCalendarLabel('study')} 우리 일정 그룹 선택`,
-    });
-    const sharedGroupName = getSharedPersonalGroupName(category, groups);
-
-    if (sharedGroupName) {
-      sharedControls.element.title = `${sharedGroupName} 그룹 멤버 개인 캘린더에 함께 추가돼.`;
-    }
-
     saveButton.addEventListener('click', () => {
-      const sharedValue = sharedControls.getValue();
-
-      if (sharedValue.isSharedPersonal && !sharedValue.sharedGroupId) {
-        alert('우리 일정으로 쓸 그룹을 선택해줘.');
-        return;
-      }
-
       onSave({
         category,
         name: nameInput.value,
         color: colorInput.value,
-        ...sharedValue,
       });
     });
 
@@ -1050,7 +850,7 @@ function renderCategoryList({
       onDelete(category);
     });
 
-    item.append(dot, nameInput, colorInput, saveButton, deleteButton, sharedControls.element);
+    item.append(dot, nameInput, colorInput, saveButton, deleteButton);
     root.append(item);
   });
 }
@@ -1218,7 +1018,6 @@ async function initPageCalendar() {
     viewDate: new Date(today.getFullYear(), today.getMonth(), 1),
     selectedDateKey: getTodayKey(),
     categories: await ensureDefaultCategories(user.id),
-    sharedGroups: await fetchSharedPersonalGroups('study'),
     store: await fetchUserTodos(user.id),
     personalStore: null,
     onSelect: null,
@@ -1251,15 +1050,6 @@ async function initPageCalendar() {
   }
 
   function renderAll() {
-    const readonlyDetails = isCalendarGroupActive(state.group?.state)
-      ? collectSharedPersonalReadonlyDetails({
-          groupState: state.group.state,
-          dateKey: state.selectedDateKey,
-          calendarType: 'study',
-          currentUserId: state.userId,
-        })
-      : [];
-
     form.hidden = false;
     renderCategorySelect(typeSelect, state.categories);
 
@@ -1273,13 +1063,11 @@ async function initPageCalendar() {
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
       onOpenDetail: openTodoDetail,
-      readonlyDetails,
     });
 
     renderCategoryList({
       root: categoryList,
       categories: state.categories,
-      groups: state.sharedGroups,
       onSave: saveCategory,
       onDelete: removeCategory,
     });
@@ -1331,30 +1119,15 @@ async function initPageCalendar() {
 
     if (!target) return;
 
-    const isSharedTodo = isSharedPersonalTodo(target);
+    try {
+      await deleteTodoById(todoId);
 
-    if (isSharedTodo) {
-      const ok = window.confirm(
-        '우리 일정이라 같은 그룹 참여자 캘린더에서도 함께 삭제돼. 삭제할까?',
+      state.store[state.selectedDateKey] = todos.filter(
+        (todo) => todo.id !== todoId,
       );
 
-      if (!ok) return;
-    }
-
-    try {
-      if (isSharedTodo) {
-        await deleteSharedPersonalTodoById(todoId);
-        await reloadStoreForMode();
-      } else {
-        await deleteTodoById(todoId);
-
-        state.store[state.selectedDateKey] = todos.filter(
-          (todo) => todo.id !== todoId,
-        );
-
-        if (state.store[state.selectedDateKey].length === 0) {
-          delete state.store[state.selectedDateKey];
-        }
+      if (state.store[state.selectedDateKey].length === 0) {
+        delete state.store[state.selectedDateKey];
       }
 
       renderAll();
@@ -1393,7 +1166,6 @@ async function initPageCalendar() {
     const [year, month] = nextDateKey.split('-').map(Number);
     state.viewDate = new Date(year, month - 1, 1);
     renderAll();
-    state.group?.refresh?.();
     scheduleCalendarWidgetRefresh();
     refreshGroupBackupNeeded();
   }
@@ -1574,13 +1346,7 @@ async function initPageCalendar() {
     });
   }
 
-  async function saveCategory({
-    category,
-    name,
-    color,
-    isSharedPersonal,
-    sharedGroupId,
-  }) {
+  async function saveCategory({ category, name, color }) {
     const safeName = normalizeCategoryName(name);
     const safeColor = normalizeColor(color);
 
@@ -1605,8 +1371,6 @@ async function initPageCalendar() {
         categoryId: category.id,
         name: safeName,
         color: safeColor,
-        isSharedPersonal,
-        sharedGroupId,
       });
 
       const selectedCategoryId = typeSelect.value;
@@ -1614,13 +1378,6 @@ async function initPageCalendar() {
       state.categories = state.categories.map((item) =>
         item.id === updatedCategory.id ? updatedCategory : item,
       );
-
-      if (
-        updatedCategory.is_shared_personal &&
-        updatedCategory.shared_group_id
-      ) {
-        await syncSharedPersonalCategory(updatedCategory.id);
-      }
 
       await refreshCategories(selectedCategoryId);
       renderAll();
@@ -1632,25 +1389,6 @@ async function initPageCalendar() {
   async function removeCategory(category) {
     if (!category || category.is_default) {
       alert('기본 카테고리는 삭제할 수 없어.');
-      return;
-    }
-
-    if (category.is_shared_personal && category.shared_group_id) {
-      const ok = window.confirm(
-        `"${category.name}" 카테고리는 우리 일정 카테고리라 같은 그룹 참여자 카테고리도 함께 삭제돼. 삭제할까?`,
-      );
-
-      if (!ok) return;
-
-      try {
-        await deleteSharedPersonalCategoryById(category.id);
-        state.categories = await fetchUserCategories(state.userId);
-        await reloadStoreForMode();
-        renderAll();
-      } catch (error) {
-        alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
-      }
-
       return;
     }
 

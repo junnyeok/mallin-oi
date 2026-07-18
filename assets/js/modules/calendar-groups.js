@@ -45,8 +45,7 @@ const BACKUP_SOURCE_CONFIG = {
     table: 'study_calendar_todos',
     categoryRelation: 'study_calendar_categories',
     select: `
-      id, todo_date, todo_type, todo_text, memo, is_done, shared_group_id,
-      shared_origin_todo_id, shared_origin_user_id, shared_created_by, is_shared_copy,
+      id, todo_date, todo_type, todo_text, memo, is_done,
       study_calendar_categories (name, slug, color)
     `,
   },
@@ -54,8 +53,7 @@ const BACKUP_SOURCE_CONFIG = {
     table: 'work_calendar_todos',
     categoryRelation: 'work_calendar_categories',
     select: `
-      id, work_date, work_type, work_text, memo, is_done, shared_group_id,
-      shared_origin_todo_id, shared_origin_user_id, shared_created_by, is_shared_copy,
+      id, work_date, work_type, work_text, memo, is_done,
       work_calendar_categories (name, slug, color)
     `,
   },
@@ -506,11 +504,6 @@ function makeSourceBackupEvent(row, calendarType) {
       payload: {
         isDone: Boolean(row.is_done),
         categoryName: category?.name || null,
-        shared_group_id: row.shared_group_id || null,
-        shared_origin_todo_id: row.shared_origin_todo_id || null,
-        shared_origin_user_id: row.shared_origin_user_id || null,
-        shared_created_by: row.shared_created_by || null,
-        is_shared_copy: Boolean(row.is_shared_copy),
       },
     });
   }
@@ -526,11 +519,6 @@ function makeSourceBackupEvent(row, calendarType) {
       payload: {
         isDone: Boolean(row.is_done),
         workText: row.work_text || null,
-        shared_group_id: row.shared_group_id || null,
-        shared_origin_todo_id: row.shared_origin_todo_id || null,
-        shared_origin_user_id: row.shared_origin_user_id || null,
-        shared_created_by: row.shared_created_by || null,
-        is_shared_copy: Boolean(row.is_shared_copy),
       },
     });
   }
@@ -598,13 +586,9 @@ async function checkBackupNeeded({ userId, groupId, calendarType }) {
   if (sourceResult.error) throw sourceResult.error;
   if (backupResult.error) throw backupResult.error;
 
-  const sourceEvents = (sourceResult.data || [])
-    .filter(
-      (row) =>
-        !row.is_shared_copy &&
-        (!row.shared_group_id || row.shared_group_id === groupId),
-    )
-    .map((row) => makeSourceBackupEvent(row, calendarType));
+  const sourceEvents = (sourceResult.data || []).map((row) =>
+    makeSourceBackupEvent(row, calendarType),
+  );
   const backupEvents = (backupResult.data || []).map(makeStoredBackupEvent);
 
   return serializeBackupEvents(sourceEvents) !== serializeBackupEvents(backupEvents);
@@ -612,6 +596,7 @@ async function checkBackupNeeded({ userId, groupId, calendarType }) {
 
 export function isCalendarGroupActive(groupState) {
   return Boolean(
+    groupState?.calendarType === 'event' &&
     groupState?.selectedGroup?.id &&
       getCalendarMode(groupState.selectedGroup) === CALENDAR_MODES.SHARED_GROUP &&
       isAllowed(groupState.selectedGroup, groupState.calendarType),
@@ -1093,10 +1078,20 @@ export async function initCalendarGroupBar({
 
     await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.SHARED_GROUP });
 
-    const { startDate, endDate } = getMonthRange(getViewDate());
     state.backupCheckId += 1;
     state.backupChecking = false;
     setBackupNeeded(false);
+
+    if (calendarType !== 'event') {
+      await refreshBackupNeeded();
+      setStatus(
+        `${state.selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 백업 및 붙여넣기`,
+      );
+      renderAll?.();
+      return;
+    }
+
+    const { startDate, endDate } = getMonthRange(getViewDate());
     setStatus('그룹 일정을 불러오는 중...');
 
     const rows = await rpc('get_group_calendar_view', {

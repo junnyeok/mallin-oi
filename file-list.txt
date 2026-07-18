@@ -917,6 +917,7 @@
 ./supabase-SQLEditor/20260712-fix-daily-site-visitor-dedup.sql
 ./supabase-SQLEditor/20260712-event-calendar-date-range-edit.sql
 ./supabase-SQLEditor/20260718-study-work-calendar-date-edit.sql
+./supabase-SQLEditor/20260718-remove-study-work-shared-calendar.sql
 ./www/assets/js/modules/site-stats.js
 ./images/services/Q&A_button.png
 ./images/services/calendar_button.png
