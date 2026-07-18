@@ -98,6 +98,38 @@ function isValidDateKey(value) {
   return !Number.isNaN(date.getTime()) && toDateKey(date) === value;
 }
 
+function getCalendarErrorText(error) {
+  return [error?.code, error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(' ');
+}
+
+function isWorkDateUniqueConflict(error) {
+  const errorText = getCalendarErrorText(error);
+  return (
+    error?.code === '23505' ||
+    errorText.includes('work_calendar_todos_user_date_uidx') ||
+    errorText.includes('duplicate key value violates unique constraint')
+  );
+}
+
+function isWorkDateForeignConflict(error) {
+  return getCalendarErrorText(error).includes('WORK_DATE_FOREIGN_CONFLICT');
+}
+
+function isWorkDateConflict(error) {
+  return (
+    getCalendarErrorText(error).includes('WORK_DATE_CONFLICT') ||
+    isWorkDateUniqueConflict(error)
+  );
+}
+
+function createHandledCalendarError(message) {
+  const error = new Error(message);
+  error.calendarUserHandled = true;
+  return error;
+}
+
 function getTodayKey() {
   return toDateKey(new Date());
 }
@@ -1560,12 +1592,30 @@ async function initPageCalendar() {
     try {
       await saveTodoAtomic(payload);
     } catch (error) {
-      if (!String(error?.message || '').includes('WORK_DATE_CONFLICT')) throw error;
+      if (isWorkDateForeignConflict(error)) {
+        alert('다른 사용자의 일정이 있어 이 날짜로 변경할 수 없습니다.');
+        throw createHandledCalendarError('Foreign work date conflict.');
+      }
+      if (!isWorkDateConflict(error)) {
+        alert('일정 저장에 실패했어. 잠시 후 다시 시도해줘.');
+        throw createHandledCalendarError('Work calendar save failed.');
+      }
       const overwrite = window.confirm(
         '변경하려는 날짜에 이미 일정이 있습니다.\n기존 일정을 덮어쓰시겠습니까?',
       );
-      if (!overwrite) throw new Error('Work date overwrite cancelled.');
-      await saveTodoAtomic({ ...payload, overwrite: true });
+      if (!overwrite) {
+        throw createHandledCalendarError('Work date overwrite cancelled.');
+      }
+      try {
+        await saveTodoAtomic({ ...payload, overwrite: true });
+      } catch (overwriteError) {
+        if (isWorkDateForeignConflict(overwriteError)) {
+          alert('다른 사용자의 일정이 있어 이 날짜로 변경할 수 없습니다.');
+        } else {
+          alert('일정 저장에 실패했어. 잠시 후 다시 시도해줘.');
+        }
+        throw createHandledCalendarError('Work calendar overwrite failed.');
+      }
     }
     await reloadStoreForMode();
     state.selectedDateKey = nextDateKey;
@@ -1890,7 +1940,10 @@ async function initPageCalendar() {
       (state.store[dateKey] || []).length > 0
     ) {
       renderAll();
-      throw new Error('Selected date already has a work todo.');
+      alert('선택한 날짜에는 이미 업무 일정이 있어.');
+      throw createHandledCalendarError(
+        'Selected date already has a work todo.',
+      );
     }
 
     const safeMemo = String(memo || '').trim();
@@ -1931,7 +1984,14 @@ async function initPageCalendar() {
     } catch (error) {
       state.isAddingTodo = false;
       renderAll();
-      if (error?.message !== 'A work category is required.') {
+      if (isWorkDateUniqueConflict(error)) {
+        alert('선택한 날짜에는 이미 업무 일정이 있어.');
+        throw createHandledCalendarError('Work date unique conflict.');
+      }
+      if (
+        error?.message !== 'A work category is required.' &&
+        !error?.calendarUserHandled
+      ) {
         alert('업무 일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
       }
       throw error;

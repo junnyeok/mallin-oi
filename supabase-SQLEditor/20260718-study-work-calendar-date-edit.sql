@@ -79,6 +79,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_selected public.work_calendar_todos%rowtype;
+  v_root public.work_calendar_todos%rowtype;
   v_root_id uuid;
   v_family_ids uuid[];
   v_conflict_roots uuid[];
@@ -109,6 +110,16 @@ begin
   end if;
 
   v_root_id := coalesce(v_selected.shared_origin_todo_id, v_selected.id);
+
+  select t.* into v_root
+  from public.work_calendar_todos t
+  where t.id = v_root_id
+  for update;
+
+  if not found or v_root.user_id <> v_uid then
+    raise exception '본인이 소유한 원본 업무 일정만 변경할 수 있습니다.';
+  end if;
+
   select coalesce(array_agg(t.id), array[]::uuid[])
     into v_family_ids
   from public.work_calendar_todos t
@@ -123,22 +134,18 @@ begin
    and not (t.id = any(v_family_ids))
   where moving.id = any(v_family_ids);
 
-  if cardinality(v_conflict_roots) > 0 and not p_overwrite then
-    raise exception 'WORK_DATE_CONFLICT: 변경하려는 날짜에 이미 일정이 있습니다.';
-  end if;
-
   if cardinality(v_conflict_roots) > 0 then
     if exists (
       select 1
       from public.work_calendar_todos conflict_root
       where conflict_root.id = any(v_conflict_roots)
         and conflict_root.user_id <> v_uid
-        and (
-          conflict_root.shared_group_id is null
-          or not public.is_calendar_group_member(conflict_root.shared_group_id, v_uid)
-        )
     ) then
-      raise exception '다른 사용자의 개인 업무 일정은 덮어쓸 수 없습니다.';
+      raise exception 'WORK_DATE_FOREIGN_CONFLICT: 다른 사용자의 일정이 있어 덮어쓸 수 없습니다.';
+    end if;
+
+    if not p_overwrite then
+      raise exception 'WORK_DATE_CONFLICT: 변경하려는 날짜에 이미 일정이 있습니다.';
     end if;
 
     delete from public.calendar_group_shared_events e
