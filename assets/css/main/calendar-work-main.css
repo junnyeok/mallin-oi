@@ -195,12 +195,23 @@
   Work Calendar Page
 ========================= */
 
+@media (min-width: 901px) {
+  .work-calendar-page .container {
+    max-width: 1280px;
+  }
+
+  .work-calendar-main-panel,
+  .work-calendar-todo-panel {
+    padding: var(--space-4);
+  }
+}
+
 .work-calendar-page__head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-16);
-  margin-bottom: var(--space-16);
+  margin-bottom: var(--space-4);
 }
 
 .work-calendar-page__title {
@@ -411,7 +422,7 @@ body.work-repeat-modal-open {
 .work-repeat__modal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1200;
   display: grid;
   place-items: center;
   padding: var(--space-16);
@@ -735,7 +746,7 @@ body.work-category-modal-open {
 .work-category-manager__modal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1200;
   display: grid;
   place-items: center;
   padding: var(--space-16);

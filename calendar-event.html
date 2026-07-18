@@ -71,6 +71,10 @@
 
     <link rel="stylesheet" href="./assets/css/main/main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-event-main.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/components/calendar-entry-sheet.css"
+    />
     <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-groups-main.css" />
   </head>
@@ -94,6 +98,14 @@
                   걱정마세요!
                 </p>
               </div>
+              <button
+                type="button"
+                class="calendar-add-button"
+                id="eventEntrySheetOpen"
+                aria-label="이벤트 일정 추가"
+              >
+                +
+              </button>
             </div>
 
             <div class="event-calendar-layout">
@@ -175,7 +187,7 @@
                         aria-expanded="false"
                         aria-controls="eventDatePanel"
                       >
-                        날짜 지정
+                        날짜 선택
                       </button>
 
                       <button class="event-todo-form__button" type="submit">
@@ -198,7 +210,7 @@
                         type="button"
                         class="event-date-picker__close"
                         id="eventDateClose"
-                        aria-label="날짜 지정 닫기"
+                        aria-label="날짜 선택 닫기"
                       >
                         닫기
                       </button>
@@ -233,8 +245,8 @@
                       type="text"
                       readonly
                       inputmode="none"
-                      placeholder="시작 시간"
-                      aria-label="일정 시작 시간 선택"
+                      placeholder="00:00"
+                      aria-label="일정 시작 선택"
                     />
 
                     <input
@@ -243,8 +255,8 @@
                       type="text"
                       readonly
                       inputmode="none"
-                      placeholder="종료 시간"
-                      aria-label="일정 종료 시간 선택"
+                      placeholder="00:00"
+                      aria-label="일정 종료 선택"
                     />
                   </div>
 

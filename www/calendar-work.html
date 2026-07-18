@@ -71,6 +71,10 @@
 
     <link rel="stylesheet" href="./assets/css/main/main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-work-main.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/components/calendar-entry-sheet.css"
+    />
     <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-groups-main.css" />
   </head>
@@ -92,6 +96,14 @@
                   걱정마세요!
                 </p>
               </div>
+              <button
+                type="button"
+                class="calendar-add-button"
+                id="workEntrySheetOpen"
+                aria-label="업무 일정 추가"
+              >
+                +
+              </button>
             </div>
 
             <div class="work-calendar-layout">
@@ -371,7 +383,7 @@
                 </section>
 
                 <p class="work-todo-empty" id="workTodoEmpty">
-                  아직 등록된 업무 일정이 없습니다.
+                  아직 등록된 일정이 없습니다.
                 </p>
               </aside>
             </div>

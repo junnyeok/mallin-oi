@@ -24,6 +24,7 @@ import {
 } from './calendar-shared-personal-readonly.js';
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
+import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 
 const TABLE_NAME = 'event_calendar_todos';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -132,6 +133,19 @@ function toDateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate(),
   )}`;
+}
+
+function parseDateKey(dateKey) {
+  const matched = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!matched) return null;
+
+  const [, year, month, day] = matched;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  if (Number.isNaN(date.getTime())) return null;
+  if (toDateKey(date) !== `${year}-${month}-${day}`) return null;
+
+  return date;
 }
 
 function getTodayKey() {
@@ -1073,6 +1087,7 @@ function renderTodoList({
   categories,
   onDelete,
   onSaveEdit,
+  onOpenDetail,
   readonlyDetails = [],
 }) {
   const list = document.getElementById('eventTodoList');
@@ -1092,302 +1107,32 @@ function renderTodoList({
     const item = document.createElement('li');
     item.className = 'event-todo-item';
 
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className = 'event-todo-item__delete';
-    deleteButton.textContent = '삭제';
-    deleteButton.setAttribute('aria-label', `${todo.text} 삭제`);
-
-    deleteButton.addEventListener('click', () => {
-      onDelete(todo.id);
-    });
-
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'event-todo-item__open';
+    openButton.setAttribute('aria-label', `${todo.text} 상세보기`);
     const body = document.createElement('div');
     body.className = 'event-todo-item__body';
 
-    const controls = document.createElement('div');
-    controls.className = 'event-todo-item__controls';
-
-    const categorySelect = document.createElement('select');
     const category = getCategoryByTodo(todo, categories);
+    const type = document.createElement('span');
+    type.className = 'event-todo-item__type';
+    type.textContent = category.name || todo.type || '일정';
+    type.style.setProperty('--todo-category-color', category.color);
+    type.style.setProperty('--todo-category-text', getCategoryTextColor(category.color));
 
-    categorySelect.className = 'event-todo-item__category-select';
-    categorySelect.setAttribute('aria-label', '일정 카테고리 수정');
+    const text = document.createElement('strong');
+    text.className = 'event-todo-item__text';
+    text.textContent = todo.text || '일정';
 
-    categories.forEach((categoryItem) => {
-      const option = document.createElement('option');
-      option.value = categoryItem.id;
-      option.textContent = categoryItem.name;
-      categorySelect.append(option);
-    });
+    const memo = document.createElement('p');
+    memo.className = 'event-todo-item__summary';
+    memo.textContent = String(todo.memo || '').trim() || '메모 없음';
 
-    categorySelect.value = getTodoCategorySelectValue(todo, categories);
-    categorySelect.style.setProperty('--todo-category-color', category.color);
-    categorySelect.style.setProperty(
-      '--todo-category-text',
-      getCategoryTextColor(category.color),
-    );
-
-    const todoDateRange = getTodoDateRange(todo, store);
-    const savedStartDate = todoDateRange[0]?.dateKey || String(todo.date || '');
-    const savedEndDate =
-      todoDateRange.length > 1
-        ? todoDateRange[todoDateRange.length - 1].dateKey
-        : '';
-
-    const dateRange = document.createElement('div');
-    dateRange.className = 'event-todo-item__date-range';
-
-    const startDateLabel = document.createElement('label');
-    startDateLabel.className = 'event-todo-item__date-field';
-
-    const startDateText = document.createElement('span');
-    startDateText.className = 'event-todo-item__date-label';
-    startDateText.textContent = '시작 날짜';
-
-    const startDateInput = document.createElement('input');
-    startDateInput.className = 'event-todo-item__date-input';
-    startDateInput.type = 'date';
-    startDateInput.value = savedStartDate;
-    startDateInput.required = true;
-    startDateInput.setAttribute('aria-label', '일정 시작 날짜 수정');
-
-    startDateLabel.append(startDateText, startDateInput);
-
-    const endDateLabel = document.createElement('label');
-    endDateLabel.className = 'event-todo-item__date-field';
-
-    const endDateText = document.createElement('span');
-    endDateText.className = 'event-todo-item__date-label';
-    endDateText.textContent = '종료 날짜';
-
-    const endDateInput = document.createElement('input');
-    endDateInput.className = 'event-todo-item__date-input';
-    endDateInput.type = 'date';
-    endDateInput.value = savedEndDate;
-    endDateInput.min = savedStartDate;
-    endDateInput.setAttribute('aria-label', '일정 종료 날짜 수정');
-
-    endDateLabel.append(endDateText, endDateInput);
-
-    const clearEndDateButton = document.createElement('button');
-    clearEndDateButton.type = 'button';
-    clearEndDateButton.className = 'event-todo-item__date-clear';
-    clearEndDateButton.textContent = '종료 날짜 없음';
-
-    dateRange.append(startDateLabel, endDateLabel, clearEndDateButton);
-
-    const timeInput = document.createElement('input');
-    timeInput.className = 'event-todo-item__time-input';
-    timeInput.type = 'text';
-    timeInput.placeholder = '시간 선택';
-    timeInput.readOnly = true;
-    timeInput.inputMode = 'none';
-    timeInput.setAttribute('aria-label', '일정 시간 수정');
-
-    setTimeInputValue(timeInput, todo.eventTime);
-
-    const endTimeInput = document.createElement('input');
-    endTimeInput.className = 'event-todo-item__time-input';
-    endTimeInput.type = 'text';
-    endTimeInput.placeholder = '종료 시간';
-    endTimeInput.readOnly = true;
-    endTimeInput.inputMode = 'none';
-    endTimeInput.setAttribute('aria-label', '일정 종료 시간 수정');
-
-    setOptionalTimeInputValue(endTimeInput, todo.eventEndTime);
-
-    const timeRange = document.createElement('span');
-    timeRange.className = 'event-todo-item__time-range';
-    timeRange.textContent = formatEventTimeRange(
-      todo.eventTime,
-      todo.eventEndTime,
-    );
-
-    timeInput.addEventListener('click', () => {
-      openEventTimePicker({
-        anchorEl: timeInput,
-        initialTime: timeInput.dataset.time,
-        onChange: (nextTime) => {
-          const safeNextTime = normalizeEventTime(nextTime);
-
-          setTimeInputValue(timeInput, safeNextTime);
-          timeRange.textContent = formatEventTimeRange(
-            safeNextTime,
-            endTimeInput.dataset.time,
-          );
-          syncDirtyState();
-        },
-      });
-    });
-
-    endTimeInput.addEventListener('click', () => {
-      openEventTimePicker({
-        anchorEl: endTimeInput,
-        initialTime: endTimeInput.dataset.time || timeInput.dataset.time,
-        allowEmpty: true,
-        onChange: (nextTime) => {
-          setOptionalTimeInputValue(endTimeInput, nextTime);
-          timeRange.textContent = formatEventTimeRange(
-            timeInput.dataset.time,
-            nextTime,
-          );
-          syncDirtyState();
-        },
-      });
-    });
-
-    const text = document.createElement('input');
-    text.className = 'event-todo-item__text-input';
-    text.type = 'text';
-    text.value = todo.text;
-    text.setAttribute('aria-label', '일정 제목 수정');
-
-    const memoToggle = document.createElement('button');
-    memoToggle.type = 'button';
-    memoToggle.className = 'event-todo-item__memo-toggle';
-    memoToggle.textContent = '펼치기';
-    memoToggle.setAttribute('aria-expanded', 'false');
-
-    const memoBox = document.createElement('div');
-    memoBox.className = 'event-todo-item__memo';
-    memoBox.hidden = true;
-
-    const memoLabel = document.createElement('label');
-    memoLabel.className = 'event-todo-item__memo-label';
-    memoLabel.setAttribute('for', `eventTodoMemo-${todo.id}`);
-    memoLabel.textContent = '메모';
-
-    const memoInput = document.createElement('textarea');
-    memoInput.className = 'event-todo-item__memo-input';
-    memoInput.id = `eventTodoMemo-${todo.id}`;
-    memoInput.rows = 1;
-    memoInput.placeholder = '이 항목의 메모를 입력하세요.';
-    memoInput.value = todo.memo || '';
-    autoResizeTextarea(memoInput);
-
-    const memoStatus = document.createElement('span');
-    memoStatus.className = 'event-todo-item__memo-status';
-    memoStatus.setAttribute('aria-live', 'polite');
-
-    const editActions = document.createElement('div');
-    editActions.className = 'event-todo-item__edit-actions';
-
-    const saveEditButton = document.createElement('button');
-    saveEditButton.type = 'button';
-    saveEditButton.className = 'event-todo-item__save';
-    saveEditButton.textContent = '저장';
-    saveEditButton.disabled = true;
-
-    const savedCategoryId = getTodoCategorySelectValue(todo, categories);
-    const savedText = String(todo.text || '');
-    const savedMemo = String(todo.memo || '');
-    const savedTime = normalizeEventTime(todo.eventTime);
-    const savedEndTime = normalizeOptionalEventTime(todo.eventEndTime);
-
-    const isDirty = () =>
-      categorySelect.value !== savedCategoryId ||
-      startDateInput.value !== savedStartDate ||
-      endDateInput.value !== savedEndDate ||
-      text.value !== savedText ||
-      memoInput.value !== savedMemo ||
-      normalizeEventTime(timeInput.dataset.time) !== savedTime ||
-      normalizeOptionalEventTime(endTimeInput.dataset.time) !== savedEndTime;
-
-    const syncDirtyState = () => {
-      const dirty = isDirty();
-      saveEditButton.disabled = !dirty;
-      item.classList.toggle('is-editing', dirty);
-      if (dirty) {
-        memoStatus.textContent = '저장 전';
-      } else if (memoStatus.textContent === '저장 전') {
-        memoStatus.textContent = '';
-      }
-    };
-
-    categorySelect.addEventListener('change', syncDirtyState);
-    startDateInput.addEventListener('change', () => {
-      endDateInput.min = startDateInput.value;
-
-      if (endDateInput.value && endDateInput.value < startDateInput.value) {
-        endDateInput.value = startDateInput.value;
-      }
-
-      syncDirtyState();
-    });
-    endDateInput.addEventListener('change', syncDirtyState);
-    clearEndDateButton.addEventListener('click', () => {
-      endDateInput.value = '';
-      syncDirtyState();
-      startDateInput.focus();
-    });
-    text.addEventListener('input', syncDirtyState);
-
-    memoToggle.addEventListener('click', () => {
-      const willOpen = memoBox.hidden;
-
-      memoBox.hidden = !willOpen;
-      memoToggle.textContent = willOpen ? '접기' : '펼치기';
-      memoToggle.setAttribute('aria-expanded', String(willOpen));
-
-      if (willOpen) {
-        window.requestAnimationFrame(() => {
-          autoResizeTextarea(memoInput);
-          memoInput.focus();
-        });
-      }
-    });
-
-    memoInput.addEventListener('input', () => {
-      autoResizeTextarea(memoInput);
-      syncDirtyState();
-    });
-
-    saveEditButton.addEventListener('click', async () => {
-      const nextText = text.value.trim();
-      const nextCategory =
-        categories.find(
-          (categoryItem) => categoryItem.id === categorySelect.value,
-        ) || getFallbackCategory(categories);
-
-      if (!nextText) {
-        memoStatus.textContent = '제목을 입력해줘.';
-        text.focus();
-        return;
-      }
-
-      saveEditButton.disabled = true;
-      saveEditButton.textContent = '저장 중';
-      memoStatus.textContent = '저장 중...';
-
-      try {
-        await onSaveEdit(todo.id, {
-          text: nextText,
-          memo: memoInput.value,
-          category: nextCategory,
-          eventStartDate: startDateInput.value,
-          eventEndDate: endDateInput.value,
-          eventTime: timeInput.dataset.time,
-          eventEndTime: endTimeInput.dataset.time,
-        });
-      } catch (error) {
-        memoStatus.textContent = '저장 실패';
-        saveEditButton.disabled = false;
-        saveEditButton.textContent = '저장';
-      }
-    });
-
-    controls.append(
-      categorySelect,
-      dateRange,
-      timeRange,
-      timeInput,
-      endTimeInput,
-    );
-    editActions.append(memoStatus, saveEditButton);
-    memoBox.append(memoLabel, memoInput);
-    body.append(controls, text, memoToggle, memoBox, editActions);
-    item.append(body, deleteButton);
+    body.append(type, text, memo);
+    openButton.append(body);
+    openButton.addEventListener('click', () => onOpenDetail?.(todo, openButton));
+    item.append(openButton);
     list.append(item);
   });
 
@@ -1660,6 +1405,7 @@ async function initPageCalendar() {
   const startDateInput = document.getElementById('eventStartDate');
   const endDateInput = document.getElementById('eventEndDate');
   const memoInput = document.getElementById('eventTodoMemo');
+  const entrySheetOpen = document.getElementById('eventEntrySheetOpen');
   const categoryToggle = document.getElementById('eventCategoryToggle');
   const categoryPanel = document.getElementById('eventCategoryPanel');
   const categoryClose = document.getElementById('eventCategoryClose');
@@ -1689,6 +1435,22 @@ async function initPageCalendar() {
 
   setTimeInputValue(timeInput, '00:00');
   setOptionalTimeInputValue(endTimeInput, '');
+
+  function formatEntrySheetDate(dateKey) {
+    const date = parseDateKey(dateKey);
+    if (!date) return '날짜 선택';
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${date.getMonth() + 1}월 ${date.getDate()}일 ${weekdays[date.getDay()]}`;
+  }
+
+  function updateDateToggleLabel() {
+    const startDateKey = startDateInput.value || state?.selectedDateKey || '';
+    const endDateKey = endDateInput.value || startDateKey;
+    dateToggle.textContent =
+      startDateKey === endDateKey
+        ? formatEntrySheetDate(startDateKey)
+        : `${formatEntrySheetDate(startDateKey)} ~ ${formatEntrySheetDate(endDateKey)}`;
+  }
 
   timeInput.addEventListener('click', () => {
     openEventTimePicker({
@@ -1736,51 +1498,14 @@ async function initPageCalendar() {
 
   startDateInput.addEventListener('change', () => {
     endDateInput.min = startDateInput.value;
-  });
-
-  const mobileTodoFormQuery = window.matchMedia('(max-width: 640px)');
-
-  const formToggleButton = document.createElement('button');
-  formToggleButton.type = 'button';
-  formToggleButton.className = 'event-todo-form-toggle';
-  formToggleButton.textContent = '일정 추가';
-  formToggleButton.setAttribute('aria-expanded', 'false');
-  formToggleButton.setAttribute('aria-controls', 'eventTodoForm');
-
-  form.before(formToggleButton);
-
-  const formCloseButton = document.createElement('button');
-  formCloseButton.type = 'button';
-  formCloseButton.className = 'event-todo-form__close';
-  formCloseButton.textContent = '접기';
-
-  form.append(formCloseButton);
-
-  function openMobileTodoForm() {
-    form.classList.add('is-open');
-    formToggleButton.setAttribute('aria-expanded', 'true');
-
-    window.setTimeout(() => {
-      input.focus();
-    }, 0);
-  }
-
-  function closeMobileTodoForm() {
-    form.classList.remove('is-open');
-    formToggleButton.setAttribute('aria-expanded', 'false');
-  }
-
-  formToggleButton.addEventListener('click', () => {
-    if (form.classList.contains('is-open')) {
-      closeMobileTodoForm();
-      return;
+    if (!endDateInput.value || endDateInput.value < startDateInput.value) {
+      endDateInput.value = startDateInput.value;
     }
-
-    openMobileTodoForm();
+    updateDateToggleLabel();
   });
 
-  formCloseButton.addEventListener('click', () => {
-    closeMobileTodoForm();
+  endDateInput.addEventListener('change', () => {
+    updateDateToggleLabel();
   });
 
   const today = new Date();
@@ -1806,7 +1531,9 @@ async function initPageCalendar() {
   }
 
   startDateInput.value = state.selectedDateKey;
+  endDateInput.value = state.selectedDateKey;
   endDateInput.min = state.selectedDateKey;
+  updateDateToggleLabel();
 
   function refreshGroupBackupNeeded() {
     void state.group?.refreshBackupNeeded?.();
@@ -1846,6 +1573,7 @@ async function initPageCalendar() {
       categories: state.categories,
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
+      onOpenDetail: openTodoDetail,
       readonlyDetails,
     });
 
@@ -1863,17 +1591,15 @@ async function initPageCalendar() {
   function selectDate(dateKey) {
     state.selectedDateKey = dateKey;
     startDateInput.value = dateKey;
-    endDateInput.value = '';
+    endDateInput.value = dateKey;
     endDateInput.min = dateKey;
+    updateDateToggleLabel();
 
     const [year, month] = dateKey.split('-').map(Number);
     state.viewDate = new Date(year, month - 1, 1);
 
     renderAll();
 
-    if (mobileTodoFormQuery.matches) {
-      closeMobileTodoForm();
-    }
   }
 
   function selectGroupEvent(event) {
@@ -1950,6 +1676,15 @@ async function initPageCalendar() {
       throw new Error('Invalid event date range');
     }
 
+    if (
+      nextStartDate === nextEndDate &&
+      nextEndTime &&
+      nextEndTime < nextTime
+    ) {
+      alert('종료 시간은 시작 시간보다 빠를 수 없어.');
+      throw new Error('Invalid event time range');
+    }
+
     await saveTodoRange({
       todoId,
       text: nextText,
@@ -1972,6 +1707,142 @@ async function initPageCalendar() {
     renderAll();
     refreshGroupBackupNeeded();
   }
+
+  function openTodoDetail(todo, opener) {
+    openEventDetailSheet({ todo, opener });
+  }
+
+  function openEventDetailSheet({ todo = null, opener = entrySheetOpen } = {}) {
+    const isEdit = Boolean(todo?.id);
+    const category = isEdit ? getCategoryByTodo(todo, state.categories) : getFallbackCategory(state.categories);
+    const todoDateRange = isEdit ? getTodoDateRange(todo, state.store) : [];
+    const startDate = isEdit
+      ? todoDateRange[0]?.dateKey || String(todo.date || state.selectedDateKey)
+      : state.selectedDateKey;
+    const endDate = isEdit
+      ? todoDateRange.length > 1
+        ? todoDateRange[todoDateRange.length - 1].dateKey
+        : startDate
+      : startDate;
+    const startTime = normalizeEventTime(isEdit ? todo.eventTime : '00:00');
+    const endTime =
+      normalizeOptionalEventTime(isEdit ? todo.eventEndTime : '') || startTime;
+    const splitDateTime = (value, fallbackDate, fallbackTime) => {
+      const [datePart, timePart = fallbackTime] = String(value || '').split('T');
+      return {
+        date: datePart || fallbackDate,
+        time: normalizeEventTime(timePart || fallbackTime),
+      };
+    };
+
+    openCalendarDetailSheet({
+      calendarType: 'event',
+      mode: isEdit ? 'edit' : 'create',
+      title: isEdit ? '일정' : '일정 추가',
+      submitLabel: isEdit ? '저장' : '완료',
+      opener,
+      fields: [
+        { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
+        {
+          key: 'categoryId',
+          label: '카테고리',
+          type: 'select',
+          value: isEdit
+            ? getTodoCategorySelectValue(todo, state.categories)
+            : category?.id || '',
+          options: state.categories.map((item) => ({
+            value: item.id,
+            label: item.name,
+          })),
+          onSettings: openCategoryModal,
+        },
+        {
+          key: 'eventStart',
+          label: '시작',
+          type: 'datetime-local',
+          value: `${startDate}T${startTime}`,
+        },
+        {
+          key: 'eventEnd',
+          label: '종료',
+          type: 'datetime-local',
+          value: `${endDate}T${endTime}`,
+        },
+        { key: 'memo', label: '메모', type: 'textarea', value: isEdit ? todo.memo || '' : '' },
+      ],
+      onSave: async (values) => {
+        const nextCategory =
+          state.categories.find((item) => item.id === values.categoryId) ||
+          category ||
+          getFallbackCategory(state.categories);
+        const nextStart = splitDateTime(values.eventStart, startDate, startTime);
+        const nextEnd = splitDateTime(values.eventEnd, nextStart.date, nextStart.time);
+        const nextText = String(values.title || '').trim();
+        const dateKeys = getDateRangeKeys(nextStart.date, nextEnd.date);
+
+        if (!nextText) {
+          alert('일정 제목을 입력해줘.');
+          throw new Error('Missing event title');
+        }
+
+        if (nextEnd.date < nextStart.date || dateKeys.length === 0) {
+          alert('종료 날짜는 시작 날짜보다 빠를 수 없어.');
+          throw new Error('Invalid event date range');
+        }
+
+        if (
+          nextStart.date === nextEnd.date &&
+          nextEnd.time &&
+          nextEnd.time < nextStart.time
+        ) {
+          alert('종료 시간은 시작 시간보다 빠를 수 없어.');
+          throw new Error('Invalid event time range');
+        }
+
+        if (isEdit) {
+          await saveTodoEdit(todo.id, {
+            text: nextText,
+            memo: values.memo,
+            category: nextCategory,
+            eventStartDate: nextStart.date,
+            eventEndDate: nextEnd.date,
+            eventTime: nextStart.time,
+            eventEndTime: nextEnd.time,
+          });
+          return;
+        }
+
+        await createTodoRange({
+          startDateKey: nextStart.date,
+          endDateKey: nextEnd.date,
+          text: nextText,
+          memo: String(values.memo || ''),
+          eventTime: nextStart.time,
+          eventEndTime: normalizeOptionalEventTime(nextEnd.time),
+          category: nextCategory,
+        });
+        await reloadStoreForMode();
+
+        if (!dateKeys.includes(state.selectedDateKey)) {
+          state.selectedDateKey = nextStart.date;
+          const [year, month] = nextStart.date.split('-').map(Number);
+          state.viewDate = new Date(year, month - 1, 1);
+        }
+
+        renderAll();
+        refreshGroupBackupNeeded();
+      },
+      onDelete: isEdit
+        ? async () => {
+            await deleteTodo(todo.id);
+          }
+        : null,
+    });
+  }
+
+  entrySheetOpen?.addEventListener('click', () => {
+    openEventDetailSheet({ opener: entrySheetOpen });
+  });
 
   state.onSelect = selectDate;
   state.onSelectGroupEvent = selectGroupEvent;
@@ -2269,6 +2140,16 @@ async function initPageCalendar() {
       return;
     }
 
+    if (
+      startDateKey === endDateKey &&
+      eventEndTime &&
+      eventEndTime < eventTime
+    ) {
+      alert('종료 시간은 시작 시간보다 빠를 수 없어.');
+      endTimeInput.focus();
+      return;
+    }
+
     try {
       const category = await refreshCategories(selectedCategoryId);
 
@@ -2288,18 +2169,14 @@ async function initPageCalendar() {
       setOptionalTimeInputValue(endTimeInput, '');
       memoInput.value = '';
       startDateInput.value = state.selectedDateKey;
-      endDateInput.value = '';
+      endDateInput.value = state.selectedDateKey;
       endDateInput.min = state.selectedDateKey;
+      updateDateToggleLabel();
       autoResizeTextarea(memoInput);
 
       renderAll();
       refreshGroupBackupNeeded();
 
-      if (mobileTodoFormQuery.matches) {
-        closeMobileTodoForm();
-      } else {
-        input.focus();
-      }
     } catch (error) {
       alert('일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
     }

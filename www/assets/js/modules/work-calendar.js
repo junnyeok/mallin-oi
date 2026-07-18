@@ -24,6 +24,9 @@ import {
 } from './calendar-shared-personal-readonly.js';
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
+import {
+  openCalendarDetailSheet,
+} from './calendar-entry-sheet.js';
 
 const TABLE_NAME = 'work_calendar_todos';
 const CATEGORY_TABLE_NAME = 'work_calendar_categories';
@@ -86,6 +89,13 @@ function toDateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate(),
   )}`;
+}
+
+function isValidDateKey(value) {
+  const matched = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!matched) return false;
+  const date = new Date(Number(matched[1]), Number(matched[2]) - 1, Number(matched[3]));
+  return !Number.isNaN(date.getTime()) && toDateKey(date) === value;
 }
 
 function getTodayKey() {
@@ -665,6 +675,29 @@ async function updateSharedPersonalTodo({ todoId, workText, memo }) {
   }
 }
 
+async function saveTodoAtomic({
+  todoId,
+  workText,
+  memo,
+  dateKey,
+  categoryId,
+  overwrite = false,
+}) {
+  const { error } = await supabase.rpc('save_work_calendar_todo', {
+    p_todo_id: todoId,
+    p_work_text: workText,
+    p_memo: memo || '',
+    p_work_date: dateKey,
+    p_category_id: categoryId,
+    p_overwrite: overwrite,
+  });
+
+  if (error) {
+    console.error('[work-calendar] saveTodoAtomic error:', error.message);
+    throw error;
+  }
+}
+
 async function updateTodoCategory({ todoId, category }) {
   const safeCategory = category || getFallbackCategory([]);
 
@@ -1043,6 +1076,7 @@ function renderTodoList({
   categories,
   onDelete,
   onSaveEdit,
+  onOpenDetail,
   readonlyDetails = [],
 }) {
   if (!root) return;
@@ -1057,119 +1091,22 @@ function renderTodoList({
     const memo = String(todo.memo || '').trim();
 
     const item = makeEl('li', 'work-todo-item');
+    const openButton = makeEl('button', 'work-todo-item__open');
+    openButton.type = 'button';
+    openButton.setAttribute('aria-label', `${category.name || '업무 일정'} 상세보기`);
     const top = makeEl('div', 'work-todo-item__top');
-    const categorySelect = document.createElement('select');
+    const categoryChip = makeEl('span', 'work-todo-item__type', category.name || todo.text || '업무');
     const summary = makeEl(
-      'span',
+      'p',
       'work-todo-item__summary',
       memo || '메모 없음',
     );
-    const actions = makeEl('div', 'work-todo-item__actions');
-    const editButton = makeEl('button', 'work-todo-item__edit', '펼치기');
-    const saveMemoButton = makeEl('button', 'work-todo-item__save', '저장');
-    const deleteButton = makeEl('button', 'work-todo-item__delete', '삭제');
-    const detail = makeEl('div', 'work-todo-item__detail');
-    const detailActions = makeEl('div', 'work-todo-item__detail-actions');
-    const memoInput = document.createElement('textarea');
-
-    categorySelect.className = 'work-todo-item__category-select';
-    categorySelect.setAttribute('aria-label', '근무형태 수정');
-
-    categories.forEach((categoryItem) => {
-      const option = document.createElement('option');
-      option.value = categoryItem.id;
-      option.textContent = categoryItem.name;
-      categorySelect.append(option);
-    });
-
-    categorySelect.value = getTodoCategorySelectValue(todo, categories);
-    categorySelect.style.setProperty('--todo-category-color', category.color);
-    categorySelect.style.setProperty(
-      '--todo-category-text',
-      getCategoryTextColor(category.color),
-    );
-
-    editButton.type = 'button';
-    saveMemoButton.type = 'button';
-    deleteButton.type = 'button';
-    saveMemoButton.disabled = true;
-
-    memoInput.className = 'work-todo-item__memo';
-    memoInput.rows = 1;
-    memoInput.value = todo.memo || '';
-    memoInput.placeholder = '메모를 입력하세요.';
-    memoInput.setAttribute('aria-label', '업무 캘린더 메모 수정');
-
-    const editStatus = makeEl('span', 'work-todo-item__status', '');
-    editStatus.setAttribute('aria-live', 'polite');
-    const savedCategoryId = getTodoCategorySelectValue(todo, categories);
-    const savedMemo = String(todo.memo || '');
-
-    const isDirty = () =>
-      categorySelect.value !== savedCategoryId ||
-      memoInput.value !== savedMemo;
-
-    const syncDirtyState = () => {
-      const dirty = isDirty();
-      saveMemoButton.disabled = !dirty;
-      item.classList.toggle('is-editing', dirty);
-      if (dirty) {
-        editStatus.textContent = '저장 전';
-      } else if (editStatus.textContent === '저장 전') {
-        editStatus.textContent = '';
-      }
-    };
-
-    detail.hidden = true;
-    detailActions.append(editStatus, saveMemoButton);
-    detail.append(memoInput);
-
-    editButton.addEventListener('click', () => {
-      detail.hidden = !detail.hidden;
-      editButton.textContent = detail.hidden ? '펼치기' : '접기';
-
-      if (!detail.hidden) {
-        autoResizeTextarea(memoInput);
-        memoInput.focus();
-      }
-    });
-
-    deleteButton.addEventListener('click', () => {
-      onDelete?.(todo.id);
-    });
-
-    memoInput.addEventListener('input', () => {
-      autoResizeTextarea(memoInput);
-      syncDirtyState();
-    });
-
-    categorySelect.addEventListener('change', syncDirtyState);
-
-    saveMemoButton.addEventListener('click', async () => {
-      const nextCategory =
-        categories.find(
-          (categoryItem) => categoryItem.id === categorySelect.value,
-        ) || getFallbackCategory(categories);
-
-      saveMemoButton.disabled = true;
-      saveMemoButton.textContent = '저장 중';
-      editStatus.textContent = '저장 중...';
-
-      try {
-        await onSaveEdit?.(todo.id, {
-          memo: memoInput.value,
-          category: nextCategory,
-        });
-      } catch (error) {
-        editStatus.textContent = '저장 실패';
-        saveMemoButton.disabled = false;
-        saveMemoButton.textContent = '저장';
-      }
-    });
-
-    actions.append(editButton, deleteButton);
-    top.append(categorySelect, summary, actions);
-    item.append(top, detail, detailActions);
+    categoryChip.style.setProperty('--todo-category-color', category.color);
+    categoryChip.style.setProperty('--todo-category-text', getCategoryTextColor(category.color));
+    top.append(categoryChip);
+    openButton.append(top, summary);
+    openButton.addEventListener('click', () => onOpenDetail?.(todo, openButton));
+    item.append(openButton);
     root.append(item);
   });
 
@@ -1277,14 +1214,6 @@ function bindPreviewLinkLoginGuard() {
   });
 }
 
-function openMobileTodoForm() {
-  document.body.classList.add('work-todo-mobile-open');
-}
-
-function closeMobileTodoForm() {
-  document.body.classList.remove('work-todo-mobile-open');
-}
-
 async function initPageCalendar() {
   const pageRoot = document.getElementById('workCalendarPage');
   if (!pageRoot) return;
@@ -1311,6 +1240,7 @@ async function initPageCalendar() {
   const typeSelect = document.getElementById('workTodoType');
   const memoInput = document.getElementById('workTodoMemo');
   const addButton = document.getElementById('workTodoAddButton');
+  const entrySheetOpen = document.getElementById('workEntrySheetOpen');
   const limitMessage = document.getElementById('workTodoLimitMessage');
   const todoList = document.getElementById('workTodoList');
   const todoEmpty = document.getElementById('workTodoEmpty');
@@ -1335,10 +1265,14 @@ async function initPageCalendar() {
   const repeatButton = document.getElementById('workRepeatButton');
   const repeatMessage = document.getElementById('workRepeatMessage');
 
-  const mobileTodoFormQuery = window.matchMedia('(max-width: 720px)');
-
   if (!prevBtn || !nextBtn || !form || !typeSelect || !memoInput) {
     return;
+  }
+
+  const repeatSection = repeatToggle?.closest('.work-repeat');
+  const pageHead = pageRoot.querySelector('.work-calendar-page__head');
+  if (repeatSection && pageHead) {
+    pageHead.append(repeatSection);
   }
 
   const todayKey = getTodayKey();
@@ -1413,6 +1347,7 @@ async function initPageCalendar() {
       categories: state.categories,
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
+      onOpenDetail: openTodoDetail,
       readonlyDetails,
     });
 
@@ -1443,16 +1378,12 @@ async function initPageCalendar() {
 
     renderAll();
 
-    if (mobileTodoFormQuery.matches) {
-      openMobileTodoForm();
-    }
   }
 
   function selectGroupEvent(event) {
     const dateKey = String(event?.event_date || '').slice(0, 10);
     if (!dateKey) return;
     selectDate(dateKey);
-    if (mobileTodoFormQuery.matches) closeMobileTodoForm();
   }
 
   function setRepeatMessage(message = '') {
@@ -1604,7 +1535,7 @@ async function initPageCalendar() {
     }
   }
 
-  async function saveTodoEdit(todoId, { memo, category }) {
+  async function saveTodoEdit(todoId, { memo, category, dateKey }) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
     const fallback = getFallbackCategory(state.categories);
@@ -1613,40 +1544,132 @@ async function initPageCalendar() {
     if (!target || !nextCategory?.id) return;
 
     const nextMemo = String(memo || '').trim();
-    const currentCategoryId = getTodoCategorySelectValue(target, state.categories);
-
-
-    if (isSharedPersonalTodo(target)) {
-      await updateSharedPersonalTodo({
-        todoId,
-        workText: nextCategory.name || target.text || '',
-        memo: nextMemo,
-      });
-      if (nextCategory.id !== currentCategoryId) {
-        await updateTodoCategory({
-          todoId,
-          category: nextCategory,
-        });
-      }
-      await reloadStoreForMode();
-      renderAll();
-      refreshGroupBackupNeeded();
-      return;
+    const nextDateKey = String(dateKey || target.date || state.selectedDateKey);
+    if (!isValidDateKey(nextDateKey)) {
+      alert('올바른 날짜를 선택해줘.');
+      throw new Error('Invalid work calendar date.');
     }
 
-    if (nextMemo !== String(target.memo || '').trim()) {
-      await updateTodoMemo({ todoId, memo: nextMemo });
+    const payload = {
+      todoId,
+      workText: nextCategory.name || target.text || '',
+      memo: nextMemo,
+      dateKey: nextDateKey,
+      categoryId: nextCategory.id,
+    };
+    try {
+      await saveTodoAtomic(payload);
+    } catch (error) {
+      if (!String(error?.message || '').includes('WORK_DATE_CONFLICT')) throw error;
+      const overwrite = window.confirm(
+        '변경하려는 날짜에 이미 일정이 있습니다.\n기존 일정을 덮어쓰시겠습니까?',
+      );
+      if (!overwrite) throw new Error('Work date overwrite cancelled.');
+      await saveTodoAtomic({ ...payload, overwrite: true });
     }
-    if (nextCategory.id !== currentCategoryId) {
-      await updateTodoCategory({
-        todoId,
-        category: nextCategory,
-      });
-    }
-
     await reloadStoreForMode();
+    state.selectedDateKey = nextDateKey;
+    const [year, month] = nextDateKey.split('-').map(Number);
+    state.viewDate = new Date(year, month - 1, 1);
     renderAll();
+    state.group?.refresh?.();
+    scheduleCalendarWidgetRefresh();
     refreshGroupBackupNeeded();
+  }
+
+  function openTodoDetail(todo, opener) {
+    const category = getCategoryByTodo(todo, state.categories);
+    openCalendarDetailSheet({
+      calendarType: 'work',
+      mode: 'edit',
+      title: '업무 일정',
+      opener,
+      fields: getWorkEntryFields({
+        categoryId: getTodoCategorySelectValue(todo, state.categories),
+        memo: todo.memo || '',
+        dateKey: todo.date || state.selectedDateKey,
+      }),
+      onSave: async (values) => {
+        const nextCategory =
+          state.categories.find((item) => item.id === values.categoryId) ||
+          category ||
+          getFallbackCategory(state.categories);
+        await saveTodoEdit(todo.id, {
+          memo: values.memo,
+          category: nextCategory,
+          dateKey: values.date,
+        });
+      },
+      onDelete: async () => {
+        await deleteTodo(todo.id);
+      },
+      characterImage: document.getElementById('cukeBuddy')?.src || '',
+    });
+  }
+
+  function getWorkEntryFields({ categoryId = '', memo = '', dateKey = state.selectedDateKey } = {}) {
+    return [
+      {
+        key: 'categoryId',
+        label: '카테고리',
+        type: 'select',
+        value: categoryId,
+        options: state.categories.map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+        onSettings: openCategoryModal,
+      },
+      {
+        key: 'date',
+        label: '날짜',
+        type: 'date',
+        value: dateKey,
+      },
+      {
+        key: 'memo',
+        label: '메모',
+        type: 'textarea',
+        value: memo,
+      },
+    ];
+  }
+
+  function openTodoCreate(opener) {
+    const defaultCategory = getFallbackCategory(state.categories);
+
+    openCalendarDetailSheet({
+      calendarType: 'work',
+      mode: 'create',
+      title: '업무 일정 추가',
+      submitLabel: '추가',
+      submitDisabled: !defaultCategory?.id,
+      opener,
+      fields: getWorkEntryFields({ categoryId: defaultCategory?.id || '' }),
+      helpText: '업무 캘린더에는 날짜별로 하나의 근무형태만 추가할 수 있습니다.',
+      characterImage: document.getElementById('cukeBuddy')?.src || '',
+      onSave: async (values) => {
+        await addTodo({
+          categoryId: values.categoryId,
+          memo: values.memo,
+          dateKey: values.date,
+        });
+      },
+    });
+  }
+
+  function syncOpenCategorySelect(preferredValue = '') {
+    const select = document.querySelector(
+      ".calendar-entry-sheet[data-calendar-type='work'].is-open " +
+        '.calendar-entry-sheet__category-actions select',
+    );
+    if (!select) return;
+
+    renderCategorySelect(
+      select,
+      state.categories,
+      preferredValue || select.value,
+    );
   }
 
   async function saveCategory({
@@ -1857,58 +1880,78 @@ async function initPageCalendar() {
     state.group?.refresh?.();
   });
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
+  async function addTodo({ categoryId = '', memo = '', dateKey = state.selectedDateKey } = {}) {
+    if (!isValidDateKey(dateKey)) {
+      alert('올바른 날짜를 선택해줘.');
+      throw new Error('Invalid work calendar date.');
+    }
     if (
       state.isAddingTodo ||
-      (state.store[state.selectedDateKey] || []).length > 0
+      (state.store[dateKey] || []).length > 0
     ) {
       renderAll();
-      return;
+      throw new Error('Selected date already has a work todo.');
     }
 
-    const memo = memoInput.value.trim();
-    const selectedCategoryId = typeSelect.value;
+    const safeMemo = String(memo || '').trim();
     state.isAddingTodo = true;
     renderAll();
 
     try {
-      const category = await refreshCategories(selectedCategoryId);
+      const category = await refreshCategories(categoryId);
 
       if (!category?.id) {
         state.isAddingTodo = false;
         renderAll();
         alert('근무형태를 선택해줘.');
-        typeSelect.focus();
-        return;
+        throw new Error('A work category is required.');
       }
 
       const nextTodo = await insertTodo({
         userId: state.userId,
-        dateKey: state.selectedDateKey,
-        memo,
+        dateKey,
+        memo: safeMemo,
         category,
       });
 
-      const currentTodos = state.store[state.selectedDateKey] || [];
-      state.store[state.selectedDateKey] = [...currentTodos, nextTodo];
+      state.selectedDateKey = dateKey;
+      const [year, month] = dateKey.split('-').map(Number);
+      state.viewDate = new Date(year, month - 1, 1);
+      await reloadStoreForMode();
       state.isAddingTodo = false;
 
       memoInput.value = '';
       autoResizeTextarea(memoInput);
 
       renderAll();
+      state.group?.refresh?.();
+      scheduleCalendarWidgetRefresh();
       refreshGroupBackupNeeded();
-      typeSelect.focus();
-
-      if (mobileTodoFormQuery.matches) {
-        closeMobileTodoForm();
-      }
+      return nextTodo;
     } catch (error) {
       state.isAddingTodo = false;
       renderAll();
-      alert('업무 일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
+      if (error?.message !== 'A work category is required.') {
+        alert('업무 일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
+      }
+      throw error;
+    }
+  }
+
+  entrySheetOpen?.addEventListener('click', () => {
+    openTodoCreate(entrySheetOpen);
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    try {
+      await addTodo({
+        categoryId: typeSelect.value,
+        memo: memoInput.value,
+      });
+    } catch {
+      // addTodo에서 사용자 안내와 상태 복원을 처리한다.
     }
   });
 
@@ -2028,10 +2071,12 @@ async function initPageCalendar() {
         });
 
         state.categories = sortCategories([...state.categories, nextCategory]);
+        typeSelect.value = nextCategory.id;
         categoryNameInput.value = '';
         categoryColorInput.value = '#eaffd7';
 
         renderAll();
+        syncOpenCategorySelect(nextCategory.id);
 
         renderCategoryPalette({
           root: categoryPalette,

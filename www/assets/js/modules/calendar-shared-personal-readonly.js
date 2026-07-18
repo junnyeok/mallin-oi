@@ -1,3 +1,5 @@
+import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
+
 function getPayloadValue(event, ...keys) {
   const payload = event?.payload;
   if (!payload || typeof payload !== 'object') return '';
@@ -157,8 +159,47 @@ export function renderSharedPersonalReadonlyDetail({
 
   body.append(head);
   if (meta.children.length > 0) body.append(meta);
-  body.append(title, memoWrap);
-  item.append(body);
+  if (detail.calendarType !== 'work') {
+    body.append(title);
+  }
+  body.append(memoWrap);
+  const openButton = document.createElement('button');
+  openButton.type = 'button';
+  openButton.className = 'calendar-shared-personal-detail__open';
+  openButton.setAttribute('aria-label', `${detail.title || '일정'} 상세보기`);
+  openButton.append(body);
+  openButton.addEventListener('click', () => {
+    openCalendarDetailSheet({
+      calendarType: detail.calendarType,
+      mode: 'readonly',
+      title:
+        detail.calendarType === 'work'
+          ? '업무 일정'
+          : detail.calendarType === 'study'
+            ? '할 일'
+            : '일정',
+      opener: openButton,
+      fields: [
+        ...(detail.calendarType === 'work'
+          ? []
+          : [{ key: 'title', label: '제목', value: detail.title || '일정' }]),
+        {
+          key: 'owner',
+          label: '작성자',
+          value: `${detail.ownerName || '회원'} · 읽기 전용`,
+        },
+        {
+          key: 'category',
+          label: '카테고리',
+          value: detail.categoryName || detail.type || '기타',
+        },
+        { key: 'date', label: '날짜', value: detail.date || '' },
+        { key: 'time', label: '시간', value: detail.eventTime || '없음' },
+        { key: 'memo', label: '메모', value: detail.memo || '메모 없음' },
+      ],
+    });
+  });
+  item.append(openButton);
   list.append(item);
 
   return true;

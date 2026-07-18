@@ -982,7 +982,7 @@ body.study-category-modal-open {
 .study-category-manager__modal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1200;
   display: grid;
   place-items: center;
   padding: var(--space-16);

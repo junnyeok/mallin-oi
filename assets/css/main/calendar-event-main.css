@@ -1092,7 +1092,7 @@ body.event-category-modal-open {
 .event-category-manager__modal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1200;
   display: grid;
   place-items: center;
   padding: var(--space-16);
