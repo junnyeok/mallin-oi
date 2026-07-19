@@ -2,22 +2,23 @@
   "configVersion": 1,
   "remoteConfigUrl": "https://mallin-oi.com/assets/app-version.json",
   "checkIntervalHours": 24,
-  "buildVersions": {
-    "android": "1.0.7",
-    "ios": "1.0.7"
-  },
   "platforms": {
     "android": {
       "latestVersion": "1.0.7",
       "minimumVersion": "1.0.7",
-      "required": false,
+      "latestBuild": 12,
+      "minimumBuild": 12,
+      "forceUpdate": false,
       "storeUrl": "https://play.google.com/store/apps/details?id=com.mallinoi.calendar"
     },
     "ios": {
       "latestVersion": "1.0.7",
       "minimumVersion": "1.0.7",
-      "required": false,
+      "latestBuild": 14,
+      "minimumBuild": 14,
+      "forceUpdate": false,
       "storeUrl": "https://apps.apple.com/kr/app/id6774468038"
     }
-  }
+  },
+  "updatedAt": "2026-07-19T00:00:00+09:00"
 }

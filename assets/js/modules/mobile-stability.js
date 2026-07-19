@@ -1,5 +1,6 @@
 // assets/js/modules/mobile-stability.js
 import { supabase } from './supabase-client.js';
+import { recoverAuthSession, updateAuthUI } from './auth-store.js';
 
 const STABILITY_INITIALIZED_KEY = '__mallinMobileStabilityInitialized';
 const STABILITY_OBSERVER_KEY = '__mallinMobileStabilityObserver';
@@ -161,6 +162,11 @@ function installNativeAuthRefreshGuard() {
   window.Capacitor?.Plugins?.App?.addListener?.('appStateChange', (state) => {
     if (state?.isActive) {
       startAuthAutoRefresh();
+      recoverAuthSession()
+        .then(() => updateAuthUI())
+        .catch((error) => {
+          console.warn('[mobile-stability] auth recovery deferred:', error);
+        });
     }
   });
 }

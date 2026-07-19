@@ -40,6 +40,11 @@
   line-height: var(--line-body);
 }
 
+.app-update-popup__card .app-update-popup__error {
+  margin-top: var(--space-12);
+  color: #b42318;
+}
+
 .app-update-popup__actions {
   display: grid;
   gap: var(--space-8);

@@ -505,9 +505,15 @@ async function initGlobalModules(modules) {
     });
   }
 
+  // 저장된 세션 판정을 먼저 끝내 비로그인 UI가 잠깐 확정되는 것을 막는다.
+  await runSafe('auth session recovery', async () => {
+    await initAuthUI();
+  });
+
   if (!calendarAppMode) {
     await runSafe('layout includes', async () => {
       await initLayoutIncludes();
+      await updateAuthUI();
     });
   }
 
@@ -522,10 +528,6 @@ async function initGlobalModules(modules) {
       await initBgmPlayer();
     });
   }
-
-  await runSafe('auth ui', async () => {
-    await initAuthUI();
-  });
 
   if (!calendarAppMode) {
     await runSafe('service menu', async () => {

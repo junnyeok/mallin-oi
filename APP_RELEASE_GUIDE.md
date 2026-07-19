@@ -4,15 +4,19 @@
 
 ## 공통 준비
 
-1. 루트에서 웹 자산을 Capacitor용 `www` 폴더로 동기화합니다.
+1. 스토어에 실제 공개된 버전만 `assets/app-version.json`의 플랫폼별
+   `latestVersion`/`latestBuild`에 기록합니다. 심사 또는 단계적 출시 중인
+   빌드는 공개가 확인되기 전에 올리지 않습니다. 강제 업데이트 하한은
+   `minimumVersion`/`minimumBuild`로 별도 관리합니다.
+2. 루트에서 웹 자산을 Capacitor용 `www` 폴더로 동기화합니다.
 
    ```bash
    npm run cap:sync
    ```
 
-2. 앱 시작 화면이 `www/index.html`과 `www/app-calendar.html`에서 말린오이 캘린더 선택 화면으로 열리는지 확인합니다.
-3. `calendar-study.html`, `calendar-work.html`, `calendar-event.html` 이동 시 `?app=calendar`가 유지되는지 확인합니다.
-4. 로그인, 회원가입, 비밀번호 찾기, 비밀번호 재설정 페이지에서 앱 모드가 유지되는지 확인합니다.
+3. 앱 시작 화면이 `www/index.html`과 `www/app-calendar.html`에서 말린오이 캘린더 선택 화면으로 열리는지 확인합니다.
+4. `calendar-study.html`, `calendar-work.html`, `calendar-event.html` 이동 시 `?app=calendar`가 유지되는지 확인합니다.
+5. 로그인, 회원가입, 비밀번호 찾기, 비밀번호 재설정 페이지에서 앱 모드가 유지되는지 확인합니다.
 
 ## Android Google Play Store 출시 흐름
 

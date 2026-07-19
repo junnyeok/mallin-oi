@@ -16,6 +16,8 @@ const authState = (globalThis[AUTH_STATE_KEY] ||= {
   authUiBound: false,
   authChangedBound: false,
   cachedSession: null,
+  status: 'loading',
+  initializationPromise: null,
 });
 
 function readAuthPolicy() {
@@ -40,12 +42,6 @@ export function clearLoginPolicy() {
 function clearSupabaseAuthStorage() {
   try {
     localStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
-
-    Object.keys(localStorage)
-      .filter((key) => /^sb-.+-auth-token$/.test(key))
-      .forEach((key) => {
-        localStorage.removeItem(key);
-      });
   } catch (error) {
     console.warn('[auth-store] clear auth storage failed:', error);
   }
@@ -378,7 +374,43 @@ export function isMypageVerified() {
   return sessionStorage.getItem(MYPAGE_VERIFY_KEY) === 'true';
 }
 
+function applySession(session) {
+  if (session?.user) {
+    authState.cachedSession = session;
+    authState.status = 'authenticated';
+    return session;
+  }
+
+  authState.cachedSession = null;
+  authState.status = 'anonymous';
+  return null;
+}
+
+export function getAuthStatus() {
+  return authState.status;
+}
+
+export function initializeAuthSession() {
+  if (authState.initializationPromise) return authState.initializationPromise;
+
+  authState.status = 'loading';
+  authState.initializationPromise = supabase.auth
+    .getSession()
+    .then(({ data, error }) => {
+      if (error) throw error;
+      return applySession(data?.session || null);
+    })
+    .catch((error) => {
+      console.error('[auth-store] initial session recovery failed:', error);
+      authState.status = authState.cachedSession ? 'authenticated' : 'loading';
+      return authState.cachedSession || null;
+    });
+
+  return authState.initializationPromise;
+}
+
 export async function getCurrentSession() {
+  await initializeAuthSession();
   const {
     data: { session },
     error,
@@ -388,40 +420,43 @@ export async function getCurrentSession() {
     console.error('[auth-store] getCurrentSession error:', error.message);
     return authState.cachedSession || null;
   }
-
-  if (session?.user) {
-    authState.cachedSession = session;
-    return session;
-  }
-
-  authState.cachedSession = null;
-  return null;
+  return applySession(session);
 }
 
 export async function getCurrentUser() {
   const session = await getCurrentSession();
+  return session?.user || null;
+}
 
-  if (!session?.user) {
-    return null;
-  }
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+export async function recoverAuthSession() {
+  const previousSession = authState.cachedSession;
+  const { data, error } = await supabase.auth.getSession();
 
   if (error) {
-    const message = String(error.message || '').trim();
-
-    if (message.toLowerCase().includes('auth session missing')) {
-      return session.user || null;
-    }
-
-    console.error('[auth-store] getCurrentUser error:', message);
-    return session.user || null;
+    console.warn('[auth-store] foreground session recovery failed:', error);
+    return previousSession || null;
   }
 
-  return user || session.user || null;
+  const session = data?.session || null;
+  if (!session?.user) return applySession(null);
+
+  const expiresAtMs = Number(session.expires_at || 0) * 1000;
+  if (expiresAtMs > Date.now() + 5 * 60 * 1000) return applySession(session);
+
+  const { data: refreshData, error: refreshError } =
+    await supabase.auth.refreshSession(session);
+  if (refreshError) {
+    console.warn(
+      '[auth-store] foreground token refresh deferred:',
+      refreshError,
+    );
+    const { data: confirmedData, error: confirmError } =
+      await supabase.auth.getSession();
+    if (confirmError) return previousSession || session;
+    return applySession(confirmedData?.session || null);
+  }
+
+  return applySession(refreshData?.session || session);
 }
 
 export async function isLoggedIn() {
@@ -467,7 +502,7 @@ export async function signOutUser() {
       throw error;
     }
   } finally {
-    authState.cachedSession = null;
+    applySession(null);
     clearMypageVerified();
     clearLoginPolicy();
     clearSupabaseAuthStorage();
@@ -631,35 +666,60 @@ export async function updateAuthUI() {
 }
 
 export async function initAuthUI() {
+  if (!authState.authUiBound) {
+    authState.authUiBound = true;
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        [
+          'INITIAL_SESSION',
+          'SIGNED_IN',
+          'TOKEN_REFRESHED',
+          'USER_UPDATED',
+        ].includes(event)
+      ) {
+        applySession(session);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        queueMicrotask(() => {
+          void supabase.auth
+            .getSession()
+            .then(({ data, error }) => {
+              if (error) {
+                console.warn(
+                  '[auth-store] signed-out confirmation deferred:',
+                  error,
+                );
+                return;
+              }
+              applySession(data?.session || null);
+              if (!data?.session) clearMypageVerified();
+              return updateAuthUI();
+            })
+            .catch((error) => {
+              console.error('[auth-store] signed-out UI update failed:', error);
+            });
+        });
+      }
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        const policy = readAuthPolicy();
+        if (!policy) saveLoginPolicy({ autoLogin: true });
+      }
+
+      if (event !== 'SIGNED_OUT') {
+        queueMicrotask(() => {
+          updateAuthUI().catch((err) => {
+            console.error('[auth-store] updateAuthUI failed:', err);
+          });
+        });
+      }
+    });
+  }
+
+  await initializeAuthSession();
   await enforceLoginPolicy();
   await updateAuthUI();
-
-  if (authState.authUiBound) return;
-  authState.authUiBound = true;
-
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
-      authState.cachedSession = null;
-      clearLoginPolicy();
-      clearMypageVerified();
-    }
-
-    if (session?.user) {
-      authState.cachedSession = session;
-    }
-
-    if (event === 'SIGNED_IN' && session?.user) {
-      const policy = readAuthPolicy();
-
-      if (!policy) {
-        saveLoginPolicy({ autoLogin: true });
-      }
-    }
-
-    updateAuthUI().catch((err) => {
-      console.error('[auth-store] updateAuthUI failed:', err);
-    });
-  });
 }
 
 if (!authState.authChangedBound) {
