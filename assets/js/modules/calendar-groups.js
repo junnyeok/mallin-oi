@@ -461,8 +461,14 @@ function getRelatedCategory(row, relation) {
   return Array.isArray(category) ? category[0] || null : category || null;
 }
 
-function normalizeBackupPayload(payload = {}) {
+function normalizeBackupPayload(payload = {}, calendarType = '') {
+  const comparableKeys = {
+    study: new Set(['isDone', 'categoryName']),
+    work: new Set(['isDone', 'workText']),
+  }[calendarType];
+
   return Object.keys(payload)
+    .filter((key) => !comparableKeys || comparableKeys.has(key))
     .sort()
     .reduce((result, key) => {
       const value = payload[key];
@@ -477,7 +483,7 @@ function normalizeBackupPayload(payload = {}) {
     }, {});
 }
 
-function makeBackupComparable(event) {
+function makeBackupComparable(event, calendarType = '') {
   return {
     sourceEventId: String(event.sourceEventId || ''),
     eventDate: String(event.eventDate || '').slice(0, 10),
@@ -485,7 +491,7 @@ function makeBackupComparable(event) {
     title: String(event.title || ''),
     memo: String(event.memo || ''),
     color: event.color || null,
-    payload: normalizeBackupPayload(event.payload),
+    payload: normalizeBackupPayload(event.payload, calendarType),
   };
 }
 
@@ -505,7 +511,7 @@ function makeSourceBackupEvent(row, calendarType) {
         isDone: Boolean(row.is_done),
         categoryName: category?.name || null,
       },
-    });
+    }, calendarType);
   }
 
   if (calendarType === 'work') {
@@ -520,7 +526,7 @@ function makeSourceBackupEvent(row, calendarType) {
         isDone: Boolean(row.is_done),
         workText: row.work_text || null,
       },
-    });
+    }, calendarType);
   }
 
   return makeBackupComparable({
@@ -541,10 +547,10 @@ function makeSourceBackupEvent(row, calendarType) {
       shared_created_by: row.shared_created_by || null,
       is_shared_copy: Boolean(row.is_shared_copy),
     },
-  });
+  }, calendarType);
 }
 
-function makeStoredBackupEvent(row) {
+function makeStoredBackupEvent(row, calendarType) {
   return makeBackupComparable({
     sourceEventId: row.source_event_id,
     eventDate: row.event_date,
@@ -553,7 +559,7 @@ function makeStoredBackupEvent(row) {
     memo: row.memo,
     color: row.color,
     payload: row.payload || {},
-  });
+  }, calendarType);
 }
 
 function serializeBackupEvents(events = []) {
@@ -586,17 +592,23 @@ async function checkBackupNeeded({ userId, groupId, calendarType }) {
   if (sourceResult.error) throw sourceResult.error;
   if (backupResult.error) throw backupResult.error;
 
-  const sourceEvents = (sourceResult.data || []).map((row) =>
-    makeSourceBackupEvent(row, calendarType),
+  const sourceEvents = (sourceResult.data || [])
+    .filter(
+      (row) =>
+        calendarType !== 'event' ||
+        (!row.is_shared_copy &&
+          (!row.shared_group_id || row.shared_group_id === groupId)),
+    )
+    .map((row) => makeSourceBackupEvent(row, calendarType));
+  const backupEvents = (backupResult.data || []).map((row) =>
+    makeStoredBackupEvent(row, calendarType),
   );
-  const backupEvents = (backupResult.data || []).map(makeStoredBackupEvent);
 
   return serializeBackupEvents(sourceEvents) !== serializeBackupEvents(backupEvents);
 }
 
 export function isCalendarGroupActive(groupState) {
   return Boolean(
-    groupState?.calendarType === 'event' &&
     groupState?.selectedGroup?.id &&
       getCalendarMode(groupState.selectedGroup) === CALENDAR_MODES.SHARED_GROUP &&
       isAllowed(groupState.selectedGroup, groupState.calendarType),
@@ -885,6 +897,7 @@ export async function initCalendarGroupBar({
     backupNeeded: false,
     backupChecking: false,
     backupCheckId: 0,
+    groupLoadId: 0,
     backupStatus: BACKUP_STATUS.IDLE,
     mode: CALENDAR_MODES.PERSONAL,
   };
@@ -975,7 +988,7 @@ export async function initCalendarGroupBar({
             ? '백업 상태 확인 중'
             : canBackup
               ? '백업 필요: 그룹 캘린더에 변경사항 반영'
-              : '백업할 변경사항 없음';
+              : '백업 완료';
 
     backupButton.disabled = !canBackup;
     backupButton.classList.toggle('is-backup-needed', isHighlighted);
@@ -1053,8 +1066,10 @@ export async function initCalendarGroupBar({
   }
 
   async function loadGroupEvents() {
+    const loadId = ++state.groupLoadId;
+    const selectedGroup = state.selectedGroup;
     state.eventsByDate = {};
-    state.mode = getCalendarMode(state.selectedGroup);
+    state.mode = getCalendarMode(selectedGroup);
 
     if (!state.selectedGroup?.id) {
       copyPaste?.setGroup(null);
@@ -1078,33 +1093,36 @@ export async function initCalendarGroupBar({
 
     await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.SHARED_GROUP });
 
-    state.backupCheckId += 1;
-    state.backupChecking = false;
-    setBackupNeeded(false);
-
-    if (calendarType !== 'event') {
-      await refreshBackupNeeded();
-      setStatus(
-        `${state.selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 백업 및 붙여넣기`,
-      );
-      renderAll?.();
+    if (loadId !== state.groupLoadId || selectedGroup?.id !== state.selectedGroup?.id) {
       return;
     }
 
+    state.backupCheckId += 1;
+    state.backupChecking = false;
+    setBackupNeeded(false);
     const { startDate, endDate } = getMonthRange(getViewDate());
     setStatus('그룹 일정을 불러오는 중...');
+    renderAll?.();
 
     const rows = await rpc('get_group_calendar_view', {
-      p_group_id: state.selectedGroup.id,
+      p_group_id: selectedGroup.id,
       p_calendar_type: calendarType,
       p_start_date: startDate,
       p_end_date: endDate,
     });
 
+    if (loadId !== state.groupLoadId || selectedGroup.id !== state.selectedGroup?.id) {
+      return;
+    }
+
     state.eventsByDate = groupEventsByDateAndUser(rows || []);
     await refreshBackupNeeded();
+
+    if (loadId !== state.groupLoadId || selectedGroup.id !== state.selectedGroup?.id) {
+      return;
+    }
     setStatus(
-      `${state.selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 그룹 일정 표시 중`,
+      `${selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 그룹 일정 표시 중`,
     );
     renderAll?.();
   }
@@ -1148,6 +1166,7 @@ export async function initCalendarGroupBar({
     }
 
     let backupSucceeded = false;
+    const backupGroupId = state.selectedGroup.id;
     state.backupCheckId += 1;
     state.backupChecking = true;
     state.backupStatus = BACKUP_STATUS.RUNNING;
@@ -1157,7 +1176,7 @@ export async function initCalendarGroupBar({
 
     try {
       const result = await rpc('backup_my_calendar_to_group', {
-        p_group_id: state.selectedGroup.id,
+        p_group_id: backupGroupId,
         p_calendar_type: calendarType,
       });
 
@@ -1165,6 +1184,9 @@ export async function initCalendarGroupBar({
       const count = Number(result?.[0]?.event_count || 0);
       state.lastBackupAt = backedUpAt;
       backupSucceeded = true;
+
+      if (backupGroupId !== state.selectedGroup?.id) return;
+
       state.backupChecking = false;
       setBackupNeeded(false);
       setStatus(
