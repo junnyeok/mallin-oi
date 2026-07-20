@@ -68,6 +68,7 @@ const CORE_MODULE_SPECS = [
   ['storeModule', './modules/store.js'],
   ['dailyAttendancePopupModule', './modules/daily-attendance-popup.js'],
   ['notificationsModule', './modules/notifications.js'],
+  ['notificationsPageModule', './modules/notifications-page.js'],
   ['bgmPlayerModule', './modules/bgm-player.js'],
   ['pickleStatusModule', './modules/pickle-status.js'],
   ['siteStatsModule', './modules/site-stats.js'],
@@ -181,6 +182,7 @@ async function initPageModules(modules) {
     workCalendarModule,
     calendarGroupsModule,
     calendarAppDownloadPopupModule,
+    notificationsPageModule,
   } = modules;
 
   const { initPostsUI } = postsUiModule;
@@ -207,6 +209,7 @@ async function initPageModules(modules) {
   const { initEventCalendar } = eventCalendarModule;
   const { initWorkCalendar } = workCalendarModule;
   const { initCalendarGroupsPage } = calendarGroupsModule;
+  const { initNotificationsPage } = notificationsPageModule;
   const { initCalendarAppDownloadPopup = () => {} } =
     calendarAppDownloadPopupModule;
   // 공통
@@ -384,6 +387,12 @@ async function initPageModules(modules) {
     case 'suggestion':
       await runSafe('suggestions board', async () => {
         await initSuggestionsBoard();
+      });
+      break;
+
+    case 'notifications':
+      await runSafe('notifications page', async () => {
+        await initNotificationsPage();
       });
       break;
 

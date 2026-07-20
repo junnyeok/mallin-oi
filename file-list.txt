@@ -12,10 +12,8 @@
 ./android/.idea/deploymentTargetSelector.xml
 ./android/.idea/gradle.xml
 ./android/.idea/migrations.xml
-./android/.idea/misc.xml
 ./android/.idea/runConfigurations.xml
 ./android/.idea/vcs.xml
-./android/.idea/workspace.xml
 ./android/app/.gitignore
 ./android/app/build.gradle
 ./android/app/capacitor.build.gradle
@@ -250,6 +248,7 @@
 ./assets/css/main/login-main.css
 ./assets/css/main/main.css
 ./assets/css/main/mypage-main.css
+./assets/css/main/notifications-main.css
 ./assets/css/main/post-main.css
 ./assets/css/main/posts-all-main.css
 ./assets/css/main/prev-mypage-main.css
@@ -288,6 +287,7 @@
 ./assets/js/modules/mobile-stability.js
 ./assets/js/modules/mypage.js
 ./assets/js/modules/notifications.js
+./assets/js/modules/notifications-page.js
 ./assets/js/modules/pickle-burst.js
 ./assets/js/modules/pickle-status.js
 ./assets/js/modules/pjax-router.js
@@ -483,10 +483,6 @@
 ./ios/App/App.xcodeproj/project.pbxproj
 ./ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 ./ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
-./ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/junhyeok.xcuserdatad/UserInterfaceState.xcuserstate
-./ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/junnyeok.xcuserdatad/UserInterfaceState.xcuserstate
-./ios/App/App.xcodeproj/xcuserdata/junhyeok.xcuserdatad/xcschemes/xcschememanagement.plist
-./ios/App/App.xcodeproj/xcuserdata/junnyeok.xcuserdatad/xcschemes/xcschememanagement.plist
 ./ios/App/App/AppDelegate.swift
 ./ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
 ./ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json
@@ -634,8 +630,6 @@
 ./ios/App/App/public/privacy.html
 ./ios/App/App/public/site.webmanifest
 ./ios/App/CapApp-SPM/.gitignore
-./ios/App/CapApp-SPM/.swiftpm/xcode/xcuserdata/junhyeok.xcuserdatad/xcschemes/xcschememanagement.plist
-./ios/App/CapApp-SPM/.swiftpm/xcode/xcuserdata/junnyeok.xcuserdatad/xcschemes/xcschememanagement.plist
 ./ios/App/CapApp-SPM/Package.swift
 ./ios/App/CapApp-SPM/README.md
 ./ios/App/CapApp-SPM/Sources/CapApp-SPM/CapApp-SPM.swift
@@ -645,6 +639,7 @@
 ./ios/debug.xcconfig
 ./login.html
 ./mypage.html
+./notifications.html
 ./offline.html
 ./package-lock.json
 ./package.json
@@ -679,15 +674,6 @@
 ./supabase-SQLEditor/pickle-reward-policy-20260630.sql
 ./supabase-SQLEditor/store-item_purchase-functions.sql
 ./supabase-SQLEditor/suggestion&QnA.sql
-./supabase/.temp/cli-latest
-./supabase/.temp/gotrue-version
-./supabase/.temp/linked-project.json
-./supabase/.temp/pooler-url
-./supabase/.temp/postgres-version
-./supabase/.temp/project-ref
-./supabase/.temp/rest-version
-./supabase/.temp/storage-migration
-./supabase/.temp/storage-version
 ./supabase/config.toml
 ./supabase/functions/delete-account/index.ts
 ./sw.js
@@ -727,6 +713,7 @@
 ./www/assets/css/main/login-main.css
 ./www/assets/css/main/main.css
 ./www/assets/css/main/mypage-main.css
+./www/assets/css/main/notifications-main.css
 ./www/assets/css/main/post-main.css
 ./www/assets/css/main/posts-all-main.css
 ./www/assets/css/main/prev-mypage-main.css
@@ -765,6 +752,7 @@
 ./www/assets/js/modules/mobile-stability.js
 ./www/assets/js/modules/mypage.js
 ./www/assets/js/modules/notifications.js
+./www/assets/js/modules/notifications-page.js
 ./www/assets/js/modules/pickle-burst.js
 ./www/assets/js/modules/pickle-status.js
 ./www/assets/js/modules/pjax-router.js
@@ -821,6 +809,7 @@
 ./www/inventory.html
 ./www/login.html
 ./www/mypage.html
+./www/notifications.html
 ./www/post.html
 ./www/profile.html
 ./www/prev-mypage.html

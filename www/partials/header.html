@@ -23,13 +23,22 @@
     >
       <div class="notification-panel__head">
         <strong class="notification-panel__title">알림</strong>
-        <button
-          type="button"
-          class="notification-panel__refresh"
-          id="notificationRefreshBtn"
-        >
-          새로고침
-        </button>
+        <div class="notification-panel__actions">
+          <a
+            class="notification-panel__more"
+            href="__BASE__notifications.html"
+            data-notifications-page-link
+          >
+            + 더보기
+          </a>
+          <button
+            type="button"
+            class="notification-panel__refresh"
+            id="notificationRefreshBtn"
+          >
+            새로고침
+          </button>
+        </div>
       </div>
 
       <p class="notification-panel__desc" id="notificationPanelDesc">
@@ -38,6 +47,16 @@
 
       <div class="notification-panel__list" id="notificationList">
         <div class="notification-empty">알림을 확인하는 중이야.</div>
+      </div>
+
+      <div class="notification-panel__foot">
+        <a
+          class="notification-panel__more notification-panel__more--bottom"
+          href="__BASE__notifications.html"
+          data-notifications-page-link
+        >
+          + 더보기
+        </a>
       </div>
     </section>
   </div>
