@@ -123,6 +123,7 @@ body.calendar-entry-sheet-open {
   padding: var(--space-8) 0 var(--space-16);
   border: 0;
   border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
   background: transparent;
   color: var(--color-text);
   font-size: 28px;
@@ -138,14 +139,6 @@ body.calendar-entry-sheet-open {
   .calendar-entry-sheet__form-title {
   grid-column: auto;
   order: initial;
-  border-radius: 0;
-  font-size: var(--text-h2);
-}
-
-.calendar-entry-sheet[data-calendar-type='study']
-  .calendar-entry-sheet__form-title::placeholder {
-  color: var(--color-text-sub);
-  opacity: 0.55;
 }
 
 .calendar-entry-sheet__form-title:focus {
@@ -261,6 +254,20 @@ body.calendar-entry-sheet-open {
   max-height: 220px;
   overflow: auto;
   resize: vertical;
+}
+
+@media (max-width: 767px) {
+  .calendar-entry-sheet__field > input,
+  .calendar-entry-sheet__field > select,
+  .calendar-entry-sheet__field > textarea,
+  .calendar-entry-sheet__category-actions > select {
+    font-size: var(--text-body);
+  }
+
+  .calendar-entry-sheet__field > input::placeholder,
+  .calendar-entry-sheet__field > textarea::placeholder {
+    font-size: inherit;
+  }
 }
 
 .calendar-entry-sheet__field > select:focus,
@@ -393,7 +400,8 @@ body.calendar-entry-sheet-open {
 }
 
 .calendar-entry-sheet__body .study-todo-form__select,
-.calendar-entry-sheet__body .study-todo-form__input,
+.calendar-entry-sheet__body
+  .study-todo-form__input:not(.calendar-entry-sheet__form-title),
 .calendar-entry-sheet__body .study-todo-form__memo,
 .calendar-entry-sheet__body .study-todo-form__setting,
 .calendar-entry-sheet__body .work-todo-form__select,

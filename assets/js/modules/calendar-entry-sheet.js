@@ -263,7 +263,7 @@ export function initCalendarEntrySheet({
       dialog;
 
     window.setTimeout(() => {
-      target?.focus?.();
+      target?.focus?.({ preventScroll: true });
     }, 0);
   }
 
@@ -631,7 +631,11 @@ export function openCalendarDetailSheet({
   document.addEventListener('keydown', handleKeydown);
   requestAnimationFrame(() => {
     overlay.classList.add('is-open');
-    (fields.find((field) => field.key === 'title')?.input || dialog).focus?.();
+    const initialFocusTarget =
+      calendarType === 'study' || calendarType === 'event'
+        ? closeButton
+        : fields.find((field) => field.key === 'title')?.input || dialog;
+    initialFocusTarget.focus({ preventScroll: true });
   });
 
   return api;

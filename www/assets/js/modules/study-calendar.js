@@ -993,7 +993,6 @@ async function initPageCalendar() {
     form,
     title: '할 일 추가',
     submitLabel: '완료',
-    initialFocus: input,
     editableFields: [
       {
         key: 'date',
