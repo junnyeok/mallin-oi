@@ -4,21 +4,21 @@
   "checkIntervalHours": 24,
   "platforms": {
     "android": {
-      "latestVersion": "1.0.7",
+      "latestVersion": "1.0.10",
       "minimumVersion": "1.0.7",
-      "latestBuild": 12,
+      "latestBuild": 15,
       "minimumBuild": 12,
       "forceUpdate": false,
       "storeUrl": "https://play.google.com/store/apps/details?id=com.mallinoi.calendar"
     },
     "ios": {
-      "latestVersion": "1.0.7",
+      "latestVersion": "1.0.10",
       "minimumVersion": "1.0.7",
-      "latestBuild": 14,
+      "latestBuild": 17,
       "minimumBuild": 14,
       "forceUpdate": false,
       "storeUrl": "https://apps.apple.com/kr/app/id6774468038"
     }
   },
-  "updatedAt": "2026-07-19T00:00:00+09:00"
+  "updatedAt": "2026-07-21T14:29:53+09:00"
 }
