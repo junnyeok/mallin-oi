@@ -24,6 +24,9 @@
   [store.html / store-item.html]
   - TOP / END
 
+  [notifications.html]
+  - TOP / END
+
   [calendar-groups.html]
   - TOP / END(그룹 만들기 패널)
 ================================================= */
@@ -63,6 +66,7 @@ function getPageType() {
   if (path.includes('calendar-groups.html')) return 'calendar-groups';
   if (path.includes('suggestion.html')) return 'suggestion';
   if (path.includes('qna.html')) return 'qna';
+  if (path.includes('notifications.html')) return 'notifications';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
@@ -94,6 +98,7 @@ function getPageType() {
   if (page === 'calendar-groups') return 'calendar-groups';
 
   if (page === 'suggestion') return 'suggestion';
+  if (page === 'notifications') return 'notifications';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }
