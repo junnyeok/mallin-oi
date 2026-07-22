@@ -1,5 +1,10 @@
 import { getCurrentUser, loginHref, saveRedirect } from './auth-store.js';
-import {
+
+const MODULE_VERSION = encodeURIComponent(
+  String(window.__SITE_VERSION__ || 'dev').trim(),
+);
+
+const {
   adjustNotificationBadge,
   closeNotificationPanel,
   escapeNotificationHtml,
@@ -7,7 +12,7 @@ import {
   getNotificationPresentation,
   markNotificationsRead,
   refreshNotifications,
-} from './notifications.js';
+} = await import(`./notifications.js?v=${MODULE_VERSION}`);
 
 const PAGE_SIZE = 5;
 const PAGINATION_WINDOW = 5;

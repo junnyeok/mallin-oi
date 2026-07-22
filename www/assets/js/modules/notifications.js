@@ -14,19 +14,6 @@ const { renderTextWithEmoticons } = await import(
 );
 
 const POPUP_NOTIFICATION_LIMIT = 10;
-const NOTIFICATION_COLUMNS = [
-  'id',
-  'actor_nickname',
-  'post_id',
-  'comment_id',
-  'notification_type',
-  'title',
-  'message',
-  'action_url',
-  'item_id',
-  'is_read',
-  'created_at',
-].join(', ');
 
 const NOTIFICATION_TYPE_META = Object.freeze({
   post_reaction_like: { icon: '♥', label: '좋아요' },
@@ -137,29 +124,22 @@ export async function fetchNotificationItems({
   }
 
   const requestedCount = safeLimit + (includeLookahead ? 1 : 0);
-  let query = includeCount
-    ? supabase
-        .from('user_notifications')
-        .select(NOTIFICATION_COLUMNS, { count: 'exact' })
-    : supabase.from('user_notifications').select(NOTIFICATION_COLUMNS);
-
-  query = query.eq('recipient_user_id', recipientUserId);
-
-  if (unreadOnly) {
-    query = query.eq('is_read', false);
-  }
-
-  const { count, data, error } = await query
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(safeOffset, safeOffset + requestedCount - 1);
+  const { data, error } = await supabase.rpc(
+    'get_my_notifications_current',
+    {
+      p_limit: requestedCount,
+      p_offset: safeOffset,
+      p_unread_only: unreadOnly === true,
+    },
+  );
 
   if (error) throw error;
 
-  const rows = data || [];
+  const payload = data && typeof data === 'object' ? data : {};
+  const rows = Array.isArray(payload.items) ? payload.items : [];
 
   return {
-    count: includeCount ? Number(count || 0) : null,
+    count: includeCount ? Number(payload.count || 0) : null,
     hasMore: includeLookahead && rows.length > safeLimit,
     items: rows.slice(0, safeLimit),
   };

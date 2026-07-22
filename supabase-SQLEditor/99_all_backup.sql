@@ -27850,3 +27850,150 @@ grant execute on function public.set_my_profile_featured_bgm(text)
 to authenticated;
 
 commit;
+
+-- =========================================================
+-- 2026-07-22 댓글·답글 수정 내용 및 최신 작성자 정보의 알림 반영
+-- - 기존 알림의 comment_id / actor_user_id로 원본을 조회한다.
+-- - 알림 읽음 상태, 생성 시각, 클릭 대상은 변경하지 않는다.
+-- - 호출한 로그인 사용자의 알림만 반환한다.
+-- =========================================================
+
+begin;
+
+create or replace function public.get_my_notifications_current(
+  p_offset integer default 0,
+  p_limit integer default 10,
+  p_unread_only boolean default false
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+  v_limit integer := least(greatest(coalesce(p_limit, 10), 1), 100);
+  v_unread_only boolean := coalesce(p_unread_only, false);
+  v_total_count bigint := 0;
+  v_items jsonb := '[]'::jsonb;
+begin
+  if v_user_id is null then
+    return jsonb_build_object('count', 0, 'items', '[]'::jsonb);
+  end if;
+
+  select count(*)
+    into v_total_count
+  from public.user_notifications n
+  where n.recipient_user_id = v_user_id
+    and (not v_unread_only or n.is_read = false);
+
+  with source_rows as (
+    select
+      n.id,
+      n.post_id,
+      n.comment_id,
+      n.notification_type,
+      n.title as stored_title,
+      n.message as stored_message,
+      n.action_url,
+      n.item_id,
+      n.is_read,
+      n.created_at,
+      c.id as source_comment_id,
+      c.body as current_comment_body,
+      c.parent_comment_id,
+      coalesce(
+        nullif(btrim(p.nickname), ''),
+        nullif(btrim(c.author_nickname), ''),
+        nullif(btrim(n.actor_nickname), ''),
+        '익명'
+      ) as current_actor_nickname
+    from public.user_notifications n
+    left join public.post_comments c
+      on c.id = n.comment_id
+    left join public.profiles p
+      on p.id = n.actor_user_id
+    where n.recipient_user_id = v_user_id
+      and (not v_unread_only or n.is_read = false)
+    order by n.created_at desc, n.id desc
+    offset v_offset
+    limit v_limit
+  ),
+  current_items as (
+    select
+      sr.id,
+      sr.current_actor_nickname as actor_nickname,
+      sr.post_id,
+      sr.comment_id,
+      sr.notification_type,
+      case
+        when sr.source_comment_id is not null
+             and sr.notification_type = 'post_comment'
+          then format(
+            '%s님이 네 게시물에 %s을 남겼어.',
+            sr.current_actor_nickname,
+            case when sr.parent_comment_id is null then '댓글' else '답글' end
+          )
+        when sr.source_comment_id is not null
+             and sr.notification_type = 'post_participant_comment'
+          then format(
+            '%s님이 네가 참여한 게시물에 %s을 남겼어.',
+            sr.current_actor_nickname,
+            case when sr.parent_comment_id is null then '댓글' else '답글' end
+          )
+        else sr.stored_title
+      end as title,
+      case
+        when sr.source_comment_id is not null
+             and sr.notification_type in (
+               'post_comment',
+               'post_participant_comment'
+             )
+          then left(
+            regexp_replace(
+              coalesce(sr.current_comment_body, ''),
+              '\s+',
+              ' ',
+              'g'
+            ),
+            120
+          )
+        else sr.stored_message
+      end as message,
+      sr.action_url,
+      sr.item_id,
+      sr.is_read,
+      sr.created_at
+    from source_rows sr
+  )
+  select coalesce(
+    jsonb_agg(
+      to_jsonb(current_items)
+      order by current_items.created_at desc, current_items.id desc
+    ),
+    '[]'::jsonb
+  )
+    into v_items
+  from current_items;
+
+  return jsonb_build_object(
+    'count', v_total_count,
+    'items', v_items
+  );
+end;
+$$;
+
+revoke all on function public.get_my_notifications_current(integer, integer, boolean)
+from public, anon;
+
+grant execute on function public.get_my_notifications_current(integer, integer, boolean)
+to authenticated;
+
+comment on function public.get_my_notifications_current(integer, integer, boolean)
+is '내 알림을 원본 댓글·답글 본문과 현재 프로필 닉네임으로 조회한다.';
+
+notify pgrst, 'reload schema';
+
+commit;
