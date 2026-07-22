@@ -907,6 +907,7 @@
 ./supabase-SQLEditor/20260712-event-calendar-date-range-edit.sql
 ./supabase-SQLEditor/20260718-study-work-calendar-date-edit.sql
 ./supabase-SQLEditor/20260718-remove-study-work-shared-calendar.sql
+./supabase-SQLEditor/20260721-profile-featured-bgm.sql
 ./www/assets/js/modules/site-stats.js
 ./images/services/Q&A_button.png
 ./images/services/calendar_button.png

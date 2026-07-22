@@ -3,6 +3,7 @@ import { supabase } from './supabase-client.js';
 const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
 const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
 const DEFAULT_BGM_TRACK_ID = 'mallin-oi-welcome';
+const STORE_ITEM_ID_PATTERN = /^[a-zA-Z0-9_-]{1,100}$/;
 
 function normalizeTrackIds(trackIds = []) {
   const safe = [...new Set(trackIds)]
@@ -210,4 +211,30 @@ export async function saveRemoteBgmPreferences(
   });
 
   return patch;
+}
+
+export async function saveMyProfileFeaturedBgm(itemId = null) {
+  const normalizedItemId =
+    itemId === null ? null : String(itemId || '').trim() || null;
+
+  if (normalizedItemId && !STORE_ITEM_ID_PATTERN.test(normalizedItemId)) {
+    throw new Error('대표 BGM 상품 정보가 올바르지 않아.');
+  }
+
+  const { data, error } = await supabase.rpc('set_my_profile_featured_bgm', {
+    p_item_id: normalizedItemId,
+  });
+
+  if (error) throw error;
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result?.success) {
+    throw new Error(result?.message || '대표 BGM을 저장하지 못했어.');
+  }
+
+  return {
+    success: true,
+    message: String(result.message || '').trim(),
+    itemId: String(result.profile_featured_bgm_item_id || '').trim() || null,
+  };
 }

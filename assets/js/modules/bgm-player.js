@@ -21,6 +21,7 @@ const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
 const BGM_STATE_STORAGE_KEY = 'mallin_bgm_play_state_v3';
 const BGM_STATE_STORAGE_LEGACY_KEY = 'mallin_bgm_play_state_v2';
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
+export const PERSONAL_BGM_PLAY_EVENT = 'mallin:personal-bgm-play';
 const BGM_RELOAD_NOTICE_ID = 'bgmReloadResumeNotice';
 
 let audio = null;
@@ -39,6 +40,8 @@ let selectionWatcherBinded = false;
 let storePreviewWatcherBinded = false;
 let storePreviewResumeState = null;
 let authenticatedUserId = '';
+let externalPlaybackSession = null;
+let externalPlaybackSessionSequence = 0;
 
 function $(id) {
   return document.getElementById(id);
@@ -240,14 +243,25 @@ function getSavedPlaybackState() {
 function savePlaybackState() {
   const track = getCurrentTrack();
   const player = audio;
+  const suspendedState = externalPlaybackSession?.shouldResume
+    ? externalPlaybackSession
+    : null;
 
   try {
     const payload = {
-      trackId: track?.id || '',
-      index: currentIndex,
+      trackId: suspendedState?.trackId || track?.id || '',
+      index: Number.isFinite(suspendedState?.index)
+        ? suspendedState.index
+        : currentIndex,
       currentTime:
-        player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
-      wasPlaying: Boolean(isPlaying && player && !player.paused),
+        suspendedState && Number.isFinite(suspendedState.currentTime)
+          ? suspendedState.currentTime
+          : player && Number.isFinite(player.currentTime)
+            ? player.currentTime
+            : 0,
+      wasPlaying: Boolean(
+        suspendedState || (isPlaying && player && !player.paused),
+      ),
       savedAt: Date.now(),
     };
 
@@ -305,6 +319,8 @@ function scheduleRemotePreferenceSave() {
 }
 
 function stopAndResetPlayback() {
+  externalPlaybackSession = null;
+
   if (audio) {
     try {
       audio.pause();
@@ -421,10 +437,20 @@ function ensureAudio() {
   audio.playsInline = true;
 
   audio.addEventListener('play', () => {
+    externalPlaybackSession = null;
     isPlaying = true;
     scheduleSavePlaybackState();
     renderPlaylist();
     updatePanelDesc();
+
+    window.dispatchEvent(
+      new CustomEvent(PERSONAL_BGM_PLAY_EVENT, {
+        detail: {
+          state: 'playing',
+          trackId: getCurrentTrack()?.id || '',
+        },
+      }),
+    );
   });
 
   audio.addEventListener('pause', () => {
@@ -707,6 +733,8 @@ async function restorePlaybackPosition() {
   updatePanelDesc();
 
   if (savedState.wasPlaying) {
+    notifyPersonalBgmPlay('restore');
+
     try {
       await tryAutoplayWithMutedBootstrap(player);
       isPlaying = true;
@@ -740,6 +768,8 @@ async function tryPlayCurrentTrack() {
     renderPlaylist();
     return;
   }
+
+  notifyPersonalBgmPlay('play');
 
   await setTrackSource(track);
 
@@ -812,6 +842,130 @@ function pauseTrack() {
   savePlaybackState();
   updatePanelDesc();
   renderPlaylist();
+}
+
+function notifyPersonalBgmPlay(reason = 'play') {
+  externalPlaybackSession = null;
+
+  window.dispatchEvent(
+    new CustomEvent(PERSONAL_BGM_PLAY_EVENT, {
+      detail: {
+        state: 'request',
+        reason: String(reason || 'play'),
+        trackId: getCurrentTrack()?.id || '',
+      },
+    }),
+  );
+}
+
+export function getBgmPlaybackState() {
+  const player = audio;
+  const track = getCurrentTrack();
+
+  return {
+    isPlaying: Boolean(isPlaying && player && !player.paused),
+    isSuspendedForExternalAudio: Boolean(externalPlaybackSession),
+    trackId: String(track?.id || currentTrackId || '').trim(),
+    currentTime:
+      player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
+  };
+}
+
+export function pauseBgmForExternalAudio(source = 'external-audio') {
+  const normalizedSource = String(source || 'external-audio').trim();
+
+  if (
+    externalPlaybackSession &&
+    externalPlaybackSession.source === normalizedSource
+  ) {
+    return {
+      id: externalPlaybackSession.id,
+      source: externalPlaybackSession.source,
+    };
+  }
+
+  const player = audio;
+  const track = getCurrentTrack();
+  const savedState = getSavedPlaybackState();
+  const isActuallyPlaying = Boolean(isPlaying && player && !player.paused);
+  const shouldResumeReloadState = Boolean(
+    getReloadResumeNotice() && savedState?.wasPlaying,
+  );
+
+  externalPlaybackSessionSequence += 1;
+  externalPlaybackSession = {
+    id: externalPlaybackSessionSequence,
+    source: normalizedSource,
+    shouldResume: isActuallyPlaying || shouldResumeReloadState,
+    trackId: String(track?.id || savedState?.trackId || '').trim(),
+    index: Number.isFinite(currentIndex)
+      ? currentIndex
+      : Number(savedState?.index) || 0,
+    currentTime:
+      player && Number.isFinite(player.currentTime) && player.currentTime > 0
+        ? player.currentTime
+        : Math.max(0, Number(savedState?.currentTime) || 0),
+  };
+
+  removeReloadResumeNotice();
+
+  if (isActuallyPlaying) {
+    pauseTrack();
+  } else {
+    savePlaybackState();
+  }
+
+  return {
+    id: externalPlaybackSession.id,
+    source: externalPlaybackSession.source,
+  };
+}
+
+export async function restoreBgmAfterExternalAudio(
+  handle,
+  { resume = true } = {},
+) {
+  const handleId = Number(handle?.id);
+  if (!externalPlaybackSession || externalPlaybackSession.id !== handleId) {
+    return false;
+  }
+
+  const resumeState = externalPlaybackSession;
+  externalPlaybackSession = null;
+
+  if (!resume || !resumeState.shouldResume) {
+    savePlaybackState();
+    return false;
+  }
+
+  const user = await getSessionUser();
+  if (!user) return false;
+
+  if (!playlist.length) {
+    await syncPlaylistWithSelection({ autoPlay: false });
+  }
+
+  let nextIndex = Number.isFinite(resumeState.index)
+    ? resumeState.index
+    : currentIndex;
+
+  if (resumeState.trackId) {
+    const matchedIndex = playlist.findIndex(
+      (track) => track.id === resumeState.trackId,
+    );
+    if (matchedIndex >= 0) nextIndex = matchedIndex;
+  }
+
+  if (nextIndex < 0 || nextIndex >= playlist.length) {
+    nextIndex = 0;
+  }
+
+  await playTrack(nextIndex, {
+    startTime: Math.max(0, Number(resumeState.currentTime) || 0),
+    autoPlay: true,
+  });
+
+  return Boolean(isPlaying && audio && !audio.paused);
 }
 
 async function playNextTrack() {
@@ -888,6 +1042,7 @@ function bindRetryOnUserGesture() {
   const retry = () => {
     if (!playBlocked) return;
     if (!hasAuthenticatedUser()) return;
+    if (externalPlaybackSession) return;
 
     tryPlayCurrentTrack().catch((error) => {
       console.error('[bgm] retry play failed:', error);

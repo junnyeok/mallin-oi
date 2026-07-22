@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260721-02';
+const SITE_VERSION = '20260721-05';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -105,13 +105,25 @@ function isStaticAsset(url) {
   );
 }
 
+function isRangeRequest(request) {
+  return request.headers.has('range');
+}
+
+function isCacheableResponse(response) {
+  return Boolean(response?.ok && response.status !== 206);
+}
+
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
 
-    if (response && response.ok) {
+    if (isCacheableResponse(response)) {
       const cache = await caches.open(HTML_CACHE);
-      cache.put(request, response.clone());
+      try {
+        await cache.put(request, response.clone());
+      } catch (error) {
+        console.warn('[sw] html cache update failed:', error);
+      }
     }
 
     return response;
@@ -131,9 +143,13 @@ async function staleWhileRevalidate(request) {
   const cached = await cache.match(request);
 
   const fetchPromise = fetch(request)
-    .then((response) => {
-      if (response && response.ok) {
-        cache.put(request, response.clone());
+    .then(async (response) => {
+      if (isCacheableResponse(response)) {
+        try {
+          await cache.put(request, response.clone());
+        } catch (error) {
+          console.warn('[sw] static cache update failed:', error);
+        }
       }
 
       return response;
@@ -192,6 +208,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (isRangeRequest(request)) {
+    event.respondWith(fetch(request));
     return;
   }
 

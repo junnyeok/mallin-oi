@@ -278,6 +278,70 @@
 }
 
 /* =========================
+  FEATURED BGM CONTROLS
+========================= */
+.profile-bgm-card__selection {
+  display: flex;
+  width: 100%;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.profile-bgm-card__selection:focus-visible,
+.profile-bgm-card__featured-action:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.profile-bgm-card__featured-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profile-bgm-card__featured-action {
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-8) var(--space-12);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: rgba(170, 208, 94, 0.14);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profile-bgm-card.is-featured {
+  box-shadow: 0 0 0 3px rgba(170, 208, 94, 0.24);
+}
+
+.profile-bgm-card.is-featured .profile-bgm-card__featured-action {
+  background: var(--color-primary);
+}
+
+.profile-bgm-card__featured-action:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+/* =========================
   MORE BUTTON
 ========================= */
 .inventory-more-area {

@@ -19,6 +19,7 @@ const DEFAULT_CHARACTER_NAME = '기본오이';
 const DEFAULT_SKIN_CODE = 'char-cucumber-basic';
 const DEFAULT_SKIN_NAME = '기본오이';
 const DEFAULT_BGM_TRACK_ID = 'mallin-oi-welcome';
+const PROFILE_FEATURED_BGM_SOURCE = 'profile-featured-bgm';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
@@ -44,14 +45,351 @@ const [
     getProfileFrameByItemId,
   },
   { emitEquipmentChanged },
+  { saveMyProfileFeaturedBgm },
+  {
+    PERSONAL_BGM_PLAY_EVENT,
+    pauseBgmForExternalAudio,
+    restoreBgmAfterExternalAudio,
+  },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
   import(`./store-data.js?v=${MODULE_VERSION}`),
   import(`./equipment-events.js?v=${MODULE_VERSION}`),
+  import(`./bgm-preferences.js?v=${MODULE_VERSION}`),
+  import(`./bgm-player.js?v=${MODULE_VERSION}`),
 ]);
+
+let profileFeaturedBgmState = null;
+let profileFeaturedBgmResumeHandle = null;
 
 function $(id) {
   return document.getElementById(id);
+}
+
+function isUsableProfileBgmTrack(track = null) {
+  return Boolean(track?.audioPath && track?.coverPath);
+}
+
+function getDefaultProfileBgmTrack() {
+  const markedDefault = BGM_CATALOG.find(
+    (track) => track?.isDefault === true,
+  );
+  const defaultTrack = isUsableProfileBgmTrack(markedDefault)
+    ? markedDefault
+    : BGM_CATALOG.find(
+        (track) =>
+          String(track?.id || '').trim() === DEFAULT_BGM_TRACK_ID &&
+          isUsableProfileBgmTrack(track),
+      );
+
+  return defaultTrack || null;
+}
+
+function getProfileFeaturedBgmTrack(itemId = '') {
+  const normalizedItemId = String(itemId || '').trim();
+  if (normalizedItemId) {
+    const featuredTrack = BGM_CATALOG.find(
+      (track) => String(track?.storeItemId || '').trim() === normalizedItemId,
+    );
+
+    if (isUsableProfileBgmTrack(featuredTrack)) {
+      return featuredTrack;
+    }
+
+    console.warn(
+      '[profile] featured BGM unavailable; using default:',
+      normalizedItemId,
+    );
+  }
+
+  const defaultTrack = getDefaultProfileBgmTrack();
+  if (!defaultTrack) {
+    console.warn('[profile] default profile BGM is unavailable');
+  }
+
+  return defaultTrack;
+}
+
+function updateProfileFeaturedBgmUi({
+  track = null,
+  isPlaying = false,
+  isOwnProfile = profileFeaturedBgmState?.isOwnProfile === true,
+} = {}) {
+  const wrap = $('profileFeaturedBgmWrap');
+  const button = $('profileFeaturedBgmBtn');
+  const image = $('profileFeaturedBgmImage');
+  const status = $('profileFeaturedBgmStatus');
+  const settingLink = $('profileFeaturedBgmSettingLink');
+
+  if (!wrap || !button) return;
+
+  if (!track) {
+    wrap.hidden = true;
+    button.hidden = true;
+    button.classList.remove('is-playing');
+    button.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-label', '프로필 대표 BGM 재생');
+    if (settingLink) settingLink.hidden = true;
+    if (image) image.removeAttribute('src');
+    if (status) status.textContent = '';
+    return;
+  }
+
+  const title = String(track.title || '대표 BGM').trim() || '대표 BGM';
+  const actionText = isPlaying ? '일시정지' : '재생';
+
+  wrap.hidden = false;
+  button.hidden = false;
+  button.classList.toggle('is-playing', isPlaying);
+  button.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+  button.setAttribute('aria-label', `${title} 대표 BGM ${actionText}`);
+  if (settingLink) settingLink.hidden = !isOwnProfile;
+
+  if (image && image.getAttribute('src') !== track.coverPath) {
+    image.src = track.coverPath;
+  }
+
+  if (status) {
+    status.textContent = `${title} 대표 BGM ${isPlaying ? '재생 중' : '일시정지됨'}`;
+  }
+}
+
+async function releaseProfileFeaturedBgmSession({ resume = true } = {}) {
+  const handle = profileFeaturedBgmResumeHandle;
+  profileFeaturedBgmResumeHandle = null;
+  if (!handle) return false;
+
+  try {
+    return await restoreBgmAfterExternalAudio(handle, { resume });
+  } catch (error) {
+    console.error('[profile] personal BGM restore failed:', error);
+    return false;
+  }
+}
+
+async function destroyProfileFeaturedBgm({
+  hide = true,
+  resumePersonal = true,
+  preservePersonalSession = false,
+} = {}) {
+  const state = profileFeaturedBgmState;
+  profileFeaturedBgmState = null;
+
+  if (state) {
+    state.controller.abort();
+
+    try {
+      state.audio.pause();
+    } catch (error) {
+      console.warn('[profile] featured BGM pause failed:', error);
+    }
+
+    try {
+      state.audio.removeAttribute('src');
+      state.audio.load();
+    } catch (error) {
+      console.warn('[profile] featured BGM unload failed:', error);
+    }
+  }
+
+  if (hide) {
+    updateProfileFeaturedBgmUi();
+  } else if (state?.track) {
+    updateProfileFeaturedBgmUi({ track: state.track, isPlaying: false });
+  }
+
+  if (!preservePersonalSession) {
+    await releaseProfileFeaturedBgmSession({ resume: resumePersonal });
+  }
+}
+
+function isProfilePageUrl(rawUrl = '') {
+  try {
+    const url = new URL(rawUrl, window.location.href);
+    return /\/profile\.html$/i.test(url.pathname);
+  } catch (error) {
+    return false;
+  }
+}
+
+async function playProfileFeaturedBgm(state) {
+  if (!state || profileFeaturedBgmState !== state) return false;
+
+  profileFeaturedBgmResumeHandle = pauseBgmForExternalAudio(
+    PROFILE_FEATURED_BGM_SOURCE,
+  );
+
+  try {
+    await state.audio.play();
+    return true;
+  } catch (error) {
+    if (profileFeaturedBgmState === state) {
+      updateProfileFeaturedBgmUi({ track: state.track, isPlaying: false });
+    }
+
+    console.warn('[profile] featured BGM autoplay blocked or failed:', error);
+    await releaseProfileFeaturedBgmSession({ resume: true });
+    return false;
+  }
+}
+
+async function stopProfileFeaturedBgmForPersonalPlayer() {
+  const state = profileFeaturedBgmState;
+  if (!state) return;
+
+  try {
+    state.audio.pause();
+  } catch (error) {
+    console.warn('[profile] featured BGM stop failed:', error);
+  }
+
+  updateProfileFeaturedBgmUi({ track: state.track, isPlaying: false });
+  await releaseProfileFeaturedBgmSession({ resume: false });
+}
+
+async function initProfileFeaturedBgm(
+  profileRow = null,
+  { isOwnProfile = false } = {},
+) {
+  await destroyProfileFeaturedBgm({
+    hide: true,
+    resumePersonal: false,
+    preservePersonalSession: true,
+  });
+
+  if (String(document.body?.dataset?.page || '') !== 'profile') {
+    await releaseProfileFeaturedBgmSession({ resume: true });
+    return;
+  }
+
+  const itemId = String(
+    profileRow?.profile_featured_bgm_item_id || '',
+  ).trim();
+
+  const track = getProfileFeaturedBgmTrack(itemId);
+  if (!isUsableProfileBgmTrack(track)) {
+    await releaseProfileFeaturedBgmSession({ resume: true });
+    return;
+  }
+
+  const button = $('profileFeaturedBgmBtn');
+  const image = $('profileFeaturedBgmImage');
+  if (!button || !image) {
+    await releaseProfileFeaturedBgmSession({ resume: true });
+    return;
+  }
+
+  const audio = new Audio(track.audioPath);
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  audio.preload = 'auto';
+  audio.loop = true;
+  audio.playsInline = true;
+
+  const state = {
+    audio,
+    controller,
+    itemId,
+    isOwnProfile,
+    track,
+  };
+
+  profileFeaturedBgmState = state;
+
+  audio.addEventListener(
+    'play',
+    () => {
+      if (profileFeaturedBgmState !== state) return;
+      updateProfileFeaturedBgmUi({ track, isPlaying: true });
+    },
+    { signal },
+  );
+
+  audio.addEventListener(
+    'pause',
+    () => {
+      if (profileFeaturedBgmState !== state) return;
+      updateProfileFeaturedBgmUi({ track, isPlaying: false });
+    },
+    { signal },
+  );
+
+  audio.addEventListener(
+    'error',
+    () => {
+      if (profileFeaturedBgmState !== state) return;
+      updateProfileFeaturedBgmUi({ track, isPlaying: false });
+      void releaseProfileFeaturedBgmSession({ resume: true });
+    },
+    { signal },
+  );
+
+  image.addEventListener(
+    'error',
+    () => {
+      if (profileFeaturedBgmState !== state) return;
+      void destroyProfileFeaturedBgm({
+        hide: true,
+        resumePersonal: true,
+      });
+    },
+    { signal, once: true },
+  );
+
+  updateProfileFeaturedBgmUi({ track, isPlaying: false, isOwnProfile });
+
+  button.addEventListener(
+    'click',
+    async () => {
+      if (profileFeaturedBgmState !== state) return;
+
+      if (!audio.paused) {
+        audio.pause();
+        updateProfileFeaturedBgmUi({ track, isPlaying: false });
+        await releaseProfileFeaturedBgmSession({ resume: true });
+        return;
+      }
+
+      await playProfileFeaturedBgm(state);
+    },
+    { signal },
+  );
+
+  window.addEventListener(
+    PERSONAL_BGM_PLAY_EVENT,
+    () => {
+      void stopProfileFeaturedBgmForPersonalPlayer();
+    },
+    { signal },
+  );
+
+  window.addEventListener(
+    'mallin:before-pjax-swap',
+    (event) => {
+      const preservePersonalSession = isProfilePageUrl(event?.detail?.to);
+      void destroyProfileFeaturedBgm({
+        hide: true,
+        resumePersonal: !preservePersonalSession,
+        preservePersonalSession,
+      });
+    },
+    { signal },
+  );
+
+  window.addEventListener(
+    'pagehide',
+    () => {
+      void destroyProfileFeaturedBgm({
+        hide: true,
+        resumePersonal: false,
+        preservePersonalSession: true,
+      });
+    },
+    { signal, once: true },
+  );
+
+  await playProfileFeaturedBgm(state);
 }
 
 function escapeHtml(str) {
@@ -460,43 +798,72 @@ function renderPreviewList({
   listEl.innerHTML = items.slice(0, limit).map(renderItem).join('');
 }
 
-async function loadProfileRow(userId) {
+async function loadProfileRowWithFeaturedBgmFallback(
+  tableName,
+  userId,
+  fields,
+) {
+  const selectFields = fields.join(', ');
   const { data, error } = await supabase
-    .from('profiles')
-    .select(
-      [
-        'id',
-        'nickname',
-        'bio',
-        'profile_image_url',
-        'equipped_character_image_url',
-        'equipped_character_effect_item_id',
-        'bgm_selected_track_ids',
-        'bgm_current_track_id',
-        'created_at',
-        'updated_at',
-        'equipped_profile_background_item_id',
-        'equipped_profile_frame_item_id',
-      ].join(', '),
-    )
+    .from(tableName)
+    .select(selectFields)
     .eq('id', userId)
     .maybeSingle();
 
-  if (error) throw error;
-  return data || null;
+  if (!error) return data || null;
+
+  const fallbackFields = fields.filter(
+    (field) => field !== 'profile_featured_bgm_item_id',
+  );
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from(tableName)
+    .select(fallbackFields.join(', '))
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (fallbackError) throw fallbackError;
+
+  console.warn(
+    '[profile] featured BGM field unavailable; using default profile BGM',
+  );
+
+  return fallbackData
+    ? { ...fallbackData, profile_featured_bgm_item_id: null }
+    : null;
+}
+
+async function loadProfileRow(userId) {
+  return loadProfileRowWithFeaturedBgmFallback('profiles', userId, [
+    'id',
+    'nickname',
+    'bio',
+    'profile_image_url',
+    'equipped_character_image_url',
+    'equipped_character_effect_item_id',
+    'bgm_selected_track_ids',
+    'bgm_current_track_id',
+    'profile_featured_bgm_item_id',
+    'created_at',
+    'updated_at',
+    'equipped_profile_background_item_id',
+    'equipped_profile_frame_item_id',
+  ]);
 }
 
 async function loadPublicProfileRow(userId) {
-  const { data, error } = await supabase
-    .from('public_profiles')
-    .select(
-      'id, nickname, bio, profile_image_url, equipped_character_image_url, equipped_character_effect_item_id, equipped_profile_background_item_id, equipped_profile_frame_item_id, created_at, updated_at',
-    )
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data || null;
+  return loadProfileRowWithFeaturedBgmFallback('public_profiles', userId, [
+    'id',
+    'nickname',
+    'bio',
+    'profile_image_url',
+    'equipped_character_image_url',
+    'equipped_character_effect_item_id',
+    'equipped_profile_background_item_id',
+    'equipped_profile_frame_item_id',
+    'profile_featured_bgm_item_id',
+    'created_at',
+    'updated_at',
+  ]);
 }
 
 async function loadOwnedCharacters(userId) {
@@ -1726,9 +2093,38 @@ function renderProfileFrameSection({
   );
 }
 
-function renderBgmCard(track, selectedTrackIds = new Set()) {
+function isFeaturedBgmTrack(track, featuredBgmItemId = '') {
+  const normalizedFeaturedItemId = String(featuredBgmItemId || '').trim();
+
+  if (track?.isDefault === true) {
+    return !normalizedFeaturedItemId;
+  }
+
+  const storeItemId = String(track?.storeItemId || '').trim();
+  return !!storeItemId && storeItemId === normalizedFeaturedItemId;
+}
+
+function renderBgmCard(
+  track,
+  selectedTrackIds = new Set(),
+  featuredBgmItemId = '',
+) {
   const isOwned = track?.is_owned !== false;
   const isSelected = selectedTrackIds.has(String(track?.id || '').trim());
+  const isDefaultTrack = track?.isDefault === true;
+  const storeItemId = String(track?.storeItemId || '').trim();
+  const isFeatured = isFeaturedBgmTrack(track, featuredBgmItemId);
+  const canSetFeatured = isOwned && (isDefaultTrack || !!storeItemId);
+  const featuredActionLabel = isFeatured
+    ? isDefaultTrack
+      ? '대표 BGM 설정됨'
+      : '대표 BGM 해제'
+    : '대표로 설정';
+  const featuredActionAriaLabel = isFeatured
+    ? isDefaultTrack
+      ? '현재 대표 BGM 설정됨'
+      : '대표 BGM 해제'
+    : '대표 BGM으로 설정';
   const detailHref = track?.storeItemId
     ? getStoreItemDetailHref(track.storeItemId)
     : '';
@@ -1740,29 +2136,58 @@ function renderBgmCard(track, selectedTrackIds = new Set()) {
     : '미보유 · 클릭하면 구매페이지로 이동';
 
   return `
-    <button
-      type="button"
-      class="profile-character-card profile-bgm-card ${isSelected ? 'is-selected' : ''} ${!isOwned ? 'is-locked' : ''}"
-      data-bgm-track-id="${escapeHtml(track?.id || '')}"
-      data-owned="${isOwned ? 'true' : 'false'}"
-      data-store-href="${escapeHtml(detailHref)}"
+    <div
+      class="profile-character-card profile-bgm-card ${isSelected ? 'is-selected' : ''} ${isFeatured ? 'is-featured' : ''} ${!isOwned ? 'is-locked' : ''}"
     >
-      <div class="profile-bgm-card__thumb">
-        <img
-          class="profile-bgm-card__thumb-image"
-          src="${escapeHtml(track?.coverPath || '')}"
-          alt="${escapeHtml(track?.title || 'BGM')}"
-        />
-      </div>
+      <button
+        type="button"
+        class="profile-bgm-card__selection"
+        data-bgm-track-id="${escapeHtml(track?.id || '')}"
+        data-owned="${isOwned ? 'true' : 'false'}"
+        data-store-href="${escapeHtml(detailHref)}"
+        aria-pressed="${isSelected ? 'true' : 'false'}"
+        aria-label="${escapeHtml(track?.title || 'BGM')} 개인 재생목록 ${isSelected ? '제외' : '선택'}"
+      >
+        <span class="profile-bgm-card__thumb">
+          <img
+            class="profile-bgm-card__thumb-image"
+            src="${escapeHtml(track?.coverPath || '')}"
+            alt="${escapeHtml(track?.title || 'BGM')}"
+          />
+        </span>
 
-      <div class="profile-character-card__name">
-        ${escapeHtml(track?.title || 'BGM')}
-      </div>
+        <span class="profile-character-card__name">
+          ${escapeHtml(track?.title || 'BGM')}
+        </span>
 
-      <div class="profile-character-card__meta ${!isOwned ? 'is-locked' : ''}">
-        ${metaText}
-      </div>
-    </button>
+        <span class="profile-character-card__meta ${!isOwned ? 'is-locked' : ''}">
+          ${metaText}
+        </span>
+      </button>
+
+      ${
+        isFeatured
+          ? '<span class="profile-bgm-card__featured-badge">대표 BGM</span>'
+          : ''
+      }
+
+      ${
+        canSetFeatured
+          ? `
+            <button
+              type="button"
+              class="profile-bgm-card__featured-action"
+              data-profile-featured-bgm-item-id="${escapeHtml(storeItemId)}"
+              data-profile-featured-bgm-default="${isDefaultTrack ? 'true' : 'false'}"
+              aria-pressed="${isFeatured ? 'true' : 'false'}"
+              aria-label="${escapeHtml(track?.title || 'BGM')} ${featuredActionAriaLabel}"
+            >
+              ${featuredActionLabel}
+            </button>
+          `
+          : ''
+      }
+    </div>
   `;
 }
 
@@ -1802,6 +2227,10 @@ function renderBgmSection({
   const bgmPreferenceUserId = String(
     currentUser?.id || profileRow?.id || '',
   ).trim();
+  let featuredBgmItemId = String(
+    profileRow?.profile_featured_bgm_item_id || '',
+  ).trim();
+  let isFeaturedBgmSaving = false;
 
   function getNormalizedSelectedTrackIds() {
     return new Set(
@@ -1819,11 +2248,17 @@ function renderBgmSection({
     const sortedBgmRows = sortEquippedItemFirst(bgmRows, (track) => {
       const trackId = String(track?.id || '').trim();
 
-      return trackId === currentTrackId || selectedTrackIds.has(trackId);
+      return (
+        isFeaturedBgmTrack(track, featuredBgmItemId) ||
+        trackId === currentTrackId ||
+        selectedTrackIds.has(trackId)
+      );
     });
 
     listEl.innerHTML = sortedBgmRows
-      .map((track) => renderBgmCard(track, selectedTrackIds))
+      .map((track) =>
+        renderBgmCard(track, selectedTrackIds, featuredBgmItemId),
+      )
       .join('');
 
     applyInventoryLimitByIds('profileBgmWrap', 'profileBgmList');
@@ -1881,6 +2316,71 @@ function renderBgmSection({
         });
       },
     );
+
+    Array.from(
+      listEl.querySelectorAll('[data-profile-featured-bgm-item-id]'),
+    ).forEach((button) => {
+      button.disabled = isFeaturedBgmSaving;
+
+      button.addEventListener('click', async () => {
+        if (isFeaturedBgmSaving) return;
+
+        const itemId = String(
+          button.dataset.profileFeaturedBgmItemId || '',
+        ).trim();
+        const isDefaultTrack =
+          button.dataset.profileFeaturedBgmDefault === 'true';
+        const isFeatured = isDefaultTrack
+          ? !featuredBgmItemId
+          : itemId === featuredBgmItemId;
+
+        if (isDefaultTrack && isFeatured) {
+          setMsg('기본 환영 BGM이 이미 대표 BGM으로 설정되어 있어.', 'green');
+          return;
+        }
+
+        if (!isDefaultTrack && (!itemId || !ownedStoreItemIds.has(itemId))) {
+          setMsg('보유한 BGM만 대표로 설정할 수 있어.', 'red');
+          return;
+        }
+
+        const nextItemId =
+          isDefaultTrack || itemId === featuredBgmItemId ? null : itemId;
+        isFeaturedBgmSaving = true;
+        renderList();
+
+        try {
+          const result = await saveMyProfileFeaturedBgm(nextItemId);
+          featuredBgmItemId = String(result.itemId || '').trim();
+          profileRow = {
+            ...profileRow,
+            profile_featured_bgm_item_id: result.itemId,
+          };
+
+          setMsg(
+            nextItemId
+              ? result.message || '대표 BGM 설정 완료!'
+              : '기본 환영 BGM으로 변경했어.',
+            'green',
+          );
+
+          emitEquipmentChanged({
+            userId: bgmPreferenceUserId,
+            source: 'profile-featured-bgm',
+            changed: ['profileFeaturedBgm'],
+          });
+        } catch (error) {
+          console.error('[profile] save featured BGM failed:', error);
+          setMsg(
+            error?.message || '대표 BGM 저장 중 오류가 발생했어.',
+            'red',
+          );
+        } finally {
+          isFeaturedBgmSaving = false;
+          renderList();
+        }
+      });
+    });
   }
 
   renderList();
@@ -2657,6 +3157,13 @@ export async function initProfile() {
 
   if (!['profile', 'profile-setting', 'inventory'].includes(pageName)) return;
 
+  if (pageName !== 'profile') {
+    await destroyProfileFeaturedBgm({
+      hide: true,
+      resumePersonal: true,
+    });
+  }
+
   const currentUser = await getCurrentUser();
   const targetUserIdFromUrl =
     isInventoryPage || isProfileSettingPage ? '' : getTargetUserIdFromUrl();
@@ -2700,6 +3207,12 @@ export async function initProfile() {
   }
 
   if (!profileRow) {
+    if (pageName === 'profile') {
+      await destroyProfileFeaturedBgm({
+        hide: true,
+        resumePersonal: true,
+      });
+    }
     renderProfileNotFound();
     return;
   }
@@ -2710,6 +3223,10 @@ export async function initProfile() {
     } catch (error) {
       console.error('[profile] apply remote bgm preferences failed:', error);
     }
+  }
+
+  if (pageName === 'profile') {
+    await initProfileFeaturedBgm(profileRow, { isOwnProfile });
   }
 
   const currentNickname =
