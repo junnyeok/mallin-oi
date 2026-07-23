@@ -1,6 +1,10 @@
 // assets/js/modules/auth-store.js
 
-import { supabase } from './supabase-client.js';
+import {
+  clearStoredAuthSession,
+  readStoredAuthSession,
+  supabase,
+} from './supabase-client.js';
 
 export const SUPABASE_AUTH_STORAGE_KEY = 'sb-tfztkeihdqkfzwpilyky-auth-token';
 export const REDIRECT_KEY = 'authRedirectTo';
@@ -41,7 +45,7 @@ export function clearLoginPolicy() {
 
 function clearSupabaseAuthStorage() {
   try {
-    localStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+    clearStoredAuthSession();
   } catch (error) {
     console.warn('[auth-store] clear auth storage failed:', error);
   }
@@ -62,6 +66,40 @@ export function saveLoginPolicy({ autoLogin = false } = {}) {
 
 export function getLoginPolicy() {
   return readAuthPolicy();
+}
+
+function allowsPersistentSessionRecovery(policy = readAuthPolicy()) {
+  if (!policy) return true;
+
+  return (
+    policy.autoLogin === true ||
+    policy.mode === 'auto' ||
+    policy.mode === 'remember'
+  );
+}
+
+function isRecoverableStoredSession(session) {
+  return Boolean(
+    session?.user?.id &&
+      typeof session.refresh_token === 'string' &&
+      session.refresh_token,
+  );
+}
+
+function getRetainedAutoLoginSession(preferredSession = null) {
+  if (!allowsPersistentSessionRecovery()) return null;
+
+  const storedSession = readStoredAuthSession();
+  if (!isRecoverableStoredSession(storedSession)) return null;
+
+  if (
+    preferredSession?.user &&
+    preferredSession.refresh_token === storedSession.refresh_token
+  ) {
+    return preferredSession;
+  }
+
+  return storedSession;
 }
 
 function isHomePage() {
@@ -401,9 +439,23 @@ export function initializeAuthSession() {
       return applySession(data?.session || null);
     })
     .catch((error) => {
-      console.error('[auth-store] initial session recovery failed:', error);
-      authState.status = authState.cachedSession ? 'authenticated' : 'loading';
-      return authState.cachedSession || null;
+      const retainedSession = getRetainedAutoLoginSession(
+        authState.cachedSession,
+      );
+
+      if (retainedSession) {
+        console.warn(
+          '[auth-store] initial session refresh deferred; retained stored auto-login session',
+        );
+        return applySession(retainedSession);
+      }
+
+      console.warn(
+        '[auth-store] initial session recovery deferred:',
+        String(error?.code || error?.name || 'unknown'),
+      );
+      authState.status = 'loading';
+      return null;
     });
 
   return authState.initializationPromise;
@@ -417,8 +469,13 @@ export async function getCurrentSession() {
   } = await supabase.auth.getSession();
 
   if (error) {
-    console.error('[auth-store] getCurrentSession error:', error.message);
-    return authState.cachedSession || null;
+    const retainedSession = getRetainedAutoLoginSession(
+      authState.cachedSession,
+    );
+    if (retainedSession) return applySession(retainedSession);
+
+    authState.status = 'loading';
+    return null;
   }
   return applySession(session);
 }
@@ -433,8 +490,11 @@ export async function recoverAuthSession() {
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
-    console.warn('[auth-store] foreground session recovery failed:', error);
-    return previousSession || null;
+    console.warn(
+      '[auth-store] foreground session recovery failed:',
+      String(error?.code || error?.name || 'unknown'),
+    );
+    return applySession(getRetainedAutoLoginSession(previousSession));
   }
 
   const session = data?.session || null;
@@ -448,11 +508,16 @@ export async function recoverAuthSession() {
   if (refreshError) {
     console.warn(
       '[auth-store] foreground token refresh deferred:',
-      refreshError,
+      String(refreshError?.code || refreshError?.name || 'unknown'),
     );
+    const retainedSession = getRetainedAutoLoginSession(
+      previousSession || session,
+    );
+    if (retainedSession) return applySession(retainedSession);
+
     const { data: confirmedData, error: confirmError } =
       await supabase.auth.getSession();
-    if (confirmError) return previousSession || session;
+    if (confirmError) return applySession(null);
     return applySession(confirmedData?.session || null);
   }
 
@@ -677,18 +742,26 @@ export async function initAuthUI() {
           'USER_UPDATED',
         ].includes(event)
       ) {
-        applySession(session);
+        const nextSession =
+          event === 'INITIAL_SESSION' && !session?.user
+            ? getRetainedAutoLoginSession(authState.cachedSession)
+            : session;
+        applySession(nextSession);
       }
 
       if (event === 'SIGNED_OUT') {
-        queueMicrotask(() => {
+        window.setTimeout(() => {
           void supabase.auth
             .getSession()
             .then(({ data, error }) => {
               if (error) {
+                const retainedSession = getRetainedAutoLoginSession(
+                  authState.cachedSession,
+                );
+                if (retainedSession) applySession(retainedSession);
                 console.warn(
                   '[auth-store] signed-out confirmation deferred:',
-                  error,
+                  String(error?.code || error?.name || 'unknown'),
                 );
                 return;
               }
@@ -699,7 +772,7 @@ export async function initAuthUI() {
             .catch((error) => {
               console.error('[auth-store] signed-out UI update failed:', error);
             });
-        });
+        }, 0);
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
@@ -708,11 +781,11 @@ export async function initAuthUI() {
       }
 
       if (event !== 'SIGNED_OUT') {
-        queueMicrotask(() => {
+        window.setTimeout(() => {
           updateAuthUI().catch((err) => {
             console.error('[auth-store] updateAuthUI failed:', err);
           });
-        });
+        }, 0);
       }
     });
   }

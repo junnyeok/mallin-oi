@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/+esm';
 
 /**
  * ✅ 여기에 네 프로젝트 값 넣어
@@ -13,6 +13,16 @@ export const SUPABASE_AUTH_STORAGE_KEY = 'sb-tfztkeihdqkfzwpilyky-auth-token';
 const SUPABASE_SINGLETON_KEY = '__mallinSupabaseClient';
 
 const memoryStorage = new Map();
+const pendingRemovals = new Set();
+let storageWarningShown = false;
+
+function warnStorageFallback() {
+  if (storageWarningShown) return;
+  storageWarningShown = true;
+  console.warn(
+    '[supabase-client] persistent auth storage unavailable; using a temporary fallback',
+  );
+}
 
 function getLocalStorage() {
   try {
@@ -21,8 +31,8 @@ function getLocalStorage() {
     storage.setItem(testKey, '1');
     storage.removeItem(testKey);
     return storage;
-  } catch (error) {
-    console.warn('[supabase-client] localStorage unavailable:', error);
+  } catch {
+    warnStorageFallback();
     return null;
   }
 }
@@ -30,27 +40,75 @@ function getLocalStorage() {
 const authStorage = {
   getItem(key) {
     const storage = getLocalStorage();
-    return storage ? storage.getItem(key) : memoryStorage.get(key) || null;
+    if (!storage) {
+      return pendingRemovals.has(key) ? null : memoryStorage.get(key) || null;
+    }
+
+    try {
+      if (pendingRemovals.has(key)) {
+        storage.removeItem(key);
+        pendingRemovals.delete(key);
+        return null;
+      }
+
+      if (memoryStorage.has(key)) {
+        const value = memoryStorage.get(key);
+        storage.setItem(key, value);
+        memoryStorage.delete(key);
+        return value;
+      }
+
+      return storage.getItem(key);
+    } catch {
+      warnStorageFallback();
+      return pendingRemovals.has(key) ? null : memoryStorage.get(key) || null;
+    }
   },
   setItem(key, value) {
-    const storage = getLocalStorage();
-    if (storage) {
-      storage.setItem(key, value);
-      return;
-    }
-
     memoryStorage.set(key, value);
+    pendingRemovals.delete(key);
+
+    const storage = getLocalStorage();
+    if (!storage) return;
+
+    try {
+      storage.setItem(key, value);
+      memoryStorage.delete(key);
+    } catch {
+      warnStorageFallback();
+    }
   },
   removeItem(key) {
-    const storage = getLocalStorage();
-    if (storage) {
-      storage.removeItem(key);
-      return;
-    }
-
     memoryStorage.delete(key);
+    pendingRemovals.add(key);
+
+    const storage = getLocalStorage();
+    if (!storage) return;
+
+    try {
+      storage.removeItem(key);
+      pendingRemovals.delete(key);
+    } catch {
+      warnStorageFallback();
+    }
   },
 };
+
+export function readStoredAuthSession() {
+  try {
+    const raw = authStorage.getItem(SUPABASE_AUTH_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearStoredAuthSession() {
+  authStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+}
 
 function createSupabaseSingleton() {
   return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
