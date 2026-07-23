@@ -147,6 +147,12 @@ function isAllowed(group, calendarType) {
   return Boolean(group?.[`allow_${calendarType}`]);
 }
 
+function getAllowedGroups(groups, calendarType) {
+  return (Array.isArray(groups) ? groups : []).filter((group) =>
+    isAllowed(group, calendarType),
+  );
+}
+
 function makeAppHref(path) {
   return isCalendarAppMode() ? `${path}?app=calendar` : path;
 }
@@ -1069,7 +1075,7 @@ export async function initCalendarGroupBar({
     const selectedId = state.selectedGroup?.id || '';
     select.innerHTML = '<option value="">그룹 연동 OFF</option>';
 
-    state.groups.forEach((group) => {
+    getAllowedGroups(state.groups, calendarType).forEach((group) => {
       const option = document.createElement('option');
       option.value = group.id;
       option.textContent = group.name;
@@ -1146,8 +1152,10 @@ export async function initCalendarGroupBar({
     const groups = await rpc('get_my_calendar_groups');
     state.groups = groups || [];
     const selectedId = getSelectedGroupId();
-    state.selectedGroup =
-      state.groups.find((group) => group.id === selectedId) || null;
+    // 선택 키는 세 캘린더가 공유하므로 저장값은 보존하고,
+    // 현재 캘린더에서 허용되는 그룹만 이 화면의 선택으로 복원한다.
+    state.selectedGroup = getAllowedGroups(state.groups, calendarType)
+      .find((group) => group.id === selectedId) || null;
 
     renderSelect();
     await loadGroupEvents();
@@ -1155,8 +1163,9 @@ export async function initCalendarGroupBar({
 
   select.addEventListener('change', async () => {
     const groupId = select.value;
-    state.selectedGroup = state.groups.find((group) => group.id === groupId) || null;
-    setSelectedGroupId(groupId);
+    state.selectedGroup = getAllowedGroups(state.groups, calendarType)
+      .find((group) => group.id === groupId) || null;
+    setSelectedGroupId(state.selectedGroup?.id || '');
     state.backupCheckId += 1;
     state.backupChecking = false;
     setBackupNeeded(false);
