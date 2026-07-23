@@ -8,8 +8,20 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
-import { initCalendarCopyPaste } from './calendar-group-copy-paste.js';
 import { openCalendarManagePopup } from './service-menu.js';
+
+let calendarCopyPasteModulePromise = null;
+
+function loadCalendarCopyPasteModule() {
+  if (!calendarCopyPasteModulePromise) {
+    const moduleUrl = new URL('./calendar-group-copy-paste.js', import.meta.url);
+    const siteVersion = String(window.__SITE_VERSION__ || 'dev').trim();
+    moduleUrl.searchParams.set('v', siteVersion);
+    calendarCopyPasteModulePromise = import(moduleUrl.href);
+  }
+
+  return calendarCopyPasteModulePromise;
+}
 
 const CALENDAR_MODES = Object.freeze({ PERSONAL: 'personal', SHARED_GROUP: 'shared-group' });
 const getCalendarMode = (group) => group?.id ? CALENDAR_MODES.SHARED_GROUP : CALENDAR_MODES.PERSONAL;
@@ -907,14 +919,17 @@ export async function initCalendarGroupBar({
   bar.setAttribute('aria-label', '캘린더 그룹 연동');
   const panelId = `${calendarType}CalendarGroupPanel`;
   bar.innerHTML = `
-    <button
-      class="calendar-group-bar__toggle"
-      type="button"
-      aria-expanded="false"
-      aria-controls="${panelId}"
-    >
-      그룹 설정
-    </button>
+    <div class="calendar-group-bar__actions">
+      <button
+        class="calendar-group-bar__toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="${panelId}"
+      >
+        그룹 설정
+      </button>
+      <a class="calendar-group-bar__list" href="${makeAppHref('./calendar-groups.html')}">그룹 목록</a>
+    </div>
     <div class="calendar-group-bar__panel" id="${panelId}" hidden>
     <div class="calendar-group-bar__main">
       <label class="calendar-group-bar__field">
@@ -923,7 +938,6 @@ export async function initCalendarGroupBar({
           <option value="">그룹 연동 OFF</option>
         </select>
       </label>
-      <a class="calendar-group-bar__manage" href="${makeAppHref('./calendar-groups.html')}">그룹 관리</a>
       <button class="calendar-group-bar__backup" type="button">백업</button>
       <button class="calendar-group-bar__close" type="button">닫기</button>
     </div>
@@ -932,6 +946,7 @@ export async function initCalendarGroupBar({
     </div>
     </div>
   `;
+  const { initCalendarCopyPaste } = await loadCalendarCopyPasteModule();
   const copyPaste = initCalendarCopyPaste({ bar, calendarType });
 
   if (head) {

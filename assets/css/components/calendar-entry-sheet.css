@@ -622,11 +622,11 @@ body.theme-work[data-page='calendar-work']
   }
 
   .study-calendar-page__head .calendar-group-bar__toggle,
-  .study-calendar-page__head .calendar-group-bar__copy-paste,
+  .study-calendar-page__head .calendar-group-bar__list,
   .work-calendar-page__head .calendar-group-bar__toggle,
-  .work-calendar-page__head .calendar-group-bar__copy-paste,
+  .work-calendar-page__head .calendar-group-bar__list,
   .event-calendar-page__head .calendar-group-bar__toggle,
-  .event-calendar-page__head .calendar-group-bar__copy-paste,
+  .event-calendar-page__head .calendar-group-bar__list,
   .work-calendar-page__head > .work-repeat .work-repeat__trigger {
     min-height: 40px;
     padding-inline: var(--space-12);

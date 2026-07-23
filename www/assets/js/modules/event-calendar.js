@@ -8,12 +8,6 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import {
-  appendCalendarGroupBoard,
-  getVisiblePersonalTodos,
-  initCalendarGroupBar,
-  isCalendarGroupActive,
-} from './calendar-groups.js';
-import {
   createSharedPersonalControls,
   fetchSharedPersonalGroups,
   getCalendarLabel,
@@ -25,6 +19,27 @@ import {
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
+
+let appendCalendarGroupBoard;
+let getVisiblePersonalTodos;
+let initCalendarGroupBar;
+let isCalendarGroupActive;
+let calendarGroupsModulePromise = null;
+
+async function loadCalendarGroupsModule() {
+  if (!calendarGroupsModulePromise) {
+    const moduleUrl = new URL('./calendar-groups.js', import.meta.url);
+    const siteVersion = String(window.__SITE_VERSION__ || 'dev').trim();
+    moduleUrl.searchParams.set('v', siteVersion);
+    calendarGroupsModulePromise = import(moduleUrl.href);
+  }
+
+  const module = await calendarGroupsModulePromise;
+  appendCalendarGroupBoard = module.appendCalendarGroupBoard;
+  getVisiblePersonalTodos = module.getVisiblePersonalTodos;
+  initCalendarGroupBar = module.initCalendarGroupBar;
+  isCalendarGroupActive = module.isCalendarGroupActive;
+}
 
 const TABLE_NAME = 'event_calendar_todos';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -2224,6 +2239,7 @@ export async function initEventCalendar() {
   bindPreviewLinkLoginGuard();
 
   try {
+    await loadCalendarGroupsModule();
     await renderPreviewCalendar();
     await initPageCalendar();
   } catch (error) {

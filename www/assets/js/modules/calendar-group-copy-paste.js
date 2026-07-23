@@ -37,13 +37,12 @@ function makeDialog() {
 }
 
 export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
-  const toggle = bar?.querySelector('.calendar-group-bar__toggle');
-  if (!toggle) return null;
-  toggle.textContent = '그룹 설정';
+  const backupButton = bar?.querySelector('.calendar-group-bar__backup');
+  if (!backupButton) return null;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'calendar-group-bar__copy-paste';
-  toggle.insertAdjacentElement('afterend', button);
+  backupButton.insertAdjacentElement('beforebegin', button);
   let selectedGroup = null;
 
   function render() {
