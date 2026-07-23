@@ -1740,8 +1740,9 @@ async function initPageCalendar() {
         : startDate
       : startDate;
     const startTime = normalizeEventTime(isEdit ? todo.eventTime : '00:00');
-    const endTime =
-      normalizeOptionalEventTime(isEdit ? todo.eventEndTime : '') || startTime;
+    const endTime = normalizeOptionalEventTime(
+      isEdit ? todo.eventEndTime : '',
+    );
     const splitDateTime = (value, fallbackDate, fallbackTime) => {
       const [datePart, timePart = fallbackTime] = String(value || '').split('T');
       return {
@@ -1781,7 +1782,12 @@ async function initPageCalendar() {
           key: 'eventEnd',
           label: '종료',
           type: 'datetime-local',
-          value: `${endDate}T${endTime}`,
+          value: endTime ? `${endDate}T${endTime}` : '',
+          optional: true,
+          optionalLabel: '종료시간 지정',
+          clearLabel: '취소',
+          getDefaultValue: ({ getValue }) =>
+            getValue('eventStart') || `${startDate}T${startTime}`,
         },
         { key: 'memo', label: '메모', type: 'textarea', value: isEdit ? todo.memo || '' : '' },
       ],
@@ -1791,7 +1797,10 @@ async function initPageCalendar() {
           category ||
           getFallbackCategory(state.categories);
         const nextStart = splitDateTime(values.eventStart, startDate, startTime);
-        const nextEnd = splitDateTime(values.eventEnd, nextStart.date, nextStart.time);
+        const rawEnd = String(values.eventEnd || '').trim();
+        const nextEnd = rawEnd
+          ? splitDateTime(rawEnd, nextStart.date, nextStart.time)
+          : { date: nextStart.date, time: '' };
         const nextText = String(values.title || '').trim();
         const dateKeys = getDateRangeKeys(nextStart.date, nextEnd.date);
 

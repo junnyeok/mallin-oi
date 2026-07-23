@@ -445,10 +445,11 @@ export function openCalendarDetailSheet({
   fields
     .filter((field) => field.key !== 'title')
     .forEach((field) => {
-      const row = document.createElement('label');
+      const isOptional = !isReadonly && Boolean(field.optional);
+      const row = document.createElement(isOptional ? 'div' : 'label');
       row.className = 'calendar-entry-sheet__field';
 
-      const label = document.createElement('span');
+      const label = document.createElement(isOptional ? 'label' : 'span');
       label.className = 'calendar-entry-sheet__label';
       label.textContent = field.label;
 
@@ -480,7 +481,82 @@ export function openCalendarDetailSheet({
         field.input = control;
       }
 
-      if (!isReadonly && field.type === 'select' && field.onSettings) {
+      if (isOptional) {
+        row.classList.add('calendar-entry-sheet__optional-row');
+
+        const optionalValue = document.createElement('div');
+        optionalValue.className = 'calendar-entry-sheet__optional-value';
+
+        const enableButton = document.createElement('button');
+        enableButton.type = 'button';
+        enableButton.className = 'calendar-entry-sheet__optional-enable';
+        enableButton.textContent = field.optionalLabel || '지정';
+
+        const optionalControl = document.createElement('div');
+        optionalControl.className = 'calendar-entry-sheet__optional-control';
+        optionalControl.id = makeId('calendarEntrySheetOptional');
+
+        const clearButton = document.createElement('button');
+        clearButton.type = 'button';
+        clearButton.className = 'calendar-entry-sheet__optional-clear';
+        clearButton.textContent = field.clearLabel || '취소';
+        clearButton.setAttribute(
+          'aria-label',
+          field.clearAriaLabel || `${field.label} 지정 취소`,
+        );
+
+        control.id = control.id || makeId('calendarEntrySheetField');
+        label.htmlFor = control.id;
+        enableButton.setAttribute('aria-controls', optionalControl.id);
+
+        function getFieldValue(key) {
+          const targetField = fields.find((item) => item.key === key);
+          return targetField?.input
+            ? targetField.input.value
+            : targetField?.value || '';
+        }
+
+        function setOptionalEnabled(isEnabled, { focus = false } = {}) {
+          const enabled = Boolean(isEnabled);
+          enableButton.hidden = enabled;
+          optionalControl.hidden = !enabled;
+          enableButton.setAttribute('aria-expanded', String(enabled));
+
+          if (enabled) {
+            if (!control.value) {
+              const defaultValue =
+                typeof field.getDefaultValue === 'function'
+                  ? field.getDefaultValue({
+                      field,
+                      fields,
+                      getValue: getFieldValue,
+                    })
+                  : field.defaultValue;
+              control.value = String(defaultValue || '');
+            }
+
+            if (focus) control.focus();
+            return;
+          }
+
+          control.value = '';
+          if (focus) enableButton.focus();
+        }
+
+        enableButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          setOptionalEnabled(true, { focus: true });
+        });
+        clearButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          setOptionalEnabled(false, { focus: true });
+        });
+
+        optionalControl.append(control, clearButton);
+        optionalValue.append(enableButton, optionalControl);
+        row.append(label, optionalValue);
+        setOptionalEnabled(Boolean(control.value));
+      } else if (!isReadonly && field.type === 'select' && field.onSettings) {
         row.classList.add('calendar-entry-sheet__category-field');
 
         const actions = document.createElement('div');
