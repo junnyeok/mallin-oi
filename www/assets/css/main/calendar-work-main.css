@@ -1055,6 +1055,18 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
 }
 
 @media (max-width: 640px) {
+  .work-calendar-page .container {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .work-calendar-layout {
+    width: calc(100% + var(--space-8));
+    margin-right: calc(0px - var(--space-4));
+    margin-left: calc(0px - var(--space-4));
+    gap: var(--space-12);
+  }
+
   .work-calendar-preview__head {
     flex-direction: column;
     align-items: flex-start;
@@ -1118,6 +1130,15 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   .work-calendar-main-panel,
   .work-calendar-todo-panel {
     padding: var(--space-4);
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .work-calendar-todo-panel {
+    border-top: 0;
   }
 
   .work-calendar-toolbar {
@@ -1188,8 +1209,17 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
     width: 100%;
   }
 
+  .work-todo-list {
+    gap: 0;
+  }
+
   .work-todo-item {
-    padding: var(--space-8);
+    padding: var(--space-12);
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .work-todo-item__top {
@@ -1439,13 +1469,6 @@ body.theme-work[data-page='calendar-work'] .work-calendar-day--today {
     line-height: 1.2;
     padding-top: 2px;
     padding-bottom: 2px;
-  }
-}
-
-@media (max-width: 640px) {
-  .work-calendar-page .container {
-    padding-right: var(--space-4);
-    padding-left: var(--space-4);
   }
 }
 

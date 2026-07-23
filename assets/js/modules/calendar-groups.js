@@ -831,8 +831,7 @@ export function appendCalendarGroupBoard(
       personalEventsByDateAndUser,
       sharedEventsByDate,
     } = collectWeekScheduleRows(week, groupState);
-
-    if (!hasSharedEvents && members.length === 0) return;
+    const isEmptyWeek = !hasSharedEvents && members.length === 0;
 
     const weekEl = document.createElement('section');
     weekEl.className = 'calendar-group-schedule__week';
@@ -857,7 +856,7 @@ export function appendCalendarGroupBoard(
 
     weekEl.append(header);
 
-    if (hasSharedEvents) {
+    if (hasSharedEvents || isEmptyWeek) {
       appendScheduleRow({
         weekEl,
         week,
