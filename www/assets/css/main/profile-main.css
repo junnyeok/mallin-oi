@@ -733,17 +733,17 @@ button.profile-character-card:hover {
 
   .profile-character-grid--characters,
   .profile-character-grid--skins {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .profile-character-card__thumb {
-    width: 72px;
-    height: 72px;
+    width: 56px;
+    height: 56px;
   }
 }
 
 .profile-character-grid--bgm {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .profile-bgm-card__thumb {
@@ -922,7 +922,7 @@ button.profile-character-card:hover {
 
 @media (max-width: 700px) {
   .profile-character-grid--bgm {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .profile-featured-bgm-wrap {
