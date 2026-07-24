@@ -27997,3 +27997,73 @@ is '내 알림을 원본 댓글·답글 본문과 현재 프로필 닉네임으�
 notify pgrst, 'reload schema';
 
 commit;
+
+-- =========================================================
+-- 2026-07-24 상점 구매 테스트 전용 잔액 우회 권한
+-- - 지정 테스트 계정만 피클 부족 시 차감 없이 구매할 수 있다.
+-- - 클라이언트에는 권한 테이블 접근 권한을 부여하지 않는다.
+-- - 상점 구매 함수는 auth.uid()와 이 테이블의 사용자 UUID만 대조한다.
+-- =========================================================
+
+begin;
+
+create table if not exists public.store_purchase_test_permissions (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  can_bypass_store_balance boolean not null default false,
+  granted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.store_purchase_test_permissions
+is '상점 구매 시 피클 부족 검사를 우회할 수 있는 최소 범위 테스트 권한';
+
+comment on column public.store_purchase_test_permissions.can_bypass_store_balance
+is '피클이 부족할 때 잔액 차감 없이 상점 소유권 지급을 허용하는 테스트 권한';
+
+alter table public.store_purchase_test_permissions enable row level security;
+
+revoke all on table public.store_purchase_test_permissions
+from public, anon, authenticated;
+
+do $grant_store_purchase_test_permission$
+declare
+  v_target_user_id uuid;
+  v_target_count integer := 0;
+begin
+  select
+    count(*)::integer,
+    max(u.id::text)::uuid
+    into v_target_count, v_target_user_id
+  from auth.users u
+  where lower(coalesce(u.email, '')) = lower('junna96@kakao.com');
+
+  if v_target_count <> 1 or v_target_user_id is null then
+    raise exception
+      'STORE_PURCHASE_TEST_ACCOUNT_NOT_FOUND_OR_NOT_UNIQUE';
+  end if;
+
+  update public.store_purchase_test_permissions permission
+  set can_bypass_store_balance = false,
+      updated_at = now()
+  where permission.user_id <> v_target_user_id
+    and permission.can_bypass_store_balance = true;
+
+  insert into public.store_purchase_test_permissions (
+    user_id,
+    can_bypass_store_balance,
+    granted_at,
+    updated_at
+  )
+  values (
+    v_target_user_id,
+    true,
+    now(),
+    now()
+  )
+  on conflict (user_id) do update
+  set can_bypass_store_balance = excluded.can_bypass_store_balance,
+      updated_at = excluded.updated_at;
+end;
+$grant_store_purchase_test_permission$;
+
+commit;

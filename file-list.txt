@@ -945,3 +945,11 @@
 ./www/assets/js/modules/character-effects.js
 ./android/app/src/main/assets/public/assets/js/modules/character-effects.js
 ./ios/App/App/public/assets/js/modules/character-effects.js
+./images/characters/tomato.png
+./images/characters/brocolli.png
+./www/images/characters/tomato.png
+./www/images/characters/brocolli.png
+./android/app/src/main/assets/public/images/characters/tomato.png
+./android/app/src/main/assets/public/images/characters/brocolli.png
+./ios/App/App/public/images/characters/tomato.png
+./ios/App/App/public/images/characters/brocolli.png

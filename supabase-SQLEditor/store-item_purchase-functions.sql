@@ -1,3 +1,13 @@
+begin;
+
+do $require_store_purchase_test_permissions$
+begin
+  if to_regclass('public.store_purchase_test_permissions') is null then
+    raise exception 'STORE_PURCHASE_TEST_PERMISSION_TABLE_REQUIRED';
+  end if;
+end;
+$require_store_purchase_test_permissions$;
+
 create or replace function public.purchase_store_item(p_item_id text)
 returns table(success boolean, message text, balance integer)
 language plpgsql
@@ -14,6 +24,9 @@ declare
   v_exists boolean := false;
   v_balance integer := 0;
   v_is_auto_topup_admin boolean := false;
+  v_can_bypass_store_balance boolean := false;
+  v_balance_bypass_used boolean := false;
+  v_charged_amount integer := 0;
 begin
   if v_user_id is null then
     return query
@@ -54,6 +67,16 @@ begin
   elsif p_item_id = 'character-carrot-01' then
     v_price := 530;
     v_name := '테토당근 캐릭터';
+    v_category := 'character';
+
+  elsif p_item_id = 'character-tomato-01' then
+    v_price := 543;
+    v_name := '방울토마토리토';
+    v_category := 'character';
+
+  elsif p_item_id = 'character-brocolli-01' then
+    v_price := 682;
+    v_name := '브로콜리 알바생';
     v_category := 'character';
 
   elsif p_item_id = 'emo-heart-01' then
@@ -226,6 +249,17 @@ begin
     return;
   end if;
 
+  perform 1
+  from public.profiles p
+  where p.id = v_user_id
+  for update;
+
+  if not found then
+    return query
+    select false, '프로필을 찾을 수 없어.', 0;
+    return;
+  end if;
+
   if v_category = 'skin'
      and coalesce(trim(v_required_character_code), '') <> ''
      and v_required_character_code <> 'char-cucumber'
@@ -244,7 +278,7 @@ begin
     return;
   end if;
 
-    v_exists := exists (
+  v_exists := exists (
     select 1
     from public.user_store_items
     where user_id = v_user_id
@@ -261,16 +295,25 @@ begin
   end if;
 
   if v_price > 0 then
-    v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
+    v_can_bypass_store_balance := exists (
+      select 1
+      from public.store_purchase_test_permissions permission
+      where permission.user_id = v_user_id
+        and permission.can_bypass_store_balance = true
+    );
 
-    if coalesce(v_is_auto_topup_admin, false) then
-      perform public.ensure_user_pickles(
-        v_user_id,
-        v_price,
-        'admin_auto_charge',
-        '관리자 자동충전',
-        v_name || ' 구매 전 부족 피클 자동충전'
-      );
+    if not v_can_bypass_store_balance then
+      v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
+
+      if coalesce(v_is_auto_topup_admin, false) then
+        perform public.ensure_user_pickles(
+          v_user_id,
+          v_price,
+          'admin_auto_charge',
+          '관리자 자동충전',
+          v_name || ' 구매 전 부족 피클 자동충전'
+        );
+      end if;
     end if;
 
     update public.profiles
@@ -279,7 +322,11 @@ begin
     where id = v_user_id
       and coalesce(pickles, 0) >= v_price;
 
-    if not found then
+    if found then
+      v_charged_amount := v_price;
+    elsif v_can_bypass_store_balance then
+      v_balance_bypass_used := true;
+    else
       return query
       select
         false,
@@ -301,7 +348,7 @@ begin
     p_item_id,
     v_name,
     v_category,
-    v_price
+    v_charged_amount
   );
 
   if p_item_id = 'emo-basic-01' then
@@ -445,6 +492,64 @@ begin
       '테토당근',
       './images/characters/teto-carrot.png',
       201,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'character-tomato-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-tomato',
+      '방울토마토리토',
+      './images/characters/tomato.png',
+      './images/characters/tomato.png',
+      8,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-tomato',
+      'char-tomato-basic',
+      '방울토마토리토',
+      './images/characters/tomato.png',
+      701,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'character-brocolli-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-brocolli',
+      '브로콜리 알바생',
+      './images/characters/brocolli.png',
+      './images/characters/brocolli.png',
+      9,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-brocolli',
+      'char-brocolli-basic',
+      '브로콜리 알바생',
+      './images/characters/brocolli.png',
+      801,
       'store_purchase'
     )
     on conflict (user_id, skin_code) do nothing;
@@ -848,10 +953,18 @@ begin
     )
     values (
       v_user_id,
-      -v_price,
+      -v_charged_amount,
       'store_purchase',
-      '상점 구매',
-      v_name || ' 구매',
+      case
+        when v_balance_bypass_used then '테스트 상점 구매'
+        else '상점 구매'
+      end,
+      case
+        when v_balance_bypass_used then
+          v_name || ' (' || p_item_id || ') 피클 차감 없는 테스트 구매'
+        else
+          v_name || ' 구매'
+      end,
       public.seoul_today()
     );
   end if;
@@ -866,6 +979,8 @@ begin
   select
     true,
     case
+      when v_balance_bypass_used
+        then v_name || ' 테스트 구매가 완료됐어. 피클 차감 없이 상품이 지급됐어.'
       when p_item_id = 'emo-basic-01'
         then '기본 이모티콘팩이 지급됐어. 이제 게시물/댓글/답글에서 사용할 수 있어.'
       when p_item_id = 'emo-cheer-01'
@@ -880,6 +995,10 @@ begin
         then '특별제작 당근 이모티콘팩 구매가 완료됐어. 310피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'character-carrot-01'
         then '테토당근 캐릭터 구매가 완료됐어. 530피클이 차감됐고 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'character-tomato-01'
+        then '방울토마토리토 구매가 완료됐어. 543피클이 차감됐고 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'character-brocolli-01'
+        then '브로콜리 알바생 구매가 완료됐어. 682피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'emo-heart-01'
         then '애정오이 이모티콘팩 구매가 완료됐어. 300피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-cucumbergirl'
@@ -944,6 +1063,7 @@ begin
 end;
 $$;
 
+revoke all on function public.purchase_store_item(text) from public, anon;
 grant execute on function public.purchase_store_item(text) to authenticated;
 
 update public.profiles p
@@ -959,7 +1079,9 @@ where coalesce(trim(p.equipped_character_image_url), '') in (
   './images/characters/fat-avocado.png',
   './images/characters/teto-carrot.png',
   './images/characters/eggpotato.png',
-  './images/characters/cucumbergirl.png'
+  './images/characters/cucumbergirl.png',
+  './images/characters/tomato.png',
+  './images/characters/brocolli.png'
 )
 and not exists (
   select 1
@@ -1023,3 +1145,5 @@ before insert or update of equipped_character_image_url
 on public.profiles
 for each row
 execute function public.enforce_equipped_character_ownership();
+
+commit;

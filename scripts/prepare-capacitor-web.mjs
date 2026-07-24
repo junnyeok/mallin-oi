@@ -34,6 +34,10 @@ const filesToCopyIfExists = [
 ];
 
 const dirsToCopy = ['assets', 'images', 'partials'];
+const nativeCharacterImageFiles = [
+  'images/characters/tomato.png',
+  'images/characters/brocolli.png',
+];
 const requiredAssetDirs = [
   'assets/js/modules',
   'assets/css/components',
@@ -184,6 +188,7 @@ function assertRequiredFiles() {
     'assets/js/modules/calendar-widget-data.js',
     'assets/css/components/refresh-control.css',
     'assets/css/main/app-calendar-main.css',
+    ...nativeCharacterImageFiles,
     ...getMainModuleImports(),
   ];
 
@@ -250,6 +255,7 @@ function assertPreparedOutput() {
     'images/favicon-32x32.png',
     'images/favicon.ico',
     'site.webmanifest',
+    ...nativeCharacterImageFiles,
     ...listFilesByExtension('assets/js/modules', '.js'),
     ...listFilesByExtension('assets/css/components', '.css'),
     ...listFilesByExtension('assets/css/main', '.css'),
@@ -281,6 +287,7 @@ dirsToCopy.forEach((relativePath) => {
 
   copyDirRecursive(relativePath, src, dest);
 });
+nativeCharacterImageFiles.forEach(copyFile);
 copyRequiredAssetDirs();
 
 assertPreparedOutput();

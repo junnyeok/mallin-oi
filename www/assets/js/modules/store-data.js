@@ -657,6 +657,50 @@ export function getProfileFrameByItemId(itemId = '') {
 
 export const STORE_ITEMS = [
   {
+    id: 'character-tomato-01',
+    name: '방울토마토리토',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🍅',
+    thumbImagePath: withAssetVersion('./images/characters/tomato.png'),
+    price: 543,
+    state: '판매 중',
+    description: '레게를 좋아하는 멕시코 토마토 아저씨야.',
+    detailDescription:
+      '이태원에서 케밥 장사를 하고 있어.<br>(구매하면 내 프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.)',
+    previewImages: [
+      {
+        code: 'character-tomato-01-preview',
+        label: '방울토마토리토 미리보기',
+        imagePath: withAssetVersion('./images/characters/tomato.png'),
+        displayOrder: 1,
+      },
+    ],
+    isPurchasable: true,
+  },
+  {
+    id: 'character-brocolli-01',
+    name: '브로콜리 알바생',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🥦',
+    thumbImagePath: withAssetVersion('./images/characters/brocolli.png'),
+    price: 682,
+    state: '판매 중',
+    description: '까칠한 브로콜리 알바생이야.',
+    detailDescription:
+      '힙합을 준비하는 래퍼 지망생이야. 낮에는 편의점 알바, 밤에는 곡 작업을 하고 있어.<br>(구매하면 내 프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.)',
+    previewImages: [
+      {
+        code: 'character-brocolli-01-preview',
+        label: '브로콜리 알바생 미리보기',
+        imagePath: withAssetVersion('./images/characters/brocolli.png'),
+        displayOrder: 1,
+      },
+    ],
+    isPurchasable: true,
+  },
+  {
     id: 'emo_cucumbergirl_01',
     name: '오이소녀 이모티콘팩',
     category: 'emoticon',
@@ -1322,6 +1366,22 @@ export const CHARACTER_CATALOG = [
     display_order: 7,
     store_item_id: 'character-eggpotato-01',
   },
+  {
+    character_code: 'char-tomato',
+    character_name: '방울토마토리토',
+    base_image_path: withAssetVersion('./images/characters/tomato.png'),
+    preview_image_path: withAssetVersion('./images/characters/tomato.png'),
+    display_order: 8,
+    store_item_id: 'character-tomato-01',
+  },
+  {
+    character_code: 'char-brocolli',
+    character_name: '브로콜리 알바생',
+    base_image_path: withAssetVersion('./images/characters/brocolli.png'),
+    preview_image_path: withAssetVersion('./images/characters/brocolli.png'),
+    display_order: 9,
+    store_item_id: 'character-brocolli-01',
+  },
 ];
 
 export const CHARACTER_SKIN_CATALOG = [
@@ -1444,6 +1504,22 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/skins/eggpotato-police.png'),
     display_order: 603,
     store_item_id: 'skin-eggpotato-02',
+  },
+  {
+    character_code: 'char-tomato',
+    skin_code: 'char-tomato-basic',
+    skin_name: '방울토마토리토',
+    image_path: withAssetVersion('./images/characters/tomato.png'),
+    display_order: 701,
+    store_item_id: 'character-tomato-01',
+  },
+  {
+    character_code: 'char-brocolli',
+    skin_code: 'char-brocolli-basic',
+    skin_name: '브로콜리 알바생',
+    image_path: withAssetVersion('./images/characters/brocolli.png'),
+    display_order: 801,
+    store_item_id: 'character-brocolli-01',
   },
 ];
 
