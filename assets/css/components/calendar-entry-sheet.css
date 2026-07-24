@@ -87,6 +87,7 @@ body.calendar-entry-sheet-open {
   background: var(--color-primary);
   color: var(--color-surface);
   font-size: var(--text-small);
+  white-space: nowrap;
 }
 
 .calendar-entry-sheet__close:hover,
