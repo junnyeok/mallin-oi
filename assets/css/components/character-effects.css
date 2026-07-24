@@ -3,12 +3,14 @@
 ========================= */
 
 .character-effect-wrap {
-  --character-effect-x: 0px;
-  --character-effect-y: 4%;
-  --character-effect-width: 46%;
-  --character-effect-z: 20;
-  --character-effect-origin: 50% 100%;
-  --character-effect-transform: translate(-50%, -100%);
+  --character-effect-motion-from-y: 4px;
+  --character-effect-motion-to-y: -4px;
+  --character-effect-motion-from-scale: 0.96;
+  --character-effect-motion-to-scale: 1;
+  --character-effect-motion-from-opacity: 0.25;
+  --character-effect-motion-to-opacity: 1;
+  --character-effect-motion-duration: 2.4s;
+  --character-effect-motion-easing: ease-in-out;
 
   position: relative;
   display: inline-grid;
@@ -30,6 +32,25 @@
 }
 
 .character-effect-layer {
+  --character-effect-x: var(--character-effect-default-x, 0px);
+  --character-effect-y: var(--character-effect-default-y, 4%);
+  --character-effect-width: var(--character-effect-default-width, 46%);
+  --character-effect-z: var(--character-effect-default-z, 20);
+  --character-effect-origin: var(
+    --character-effect-default-origin,
+    50% 100%
+  );
+  --character-effect-anchor-x: -50%;
+  --character-effect-anchor-y: -100%;
+  --character-effect-rotation: var(
+    --character-effect-default-rotation,
+    0deg
+  );
+  --character-effect-aspect-ratio: var(
+    --character-effect-default-aspect-ratio,
+    auto
+  );
+
   position: absolute;
   left: calc(50% + var(--character-effect-x));
   top: var(--character-effect-y);
@@ -37,56 +58,82 @@
   pointer-events: none;
   user-select: none;
   z-index: var(--character-effect-z);
-  opacity: 0.25;
-  transform: var(--character-effect-transform) translateY(4px);
+  aspect-ratio: var(--character-effect-aspect-ratio);
+  transform: translate(
+      var(--character-effect-anchor-x),
+      var(--character-effect-anchor-y)
+    )
+    rotate(var(--character-effect-rotation));
   transform-origin: var(--character-effect-origin);
-  animation: characterEffectFloat 2.4s ease-in-out infinite;
+}
+
+.character-effect-wrap[data-character-effect-ready='false']
+  > .character-effect-layer {
+  visibility: hidden;
 }
 
 .character-effect-layer[data-character-effect-placement='overhead'] {
   left: calc(50% + var(--character-effect-x));
   top: var(--character-effect-y);
-  --character-effect-transform: translate(-50%, -100%);
+  --character-effect-anchor-x: -50%;
+  --character-effect-anchor-y: -100%;
   transform-origin: var(--character-effect-origin);
 }
 
 .character-effect-layer[data-character-effect-placement='behind'],
 .character-effect-layer[data-character-effect-placement='aura-back'] {
-  --character-effect-width: 118%;
-  --character-effect-z: 0;
+  --character-effect-width: var(--character-effect-default-width, 118%);
+  --character-effect-z: var(--character-effect-default-z, 0);
 
   left: calc(50% + var(--character-effect-x));
   top: calc(50% + var(--character-effect-y));
-  --character-effect-transform: translate(-50%, -50%);
+  --character-effect-anchor-x: -50%;
+  --character-effect-anchor-y: -50%;
   transform-origin: 50% 50%;
 }
 
 .character-effect-layer[data-character-effect-placement='front-small'] {
-  --character-effect-width: 34%;
-  --character-effect-z: 30;
+  --character-effect-width: var(--character-effect-default-width, 34%);
+  --character-effect-z: var(--character-effect-default-z, 30);
 
   left: calc(50% + var(--character-effect-x));
   top: calc(58% + var(--character-effect-y));
-  --character-effect-transform: translate(-50%, -50%);
+  --character-effect-anchor-x: -50%;
+  --character-effect-anchor-y: -50%;
   transform-origin: 50% 50%;
 }
 
 .character-effect-layer[data-character-effect-placement='side-left'] {
-  --character-effect-width: 42%;
+  --character-effect-width: var(--character-effect-default-width, 42%);
 
   left: calc(0px + var(--character-effect-x));
   top: calc(42% + var(--character-effect-y));
-  --character-effect-transform: translate(-70%, -50%);
+  --character-effect-anchor-x: -70%;
+  --character-effect-anchor-y: -50%;
   transform-origin: 100% 50%;
 }
 
 .character-effect-layer[data-character-effect-placement='side-right'] {
-  --character-effect-width: 42%;
+  --character-effect-width: var(--character-effect-default-width, 42%);
 
   left: calc(100% + var(--character-effect-x));
   top: calc(42% + var(--character-effect-y));
-  --character-effect-transform: translate(-30%, -50%);
+  --character-effect-anchor-x: -30%;
+  --character-effect-anchor-y: -50%;
   transform-origin: 0 50%;
+}
+
+.character-effect-motion {
+  display: block;
+  width: 100%;
+  opacity: var(--character-effect-motion-to-opacity);
+  transform-origin: inherit;
+}
+
+.character-effect-motion[data-character-effect-animation='float'] {
+  will-change: transform, opacity;
+  animation: characterEffectFloat var(--character-effect-motion-duration)
+    var(--character-effect-motion-easing) infinite;
 }
 
 .character-effect-img {
@@ -99,72 +146,31 @@
   filter: drop-shadow(0 4px 8px rgba(134, 198, 36, 0.22));
 }
 
-.character-effect-layer[data-character-effect-id='cha-effects-cucumberheart-01'] {
-  --character-effect-x: var(
-    --cucumber-heart-x,
-    var(--character-effect-default-x, 0px)
-  );
-  --character-effect-y: var(
-    --cucumber-heart-y,
-    var(--character-effect-default-y, 4%)
-  );
-  --character-effect-width: var(
-    --cucumber-heart-width,
-    var(--character-effect-default-width, 46%)
-  );
-  --character-effect-z: var(--character-effect-default-z, 20);
-  --character-effect-origin: var(
-    --character-effect-default-origin,
-    50% 100%
-  );
-}
-
-.profile-character-effect-anchor {
-  --cucumber-heart-x: 0%;
-  --cucumber-heart-y: -4%;
-  --cucumber-heart-width: 46%;
-}
-
-.inventory-character-effect-anchor {
-  --cucumber-heart-x: 0%;
-  --cucumber-heart-y: -3%;
-  --cucumber-heart-width: 46%;
-}
-
-.post-author__character-effect-wrap {
-  --cucumber-heart-x: -6%;
-  --cucumber-heart-y: 2%;
-  --cucumber-heart-width: 46%;
-}
-
-.comment-author-character-effect-wrap {
-  --cucumber-heart-x: -8%;
-  --cucumber-heart-y: 0%;
-  --cucumber-heart-width: 46%;
-}
-
 @keyframes characterEffectFloat {
   0% {
-    opacity: 0.25;
-    transform: var(--character-effect-transform) translateY(4px) scale(0.96);
+    opacity: var(--character-effect-motion-from-opacity);
+    transform: translateY(var(--character-effect-motion-from-y))
+      scale(var(--character-effect-motion-from-scale));
   }
 
   50% {
-    opacity: 1;
-    transform: var(--character-effect-transform) translateY(-4px) scale(1);
+    opacity: var(--character-effect-motion-to-opacity);
+    transform: translateY(var(--character-effect-motion-to-y))
+      scale(var(--character-effect-motion-to-scale));
   }
 
   100% {
-    opacity: 0.25;
-    transform: var(--character-effect-transform) translateY(4px) scale(0.96);
+    opacity: var(--character-effect-motion-from-opacity);
+    transform: translateY(var(--character-effect-motion-from-y))
+      scale(var(--character-effect-motion-from-scale));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .character-effect-layer {
+  .character-effect-motion[data-character-effect-animation] {
     animation: none;
     opacity: 0.8;
-    transform: var(--character-effect-transform);
+    transform: none;
   }
 }
 
@@ -206,19 +212,11 @@
   object-fit: contain;
 }
 
-.store-item-preview__effect-img {
-  width: 100%;
-}
-
 .store-item-preview__effect-help {
   margin: 0;
   color: var(--color-text-sub);
   font-size: 14px;
   text-align: center;
-}
-
-.profile-character-effect-card__preview {
-  --character-effect-width: 46%;
 }
 
 @media (max-width: 700px) {

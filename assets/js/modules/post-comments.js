@@ -17,6 +17,10 @@ const { getCharacterEffectRenderMeta } = await import(
   `./store-data.js?v=${MODULE_VERSION}`
 );
 
+const { prepareCharacterEffects, renderCharacterEffectHtml } = await import(
+  `./character-effects.js?v=${MODULE_VERSION}`
+);
+
 const { listenEquipmentChanged } = await import(
   `./equipment-events.js?v=${MODULE_VERSION}`
 );
@@ -161,17 +165,6 @@ function escapeHtml(str) {
     .replaceAll("'", '&#39;');
 }
 
-function renderCharacterEffectStyle(cssVars = {}) {
-  if (!cssVars || typeof cssVars !== 'object') return '';
-
-  const styleText = Object.entries(cssVars)
-    .filter(([name]) => /^--character-effect-[a-z0-9-]+$/.test(name))
-    .map(([name, value]) => `${name}: ${escapeHtml(value)}`)
-    .join('; ');
-
-  return styleText ? ` style="${styleText}"` : '';
-}
-
 function formatDateTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '-';
@@ -198,26 +191,9 @@ function renderAuthorProfileLink(
   const avatarSrc = escapeHtml(getProfileImageSrc(profileImageUrl));
   const characterSrc = escapeHtml(getCharacterImageSrc(characterImageUrl));
 
-  const effect = getCharacterEffectRenderMeta(characterEffectItemId);
-  const effectClassName = effect?.className
-    ? ` ${escapeHtml(effect.className)}`
-    : '';
-  const characterEffectHtml = effect
-    ? `
-      <span
-        class="character-effect-layer"
-        data-character-effect-id="${escapeHtml(effect.itemId)}"
-        data-character-effect-placement="${escapeHtml(effect.placement)}"
-        aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
-      >
-        <img
-          class="character-effect-img${effectClassName}"
-          src="${escapeHtml(effect.imagePath)}"
-          alt=""
-        />
-      </span>
-    `
-    : '';
+  const characterEffectHtml = renderCharacterEffectHtml(
+    getCharacterEffectRenderMeta(characterEffectItemId, 'comment'),
+  );
 
   const characterHtml = `
   <span class="character-effect-wrap comment-author-character-effect-wrap">
@@ -1008,6 +984,7 @@ async function renderComments(postId, secretPassword = null) {
       )
       .join('');
 
+    prepareCharacterEffects(listEl);
     bindAllCommentRichEditors(listEl);
     focusTargetCommentFromUrl();
     refreshCommentEmoticonUi();

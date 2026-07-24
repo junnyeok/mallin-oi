@@ -16,6 +16,10 @@ const { getCharacterEffectRenderMeta } = await import(
   `./store-data.js?v=${MODULE_VERSION}`
 );
 
+const { prepareCharacterEffects, renderCharacterEffectHtml } = await import(
+  `./character-effects.js?v=${MODULE_VERSION}`
+);
+
 const { listenEquipmentChanged } = await import(
   `./equipment-events.js?v=${MODULE_VERSION}`
 );
@@ -129,27 +133,9 @@ async function loadCharacterEffectItemId(userId) {
 }
 
 function renderCharacterEffectImg(effectItemId = '') {
-  const effect = getCharacterEffectRenderMeta(effectItemId);
-  if (!effect) return '';
-
-  const effectClassName = effect.className
-    ? ` ${escapeHtml(effect.className)}`
-    : '';
-
-  return `
-    <span
-      class="character-effect-layer"
-      data-character-effect-id="${escapeHtml(effect.itemId)}"
-      data-character-effect-placement="${escapeHtml(effect.placement)}"
-      aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
-    >
-      <img
-        class="character-effect-img${effectClassName}"
-        src="${escapeHtml(effect.imagePath)}"
-        alt=""
-      />
-    </span>
-  `;
+  return renderCharacterEffectHtml(
+    getCharacterEffectRenderMeta(effectItemId, 'post'),
+  );
 }
 
 function $(id) {
@@ -189,17 +175,6 @@ function escapeHtml(str) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
-}
-
-function renderCharacterEffectStyle(cssVars = {}) {
-  if (!cssVars || typeof cssVars !== 'object') return '';
-
-  const styleText = Object.entries(cssVars)
-    .filter(([name]) => /^--character-effect-[a-z0-9-]+$/.test(name))
-    .map(([name, value]) => `${name}: ${escapeHtml(value)}`)
-    .join('; ');
-
-  return styleText ? ` style="${styleText}"` : '';
 }
 
 function emitPostAccessState(post, secretPassword = '') {
@@ -368,6 +343,7 @@ async function renderAuthor(post) {
 </span>
   </span>
 `;
+    prepareCharacterEffects(authorEl);
     return;
   }
 
@@ -392,6 +368,7 @@ async function renderAuthor(post) {
 </span>
   </span>
 `;
+  prepareCharacterEffects(authorEl);
 }
 
 function formatDateTime(value) {

@@ -51,12 +51,14 @@ const [
     pauseBgmForExternalAudio,
     restoreBgmAfterExternalAudio,
   },
+  { replaceCharacterEffect },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
   import(`./store-data.js?v=${MODULE_VERSION}`),
   import(`./equipment-events.js?v=${MODULE_VERSION}`),
   import(`./bgm-preferences.js?v=${MODULE_VERSION}`),
   import(`./bgm-player.js?v=${MODULE_VERSION}`),
+  import(`./character-effects.js?v=${MODULE_VERSION}`),
 ]);
 
 let profileFeaturedBgmState = null;
@@ -399,17 +401,6 @@ function escapeHtml(str) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
-}
-
-function renderCharacterEffectStyle(cssVars = {}) {
-  if (!cssVars || typeof cssVars !== 'object') return '';
-
-  const styleText = Object.entries(cssVars)
-    .filter(([name]) => /^--character-effect-[a-z0-9-]+$/.test(name))
-    .map(([name, value]) => `${name}: ${escapeHtml(value)}`)
-    .join('; ');
-
-  return styleText ? ` style="${styleText}"` : '';
 }
 
 function getTargetUserIdFromUrl() {
@@ -905,28 +896,10 @@ async function loadOwnedStoreItemIdsByUserId(userId) {
   return new Set((data || []).map((row) => String(row?.item_id || '').trim()));
 }
 
-function renderCharacterEffectImage(effectItemId = '') {
-  const effect = getCharacterEffectRenderMeta(effectItemId);
-  if (!effect) return '';
-
-  const effectClassName = effect.className
-    ? ` ${escapeHtml(effect.className)}`
-    : '';
-
-  return `
-    <span
-      class="character-effect-layer"
-      data-character-effect-id="${escapeHtml(effect.itemId)}"
-      data-character-effect-placement="${escapeHtml(effect.placement)}"
-      aria-hidden="true"${renderCharacterEffectStyle(effect.cssVars)}
-    >
-      <img
-        class="character-effect-img${effectClassName}"
-        src="${escapeHtml(effect.imagePath)}"
-        alt=""
-      />
-    </span>
-  `;
+function getCharacterEffectContext() {
+  return document.body?.dataset?.page === 'inventory'
+    ? 'inventory'
+    : 'profile';
 }
 
 function renderEquippedCharacterEffectOnPreview(effectItemId = '') {
@@ -936,14 +909,11 @@ function renderEquippedCharacterEffectOnPreview(effectItemId = '') {
   const wrapEl = previewEl.closest('.character-effect-wrap');
   if (!wrapEl) return;
 
-  wrapEl
-    .querySelectorAll('.character-effect-layer, .character-effect-img')
-    .forEach((node) => node.remove());
-
-  const effectHtml = renderCharacterEffectImage(effectItemId);
-  if (!effectHtml) return;
-
-  previewEl.insertAdjacentHTML('afterend', effectHtml);
+  const effect = getCharacterEffectRenderMeta(
+    effectItemId,
+    getCharacterEffectContext(),
+  );
+  replaceCharacterEffect(wrapEl, effect);
 }
 
 function getOwnedCharacterEffectRows(ownedStoreItemIds = new Set()) {

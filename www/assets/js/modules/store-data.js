@@ -395,11 +395,43 @@ export const CHARACTER_EFFECT_CATALOG = [
     ),
     placement: 'overhead',
     className: 'character-effect-img--heart',
-    cssVars: {
-      '--character-effect-default-width': '46%',
-      '--character-effect-default-y': '4%',
-      '--character-effect-default-z': '20',
-      '--character-effect-default-origin': '50% 100%',
+    layout: {
+      x: '0px',
+      y: '4%',
+      width: '46%',
+      zIndex: '20',
+      origin: '50% 100%',
+      rotation: '0deg',
+      aspectRatio: '2 / 3',
+    },
+    contexts: {
+      profile: {
+        x: '0%',
+        y: '-4%',
+      },
+      inventory: {
+        x: '0%',
+        y: '-3%',
+      },
+      post: {
+        x: '-6%',
+        y: '2%',
+      },
+      comment: {
+        x: '-8%',
+        y: '0%',
+      },
+    },
+    motion: {
+      animation: 'float',
+      fromY: '4px',
+      toY: '-4px',
+      fromScale: '0.96',
+      toScale: '1',
+      fromOpacity: '0.25',
+      toOpacity: '1',
+      duration: '2.4s',
+      easing: 'ease-in-out',
     },
     displayOrder: 1,
   },
@@ -422,22 +454,95 @@ const CHARACTER_EFFECT_PLACEMENTS = new Set([
   'front-small',
 ]);
 
-export function getCharacterEffectRenderMeta(itemId = '') {
+const CHARACTER_EFFECT_ANIMATIONS = new Set(['none', 'float']);
+
+const CHARACTER_EFFECT_LAYOUT_CSS_VARS = {
+  x: '--character-effect-default-x',
+  y: '--character-effect-default-y',
+  width: '--character-effect-default-width',
+  zIndex: '--character-effect-default-z',
+  origin: '--character-effect-default-origin',
+  rotation: '--character-effect-default-rotation',
+  aspectRatio: '--character-effect-default-aspect-ratio',
+};
+
+const CHARACTER_EFFECT_MOTION_CSS_VARS = {
+  fromY: '--character-effect-motion-from-y',
+  toY: '--character-effect-motion-to-y',
+  fromScale: '--character-effect-motion-from-scale',
+  toScale: '--character-effect-motion-to-scale',
+  fromOpacity: '--character-effect-motion-from-opacity',
+  toOpacity: '--character-effect-motion-to-opacity',
+  duration: '--character-effect-motion-duration',
+  easing: '--character-effect-motion-easing',
+};
+
+function getCharacterEffectContext(contextOrOptions = 'default') {
+  const context =
+    typeof contextOrOptions === 'object'
+      ? contextOrOptions?.context
+      : contextOrOptions;
+
+  return String(context || 'default').trim().toLowerCase() || 'default';
+}
+
+function mapCharacterEffectCssVars(values = {}, mapping = {}) {
+  return Object.entries(mapping).reduce((cssVars, [key, cssVarName]) => {
+    const value = String(values?.[key] ?? '').trim();
+    if (value) cssVars[cssVarName] = value;
+    return cssVars;
+  }, {});
+}
+
+export function getCharacterEffectRenderMeta(
+  itemId = '',
+  contextOrOptions = 'default',
+) {
   const effect = getCharacterEffectByItemId(itemId);
   if (!effect?.imagePath) return null;
 
   const placement = CHARACTER_EFFECT_PLACEMENTS.has(effect.placement)
     ? effect.placement
     : 'overhead';
+  const context = getCharacterEffectContext(contextOrOptions);
+  const contextLayout =
+    effect.contexts && typeof effect.contexts === 'object'
+      ? effect.contexts[context]
+      : null;
+  const layout = {
+    ...(effect.layout && typeof effect.layout === 'object'
+      ? effect.layout
+      : {}),
+    ...(contextLayout && typeof contextLayout === 'object'
+      ? contextLayout
+      : {}),
+  };
+  const motion =
+    effect.motion && typeof effect.motion === 'object' ? effect.motion : {};
+  const animation = CHARACTER_EFFECT_ANIMATIONS.has(motion.animation)
+    ? motion.animation
+    : 'none';
+  const cssVars = {
+    ...(effect.cssVars && typeof effect.cssVars === 'object'
+      ? effect.cssVars
+      : {}),
+    ...mapCharacterEffectCssVars(
+      layout,
+      CHARACTER_EFFECT_LAYOUT_CSS_VARS,
+    ),
+    ...mapCharacterEffectCssVars(
+      motion,
+      CHARACTER_EFFECT_MOTION_CSS_VARS,
+    ),
+  };
 
   return {
     ...effect,
     placement,
+    context,
+    animation,
     className: String(effect.className || '').trim(),
-    cssVars:
-      effect.cssVars && typeof effect.cssVars === 'object'
-        ? effect.cssVars
-        : {},
+    cssVars,
   };
 }
 

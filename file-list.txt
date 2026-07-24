@@ -941,3 +941,7 @@
 ./ios/App/App/public/images/services/shop_button.png
 ./ios/App/App/public/images/services/suggestion_button.png
 ./ios/App/App/public/images/services/write_button.png
+./assets/js/modules/character-effects.js
+./www/assets/js/modules/character-effects.js
+./android/app/src/main/assets/public/assets/js/modules/character-effects.js
+./ios/App/App/public/assets/js/modules/character-effects.js

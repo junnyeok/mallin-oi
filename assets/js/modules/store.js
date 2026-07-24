@@ -6,6 +6,9 @@ let getFeaturedStoreItems;
 let getStoreItemById;
 let getStoreItemDetailHref;
 let getSkinParentRequirementByStoreItemId;
+let getCharacterEffectRenderMeta;
+let prepareCharacterEffects;
+let renderCharacterEffectHtml;
 
 function getRuntimeVersion() {
   return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
@@ -20,12 +23,18 @@ async function ensureStoreDeps() {
     STORE_ITEMS &&
     getFeaturedStoreItems &&
     getStoreItemById &&
-    getStoreItemDetailHref
+    getStoreItemDetailHref &&
+    getCharacterEffectRenderMeta &&
+    prepareCharacterEffects &&
+    renderCharacterEffectHtml
   ) {
     return;
   }
 
-  const storeDataModule = await importVersioned('./store-data.js');
+  const [storeDataModule, characterEffectsModule] = await Promise.all([
+    importVersioned('./store-data.js'),
+    importVersioned('./character-effects.js'),
+  ]);
 
   STORE_ITEMS = storeDataModule.STORE_ITEMS;
   getFeaturedStoreItems = storeDataModule.getFeaturedStoreItems;
@@ -33,6 +42,12 @@ async function ensureStoreDeps() {
   getStoreItemDetailHref = storeDataModule.getStoreItemDetailHref;
   getSkinParentRequirementByStoreItemId =
     storeDataModule.getSkinParentRequirementByStoreItemId;
+  getCharacterEffectRenderMeta =
+    storeDataModule.getCharacterEffectRenderMeta;
+  prepareCharacterEffects =
+    characterEffectsModule.prepareCharacterEffects;
+  renderCharacterEffectHtml =
+    characterEffectsModule.renderCharacterEffectHtml;
 }
 
 const HOME_STORE_MOBILE_BREAKPOINT = 768;
@@ -45,15 +60,6 @@ let storeItemPreviewHasControl = false;
 
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
 const BEFORE_PJAX_SWAP_EVENT = 'mallin:before-pjax-swap';
-const CHARACTER_EFFECT_PREVIEW_PLACEMENTS = new Set([
-  'overhead',
-  'behind',
-  'side-left',
-  'side-right',
-  'aura-back',
-  'front-small',
-]);
-
 function $(selector) {
   return document.querySelector(selector);
 }
@@ -73,13 +79,6 @@ function escapeAttribute(value = '') {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
-}
-
-function normalizeCharacterEffectPreviewPlacement(placement = '') {
-  const safePlacement = String(placement || '').trim();
-  return CHARACTER_EFFECT_PREVIEW_PLACEMENTS.has(safePlacement)
-    ? safePlacement
-    : 'overhead';
 }
 
 function updateStoreItemBgmPreviewUi(isPlaying = false, itemName = 'BGM') {
@@ -828,17 +827,11 @@ function renderStoreItemPreview(item, options = {}) {
   const isProfileFramePreview = item?.itemType === 'profile-frame';
 
   if (isCharacterEffectPreview) {
-    const preview = previews[0];
     const characterImagePath =
       String(options?.effectPreviewCharacterImage || '').trim() ||
       './images/characters/cucumber.png';
 
-    const effectImagePath =
-      String(preview?.imagePath || '').trim() ||
-      './images/character-effects/cucumber-heart.png';
-    const effectPlacement = normalizeCharacterEffectPreviewPlacement(
-      preview?.placement,
-    );
+    const effect = getCharacterEffectRenderMeta(item?.id, 'store');
 
     return `
       <div class="store-item-preview__character-effect">
@@ -847,20 +840,10 @@ function renderStoreItemPreview(item, options = {}) {
             <img
               src="${escapeAttribute(characterImagePath)}"
               alt="현재 착용 캐릭터"
-              class="store-item-preview__effect-character"
+              class="store-item-preview__effect-character character-effect-character"
               loading="lazy"
             />
-            <span
-              class="character-effect-layer store-item-preview__effect-layer"
-              data-character-effect-placement="${escapeAttribute(effectPlacement)}"
-              aria-hidden="true"
-            >
-              <img
-                class="character-effect-img character-effect-img--heart store-item-preview__effect-img"
-                src="${escapeAttribute(effectImagePath)}"
-                alt=""
-              />
-            </span>
+            ${renderCharacterEffectHtml(effect)}
           </span>
         </figure>
         <p class="store-item-preview__effect-help">
@@ -1083,6 +1066,8 @@ ${renderStoreItemPreview(item, { effectPreviewCharacterImage })}          </sect
         </aside>
       </div>
     `;
+
+    prepareCharacterEffects(root);
 
     if (item.category === 'bgm') {
       bindStoreItemBgmPreview(item);
