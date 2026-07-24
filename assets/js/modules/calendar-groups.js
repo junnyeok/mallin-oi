@@ -923,6 +923,8 @@ export async function initCalendarGroupBar({
   bar.className = 'calendar-group-bar';
   bar.setAttribute('aria-label', '캘린더 그룹 연동');
   const panelId = `${calendarType}CalendarGroupPanel`;
+  const panelTitleId = `${calendarType}CalendarGroupPanelTitle`;
+  const panelStatusId = `${calendarType}CalendarGroupPanelStatus`;
   bar.innerHTML = `
     <div class="calendar-group-bar__actions">
       <button
@@ -935,41 +937,151 @@ export async function initCalendarGroupBar({
       </button>
       <a class="calendar-group-bar__list" href="${makeAppHref('./calendar-groups.html')}">그룹 목록</a>
     </div>
-    <div class="calendar-group-bar__panel" id="${panelId}" hidden>
-    <div class="calendar-group-bar__main">
-      <label class="calendar-group-bar__field">
-        <span>그룹</span>
-        <select class="calendar-group-bar__select" aria-label="연동 그룹 선택">
-          <option value="">그룹 연동 OFF</option>
-        </select>
-      </label>
-      <button class="calendar-group-bar__backup" type="button">백업</button>
-      <button class="calendar-group-bar__close" type="button">닫기</button>
-    </div>
-    <div class="calendar-group-bar__status" aria-live="polite">
-      <span class="calendar-group-bar__status-main">그룹 일정을 함께 보려면 그룹을 선택해줘.</span>
-    </div>
+  `;
+
+  const panel = document.createElement('div');
+  panel.className = 'calendar-group-bar__panel';
+  panel.id = panelId;
+  panel.hidden = true;
+  panel.innerHTML = `
+    <div
+      class="calendar-group-bar__dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="${panelTitleId}"
+      aria-describedby="${panelStatusId}"
+      tabindex="-1"
+    >
+      <div class="calendar-group-bar__heading">
+        <span class="calendar-group-bar__eyebrow">캘린더 그룹</span>
+        <h2 class="calendar-group-bar__title" id="${panelTitleId}">그룹 설정</h2>
+      </div>
+      <div class="calendar-group-bar__main">
+        <label class="calendar-group-bar__field">
+          <span>그룹</span>
+          <select class="calendar-group-bar__select" aria-label="연동 그룹 선택">
+            <option value="">그룹 연동 OFF</option>
+          </select>
+        </label>
+        <button class="calendar-group-bar__backup" type="button">백업</button>
+        <button class="calendar-group-bar__close" type="button">닫기</button>
+      </div>
+      <div class="calendar-group-bar__status" id="${panelStatusId}" aria-live="polite">
+        <span class="calendar-group-bar__status-main">그룹 일정을 함께 보려면 그룹을 선택해줘.</span>
+      </div>
     </div>
   `;
-  const { initCalendarCopyPaste } = await loadCalendarCopyPasteModule();
-  const copyPaste = initCalendarCopyPaste({ bar, calendarType });
 
   if (head) {
     head.append(bar);
   } else {
     pageRoot.prepend(bar);
   }
+  bar.append(panel);
 
-  const select = bar.querySelector('.calendar-group-bar__select');
-  const backupButton = bar.querySelector('.calendar-group-bar__backup');
-  const status = bar.querySelector('.calendar-group-bar__status-main');
+  const { initCalendarCopyPaste } = await loadCalendarCopyPasteModule();
+  const copyPaste = initCalendarCopyPaste({ bar: panel, calendarType });
+
+  const dialog = panel.querySelector('.calendar-group-bar__dialog');
+  const select = panel.querySelector('.calendar-group-bar__select');
+  const backupButton = panel.querySelector('.calendar-group-bar__backup');
+  const status = panel.querySelector('.calendar-group-bar__status-main');
   const toggleButton = bar.querySelector('.calendar-group-bar__toggle');
-  const closeButton = bar.querySelector('.calendar-group-bar__close');
-  const panel = bar.querySelector('.calendar-group-bar__panel');
+  const closeButton = panel.querySelector('.calendar-group-bar__close');
+  const focusableSelector = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',');
+  let lockedScrollX = 0;
+  let lockedScrollY = 0;
+  let previousBodyTop = '';
+  let previousFocusedElement = null;
+
+  function getFocusableElements() {
+    if (!dialog) return [];
+    return [...dialog.querySelectorAll(focusableSelector)].filter((element) => {
+      if (element.hidden || element.closest('[hidden]')) return false;
+      const style = window.getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+  }
+
+  function lockPageScroll() {
+    lockedScrollX = window.scrollX || 0;
+    lockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    previousBodyTop = document.body.style.top;
+    document.body.classList.add('calendar-group-modal-open');
+    document.body.style.top = `-${lockedScrollY}px`;
+  }
+
+  function unlockPageScroll() {
+    document.body.classList.remove('calendar-group-modal-open');
+    document.body.style.top = previousBodyTop;
+    window.scrollTo(lockedScrollX, lockedScrollY);
+  }
+
+  function handlePanelKeydown(event) {
+    if (panel.hidden || document.querySelector('dialog[open]')) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setGroupPanelOpen(false);
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const focusable = getFocusableElements();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog?.focus({ preventScroll: true });
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (!dialog?.contains(document.activeElement)) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+  }
 
   function setGroupPanelOpen(isOpen) {
-    if (!panel || !toggleButton) return;
-    panel.hidden = !isOpen;
+    if (!dialog || !toggleButton || isOpen === !panel.hidden) return;
+
+    if (isOpen) {
+      previousFocusedElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : toggleButton;
+      panel.hidden = false;
+      lockPageScroll();
+      document.addEventListener('keydown', handlePanelKeydown);
+      window.requestAnimationFrame(() => {
+        select?.focus({ preventScroll: true });
+      });
+    } else {
+      panel.hidden = true;
+      document.removeEventListener('keydown', handlePanelKeydown);
+      unlockPageScroll();
+      const focusTarget = previousFocusedElement;
+      previousFocusedElement = null;
+      window.requestAnimationFrame(() => {
+        focusTarget?.focus?.({ preventScroll: true });
+      });
+    }
+
     toggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
 
@@ -980,6 +1092,16 @@ export async function initCalendarGroupBar({
   closeButton?.addEventListener('click', () => {
     setGroupPanelOpen(false);
   });
+
+  panel.addEventListener('click', (event) => {
+    if (event.target === panel) setGroupPanelOpen(false);
+  });
+
+  window.addEventListener(
+    'mallin:before-pjax-swap',
+    () => setGroupPanelOpen(false),
+    { once: true },
+  );
 
   function setStatus(message) {
     if (status) status.textContent = message;

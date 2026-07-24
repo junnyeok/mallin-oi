@@ -1622,38 +1622,40 @@ async function initPageCalendar() {
     if (dateKey) selectDate(dateKey);
   }
 
+  function getDeleteDescription(target) {
+    const base =
+      '정말 이 일정을 삭제하시겠습니까? 삭제한 일정은 복구할 수 없습니다.';
+    const isSharedTodo = isSharedPersonalTodo(target);
+    const isRangeTodo = getTodoDateRange(target, state.store).length > 1;
+
+    if (isSharedTodo && isRangeTodo) {
+      return `${base} 이 기간 우리 일정 전체가 그룹 참여자 캘린더에서도 삭제됩니다.`;
+    }
+    if (isSharedTodo) {
+      return `${base} 우리 일정이므로 같은 그룹 참여자 캘린더에서도 함께 삭제됩니다.`;
+    }
+    if (isRangeTodo) {
+      return `${base} 이 기간 일정 전체가 삭제됩니다.`;
+    }
+    return base;
+  }
+
   async function deleteTodo(todoId) {
     const target = (state.store[state.selectedDateKey] || []).find(
       (todo) => todo.id === todoId,
     );
 
-    if (!target) return;
-
-    const isSharedTodo = isSharedPersonalTodo(target);
-    const targetRange = getTodoDateRange(target, state.store);
-    const isRangeTodo = targetRange.length > 1;
-
-    let confirmMessage = '';
-
-    if (isSharedTodo) {
-      confirmMessage = isRangeTodo
-        ? '이 기간 우리 일정 전체가 그룹 참여자 캘린더에서도 삭제돼. 삭제할까?'
-        : '우리 일정이라 같은 그룹 참여자 캘린더에서도 함께 삭제돼. 삭제할까?';
-    } else if (isRangeTodo) {
-      confirmMessage = '이 기간 일정 전체를 삭제할까?';
-    }
-
-    if (confirmMessage && !window.confirm(confirmMessage)) {
-      return;
-    }
+    if (!target) return false;
 
     try {
       await deleteTodoRange(todoId);
       await reloadStoreForMode();
       renderAll();
       refreshGroupBackupNeeded();
+      return true;
     } catch (error) {
       alert('일정 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+      throw error;
     }
   }
 
@@ -1858,9 +1860,10 @@ async function initPageCalendar() {
       },
       onDelete: isEdit
         ? async () => {
-            await deleteTodo(todo.id);
+            return deleteTodo(todo.id);
           }
         : null,
+      deleteDescription: isEdit ? getDeleteDescription(todo) : '',
     });
   }
 

@@ -1334,7 +1334,7 @@ async function initPageCalendar() {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
 
-    if (!target) return;
+    if (!target) return false;
 
     try {
       await deleteTodoById(todoId);
@@ -1349,8 +1349,10 @@ async function initPageCalendar() {
 
       renderAll();
       refreshGroupBackupNeeded();
+      return true;
     } catch (error) {
       alert('업무 일정 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+      throw error;
     }
   }
 
@@ -1434,7 +1436,7 @@ async function initPageCalendar() {
         });
       },
       onDelete: async () => {
-        await deleteTodo(todo.id);
+        return deleteTodo(todo.id);
       },
       characterImage: document.getElementById('cukeBuddy')?.src || '',
     });

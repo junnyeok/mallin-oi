@@ -8,6 +8,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 let activeSheet = null;
+let activeDeleteConfirmation = null;
 let lockCount = 0;
 let lockedScrollY = 0;
 
@@ -44,6 +45,157 @@ function getFocusable(root) {
 
 function makeId(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function openDeleteConfirmation({
+  opener,
+  description,
+  onConfirm,
+  onConfirmed,
+  onClose,
+} = {}) {
+  activeDeleteConfirmation?.close?.({
+    restoreFocus: false,
+    force: true,
+  });
+
+  const titleId = makeId('calendarDeleteConfirmTitle');
+  const descriptionId = makeId('calendarDeleteConfirmDescription');
+  const overlay = document.createElement('div');
+  overlay.className = 'calendar-entry-delete-confirm';
+
+  const dialog = document.createElement('section');
+  dialog.className = 'calendar-entry-delete-confirm__dialog';
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  dialog.setAttribute('aria-labelledby', titleId);
+  dialog.setAttribute('aria-describedby', descriptionId);
+  dialog.setAttribute('tabindex', '-1');
+
+  const heading = document.createElement('h3');
+  heading.id = titleId;
+  heading.className = 'calendar-entry-delete-confirm__title';
+  heading.textContent = '일정 삭제';
+
+  const message = document.createElement('p');
+  message.id = descriptionId;
+  message.className = 'calendar-entry-delete-confirm__description';
+  message.textContent =
+    description ||
+    '정말 이 일정을 삭제하시겠습니까? 삭제한 일정은 복구할 수 없습니다.';
+
+  const actions = document.createElement('div');
+  actions.className = 'calendar-entry-delete-confirm__actions';
+
+  const cancelButton = document.createElement('button');
+  cancelButton.type = 'button';
+  cancelButton.className =
+    'calendar-entry-delete-confirm__button calendar-entry-delete-confirm__cancel';
+  cancelButton.textContent = '아니오';
+
+  const confirmButton = document.createElement('button');
+  confirmButton.type = 'button';
+  confirmButton.className =
+    'calendar-entry-delete-confirm__button calendar-entry-delete-confirm__confirm';
+  confirmButton.textContent = '예, 삭제';
+
+  actions.append(cancelButton, confirmButton);
+  dialog.append(heading, message, actions);
+  overlay.append(dialog);
+
+  let isOpen = true;
+  let isSubmitting = false;
+
+  function close({ restoreFocus = true, force = false } = {}) {
+    if (!isOpen || (isSubmitting && !force)) return;
+
+    isOpen = false;
+    document.removeEventListener('keydown', handleKeydown, true);
+    overlay.remove();
+    unlockBodyScroll();
+
+    if (activeDeleteConfirmation === api) {
+      activeDeleteConfirmation = null;
+    }
+    onClose?.();
+
+    if (restoreFocus) {
+      requestAnimationFrame(() => opener?.focus?.({ preventScroll: true }));
+    }
+  }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!isSubmitting) close();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+    event.stopPropagation();
+
+    const focusable = getFocusable(dialog);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  cancelButton.addEventListener('click', () => close());
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) close();
+  });
+  confirmButton.addEventListener('click', async () => {
+    if (isSubmitting) return;
+
+    isSubmitting = true;
+    dialog.setAttribute('aria-busy', 'true');
+    cancelButton.disabled = true;
+    confirmButton.disabled = true;
+    confirmButton.textContent = '삭제 중';
+
+    let didDelete;
+    try {
+      didDelete = await onConfirm?.();
+    } catch {
+      isSubmitting = false;
+      dialog.removeAttribute('aria-busy');
+      cancelButton.disabled = false;
+      confirmButton.disabled = false;
+      confirmButton.textContent = '예, 삭제';
+      cancelButton.focus({ preventScroll: true });
+      return;
+    }
+
+    close({ restoreFocus: didDelete === false, force: true });
+    if (didDelete !== false) onConfirmed?.();
+  });
+
+  const api = {
+    close,
+    isOpen: () => isOpen,
+  };
+
+  document.body.append(overlay);
+  lockBodyScroll();
+  document.addEventListener('keydown', handleKeydown, true);
+  activeDeleteConfirmation = api;
+  requestAnimationFrame(() => cancelButton.focus({ preventScroll: true }));
+
+  return api;
 }
 
 function wrapField(control, label) {
@@ -385,6 +537,7 @@ export function openCalendarDetailSheet({
   fields = [],
   helpText = '',
   characterImage = '',
+  deleteDescription = '',
   onSave,
   onDelete,
 } = {}) {
@@ -429,6 +582,7 @@ export function openCalendarDetailSheet({
 
   const body = document.createElement('div');
   body.className = 'calendar-entry-sheet__body';
+  let deleteConfirmation = null;
 
   const titleField = fields.find((field) => field.key === 'title');
   if (titleField) {
@@ -597,14 +751,18 @@ export function openCalendarDetailSheet({
     deleteButton.type = 'button';
     deleteButton.className = 'calendar-entry-sheet__danger';
     deleteButton.textContent = '삭제';
-    deleteButton.addEventListener('click', async () => {
-      deleteButton.disabled = true;
-      try {
-        await onDelete();
-        close();
-      } catch {
-        deleteButton.disabled = false;
-      }
+    deleteButton.addEventListener('click', () => {
+      if (deleteConfirmation?.isOpen?.()) return;
+
+      deleteConfirmation = openDeleteConfirmation({
+        opener: deleteButton,
+        description: deleteDescription,
+        onConfirm: onDelete,
+        onConfirmed: () => close(),
+        onClose: () => {
+          deleteConfirmation = null;
+        },
+      });
     });
     body.append(deleteButton);
   }
@@ -633,10 +791,14 @@ export function openCalendarDetailSheet({
   function close({ restoreFocus = true } = {}) {
     if (!isOpen) return;
     isOpen = false;
+    deleteConfirmation?.close?.({ restoreFocus: false, force: true });
+    deleteConfirmation = null;
     overlay.classList.remove('is-open');
     overlay.classList.add('is-closing');
     unlockBodyScroll();
     document.removeEventListener('keydown', handleKeydown);
+    window.removeEventListener('mallin:before-pjax-swap', handlePageExit);
+    window.removeEventListener('pagehide', handlePageExit);
     window.clearTimeout(closeTimer);
     closeTimer = window.setTimeout(() => {
       overlay.remove();
@@ -672,6 +834,8 @@ export function openCalendarDetailSheet({
   });
 
   function handleKeydown(event) {
+    if (deleteConfirmation?.isOpen?.()) return;
+
     if (event.key === 'Escape') {
       event.preventDefault();
       close();
@@ -699,6 +863,10 @@ export function openCalendarDetailSheet({
     }
   }
 
+  function handlePageExit() {
+    close({ restoreFocus: false });
+  }
+
   const api = {
     close,
     isOpen: () => isOpen,
@@ -710,6 +878,8 @@ export function openCalendarDetailSheet({
   overlay.hidden = false;
   lockBodyScroll();
   document.addEventListener('keydown', handleKeydown);
+  window.addEventListener('mallin:before-pjax-swap', handlePageExit);
+  window.addEventListener('pagehide', handlePageExit);
   requestAnimationFrame(() => {
     overlay.classList.add('is-open');
     const initialFocusTarget =
