@@ -16,6 +16,10 @@ function lockBodyScroll() {
   if (lockCount > 1) return;
 
   lockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.body.style.setProperty(
+    '--calendar-entry-sheet-scroll-offset',
+    `${lockedScrollY}px`,
+  );
   document.body.classList.add('calendar-entry-sheet-open');
   document.body.style.top = `-${lockedScrollY}px`;
 }
@@ -26,6 +30,7 @@ function unlockBodyScroll() {
 
   document.body.classList.remove('calendar-entry-sheet-open');
   document.body.style.top = '';
+  document.body.style.removeProperty('--calendar-entry-sheet-scroll-offset');
   window.scrollTo(0, lockedScrollY);
 }
 

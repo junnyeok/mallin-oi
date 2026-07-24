@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260723-06';
+const SITE_VERSION = '20260724-01';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -105,6 +105,10 @@ function isStaticAsset(url) {
   );
 }
 
+function isJavaScriptAsset(request, url) {
+  return request.destination === 'script' || url.pathname.endsWith('.js');
+}
+
 function isRangeRequest(request) {
   return request.headers.has('range');
 }
@@ -167,6 +171,34 @@ async function staleWhileRevalidate(request) {
   return caches.match(OFFLINE_URL, { ignoreSearch: true });
 }
 
+async function networkFirstStatic(request) {
+  const cache = await caches.open(STATIC_CACHE);
+
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+
+    if (isCacheableResponse(response)) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (error) {
+        console.warn('[sw] static cache update failed:', error);
+      }
+    }
+
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
+    const cachedWithoutVersion = await cache.match(request, {
+      ignoreSearch: true,
+    });
+    if (cachedWithoutVersion) return cachedWithoutVersion;
+
+    throw error;
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -222,7 +254,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isStaticAsset(url)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(
+      isJavaScriptAsset(request, url)
+        ? networkFirstStatic(request)
+        : staleWhileRevalidate(request),
+    );
   }
 });
 

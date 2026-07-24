@@ -2,6 +2,7 @@ body.calendar-entry-sheet-open {
   position: fixed;
   right: 0;
   left: 0;
+  height: calc(100% + var(--calendar-entry-sheet-scroll-offset, 0px));
   overflow: hidden;
 }
 
