@@ -247,6 +247,7 @@
 ./assets/css/main/inventory-main.css
 ./assets/css/main/login-main.css
 ./assets/css/main/main.css
+./assets/css/main/mallin-plus-main.css
 ./assets/css/main/mypage-main.css
 ./assets/css/main/notifications-main.css
 ./assets/css/main/post-main.css
@@ -321,6 +322,7 @@
 ./assets/js/modules/work-calendar.js
 ./assets/js/modules/write.js
 ./assets/mp3/Cherry-Smile.mp3
+./assets/mp3/Night-melody.mp3
 ./assets/mp3/mallin_oi_grilledegg-PT.mp3
 ./assets/mp3/mallin_oi_tetocarrot.mp3
 ./assets/mp3/mallin_oi_welcome.mp3
@@ -350,6 +352,7 @@
 ./images/BGM/cucumbergirl-debuet.png
 ./images/BGM/lofi-cucumber.png
 ./images/BGM/macho-grilled-egg.png
+./images/BGM/Night-melody_LP.png
 ./images/BGM/potato-karaoke.png
 ./images/BGM/reggae-cucumber.png
 ./images/BGM/tetocarrot.png
@@ -642,6 +645,7 @@
 ./ios/capacitor-cordova-ios-plugins/sources/.gitkeep
 ./ios/debug.xcconfig
 ./login.html
+./mallin-plus.html
 ./mypage.html
 ./notifications.html
 ./offline.html
@@ -716,6 +720,7 @@
 ./www/assets/css/main/inventory-main.css
 ./www/assets/css/main/login-main.css
 ./www/assets/css/main/main.css
+./www/assets/css/main/mallin-plus-main.css
 ./www/assets/css/main/mypage-main.css
 ./www/assets/css/main/notifications-main.css
 ./www/assets/css/main/post-main.css
@@ -912,10 +917,12 @@
 ./supabase-SQLEditor/20260718-study-work-calendar-date-edit.sql
 ./supabase-SQLEditor/20260718-remove-study-work-shared-calendar.sql
 ./supabase-SQLEditor/20260721-profile-featured-bgm.sql
+./supabase-SQLEditor/20260726-night-melody-bgm.sql
 ./www/assets/js/modules/site-stats.js
 ./images/services/Q&A_button.png
 ./images/services/calendar_button.png
 ./images/services/history_button.png
+./images/services/PLUS.PNG
 ./images/services/posts_button.png
 ./images/services/profile_button.png
 ./images/services/shop_button.png
@@ -924,6 +931,7 @@
 ./www/images/services/Q&A_button.png
 ./www/images/services/calendar_button.png
 ./www/images/services/history_button.png
+./www/images/services/PLUS.PNG
 ./www/images/services/posts_button.png
 ./www/images/services/profile_button.png
 ./www/images/services/shop_button.png

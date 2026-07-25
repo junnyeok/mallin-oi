@@ -90,6 +90,15 @@ export const YOURE_FAKE_BGM_PREVIEW = [
   },
 ];
 
+export const NIGHT_MELODY_BGM_PREVIEW = [
+  {
+    code: 'bgm-night-melody',
+    label: '늦은 밤 멜로디 LP',
+    imagePath: withAssetVersion('./images/BGM/Night-melody_LP.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -192,6 +201,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/you’re-fake_LP.png'),
     isDefault: false,
     displayOrder: 10,
+  },
+  {
+    id: 'mallin-oi-night-melody',
+    storeItemId: 'bgm-cucumberboy-01',
+    title: '늦은 밤 멜로디',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/Night-melody.mp3'),
+    coverPath: withAssetVersion('./images/BGM/Night-melody_LP.png'),
+    isDefault: false,
+    displayOrder: 11,
   },
 ];
 
@@ -1358,6 +1377,23 @@ export const STORE_ITEMS = [
     releaseDate: '2026-07-25',
     isPurchasable: true,
   },
+  {
+    id: 'bgm-cucumberboy-01',
+    name: '늦은 밤 멜로디',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒🙇🏻‍♂️🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/Night-melody_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/Night-melody.mp3'),
+    price: 621,
+    state: '판매 중',
+    description: '오이소년의 데뷔곡.',
+    detailDescription:
+      '오이소년의 데뷔 발라드곡이야.<br>(구매하면 내 프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
+    previewImages: NIGHT_MELODY_BGM_PREVIEW,
+    releaseDate: '2026-07-26',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -1367,6 +1403,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'bgm-cucumberboy-01',
   'bgm-tomato-01',
   'bgm-brocolli-01',
 ];
