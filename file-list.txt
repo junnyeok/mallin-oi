@@ -320,6 +320,7 @@
 ./assets/js/modules/update-banner.js
 ./assets/js/modules/work-calendar.js
 ./assets/js/modules/write.js
+./assets/mp3/Cherry-Smile.mp3
 ./assets/mp3/mallin_oi_grilledegg-PT.mp3
 ./assets/mp3/mallin_oi_tetocarrot.mp3
 ./assets/mp3/mallin_oi_welcome.mp3
@@ -328,6 +329,7 @@
 ./assets/mp3/mallin-oi_lofi-cucumber.mp3
 ./assets/mp3/mallin-oi_potato-karaoke.mp3
 ./assets/mp3/mallin-oi_reggae.mp3
+./assets/mp3/you’re-fake.mp3
 ./assets/version.json
 ./calendar-event.html
 ./calendar-groups.html
@@ -344,6 +346,7 @@
 ./images/bad.png
 ./images/calendar-app-icon.png
 ./images/BGM/avocado-sunset.png
+./images/BGM/Cherry-Smile_LP.png
 ./images/BGM/cucumbergirl-debuet.png
 ./images/BGM/lofi-cucumber.png
 ./images/BGM/macho-grilled-egg.png
@@ -351,6 +354,7 @@
 ./images/BGM/reggae-cucumber.png
 ./images/BGM/tetocarrot.png
 ./images/BGM/welcome.png
+./images/BGM/you’re-fake_LP.png
 ./images/character-effects/cucumber-heart.png
 ./images/characters/cucumber.png
 ./images/characters/cucumberboy.png

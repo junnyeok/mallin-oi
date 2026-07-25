@@ -72,6 +72,24 @@ export const LOFI_CUCUMBER_BGM_PREVIEW = [
   },
 ];
 
+export const CHERRY_SMILE_BGM_PREVIEW = [
+  {
+    code: 'bgm-cherry-smile',
+    label: 'Cherry Smile LP',
+    imagePath: withAssetVersion('./images/BGM/Cherry-Smile_LP.png'),
+    displayOrder: 1,
+  },
+];
+
+export const YOURE_FAKE_BGM_PREVIEW = [
+  {
+    code: 'bgm-youre-fake',
+    label: 'you’re fake LP',
+    imagePath: withAssetVersion('./images/BGM/you’re-fake_LP.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -154,6 +172,26 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/reggae-cucumber.png'),
     isDefault: false,
     displayOrder: 8,
+  },
+  {
+    id: 'mallin-oi-cherry-smile',
+    storeItemId: 'bgm-tomato-01',
+    title: 'Cherry Smile',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/Cherry-Smile.mp3'),
+    coverPath: withAssetVersion('./images/BGM/Cherry-Smile_LP.png'),
+    isDefault: false,
+    displayOrder: 9,
+  },
+  {
+    id: 'mallin-oi-youre-fake',
+    storeItemId: 'bgm-brocolli-01',
+    title: 'you’re fake',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/you’re-fake.mp3'),
+    coverPath: withAssetVersion('./images/BGM/you’re-fake_LP.png'),
+    isDefault: false,
+    displayOrder: 10,
   },
 ];
 
@@ -1286,6 +1324,40 @@ export const STORE_ITEMS = [
     previewImages: CARROT_EMOTICON_PACK,
     isPurchasable: true,
   },
+  {
+    id: 'bgm-tomato-01',
+    name: 'Cherry Smile',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🍅🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/Cherry-Smile_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/Cherry-Smile.mp3'),
+    price: 588,
+    state: '판매 중',
+    description: '방울토마토리토는 레게를 좋아해.',
+    detailDescription:
+      '방울토마토리토의 취미야. <br>(구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
+    previewImages: CHERRY_SMILE_BGM_PREVIEW,
+    releaseDate: '2026-07-25',
+    isPurchasable: true,
+  },
+  {
+    id: 'bgm-brocolli-01',
+    name: 'you’re fake',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥦🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/you’re-fake_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/you’re-fake.mp3'),
+    price: 573,
+    state: '판매 중',
+    description: '딸기를 향한 디스곡.',
+    detailDescription:
+      '브로콜리는 쇼미더머니 우승이 목표야. <br>(구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
+    previewImages: YOURE_FAKE_BGM_PREVIEW,
+    releaseDate: '2026-07-25',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -1294,8 +1366,19 @@ export const STORE_ITEMS = [
     new Date(Date.UTC(2026, 6, 6 - index)).toISOString().slice(0, 10),
 }));
 
+const FEATURED_STORE_ITEM_PRIORITY = [
+  'bgm-tomato-01',
+  'bgm-brocolli-01',
+];
+
 export function getFeaturedStoreItems(limit = 15) {
-  return STORE_ITEMS.slice(0, limit);
+  const featuredIds = new Set(FEATURED_STORE_ITEM_PRIORITY);
+  const prioritizedItems = FEATURED_STORE_ITEM_PRIORITY.map((itemId) =>
+    STORE_ITEMS.find((item) => item.id === itemId),
+  ).filter(Boolean);
+  const remainingItems = STORE_ITEMS.filter((item) => !featuredIds.has(item.id));
+
+  return [...prioritizedItems, ...remainingItems].slice(0, limit);
 }
 
 export function getStoreItemById(itemId = '') {
