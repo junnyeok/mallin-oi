@@ -1610,6 +1610,9 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
   const isEquipped = imagePath === getCharacterImageSrc(equippedImageUrl);
   const isOwned = item?.is_owned !== false;
   const canEquip = item?.is_parent_owned !== false;
+  const skinCode = String(item?.skin_code || '').trim();
+  const isBasicSkin =
+    skinCode === DEFAULT_SKIN_CODE || skinCode.endsWith('-basic');
 
   const storeItemId = String(item?.store_item_id || '').trim();
   const detailHref = storeItemId ? getStoreItemDetailHref(storeItemId) : '';
@@ -1630,7 +1633,9 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
       ? `${requiredCharacterName} 필요 · 클릭하면 구매페이지로 이동`
       : '기본 캐릭터 필요';
   } else if (isEquipped) {
-    metaText = '현재 착용 중';
+    metaText = isBasicSkin
+      ? '현재 착용 중'
+      : '현재 착용 중 · 클릭하면 해제';
   }
 
   const extraMetaClass = isOwned && canEquip ? '' : ' is-locked';
@@ -1641,7 +1646,7 @@ function renderCharacterSkinCard(item, equippedImageUrl = '') {
       class="profile-character-card ${isEquipped ? 'is-equipped' : ''} ${
         !isOwned || !canEquip ? 'is-locked' : ''
       }"
-      data-skin-code="${escapeHtml(String(item?.skin_code || '').trim())}"
+      data-skin-code="${escapeHtml(skinCode)}"
       data-skin-image-path="${escapeHtml(imagePath)}"
       data-skin-name="${escapeHtml(item?.skin_name || '스킨')}"
       data-owned="${isOwned ? 'true' : 'false'}"
@@ -2643,7 +2648,11 @@ function renderCharacterSection({
     );
   }
 
-  async function equipCharacterSkin(imagePath, skinName) {
+  async function equipCharacterSkin(
+    imagePath,
+    skinName,
+    { successMessage = '' } = {},
+  ) {
     const nextImagePath = getCharacterImageSrc(imagePath);
 
     if (nextImagePath === getEquippedImageUrl()) {
@@ -2666,7 +2675,10 @@ function renderCharacterSection({
 
       previewEl.src = nextImagePath;
       renderOwnCharacterInventory();
-      setMsg(`${skinName || '캐릭터'} 착용 완료!`, 'green');
+      setMsg(
+        successMessage || `${skinName || '캐릭터'} 착용 완료!`,
+        'green',
+      );
 
       emitEquipmentChanged({
         userId: profileRow.id,
@@ -2776,6 +2788,7 @@ function renderCharacterSection({
         const requiredCharacterName = String(
           button.dataset.requiredCharacterName || '',
         ).trim();
+        const skinCode = String(button.dataset.skinCode || '').trim();
 
         if (!isOwned) {
           if (storeHref) window.location.href = storeHref;
@@ -2799,6 +2812,28 @@ function renderCharacterSection({
 
         const imagePath = button.dataset.skinImagePath || '';
         const skinName = button.dataset.skinName || '캐릭터';
+
+        const isBasicSkin =
+          skinCode === DEFAULT_SKIN_CODE || skinCode.endsWith('-basic');
+        const isEquipped =
+          getCharacterImageSrc(imagePath) === getEquippedImageUrl();
+
+        if (isEquipped && !isBasicSkin) {
+          const defaultSkin = getDefaultSkinForCharacter(selectedCharacterCode);
+
+          if (!defaultSkin) {
+            setMsg('기본 스킨을 찾을 수 없어 해제하지 못했어.', 'red');
+            return;
+          }
+
+          await equipCharacterSkin(
+            defaultSkin.image_path,
+            defaultSkin.skin_name || DEFAULT_CHARACTER_NAME,
+            { successMessage: `${skinName} 해제 완료!` },
+          );
+          return;
+        }
+
         await equipCharacterSkin(imagePath, skinName);
       });
     });

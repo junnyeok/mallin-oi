@@ -998,3 +998,6 @@
 ./games/cucumber-grow/assets/README.md
 ./games/cucumber-grow/assets/images/README.md
 ./games/cucumber-grow/assets/sounds/README.md
+./images/skins/ozyo.png
+./supabase-SQLEditor/20260728-ozyo-cucumber-skin.sql
+./www/images/skins/ozyo.png

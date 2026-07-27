@@ -520,11 +520,15 @@ async function loadOwnedCharacterCodes() {
     return new Set();
   }
 
-  return new Set(
+  const ownedCharacterCodes = new Set(
     (data || [])
       .map((row) => String(row?.character_code || '').trim())
       .filter(Boolean),
   );
+
+  // 기본오이는 모든 회원에게 기본 지급되는 캐릭터다.
+  ownedCharacterCodes.add('char-cucumber');
+  return ownedCharacterCodes;
 }
 
 async function loadMyEquippedCharacterImageUrl() {

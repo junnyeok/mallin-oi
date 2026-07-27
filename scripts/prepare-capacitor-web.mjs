@@ -42,6 +42,7 @@ const nativeProfileBackgroundImageFiles = [
   'images/profile-background/refrigerator.png',
   'images/profile-background/refrigerator-mobile.png',
 ];
+const nativeSkinImageFiles = ['images/skins/ozyo.png'];
 const requiredAssetDirs = [
   'assets/js/modules',
   'assets/css/components',
@@ -194,6 +195,7 @@ function assertRequiredFiles() {
     'assets/css/main/app-calendar-main.css',
     ...nativeCharacterImageFiles,
     ...nativeProfileBackgroundImageFiles,
+    ...nativeSkinImageFiles,
     ...getMainModuleImports(),
   ];
 
@@ -262,6 +264,7 @@ function assertPreparedOutput() {
     'site.webmanifest',
     ...nativeCharacterImageFiles,
     ...nativeProfileBackgroundImageFiles,
+    ...nativeSkinImageFiles,
     ...listFilesByExtension('assets/js/modules', '.js'),
     ...listFilesByExtension('assets/css/components', '.css'),
     ...listFilesByExtension('assets/css/main', '.css'),
@@ -295,6 +298,7 @@ dirsToCopy.forEach((relativePath) => {
 });
 nativeCharacterImageFiles.forEach(copyFile);
 nativeProfileBackgroundImageFiles.forEach(copyFile);
+nativeSkinImageFiles.forEach(copyFile);
 copyRequiredAssetDirs();
 
 assertPreparedOutput();

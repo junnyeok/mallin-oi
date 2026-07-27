@@ -395,6 +395,15 @@ export const CUCUMBER_SOLDIER_SKIN_PREVIEW = [
   },
 ];
 
+export const OZYO_CUCUMBER_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-ozyo',
+    label: '오죠 이토루',
+    imagePath: withAssetVersion('./images/skins/ozyo.png'),
+    displayOrder: 1,
+  },
+];
+
 export const AVOCADO_CAFE_SKIN_PREVIEW = [
   {
     code: 'char-fat-avocado-cafe',
@@ -985,7 +994,7 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'skin-cucumber-01',
+    id: 'skin-cucumber-soldier-01',
     name: '군인오이 스킨',
     category: 'skin',
     badge: '스킨',
@@ -1444,6 +1453,22 @@ export const STORE_ITEMS = [
     releaseDate: '2026-07-27',
     isPurchasable: true,
   },
+  {
+    id: 'skin-cucumber-01',
+    name: '오죠 이토루',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥒😎',
+    thumbImagePath: withAssetVersion('./images/skins/ozyo.png'),
+    price: 775,
+    state: '판매 중',
+    description: '정크푸드와 맞서 싸우는 오죠 이토루야.',
+    detailDescription:
+      '구매하면 내 프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: OZYO_CUCUMBER_SKIN_PREVIEW,
+    releaseDate: '2026-07-28',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -1453,6 +1478,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'skin-cucumber-01',
   'BG-03',
   'bgm-cucumberboy-01',
   'bgm-tomato-01',
@@ -1565,6 +1591,14 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: null,
   },
   {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-ozyo',
+    skin_name: '오죠 이토루',
+    image_path: withAssetVersion('./images/skins/ozyo.png'),
+    display_order: 3,
+    store_item_id: 'skin-cucumber-01',
+  },
+  {
     character_code: 'char-cucumber-girl',
     skin_code: 'char-cucumber-girl-basic',
     skin_name: '오이소녀 캐릭터',
@@ -1642,7 +1676,7 @@ export const CHARACTER_SKIN_CATALOG = [
     skin_name: '군인오이 스킨',
     image_path: withAssetVersion('./images/skins/cucumber-soldier.png'),
     display_order: 2,
-    store_item_id: 'skin-cucumber-01',
+    store_item_id: 'skin-cucumber-soldier-01',
   },
   {
     character_code: 'char-fat-avocado',

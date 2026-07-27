@@ -8,6 +8,23 @@ begin
 end;
 $require_store_purchase_test_permissions$;
 
+-- skin-cucumber-01은 신규 오죠 이토루 상품 ID로 사용한다.
+-- 기존 군인오이 구매자는 상품 보유 상태를 잃지 않도록 별도 ID로 이전한다.
+delete from public.user_store_items old_item
+where old_item.item_id = 'skin-cucumber-01'
+  and old_item.item_name = '군인오이 스킨'
+  and exists (
+    select 1
+    from public.user_store_items soldier_item
+    where soldier_item.user_id = old_item.user_id
+      and soldier_item.item_id = 'skin-cucumber-soldier-01'
+  );
+
+update public.user_store_items
+set item_id = 'skin-cucumber-soldier-01'
+where item_id = 'skin-cucumber-01'
+  and item_name = '군인오이 스킨';
+
 create or replace function public.purchase_store_item(p_item_id text)
 returns table(success boolean, message text, balance integer)
 language plpgsql
@@ -96,9 +113,16 @@ begin
     v_required_character_code := 'char-grilled-egg';
     v_required_character_name := '구운계란 캐릭터';
 
-  elsif p_item_id = 'skin-cucumber-01' then
+  elsif p_item_id = 'skin-cucumber-soldier-01' then
     v_price := 389;
     v_name := '군인오이 스킨';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
+  elsif p_item_id = 'skin-cucumber-01' then
+    v_price := 775;
+    v_name := '오죠 이토루';
     v_category := 'skin';
     v_required_character_code := 'char-cucumber';
     v_required_character_name := '기본오이';
@@ -316,7 +340,7 @@ begin
 
   if v_price > 0 then
     v_can_bypass_store_balance :=
-      p_item_id <> 'BG-03'
+      p_item_id not in ('BG-03', 'skin-cucumber-01')
       and exists (
         select 1
         from public.store_purchase_test_permissions permission
@@ -328,7 +352,7 @@ begin
       v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
 
       if coalesce(v_is_auto_topup_admin, false)
-         and p_item_id <> 'BG-03' then
+         and p_item_id not in ('BG-03', 'skin-cucumber-01') then
         perform public.ensure_user_pickles(
           v_user_id,
           v_price,
@@ -800,7 +824,7 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
-  elsif p_item_id = 'skin-cucumber-01' then
+  elsif p_item_id = 'skin-cucumber-soldier-01' then
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
     )
@@ -811,6 +835,35 @@ begin
       '군인오이 스킨',
       './images/skins/cucumber-soldier.png',
       2,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-cucumber-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'default_grant'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-ozyo',
+      '오죠 이토루',
+      './images/skins/ozyo.png',
+      3,
       'store_purchase'
     )
     on conflict (user_id, skin_code) do nothing;
@@ -1091,8 +1144,10 @@ begin
         then '오이소녀 이모티콘팩 구매가 완료됐어. 380피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'
         then '구운계란 트레이너 스킨 구매가 완료됐어. 466피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
-      when p_item_id = 'skin-cucumber-01'
+      when p_item_id = 'skin-cucumber-soldier-01'
         then '군인오이 스킨 구매가 완료됐어. 389피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumber-01'
+        then '오죠 이토루 구매가 완료됐어. 775피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-avocado-01'
         then '아보카도 카페사장 스킨 구매가 완료됐어. 423피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-tetocarrot-01'
