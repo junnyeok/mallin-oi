@@ -24,6 +24,9 @@
   [store.html / store-item.html]
   - TOP / END
 
+  [mallin-plus.html]
+  - TOP / END
+
   [notifications.html]
   - TOP / END
 
@@ -67,6 +70,7 @@ function getPageType() {
   if (path.includes('suggestion.html')) return 'suggestion';
   if (path.includes('qna.html')) return 'qna';
   if (path.includes('notifications.html')) return 'notifications';
+  if (path.includes('mallin-plus.html')) return 'mallin-plus';
 
   const page = String(document.body?.dataset?.page || '')
     .trim()
@@ -86,6 +90,7 @@ function getPageType() {
   }
   if (page === 'store-item') return 'store-item';
   if (page === 'store') return 'store';
+  if (page === 'mallin-plus') return 'mallin-plus';
 
   if (
     page === 'calendar-study' ||
@@ -431,7 +436,11 @@ export function initScrollButtons(options = {}) {
     btnBottom.setAttribute('aria-label', '하단으로 이동');
   }
 
-  if (pageType === 'store' || pageType === 'store-item') {
+  if (
+    pageType === 'store' ||
+    pageType === 'store-item' ||
+    pageType === 'mallin-plus'
+  ) {
     btnBottom.setAttribute('aria-label', '페이지 하단으로 이동');
   }
 

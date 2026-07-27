@@ -473,6 +473,8 @@
 ./images/profile-background/CPA.png
 ./images/profile-background/nightwork-mobile.png
 ./images/profile-background/nightwork.png
+./images/profile-background/refrigerator-mobile.png
+./images/profile-background/refrigerator.png
 ./images/profile-frame/rainbow-mobile.png
 ./images/profile-frame/rainbow.png
 ./images/skins/avocado-cafe.png
@@ -814,6 +816,8 @@
 ./www/images/logo-study.png
 ./www/images/logo-word.png
 ./www/images/logo-work.png
+./www/images/profile-background/refrigerator-mobile.png
+./www/images/profile-background/refrigerator.png
 ./www/index.html
 ./www/inventory.html
 ./www/login.html
@@ -918,6 +922,7 @@
 ./supabase-SQLEditor/20260718-remove-study-work-shared-calendar.sql
 ./supabase-SQLEditor/20260721-profile-featured-bgm.sql
 ./supabase-SQLEditor/20260726-night-melody-bgm.sql
+./supabase-SQLEditor/20260727-refrigerator-profile-background.sql
 ./www/assets/js/modules/site-stats.js
 ./images/services/Q&A_button.png
 ./images/services/calendar_button.png

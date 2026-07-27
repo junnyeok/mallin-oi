@@ -72,6 +72,17 @@ function formatPrice(price) {
   return `${Number(price || 0).toLocaleString('ko-KR')} 🥒`;
 }
 
+function getPurchaseConfirmMessage(item = {}) {
+  const itemName = String(item?.name || '이 품목').trim();
+  const price = Math.max(0, Number(item?.price || 0));
+
+  if (price === 0) {
+    return `${itemName}을 무료로 받을까?`;
+  }
+
+  return `${itemName}을 ${price.toLocaleString('ko-KR')}피클로 구매할까?`;
+}
+
 function escapeAttribute(value = '') {
   return String(value || '')
     .replaceAll('&', '&amp;')
@@ -1085,6 +1096,8 @@ ${renderStoreItemPreview(item, { effectPreviewCharacterImage })}          </sect
       }
 
       if (!canPurchase) return;
+
+      if (!window.confirm(getPurchaseConfirmMessage(item))) return;
 
       buyBtn.disabled = true;
       if (msgEl) msgEl.textContent = '지급 처리 중...';

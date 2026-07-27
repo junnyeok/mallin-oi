@@ -32,6 +32,26 @@ export function initServiceMenu() {
   if (!button || !panel || !closeBtn) return;
 
   let closeTimer = null;
+  let swipeGesture = null;
+  let suppressClickUntil = 0;
+
+  const SWIPE_DIRECTION_LOCK_PX = 10;
+  const SWIPE_DIRECTION_RATIO = 1.25;
+  const SWIPE_MIN_FLICK_PX = 48;
+  const SWIPE_MIN_FLICK_VELOCITY = 0.5;
+  const SWIPE_CLICK_SUPPRESSION_MS = 500;
+  // iOS의 화면 왼쪽 가장자리 시스템 뒤로가기 영역과 경쟁하지 않는다.
+  const BROWSER_EDGE_GUARD_PX = 32;
+
+  const clearSwipePresentation = () => {
+    panel.classList.remove('is-swipe-dragging');
+    panel.style.removeProperty('transform');
+  };
+
+  const resetSwipeGesture = () => {
+    swipeGesture = null;
+    clearSwipePresentation();
+  };
 
   const clearCloseTimer = () => {
     if (!closeTimer) return;
@@ -41,6 +61,7 @@ export function initServiceMenu() {
 
   const openMenu = () => {
     clearCloseTimer();
+    resetSwipeGesture();
 
     panel.hidden = false;
 
@@ -78,6 +99,107 @@ export function initServiceMenu() {
     if (restoreFocus) {
       button.focus();
     }
+  };
+
+  const settleSwipe = ({ shouldClose = false } = {}) => {
+    if (!swipeGesture) return;
+
+    swipeGesture = null;
+    panel.classList.remove('is-swipe-dragging');
+
+    // 드래그 중의 위치를 한 프레임 확정한 뒤 기존 전환 효과로 이어 간다.
+    panel.getBoundingClientRect();
+
+    if (shouldClose) {
+      closeMenu({ restoreFocus: true });
+    }
+
+    panel.style.removeProperty('transform');
+  };
+
+  const handleSwipePointerDown = (event) => {
+    if (
+      event.pointerType !== 'touch' ||
+      !event.isPrimary ||
+      !menu.classList.contains('is-open') ||
+      event.clientX < BROWSER_EDGE_GUARD_PX
+    ) {
+      return;
+    }
+
+    swipeGesture = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startTime: performance.now(),
+      direction: 'pending',
+    };
+  };
+
+  const handleSwipePointerMove = (event) => {
+    if (!swipeGesture || event.pointerId !== swipeGesture.pointerId) return;
+
+    const deltaX = event.clientX - swipeGesture.startX;
+    const deltaY = event.clientY - swipeGesture.startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (swipeGesture.direction === 'pending') {
+      if (Math.hypot(deltaX, deltaY) < SWIPE_DIRECTION_LOCK_PX) return;
+
+      if (deltaX > 0 && absX > absY * SWIPE_DIRECTION_RATIO) {
+        swipeGesture.direction = 'right';
+        suppressClickUntil = Date.now() + SWIPE_CLICK_SUPPRESSION_MS;
+        panel.classList.add('is-swipe-dragging');
+      } else if (absY > absX || deltaX <= 0) {
+        swipeGesture.direction = 'ignored';
+      } else {
+        return;
+      }
+    }
+
+    if (swipeGesture.direction !== 'right') return;
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    panel.style.transform = `translate3d(${Math.max(0, deltaX)}px, 0, 0)`;
+  };
+
+  const handleSwipePointerEnd = (event) => {
+    if (!swipeGesture || event.pointerId !== swipeGesture.pointerId) return;
+
+    if (swipeGesture.direction !== 'right') {
+      resetSwipeGesture();
+      return;
+    }
+
+    const deltaX = Math.max(0, event.clientX - swipeGesture.startX);
+    const elapsed = Math.max(1, performance.now() - swipeGesture.startTime);
+    const velocity = deltaX / elapsed;
+    const distanceThreshold = Math.min(
+      120,
+      Math.max(72, panel.getBoundingClientRect().width * 0.28),
+    );
+    const isFlick =
+      deltaX >= SWIPE_MIN_FLICK_PX &&
+      velocity >= SWIPE_MIN_FLICK_VELOCITY;
+
+    suppressClickUntil = Date.now() + SWIPE_CLICK_SUPPRESSION_MS;
+    settleSwipe({ shouldClose: deltaX >= distanceThreshold || isFlick });
+  };
+
+  const handleSwipePointerCancel = (event) => {
+    if (!swipeGesture || event.pointerId !== swipeGesture.pointerId) return;
+
+    if (swipeGesture.direction === 'right') {
+      suppressClickUntil = Date.now() + SWIPE_CLICK_SUPPRESSION_MS;
+      settleSwipe();
+      return;
+    }
+
+    resetSwipeGesture();
   };
 
   const isCalendarManageOpen = () => {
@@ -139,6 +261,24 @@ export function initServiceMenu() {
   };
 
   button.addEventListener('click', toggleMenu);
+
+  panel.addEventListener('pointerdown', handleSwipePointerDown);
+  panel.addEventListener('pointermove', handleSwipePointerMove, {
+    passive: false,
+  });
+  panel.addEventListener('pointerup', handleSwipePointerEnd);
+  panel.addEventListener('pointercancel', handleSwipePointerCancel);
+  panel.addEventListener(
+    'click',
+    (event) => {
+      if (Date.now() > suppressClickUntil) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    },
+    true,
+  );
 
   closeBtn.addEventListener('click', () => {
     closeMenu({ restoreFocus: true });

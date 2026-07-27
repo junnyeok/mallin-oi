@@ -662,6 +662,20 @@ export const PROFILE_BACKGROUND_CATALOG = [
     ),
     displayOrder: 2,
   },
+  {
+    itemId: 'BG-03',
+    name: '냉장고 프로필배경',
+    pcImagePath: withAssetVersion(
+      './images/profile-background/refrigerator.png',
+    ),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/refrigerator-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/refrigerator.png',
+    ),
+    displayOrder: 3,
+  },
 ];
 
 export function getProfileBackgroundByItemId(itemId = '') {
@@ -1394,6 +1408,42 @@ export const STORE_ITEMS = [
     releaseDate: '2026-07-26',
     isPurchasable: true,
   },
+  {
+    id: 'BG-03',
+    name: '냉장고 프로필배경',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '❄️',
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/refrigerator.png',
+    ),
+    price: 588,
+    state: '판매 중',
+    description: '말린오이캐릭터들의 집이야.',
+    detailDescription:
+      '말린오이캐릭터들의 집이야. 오이키우기 게임에서 가장 얻기 힘든 장소가 될 거야.<br>구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-03-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/refrigerator.png',
+        ),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-03-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/refrigerator-mobile.png',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    releaseDate: '2026-07-27',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -1403,6 +1453,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'BG-03',
   'bgm-cucumberboy-01',
   'bgm-tomato-01',
   'bgm-brocolli-01',

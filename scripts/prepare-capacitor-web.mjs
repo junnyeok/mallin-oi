@@ -38,6 +38,10 @@ const nativeCharacterImageFiles = [
   'images/characters/tomato.png',
   'images/characters/brocolli.png',
 ];
+const nativeProfileBackgroundImageFiles = [
+  'images/profile-background/refrigerator.png',
+  'images/profile-background/refrigerator-mobile.png',
+];
 const requiredAssetDirs = [
   'assets/js/modules',
   'assets/css/components',
@@ -189,6 +193,7 @@ function assertRequiredFiles() {
     'assets/css/components/refresh-control.css',
     'assets/css/main/app-calendar-main.css',
     ...nativeCharacterImageFiles,
+    ...nativeProfileBackgroundImageFiles,
     ...getMainModuleImports(),
   ];
 
@@ -256,6 +261,7 @@ function assertPreparedOutput() {
     'images/favicon.ico',
     'site.webmanifest',
     ...nativeCharacterImageFiles,
+    ...nativeProfileBackgroundImageFiles,
     ...listFilesByExtension('assets/js/modules', '.js'),
     ...listFilesByExtension('assets/css/components', '.css'),
     ...listFilesByExtension('assets/css/main', '.css'),
@@ -288,6 +294,7 @@ dirsToCopy.forEach((relativePath) => {
   copyDirRecursive(relativePath, src, dest);
 });
 nativeCharacterImageFiles.forEach(copyFile);
+nativeProfileBackgroundImageFiles.forEach(copyFile);
 copyRequiredAssetDirs();
 
 assertPreparedOutput();

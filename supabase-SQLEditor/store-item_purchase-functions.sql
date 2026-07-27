@@ -146,6 +146,11 @@ begin
     v_name := '야간 순찰 배경';
     v_category := 'profile';
 
+  elsif p_item_id = 'BG-03' then
+    v_price := 588;
+    v_name := '냉장고 프로필배경';
+    v_category := 'profile';
+
   elsif p_item_id = 'skin-cucumbergirl-01' then
     v_price := 923;
     v_name := '오이소녀 경찰스킨';
@@ -310,17 +315,20 @@ begin
   end if;
 
   if v_price > 0 then
-    v_can_bypass_store_balance := exists (
-      select 1
-      from public.store_purchase_test_permissions permission
-      where permission.user_id = v_user_id
-        and permission.can_bypass_store_balance = true
-    );
+    v_can_bypass_store_balance :=
+      p_item_id <> 'BG-03'
+      and exists (
+        select 1
+        from public.store_purchase_test_permissions permission
+        where permission.user_id = v_user_id
+          and permission.can_bypass_store_balance = true
+      );
 
     if not v_can_bypass_store_balance then
       v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
 
-      if coalesce(v_is_auto_topup_admin, false) then
+      if coalesce(v_is_auto_topup_admin, false)
+         and p_item_id <> 'BG-03' then
         perform public.ensure_user_pickles(
           v_user_id,
           v_price,
@@ -913,6 +921,10 @@ begin
     -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'BG-03' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'emo-eat-01' then
     insert into public.user_emoticons (
       user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
@@ -1069,6 +1081,8 @@ begin
         then '중앙경찰학교 카툰배경 구매가 완료됐어. 438피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-02'
         then '야간 순찰 배경 구매가 완료됐어. 382피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-03'
+        then '냉장고 프로필배경 구매가 완료됐어. 588피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-moved-01'
