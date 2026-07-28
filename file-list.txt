@@ -1038,3 +1038,14 @@
 ./supabase/migrations/20260728040000_burning_soul_bgm.sql
 ./tests/burning-soul-bgm.test.mjs
 ./supabase/migrations/20260728050000_burning_soul_strict_balance.sql
+./images/profile-frame/mallin-shiny.png
+./images/profile-frame/mallin-shiny-mobile.png
+./www/images/profile-frame/rainbow.png
+./www/images/profile-frame/rainbow-mobile.png
+./www/images/profile-frame/mallin-shiny.png
+./www/images/profile-frame/mallin-shiny-mobile.png
+./www/store.html
+./www/store-item.html
+./supabase-SQLEditor/20260728-mallin-shiny-profile-frame.sql
+./supabase/migrations/20260728060000_bf02_mallin_shiny_profile_frame.sql
+./tests/bf02-profile-frame.test.mjs

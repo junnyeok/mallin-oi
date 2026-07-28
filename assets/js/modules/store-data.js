@@ -812,7 +812,40 @@ export const PROFILE_FRAME_RAINBOW_PREVIEW = [
   },
 ];
 
+export const PROFILE_FRAME_MALLIN_SHINY_PREVIEW = [
+  {
+    code: 'BF-02-pc',
+    label: 'PC 버전 미리보기',
+    imagePath: withAssetVersion(
+      './images/profile-frame/mallin-shiny.png',
+    ),
+    displayOrder: 1,
+  },
+  {
+    code: 'BF-02-mobile',
+    label: '모바일 버전 미리보기',
+    imagePath: withAssetVersion(
+      './images/profile-frame/mallin-shiny-mobile.png',
+    ),
+    displayOrder: 2,
+  },
+];
+
 export const PROFILE_FRAME_CATALOG = [
+  {
+    itemId: 'BF-02',
+    name: '말린오이 테마 빛나는 테두리',
+    pcImagePath: withAssetVersion(
+      './images/profile-frame/mallin-shiny.png',
+    ),
+    mobileImagePath: withAssetVersion(
+      './images/profile-frame/mallin-shiny-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion(
+      './images/profile-frame/mallin-shiny.png',
+    ),
+    displayOrder: 1,
+  },
   {
     itemId: 'BF-01',
     name: '무지개 프로필 테두리',
@@ -821,7 +854,7 @@ export const PROFILE_FRAME_CATALOG = [
       './images/profile-frame/rainbow-mobile.png',
     ),
     thumbImagePath: withAssetVersion('./images/profile-frame/rainbow.png'),
-    displayOrder: 1,
+    displayOrder: 2,
   },
 ];
 
@@ -836,6 +869,25 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'BF-02',
+    name: '말린오이 테마 빛나는 테두리',
+    category: 'profile',
+    itemType: 'profile-frame',
+    badge: '프로필테두리',
+    icon: '🥒🌟',
+    thumbImagePath: withAssetVersion(
+      './images/profile-frame/mallin-shiny.png',
+    ),
+    price: 488,
+    state: '판매 중',
+    description: '프로필을 꾸밀 수 있는 말린오이 테마의 빛나는 테두리야.',
+    detailDescription:
+      '구매하면 인벤토리의 프로필테두리 항목에 추가되고, 장착하면 프로필카드 테두리에 표시돼.',
+    previewImages: PROFILE_FRAME_MALLIN_SHINY_PREVIEW,
+    releaseDate: '2026-07-28',
+    isPurchasable: true,
+  },
   {
     id: 'character-tomato-01',
     name: '방울토마토리토',
@@ -1649,6 +1701,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'BF-02',
   'bgm-tetocarrto-02',
   'cha-effects-fire-01',
   'BG-04',

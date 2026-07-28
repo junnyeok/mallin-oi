@@ -481,6 +481,8 @@ summary:focus-visible {
 }
 
 .watering-effect__can {
+  --water-can-scale-x: -1;
+
   position: absolute;
   top: 0;
   left: 0;
@@ -489,10 +491,14 @@ summary:focus-visible {
   width: 88px;
   height: 88px;
   object-fit: contain;
-  transform: translate(-50%, -50%) scaleX(-1);
+  transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x));
   animation: watering-can-pop 820ms ease-out forwards;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+.watering-effect__can--from-right {
+  --water-can-scale-x: 1;
 }
 
 .watering-effect__stream {
@@ -1259,16 +1265,18 @@ summary:focus-visible {
 @keyframes watering-can-pop {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scaleX(-1) scale(0.64);
+    transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x))
+      scale(0.64);
   }
   18%,
   76% {
     opacity: 1;
-    transform: translate(-50%, -50%) scaleX(-1) scale(1);
+    transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x)) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scaleX(-1) scale(0.92);
+    transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x))
+      scale(0.92);
   }
 }
 

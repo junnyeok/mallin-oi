@@ -932,19 +932,23 @@ function renderStoreItemPreview(item, options = {}) {
   }
 
   if (isProfileBackgroundPreview || isProfileFramePreview) {
+    const previewClass = isProfileFramePreview
+      ? 'store-item-preview__profile-frame'
+      : 'store-item-preview__profile-background';
+
     return `
-      <div class="store-item-preview__profile-background">
+      <div class="${previewClass}">
         ${previews
           .map(
             (preview) => `
-              <figure class="store-item-preview__profile-background-card">
-                <figcaption class="store-item-preview__profile-background-label">
+              <figure class="${previewClass}-card">
+                <figcaption class="${previewClass}-label">
                   ${preview.label}
                 </figcaption>
                 <img
                   src="${preview.imagePath}"
                   alt="${preview.label}"
-                  class="store-item-preview__profile-background-img"
+                  class="${previewClass}-img"
                   loading="lazy"
                 />
               </figure>

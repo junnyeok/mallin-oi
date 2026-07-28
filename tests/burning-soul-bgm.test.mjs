@@ -39,8 +39,8 @@ test('Burning Soul 상품과 BGM 카탈로그가 한 번만 연결된다', () =>
   assert.equal(tracks[0].coverPath, products[0].thumbImagePath);
 });
 
-test('Burning Soul이 New 상품 목록 첫 번째다', () => {
-  assert.equal(getFeaturedStoreItems(1)[0].id, ITEM_ID);
+test('Burning Soul이 신규 BF-02 다음 New 상품으로 유지된다', () => {
+  assert.equal(getFeaturedStoreItems(2)[1].id, ITEM_ID);
 });
 
 test('구매 SQL은 서버 가격, 인벤토리 보유 기록, 원장 기록을 연결한다', async () => {

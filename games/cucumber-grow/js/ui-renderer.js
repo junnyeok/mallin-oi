@@ -7,6 +7,12 @@ import {
 } from "./number-format.js";
 import { getGrowthProgress, getNextPrice } from "./game-engine.js";
 
+const WATERING_CENTER_TOLERANCE = 0.5;
+
+export function getWateringSide(effectX, targetX) {
+  return effectX > targetX + WATERING_CENTER_TOLERANCE ? "right" : "left";
+}
+
 export class UIRenderer {
   constructor(documentRoot = document) {
     this.document = documentRoot;
@@ -287,6 +293,7 @@ export class UIRenderer {
     const angle = Math.atan2(deltaY, deltaX);
     const distance = Math.hypot(deltaX, deltaY);
     const streamLength = clamp(distance - 26, 28, 320);
+    const wateringSide = getWateringSide(x, targetX);
     const burst = this.document.createElement("span");
     const direction = this.document.createElement("span");
     const wateringCan = this.document.createElement("img");
@@ -303,7 +310,8 @@ export class UIRenderer {
     burst.style.setProperty("--water-angle", `${angle}rad`);
     burst.style.setProperty("--water-distance", `${streamLength}px`);
     direction.className = "watering-effect";
-    wateringCan.className = "watering-effect__can";
+    wateringCan.className =
+      `watering-effect__can watering-effect__can--from-${wateringSide}`;
     wateringCan.src = "./assets/images/water-gun.png";
     wateringCan.alt = "";
     wateringCan.draggable = false;
@@ -317,8 +325,8 @@ export class UIRenderer {
     );
     gain.className = "touch-gain";
     gain.textContent = `+${formatNumber(amount)} XP`;
-    direction.append(stream, wateringCan);
-    burst.append(direction, gain);
+    direction.append(stream);
+    burst.append(direction, wateringCan, gain);
     this.elements.touchEffects.append(burst);
     window.setTimeout(() => burst.remove(), 950);
 

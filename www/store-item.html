@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>상점 품목 | 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/components/character-effects.css"
+    />
+    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/store-main.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+  </head>
+
+  <body data-page="store-item" class="theme-home">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="site-main">
+        <section class="store-hero">
+          <div class="container">
+            <div id="storeItemDetail"></div>
+          </div>
+        </section>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>상점 | 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link
+      rel="stylesheet"
+      href="./assets/css/components/character-effects.css"
+    />
+    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/store-main.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+  </head>
+
+  <body data-page="store" class="theme-home">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="site-main">
+        <section class="store-hero">
+          <div class="container">
+            <div class="store-hero__card">
+              <div class="store-hero__content">
+                <p class="store-hero__eyebrow">🥒 STORE</p>
+                <h1 class="store-hero__title">말린오이 상점</h1>
+                <p class="store-hero__desc">
+                  피클로 여러 아이템들을 살 수 있는 공간이야.
+                </p>
+              </div>
+
+              <aside class="store-balance" aria-label="보유 피클">
+                <p class="store-balance__label">내 보유 피클</p>
+                <p class="store-balance__value" id="storeBalanceValue">
+                  로그인 필요
+                </p>
+                <p class="store-balance__hint" id="storeBalanceHint">
+                  로그인하면 보유 피클을 확인할 수 있어.
+                </p>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section">
+          <div class="container">
+            <div class="store-section__head">
+              <div>
+                <h2 class="store-section__title">🛍️ 전체 품목</h2>
+              </div>
+            </div>
+
+            <div class="store-toolbar">
+              <nav class="store-filter" aria-label="상점 품목 필터">
+                <button
+                  type="button"
+                  class="store-filter__btn is-active"
+                  data-store-filter="all"
+                  aria-pressed="true"
+                >
+                  전체
+                </button>
+                <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="emoticon"
+                aria-pressed="false"
+              >
+                이모티콘
+                </button>
+                <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="character"
+                aria-pressed="false"
+              >
+                캐릭터
+                </button>
+                <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="skin"
+                aria-pressed="false"
+              >
+                스킨
+                </button>
+                <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="bgm"
+                aria-pressed="false"
+              >
+                BGM
+                </button>
+                <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="profile"
+                aria-pressed="false"
+              >
+                프로필
+                </button>
+                <button
+                type="button"
+                class="store-filter__btn"
+                data-store-filter="cha-effects"
+                aria-pressed="false"
+              >
+                캐릭터효과
+                </button>
+              </nav>
+
+              <div class="store-sort" aria-label="상점 품목 정렬">
+                <div class="store-sort__criteria" role="group" aria-label="정렬 기준">
+                  <button
+                    type="button"
+                    class="store-sort__btn is-active"
+                    data-store-sort-key="releaseDate"
+                    aria-pressed="true"
+                  >
+                    출시일
+                  </button>
+                  <button
+                    type="button"
+                    class="store-sort__btn"
+                    data-store-sort-key="price"
+                    aria-pressed="false"
+                  >
+                    가격
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="store-sort__btn store-sort__direction"
+                  data-store-sort-direction
+                  aria-label="정렬 방향: 내림차순"
+                  aria-pressed="true"
+                >
+                  내림차순
+                </button>
+              </div>
+            </div>
+
+            <div class="store-grid" id="storeGrid"></div>
+            <div class="store-empty" id="storeEmpty" hidden>
+              해당 분류에 표시할 품목이 아직 없어.
+            </div>
+            <nav
+              class="store-pager"
+              id="storePagination"
+              aria-label="상점 품목 페이지"
+              hidden
+            >
+              <button
+                type="button"
+                class="store-pager__btn"
+                data-store-page-action="prev"
+              >
+                이전
+              </button>
+
+              <div class="store-pager__pages" id="storePaginationPages"></div>
+
+              <button
+                type="button"
+                class="store-pager__btn"
+                data-store-page-action="next"
+              >
+                다음
+              </button>
+            </nav>
+          </div>
+        </section>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { GAME_CONFIG } from "../js/game-config.js";
 import {
   addGrowthExperience,
@@ -19,6 +20,7 @@ import {
 } from "../js/offline-reward.js";
 import { clearGameSave, loadGameSave, saveGame } from "../js/save-manager.js";
 import { formatExactNumber, formatNumber } from "../js/number-format.js";
+import { getWateringSide } from "../js/ui-renderer.js";
 
 class MemoryStorage {
   constructor(initialValue = null) {
@@ -69,6 +71,52 @@ test("물주기는 한 번마다 경험치 한 번만 지급하고 오이를 직
   assert.equal(state.growthExperience, 10);
   assert.equal(state.cucumbers, 0);
   assert.equal(state.totalEarned, 0);
+});
+
+test("물뿌리개 방향은 게임 무대 안의 오이 중심을 기준으로 정한다", () => {
+  assert.equal(getWateringSide(40, 100), "left");
+  assert.equal(getWateringSide(160, 100), "right");
+  assert.equal(getWateringSide(100, 100), "left");
+  assert.equal(getWateringSide(100.001, 100), "left");
+
+  const stageLeftInViewport = 800;
+  const clickXInViewport = 840;
+  const characterCenterInViewport = 920;
+
+  assert.equal(
+    getWateringSide(
+      clickXInViewport - stageLeftInViewport,
+      characterCenterInViewport - stageLeftInViewport
+    ),
+    "left"
+  );
+});
+
+test("오른쪽 물뿌리개는 X축만 반전하고 Y축은 뒤집지 않는다", async () => {
+  const gameCss = await readFile(
+    new URL("../css/game.css", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    gameCss,
+    /\.watering-effect__can--from-right\s*\{[^}]*--water-can-scale-x:\s*1;/s
+  );
+  assert.match(
+    gameCss,
+    /@keyframes watering-can-pop[\s\S]*scaleX\(var\(--water-can-scale-x\)\)/
+  );
+  assert.doesNotMatch(gameCss, /scale\(\s*-1(?:\s*,|\s*\))/);
+});
+
+test("마우스와 터치는 하나의 Pointer Event 물주기 경로를 사용한다", async () => {
+  const mainSource = await readFile(
+    new URL("../js/main.js", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(mainSource, /addEventListener\("pointerdown"/);
+  assert.doesNotMatch(mainSource, /addEventListener\("touchstart"/);
 });
 
 test("큰 경험치 증가도 최종 기준에서 멈추고 진행률은 100%를 넘지 않는다", () => {

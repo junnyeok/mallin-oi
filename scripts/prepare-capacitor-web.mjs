@@ -11,6 +11,8 @@ const filesToCopy = [
   'login.html',
   'write.html',
   'inventory.html',
+  'store.html',
+  'store-item.html',
   'post.html',
   'profile.html',
   'notifications.html',
@@ -43,6 +45,12 @@ const nativeProfileBackgroundImageFiles = [
   'images/profile-background/refrigerator-mobile.png',
   'images/profile-background/changsin.png',
   'images/profile-background/changsin-mobile.png',
+];
+const nativeProfileFrameImageFiles = [
+  'images/profile-frame/rainbow.png',
+  'images/profile-frame/rainbow-mobile.png',
+  'images/profile-frame/mallin-shiny.png',
+  'images/profile-frame/mallin-shiny-mobile.png',
 ];
 const nativeSkinImageFiles = ['images/skins/ozyo.png'];
 const nativeCharacterEffectImageFiles = [
@@ -209,6 +217,7 @@ function assertRequiredFiles() {
     'assets/css/main/app-calendar-main.css',
     ...nativeCharacterImageFiles,
     ...nativeProfileBackgroundImageFiles,
+    ...nativeProfileFrameImageFiles,
     ...nativeSkinImageFiles,
     ...nativeCharacterEffectImageFiles,
     ...nativeCareerAwardImageFiles,
@@ -231,6 +240,8 @@ function assertPreparedOutput() {
     'calendar-event.html',
     'calendar-groups.html',
     'privacy.html',
+    'store.html',
+    'store-item.html',
     'login.html',
     'write.html',
     'assets/version.json',
@@ -281,6 +292,7 @@ function assertPreparedOutput() {
     'site.webmanifest',
     ...nativeCharacterImageFiles,
     ...nativeProfileBackgroundImageFiles,
+    ...nativeProfileFrameImageFiles,
     ...nativeSkinImageFiles,
     ...nativeCharacterEffectImageFiles,
     ...nativeCareerAwardImageFiles,
@@ -318,6 +330,7 @@ dirsToCopy.forEach((relativePath) => {
 });
 nativeCharacterImageFiles.forEach(copyFile);
 nativeProfileBackgroundImageFiles.forEach(copyFile);
+nativeProfileFrameImageFiles.forEach(copyFile);
 nativeSkinImageFiles.forEach(copyFile);
 nativeCharacterEffectImageFiles.forEach(copyFile);
 nativeCareerAwardAudioFiles.forEach(copyFile);

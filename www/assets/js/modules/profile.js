@@ -1893,19 +1893,59 @@ function renderProfileBackgroundSection({
   });
 }
 
+const MALLIN_SHINY_FRAME_ITEM_ID = 'BF-02';
+const MALLIN_SHINY_SPARKLE_COUNT = 4;
+
+function syncMallinShinyFrameMotion(targetEl, isEnabled = false) {
+  const existingMotionEl = Array.from(targetEl?.children || []).find(
+    (childEl) =>
+      childEl?.classList?.contains('profile-frame-motion') &&
+      childEl?.dataset?.profileFrameMotion === MALLIN_SHINY_FRAME_ITEM_ID,
+  );
+
+  if (!isEnabled) {
+    existingMotionEl?.remove();
+    return;
+  }
+
+  if (existingMotionEl) return;
+
+  const motionEl = document.createElement('span');
+  motionEl.className = 'profile-frame-motion';
+  motionEl.dataset.profileFrameMotion = MALLIN_SHINY_FRAME_ITEM_ID;
+  motionEl.setAttribute('aria-hidden', 'true');
+
+  for (let index = 0; index < MALLIN_SHINY_SPARKLE_COUNT; index += 1) {
+    const sparkleEl = document.createElement('span');
+    sparkleEl.className = 'profile-frame-motion__sparkle';
+    motionEl.append(sparkleEl);
+  }
+
+  targetEl.append(motionEl);
+}
+
 function setProfileFrameStyle(targetEl, frameItemId = '') {
   if (!targetEl) return;
 
   const frame = getProfileFrameByItemId(frameItemId);
 
   if (!frame) {
+    syncMallinShinyFrameMotion(targetEl, false);
     targetEl.classList.remove('has-profile-frame');
+    targetEl.classList.remove('has-profile-frame--mallin-shiny');
     targetEl.style.removeProperty('--profile-frame-desktop');
     targetEl.style.removeProperty('--profile-frame-mobile');
     return;
   }
 
+  const isMallinShinyFrame = frame.itemId === MALLIN_SHINY_FRAME_ITEM_ID;
+
   targetEl.classList.add('has-profile-frame');
+  targetEl.classList.toggle(
+    'has-profile-frame--mallin-shiny',
+    isMallinShinyFrame,
+  );
+  syncMallinShinyFrameMotion(targetEl, isMallinShinyFrame);
   targetEl.style.setProperty(
     '--profile-frame-desktop',
     `url("${frame.pcImagePath}")`,
