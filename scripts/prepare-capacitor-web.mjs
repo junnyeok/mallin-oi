@@ -41,8 +41,22 @@ const nativeCharacterImageFiles = [
 const nativeProfileBackgroundImageFiles = [
   'images/profile-background/refrigerator.png',
   'images/profile-background/refrigerator-mobile.png',
+  'images/profile-background/changsin.png',
+  'images/profile-background/changsin-mobile.png',
 ];
 const nativeSkinImageFiles = ['images/skins/ozyo.png'];
+const nativeCharacterEffectImageFiles = [
+  'images/character-effects/cucumber-heart.png',
+  'images/character-effects/fire-effect-01.png',
+];
+const nativeCareerAwardImageFiles = [
+  'images/reward/reward-career-1st.png',
+  'images/reward/reward-career-2nd.png',
+  'images/reward/reward-career-3nd.png',
+];
+const nativeCareerAwardAudioFiles = [
+  'assets/mp3/mallinoi-reward.mp3',
+];
 const requiredAssetDirs = [
   'assets/js/modules',
   'assets/css/components',
@@ -196,6 +210,9 @@ function assertRequiredFiles() {
     ...nativeCharacterImageFiles,
     ...nativeProfileBackgroundImageFiles,
     ...nativeSkinImageFiles,
+    ...nativeCharacterEffectImageFiles,
+    ...nativeCareerAwardImageFiles,
+    ...nativeCareerAwardAudioFiles,
     ...getMainModuleImports(),
   ];
 
@@ -265,6 +282,9 @@ function assertPreparedOutput() {
     ...nativeCharacterImageFiles,
     ...nativeProfileBackgroundImageFiles,
     ...nativeSkinImageFiles,
+    ...nativeCharacterEffectImageFiles,
+    ...nativeCareerAwardImageFiles,
+    ...nativeCareerAwardAudioFiles,
     ...listFilesByExtension('assets/js/modules', '.js'),
     ...listFilesByExtension('assets/css/components', '.css'),
     ...listFilesByExtension('assets/css/main', '.css'),
@@ -299,6 +319,8 @@ dirsToCopy.forEach((relativePath) => {
 nativeCharacterImageFiles.forEach(copyFile);
 nativeProfileBackgroundImageFiles.forEach(copyFile);
 nativeSkinImageFiles.forEach(copyFile);
+nativeCharacterEffectImageFiles.forEach(copyFile);
+nativeCareerAwardAudioFiles.forEach(copyFile);
 copyRequiredAssetDirs();
 
 assertPreparedOutput();

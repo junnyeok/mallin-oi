@@ -8,8 +8,7 @@ begin
 end;
 $require_store_purchase_test_permissions$;
 
--- skin-cucumber-01은 신규 오죠 이토루 상품 ID로 사용한다.
--- 기존 군인오이 구매자는 상품 보유 상태를 잃지 않도록 별도 ID로 이전한다.
+-- 과거 skin-cucumber-01 군인오이 구매자는 별도 ID로 이전해 보유 상태를 유지한다.
 delete from public.user_store_items old_item
 where old_item.item_id = 'skin-cucumber-01'
   and old_item.item_name = '군인오이 스킨'
@@ -24,6 +23,46 @@ update public.user_store_items
 set item_id = 'skin-cucumber-soldier-01'
 where item_id = 'skin-cucumber-01'
   and item_name = '군인오이 스킨';
+
+-- 오죠 이토루 상품 ID를 skin-cucumber-03으로 변경한다.
+-- 상품명으로 범위를 제한해 과거 군인오이 또는 알 수 없는 기록을 덮어쓰지 않는다.
+do $require_ozyo_item_id_change$
+begin
+  if exists (
+    select 1
+    from public.user_store_items
+    where item_id = 'skin-cucumber-03'
+      and item_name <> '오죠 이토루'
+  ) then
+    raise exception 'OZYO_NEW_ITEM_ID_CONFLICT';
+  end if;
+
+  if exists (
+    select 1
+    from public.user_store_items
+    where item_id = 'skin-cucumber-01'
+      and item_name <> '오죠 이토루'
+  ) then
+    raise exception 'OZYO_OLD_ITEM_ID_HAS_UNKNOWN_OWNER_RECORD';
+  end if;
+end;
+$require_ozyo_item_id_change$;
+
+delete from public.user_store_items old_item
+where old_item.item_id = 'skin-cucumber-01'
+  and old_item.item_name = '오죠 이토루'
+  and exists (
+    select 1
+    from public.user_store_items new_item
+    where new_item.user_id = old_item.user_id
+      and new_item.item_id = 'skin-cucumber-03'
+      and new_item.item_name = '오죠 이토루'
+  );
+
+update public.user_store_items
+set item_id = 'skin-cucumber-03'
+where item_id = 'skin-cucumber-01'
+  and item_name = '오죠 이토루';
 
 create or replace function public.purchase_store_item(p_item_id text)
 returns table(success boolean, message text, balance integer)
@@ -120,7 +159,7 @@ begin
     v_required_character_code := 'char-cucumber';
     v_required_character_name := '기본오이';
 
-  elsif p_item_id = 'skin-cucumber-01' then
+  elsif p_item_id = 'skin-cucumber-03' then
     v_price := 775;
     v_name := '오죠 이토루';
     v_category := 'skin';
@@ -173,6 +212,11 @@ begin
   elsif p_item_id = 'BG-03' then
     v_price := 588;
     v_name := '냉장고 프로필배경';
+    v_category := 'profile';
+
+  elsif p_item_id = 'BG-04' then
+    v_price := 593;
+    v_name := '기동인의 행정당직 프로필배경';
     v_category := 'profile';
 
   elsif p_item_id = 'skin-cucumbergirl-01' then
@@ -232,6 +276,11 @@ begin
   elsif p_item_id = 'cha-effects-cucumberheart-01' then
     v_price := 385;
     v_name := '말린오이테마 하트 캐릭터 효과';
+    v_category := 'cha-effects';
+
+  elsif p_item_id = 'cha-effects-fire-01' then
+    v_price := 496;
+    v_name := '불꽃 효과';
     v_category := 'cha-effects';
 
   elsif p_item_id = 'bgm-cucumbergirl-01' then
@@ -340,7 +389,12 @@ begin
 
   if v_price > 0 then
     v_can_bypass_store_balance :=
-      p_item_id not in ('BG-03', 'skin-cucumber-01')
+      p_item_id not in (
+        'BG-03',
+        'BG-04',
+        'skin-cucumber-03',
+        'cha-effects-fire-01'
+      )
       and exists (
         select 1
         from public.store_purchase_test_permissions permission
@@ -352,7 +406,12 @@ begin
       v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
 
       if coalesce(v_is_auto_topup_admin, false)
-         and p_item_id not in ('BG-03', 'skin-cucumber-01') then
+         and p_item_id not in (
+           'BG-03',
+           'BG-04',
+           'skin-cucumber-03',
+           'cha-effects-fire-01'
+         ) then
         perform public.ensure_user_pickles(
           v_user_id,
           v_price,
@@ -839,7 +898,7 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
-  elsif p_item_id = 'skin-cucumber-01' then
+  elsif p_item_id = 'skin-cucumber-03' then
     insert into public.user_characters (
       user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
     )
@@ -962,6 +1021,10 @@ begin
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'cha-effects-fire-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'BF-01' then
     -- 프로필테두리는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -975,6 +1038,10 @@ begin
     null;
 
   elsif p_item_id = 'BG-03' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+  elsif p_item_id = 'BG-04' then
     -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
@@ -1128,6 +1195,8 @@ begin
         then '늦은 밤 멜로디 구매가 완료됐어. 621피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'cha-effects-fire-01'
+        then '불꽃 효과 구매가 완료됐어. 496피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BF-01'
         then '무지개 프로필 테두리 구매가 완료됐어. 389피클이 차감됐고 프로필테두리 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-01'
@@ -1136,6 +1205,8 @@ begin
         then '야간 순찰 배경 구매가 완료됐어. 382피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-03'
         then '냉장고 프로필배경 구매가 완료됐어. 588피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-04'
+        then '기동인의 행정당직 프로필배경 구매가 완료됐어. 593피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-moved-01'
@@ -1146,7 +1217,7 @@ begin
         then '구운계란 트레이너 스킨 구매가 완료됐어. 466피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-soldier-01'
         then '군인오이 스킨 구매가 완료됐어. 389피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
-      when p_item_id = 'skin-cucumber-01'
+      when p_item_id = 'skin-cucumber-03'
         then '오죠 이토루 구매가 완료됐어. 775피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-avocado-01'
         then '아보카도 카페사장 스킨 구매가 완료됐어. 423피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'

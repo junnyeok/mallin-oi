@@ -192,6 +192,49 @@ export async function loadPosts() {
   );
 }
 
+export async function loadCareerMonthlyBest(awardMonth, limit = 5) {
+  const { data, error } = await supabase.rpc('get_career_monthly_best', {
+    p_award_month: awardMonth,
+    p_limit: Math.max(0, Math.min(Number(limit) || 5, 100)),
+  });
+
+  if (error) throw error;
+
+  return (data || []).map((row) => {
+    const post = mapPostRow(
+      {
+        id: row.post_id,
+        title: row.post_title,
+        excerpt: '',
+        body: '',
+        category: 'career',
+        created_at: row.created_at,
+        views: row.views,
+        likes_count: row.likes_count,
+        dislikes_count: row.fresh_count,
+        total_reactions_count:
+          Number(row.likes_count || 0) + Number(row.fresh_count || 0),
+        media_items: row.media_items,
+        author_id: row.author_id,
+        author_nickname: row.author_nickname,
+        is_private: false,
+        is_unlocked: true,
+      },
+      Number(row.comment_count || 0),
+    );
+
+    return {
+      ...post,
+      rankNo: Number(row.rank_no || 0),
+      bestViews: Number(row.views || 0),
+      bestLikesCount: Number(row.likes_count || 0),
+      bestFreshCount: Number(row.fresh_count || 0),
+      bestCommentCount: Number(row.comment_count || 0),
+      bestScore: Number(row.score || 0),
+    };
+  });
+}
+
 export async function loadPostById(id, secretPassword = null) {
   const safeId = Number(id);
   if (!Number.isFinite(safeId)) return null;

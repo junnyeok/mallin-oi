@@ -452,6 +452,18 @@ export const CUCUMBER_HEART_CHARACTER_EFFECT_PREVIEW = [
   },
 ];
 
+export const FIRE_CHARACTER_EFFECT_PREVIEW = [
+  {
+    code: 'cha-effect-fire-01',
+    label: '불꽃 효과 애니메이션 미리보기',
+    imagePath: withAssetVersion(
+      './images/character-effects/fire-effect-01.png',
+    ),
+    placement: 'front',
+    displayOrder: 1,
+  },
+];
+
 export const CHARACTER_EFFECT_CATALOG = [
   {
     itemId: 'cha-effects-cucumberheart-01',
@@ -501,6 +513,37 @@ export const CHARACTER_EFFECT_CATALOG = [
     },
     displayOrder: 1,
   },
+  {
+    itemId: 'cha-effects-fire-01',
+    name: '불꽃 효과',
+    imagePath: withAssetVersion(
+      './images/character-effects/fire-effect-01.png',
+    ),
+    placement: 'front',
+    className: 'character-effect-sprite--fire',
+    layout: {
+      x: '0px',
+      y: '0px',
+      width: '100%',
+      zIndex: '30',
+      origin: '50% 50%',
+      rotation: '0deg',
+      aspectRatio: '1 / 1',
+    },
+    motion: {
+      animation: 'none',
+    },
+    sprite: {
+      columnCount: 6,
+      rowCount: 4,
+      frameWidth: 256,
+      frameHeight: 256,
+      frameCount: 22,
+      frameDurationMs: 90,
+      loop: true,
+    },
+    displayOrder: 2,
+  },
 ];
 
 export function getCharacterEffectByItemId(itemId = '') {
@@ -517,6 +560,7 @@ const CHARACTER_EFFECT_PLACEMENTS = new Set([
   'side-left',
   'side-right',
   'aura-back',
+  'front',
   'front-small',
 ]);
 
@@ -684,6 +728,20 @@ export const PROFILE_BACKGROUND_CATALOG = [
       './images/profile-background/refrigerator.png',
     ),
     displayOrder: 3,
+  },
+  {
+    itemId: 'BG-04',
+    name: '기동인의 행정당직 프로필배경',
+    pcImagePath: withAssetVersion(
+      './images/profile-background/changsin.png',
+    ),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/changsin-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/changsin.png',
+    ),
+    displayOrder: 4,
   },
 ];
 
@@ -941,6 +999,24 @@ export const STORE_ITEMS = [
     detailDescription:
       '중앙경찰학교로 파견간 알감자 교수님이야.<br>구매하면 인벤토리의 스킨 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
     previewImages: EGGPOTATO_POLICE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'cha-effects-fire-01',
+    name: '불꽃 효과',
+    category: 'cha-effects',
+    badge: '캐릭터효과',
+    icon: '🔥',
+    thumbImagePath: withAssetVersion(
+      './images/character-effects/fire-effect-01.png',
+    ),
+    price: 496,
+    state: '판매 중',
+    description: '첫번째 불꽃 효과야.',
+    detailDescription:
+      '구매하면 인벤토리의 캐릭터 효과 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: FIRE_CHARACTER_EFFECT_PREVIEW,
+    releaseDate: '2026-07-28',
     isPurchasable: true,
   },
   {
@@ -1454,7 +1530,43 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'skin-cucumber-01',
+    id: 'BG-04',
+    name: '기동인의 행정당직 프로필배경',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '🌃👮🏽‍♂️',
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/changsin.png',
+    ),
+    price: 593,
+    state: '판매 중',
+    description: '기동인은 행정당직이 좋아.',
+    detailDescription:
+      '오이키우기 게임에서 가장 얻기 힘든 장소가 될 거야..<br>구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-04-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/changsin.png',
+        ),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-04-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/changsin-mobile.png',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    releaseDate: '2026-07-28',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-cucumber-03',
     name: '오죠 이토루',
     category: 'skin',
     badge: '스킨',
@@ -1462,7 +1574,7 @@ export const STORE_ITEMS = [
     thumbImagePath: withAssetVersion('./images/skins/ozyo.png'),
     price: 775,
     state: '판매 중',
-    description: '정크푸드와 맞서 싸우는 오죠 이토루야.',
+    description: '정크푸드 주물과 맞서 싸우는 오죠 이토루야.',
     detailDescription:
       '구매하면 내 프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
     previewImages: OZYO_CUCUMBER_SKIN_PREVIEW,
@@ -1478,7 +1590,9 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
-  'skin-cucumber-01',
+  'cha-effects-fire-01',
+  'BG-04',
+  'skin-cucumber-03',
   'BG-03',
   'bgm-cucumberboy-01',
   'bgm-tomato-01',
@@ -1596,7 +1710,7 @@ export const CHARACTER_SKIN_CATALOG = [
     skin_name: '오죠 이토루',
     image_path: withAssetVersion('./images/skins/ozyo.png'),
     display_order: 3,
-    store_item_id: 'skin-cucumber-01',
+    store_item_id: 'skin-cucumber-03',
   },
   {
     character_code: 'char-cucumber-girl',

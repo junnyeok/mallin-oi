@@ -193,6 +193,45 @@ header footer 높이를 제외한 나머지공간이 main 먹게해서
   word-break: keep-all;
 }
 
+.career-award-popup__content {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.career-award-popup__image {
+  width: min(220px, 64vw);
+  height: 260px;
+  margin-bottom: var(--space-12);
+  object-fit: contain;
+  border-radius: var(--radius-card);
+}
+
+.career-award-popup__month {
+  display: inline-flex;
+  margin: 0 0 var(--space-8);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.career-award-popup__reward {
+  color: var(--color-text);
+  font-size: 20px;
+}
+
+.career-award-popup__status {
+  min-height: 20px;
+  margin: var(--space-8) 0 0;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
 .attendance-popup__actions {
   margin-top: 18px;
   display: flex;
@@ -229,6 +268,11 @@ header footer 높이를 제외한 나머지공간이 main 먹게해서
   .attendance-popup__image {
     width: 100px;
     height: 100px;
+  }
+
+  .career-award-popup__image {
+    width: min(180px, 58vw);
+    height: min(220px, 38vh);
   }
 
   .attendance-popup__title {

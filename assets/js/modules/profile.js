@@ -51,7 +51,11 @@ const [
     pauseBgmForExternalAudio,
     restoreBgmAfterExternalAudio,
   },
-  { replaceCharacterEffect },
+  {
+    prepareCharacterEffects,
+    renderCharacterEffectHtml,
+    replaceCharacterEffect,
+  },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
   import(`./store-data.js?v=${MODULE_VERSION}`),
@@ -932,6 +936,7 @@ function renderCharacterEffectCard(item, equippedEffectItemId = '') {
     String(equippedEffectItemId || '').trim();
 
   const detailHref = getStoreItemDetailHref(item.itemId);
+  const effect = getCharacterEffectRenderMeta(item.itemId, 'inventory');
 
   const metaText = !isOwned
     ? '미보유 · 클릭하면 구매페이지로 이동'
@@ -947,13 +952,15 @@ function renderCharacterEffectCard(item, equippedEffectItemId = '') {
       data-owned="${isOwned ? 'true' : 'false'}"
       data-store-href="${escapeHtml(detailHref)}"
     >
-            <div class="profile-character-effect-card__thumb">
-        <img
-          class="profile-character-effect-card__image"
-          src="${escapeHtml(item.imagePath)}"
-          alt=""
-          aria-hidden="true"
-        />
+      <div class="profile-character-effect-card__thumb">
+        <span class="character-effect-wrap profile-character-effect-card__stage" aria-hidden="true">
+          <img
+            class="profile-character-effect-card__character character-effect-character"
+            src="${DEFAULT_CHARACTER_IMAGE}"
+            alt=""
+          />
+          ${renderCharacterEffectHtml(effect)}
+        </span>
       </div>
 
       <div class="profile-character-card__name">
@@ -998,6 +1005,7 @@ function renderCharacterEffectSection({
   listEl.innerHTML = sortedRows
     .map((item) => renderCharacterEffectCard(item, equippedEffectItemId))
     .join('');
+  prepareCharacterEffects(listEl);
 
   applyInventoryLimitByIds(
     'profileCharacterEffectWrap',

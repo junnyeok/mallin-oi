@@ -4,6 +4,8 @@ import { getCurrentUser, resolveSitePath } from './auth-store.js';
 import { playPickleBurst } from './pickle-burst.js';
 
 const POPUP_ID = 'dailyAttendancePopup';
+const CAREER_AWARD_POPUP_ID = 'careerAwardPopup';
+const CAREER_AWARD_COMPLETE_EVENT = 'mallin:career-awards-complete';
 const ATTENDANCE_REWARD_AMOUNT = 10;
 const WEEKLY_BONUS_AMOUNT = 50;
 const DEFAULT_WEEK_DAYS = [
@@ -273,6 +275,22 @@ function renderFailedState(popup, result = {}) {
 }
 
 export async function initDailyAttendancePopup() {
+  if (document.getElementById(CAREER_AWARD_POPUP_ID)) {
+    window.addEventListener(
+      CAREER_AWARD_COMPLETE_EVENT,
+      () => {
+        initDailyAttendancePopup().catch((error) => {
+          console.error(
+            '[daily-attendance-popup] deferred initialization failed:',
+            error,
+          );
+        });
+      },
+      { once: true },
+    );
+    return;
+  }
+
   const user = await getCurrentUser();
   if (!user?.id) {
     removePopup();

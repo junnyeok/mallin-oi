@@ -267,6 +267,22 @@ function getCategoryLabel(category, item = null) {
 
 function renderStoreThumb(item) {
   if (item.thumbImagePath) {
+    if (item.category === 'cha-effects') {
+      const effect = getCharacterEffectRenderMeta(item.id, 'thumbnail');
+
+      return `
+        <span class="character-effect-wrap store-card__effect-stage" aria-label="${item.name}">
+          <img
+            class="store-card__effect-character character-effect-character"
+            src="./images/characters/cucumber.png"
+            alt=""
+            loading="lazy"
+          />
+          ${renderCharacterEffectHtml(effect)}
+        </span>
+      `;
+    }
+
     if (item.category === 'bgm') {
       return `
         <div class="store-bgm-thumb" aria-hidden="true">
@@ -336,6 +352,7 @@ function initHomeStoreSection() {
   trackEl.innerHTML = items
     .map((item) => renderStoreCard(item, { compact: true }))
     .join('');
+  prepareCharacterEffects(trackEl);
 
   const cardEls = Array.from(trackEl.querySelectorAll('.store-card'));
   if (!cardEls.length) return;
@@ -747,6 +764,7 @@ async function initStorePage() {
     const pageItems = filtered.slice(startIndex, startIndex + STORE_PAGE_SIZE);
 
     gridEl.innerHTML = pageItems.map((item) => renderStoreCard(item)).join('');
+    prepareCharacterEffects(gridEl);
 
     if (emptyEl) {
       emptyEl.hidden = filtered.length > 0;
@@ -1055,6 +1073,7 @@ async function initStoreItemPage() {
           </div>
 
                     <h1 class="store-item-detail__title">${item.name}</h1>
+          <p class="store-item-detail__desc">${item.description}</p>
           <p class="store-item-detail__desc">${item.detailDescription}</p>
 
           <section class="store-item-preview">

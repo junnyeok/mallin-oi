@@ -92,6 +92,17 @@
   transform-origin: 50% 50%;
 }
 
+.character-effect-layer[data-character-effect-placement='front'] {
+  --character-effect-width: var(--character-effect-default-width, 100%);
+  --character-effect-z: var(--character-effect-default-z, 30);
+
+  left: calc(50% + var(--character-effect-x));
+  top: calc(50% + var(--character-effect-y));
+  --character-effect-anchor-x: -50%;
+  --character-effect-anchor-y: -50%;
+  transform-origin: 50% 50%;
+}
+
 .character-effect-layer[data-character-effect-placement='front-small'] {
   --character-effect-width: var(--character-effect-default-width, 34%);
   --character-effect-z: var(--character-effect-default-z, 30);
@@ -146,6 +157,38 @@
   filter: drop-shadow(0 4px 8px rgba(134, 198, 36, 0.22));
 }
 
+.character-effect-sprite {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--character-effect-sprite-aspect-ratio, 1 / 1);
+  overflow: hidden;
+}
+
+.character-effect-sprite__sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: calc(var(--character-effect-sprite-columns) * 100%);
+  max-width: none;
+  height: calc(var(--character-effect-sprite-rows) * 100%);
+  transform: translate(
+    calc(
+      var(--character-effect-sprite-column) * -100% /
+        var(--character-effect-sprite-columns)
+    ),
+    calc(
+      var(--character-effect-sprite-row) * -100% /
+        var(--character-effect-sprite-rows)
+    )
+  );
+}
+
+.character-effect-sprite--fire {
+  filter: drop-shadow(0 3px 8px rgba(255, 96, 0, 0.2));
+}
+
 @keyframes characterEffectFloat {
   0% {
     opacity: var(--character-effect-motion-from-opacity);
@@ -172,6 +215,19 @@
     opacity: 0.8;
     transform: none;
   }
+}
+
+.store-card__effect-stage,
+.profile-character-effect-card__stage {
+  width: 72px;
+}
+
+.store-card__effect-character,
+.profile-character-effect-card__character {
+  display: block;
+  width: 100%;
+  height: 72px;
+  object-fit: contain;
 }
 
 .store-item-preview__character-effect {
@@ -220,6 +276,14 @@
 }
 
 @media (max-width: 700px) {
+  .profile-character-effect-card__stage {
+    width: 48px;
+  }
+
+  .profile-character-effect-card__character {
+    height: 48px;
+  }
+
   .store-item-preview__effect-stage {
     width: 160px;
   }

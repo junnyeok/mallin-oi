@@ -321,7 +321,7 @@
 }
 
 .store-roadmap {
-  padding: var(--space-20, 20px) var(--space-16);
+  padding: 20px var(--space-16);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -552,7 +552,7 @@
 .store-item-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: var(--space-20);
+  gap: 20px;
   padding: var(--space-24);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -580,6 +580,10 @@
   font-size: 15px;
   line-height: 1.8;
   color: var(--color-text-sub);
+}
+
+.store-item-detail__desc + .store-item-detail__desc {
+  margin-top: var(--space-8);
 }
 
 .store-item-detail__chips {
@@ -670,7 +674,7 @@
   display: grid;
   place-items: center;
   min-height: 240px;
-  padding: var(--space-20);
+  padding: 20px;
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-card);
   text-align: center;
@@ -774,7 +778,7 @@
   .store-item-preview__character-card {
     width: 100%;
     min-height: 240px;
-    padding: var(--space-20);
+    padding: 20px;
     border: none;
     box-shadow: none;
     background: linear-gradient(
@@ -951,7 +955,7 @@
 
 .store-item-preview__bgm-help {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--color-text-sub);
   font-size: 14px;
   line-height: 1.6;
   text-align: center;
@@ -1030,7 +1034,7 @@
   display: block;
   width: 100%;
   border-radius: var(--radius-card);
-  object-fit: cover;
+  object-fit: contain;
 }
 
 @media (max-width: 700px) {

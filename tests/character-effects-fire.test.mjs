@@ -1,0 +1,142 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+globalThis.window = {
+  __SITE_VERSION__: 'test',
+  location: {
+    hostname: 'localhost',
+    origin: 'http://localhost',
+    pathname: '/',
+    href: 'http://localhost/',
+  },
+};
+
+const {
+  CHARACTER_EFFECT_CATALOG,
+  STORE_ITEMS,
+  getCharacterEffectRenderMeta,
+  getFeaturedStoreItems,
+} = await import('../assets/js/modules/store-data.js');
+const { getCharacterEffectSpriteFrame } = await import(
+  '../assets/js/modules/character-effects.js'
+);
+
+const FIRE_ITEM_ID = 'cha-effects-fire-01';
+const FIRE_SPRITE = {
+  columnCount: 6,
+  rowCount: 4,
+  frameWidth: 256,
+  frameHeight: 256,
+  frameCount: 22,
+  frameDurationMs: 90,
+  loop: true,
+};
+
+test('불꽃 상품과 카탈로그 메타데이터가 한 번만 정의된다', () => {
+  const products = STORE_ITEMS.filter((item) => item.id === FIRE_ITEM_ID);
+  const effects = CHARACTER_EFFECT_CATALOG.filter(
+    (item) => item.itemId === FIRE_ITEM_ID,
+  );
+
+  assert.equal(products.length, 1);
+  assert.equal(effects.length, 1);
+  assert.equal(products[0].price, 496);
+  assert.equal(products[0].category, 'cha-effects');
+  assert.equal(products[0].previewImages.length, 1);
+  assert.deepEqual(effects[0].sprite, FIRE_SPRITE);
+  assert.equal(getFeaturedStoreItems(1)[0].id, FIRE_ITEM_ID);
+});
+
+test('불꽃 효과가 캐릭터 앞 100% 크기로 렌더링된다', () => {
+  const meta = getCharacterEffectRenderMeta(FIRE_ITEM_ID, 'profile');
+
+  assert.equal(meta.placement, 'front');
+  assert.equal(meta.cssVars['--character-effect-default-width'], '100%');
+  assert.equal(meta.cssVars['--character-effect-default-z'], '30');
+  assert.equal(meta.sprite.frameCount, 22);
+});
+
+test('22개 프레임을 행 우선으로 재생하고 마지막 뒤 첫 프레임으로 순환한다', () => {
+  assert.deepEqual(getCharacterEffectSpriteFrame(FIRE_SPRITE, 0), {
+    index: 0,
+    column: 0,
+    row: 0,
+  });
+  assert.deepEqual(getCharacterEffectSpriteFrame(FIRE_SPRITE, 5), {
+    index: 5,
+    column: 5,
+    row: 0,
+  });
+  assert.deepEqual(getCharacterEffectSpriteFrame(FIRE_SPRITE, 6), {
+    index: 6,
+    column: 0,
+    row: 1,
+  });
+  assert.deepEqual(getCharacterEffectSpriteFrame(FIRE_SPRITE, 21), {
+    index: 21,
+    column: 3,
+    row: 3,
+  });
+  assert.deepEqual(getCharacterEffectSpriteFrame(FIRE_SPRITE, 22), {
+    index: 0,
+    column: 0,
+    row: 0,
+  });
+});
+
+test('원본 PNG는 1536×1024 RGBA 스프라이트다', async () => {
+  const png = await readFile('images/character-effects/fire-effect-01.png');
+
+  assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  assert.equal(png.readUInt32BE(16), 1536);
+  assert.equal(png.readUInt32BE(20), 1024);
+  assert.equal(png[25], 6, 'PNG color type 6 must include alpha');
+});
+
+test('구매 SQL은 서버 가격·원자성·원장·엄격 잔액 정책을 포함한다', async () => {
+  const sql = await readFile(
+    'supabase-SQLEditor/store-item_purchase-functions.sql',
+    'utf8',
+  );
+  const backupSql = await readFile(
+    'supabase-SQLEditor/99_all_backup.sql',
+    'utf8',
+  );
+
+  assert.match(
+    sql,
+    /p_item_id = 'cha-effects-fire-01'[\s\S]*?v_price := 496;[\s\S]*?v_category := 'cha-effects';/,
+  );
+  assert.match(sql, /from public\.profiles p[\s\S]*?for update;/);
+  assert.match(
+    sql,
+    /set pickles = coalesce\(pickles, 0\) - v_price[\s\S]*?coalesce\(pickles, 0\) >= v_price;/,
+  );
+  assert.match(sql, /insert into public\.user_store_items/);
+  assert.match(sql, /insert into public\.pickle_ledger/);
+  assert.match(sql, /'store_purchase'/);
+  assert.equal(
+    sql.indexOf('for update;') < sql.indexOf('v_exists := exists'),
+    true,
+    'the profile lock must serialize duplicate checks before charging',
+  );
+  assert.match(backupSql, /unique \(user_id, item_id\)/);
+  assert.equal(
+    [...sql.matchAll(/'cha-effects-fire-01'/g)].length >= 5,
+    true,
+  );
+});
+
+test('장착 보호 마이그레이션은 보유한 효과만 허용한다', async () => {
+  const sql = await readFile(
+    'supabase/migrations/20260728030000_fire_character_effect.sql',
+    'utf8',
+  );
+
+  assert.match(sql, /enforce_equipped_character_effect_ownership/);
+  assert.match(sql, /item\.user_id = new\.id/);
+  assert.match(sql, /item\.item_category = 'cha-effects'/);
+  assert.match(sql, /CHARACTER_EFFECT_NOT_OWNED/);
+  assert.match(sql, /revoke all[\s\S]*from public, anon, authenticated;/);
+});

@@ -1,0 +1,275 @@
+-- =========================================================
+-- 2026-07-28 불꽃 캐릭터 효과 판매·구매·장착 보호 연동
+-- - 서버 고정 가격 496피클로 기존 원자적 구매 함수에 등록한다.
+-- - user_store_items 보유 기록을 캐릭터 효과 인벤토리 지급 정보로 사용한다.
+-- - 불꽃 효과는 테스트 잔액 우회와 관리자 자동충전을 허용하지 않는다.
+-- - 프로필의 캐릭터 효과 장착값은 실제 보유한 효과만 허용한다.
+-- =========================================================
+
+begin;
+
+do $require_fire_character_effect_schema$
+begin
+  if to_regclass('public.profiles') is null
+     or to_regclass('public.user_store_items') is null
+     or to_regclass('public.pickle_ledger') is null then
+    raise exception 'FIRE_CHARACTER_EFFECT_STORE_SCHEMA_REQUIRED';
+  end if;
+
+  if to_regprocedure('public.purchase_store_item(text)') is null then
+    raise exception 'PURCHASE_STORE_ITEM_FUNCTION_REQUIRED';
+  end if;
+
+  if exists (
+    select 1
+    from public.user_store_items
+    where item_id = 'cha-effects-fire-01'
+      and (
+        coalesce(item_name, '') <> '불꽃 효과'
+        or coalesce(item_category, '') <> 'cha-effects'
+        or purchase_price <> 496
+      )
+  ) then
+    raise exception 'FIRE_CHARACTER_EFFECT_ITEM_ID_CONFLICT';
+  end if;
+end;
+$require_fire_character_effect_schema$;
+
+do $add_fire_character_effect_to_purchase_store_item$
+declare
+  v_function_sql text;
+  v_price_anchor text := $price_anchor$
+  elsif p_item_id = 'cha-effects-cucumberheart-01' then
+    v_price := 385;
+    v_name := '말린오이테마 하트 캐릭터 효과';
+    v_category := 'cha-effects';
+
+  elsif p_item_id = 'bgm-cucumbergirl-01' then
+$price_anchor$;
+  v_price_replacement text := $price_replacement$
+  elsif p_item_id = 'cha-effects-cucumberheart-01' then
+    v_price := 385;
+    v_name := '말린오이테마 하트 캐릭터 효과';
+    v_category := 'cha-effects';
+
+  elsif p_item_id = 'cha-effects-fire-01' then
+    v_price := 496;
+    v_name := '불꽃 효과';
+    v_category := 'cha-effects';
+
+  elsif p_item_id = 'bgm-cucumbergirl-01' then
+$price_replacement$;
+  v_inventory_anchor text := $inventory_anchor$
+  elsif p_item_id = 'cha-effects-cucumberheart-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+  elsif p_item_id = 'BF-01' then
+$inventory_anchor$;
+  v_inventory_replacement text := $inventory_replacement$
+  elsif p_item_id = 'cha-effects-cucumberheart-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+  elsif p_item_id = 'cha-effects-fire-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+  elsif p_item_id = 'BF-01' then
+$inventory_replacement$;
+  v_message_anchor text := $message_anchor$
+      when p_item_id = 'cha-effects-cucumberheart-01'
+        then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BF-01'
+$message_anchor$;
+  v_message_replacement text := $message_replacement$
+      when p_item_id = 'cha-effects-cucumberheart-01'
+        then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'cha-effects-fire-01'
+        then '불꽃 효과 구매가 완료됐어. 496피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BF-01'
+$message_replacement$;
+  v_strict_anchor text := $strict_anchor$p_item_id not in ('BG-03', 'BG-04', 'skin-cucumber-03')$strict_anchor$;
+  v_strict_replacement text := $strict_replacement$p_item_id not in (
+        'BG-03',
+        'BG-04',
+        'skin-cucumber-03',
+        'cha-effects-fire-01'
+      )$strict_replacement$;
+begin
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+  into v_function_sql;
+
+  if position($fire_price$elsif p_item_id = 'cha-effects-fire-01' then
+    v_price := 496;
+    v_name := '불꽃 효과';
+    v_category := 'cha-effects';$fire_price$ in v_function_sql) = 0 then
+    if v_function_sql ~ $price_conflict$elsif p_item_id = 'cha-effects-fire-01' then[[:space:]]+v_price :=$price_conflict$ then
+      raise exception 'FIRE_CHARACTER_EFFECT_PRICE_BRANCH_MISMATCH';
+    end if;
+
+    if position(v_price_anchor in v_function_sql) = 0 then
+      raise exception 'FIRE_CHARACTER_EFFECT_PRICE_ANCHOR_NOT_FOUND';
+    end if;
+
+    v_function_sql := replace(v_function_sql, v_price_anchor, v_price_replacement);
+  end if;
+
+  if position($fire_inventory$elsif p_item_id = 'cha-effects-fire-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;$fire_inventory$ in v_function_sql) = 0 then
+    if position(v_inventory_anchor in v_function_sql) = 0 then
+      raise exception 'FIRE_CHARACTER_EFFECT_INVENTORY_ANCHOR_NOT_FOUND';
+    end if;
+
+    v_function_sql := replace(
+      v_function_sql,
+      v_inventory_anchor,
+      v_inventory_replacement
+    );
+  end if;
+
+  if position($fire_message$then '불꽃 효과 구매가 완료됐어. 496피클이 차감됐고 인벤토리에서 장착할 수 있어.'$fire_message$ in v_function_sql) = 0 then
+    if position(v_message_anchor in v_function_sql) = 0 then
+      raise exception 'FIRE_CHARACTER_EFFECT_MESSAGE_ANCHOR_NOT_FOUND';
+    end if;
+
+    v_function_sql := replace(
+      v_function_sql,
+      v_message_anchor,
+      v_message_replacement
+    );
+  end if;
+
+  if position(v_strict_replacement in v_function_sql) = 0 then
+    if position(v_strict_anchor in v_function_sql) = 0 then
+      raise exception 'FIRE_CHARACTER_EFFECT_STRICT_BALANCE_ANCHOR_NOT_FOUND';
+    end if;
+
+    v_function_sql := replace(
+      v_function_sql,
+      v_strict_anchor,
+      v_strict_replacement
+    );
+  end if;
+
+  execute v_function_sql;
+end;
+$add_fire_character_effect_to_purchase_store_item$;
+
+create or replace function public.enforce_equipped_character_effect_ownership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.equipped_character_effect_item_id := nullif(
+    trim(new.equipped_character_effect_item_id),
+    ''
+  );
+
+  if new.equipped_character_effect_item_id is null then
+    return new;
+  end if;
+
+  if new.equipped_character_effect_item_id not in (
+       'cha-effects-cucumberheart-01',
+       'cha-effects-fire-01'
+     )
+     or not exists (
+       select 1
+       from public.user_store_items item
+       where item.user_id = new.id
+         and item.item_id = new.equipped_character_effect_item_id
+         and item.item_category = 'cha-effects'
+     ) then
+    raise exception 'CHARACTER_EFFECT_NOT_OWNED'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_character_effect_ownership_trigger
+on public.profiles;
+
+create trigger profiles_character_effect_ownership_trigger
+before insert or update of equipped_character_effect_item_id
+on public.profiles
+for each row
+execute function public.enforce_equipped_character_effect_ownership();
+
+revoke all on function public.enforce_equipped_character_effect_ownership()
+from public, anon, authenticated;
+revoke all on function public.purchase_store_item(text) from public, anon;
+grant execute on function public.purchase_store_item(text) to authenticated;
+
+do $verify_fire_character_effect$
+declare
+  v_function_sql text;
+begin
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+  into v_function_sql;
+
+  if position($fire_price$elsif p_item_id = 'cha-effects-fire-01' then
+    v_price := 496;
+    v_name := '불꽃 효과';
+    v_category := 'cha-effects';$fire_price$ in v_function_sql) = 0
+     or position($fire_inventory$elsif p_item_id = 'cha-effects-fire-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;$fire_inventory$ in v_function_sql) = 0
+     or position($fire_message$then '불꽃 효과 구매가 완료됐어. 496피클이 차감됐고 인벤토리에서 장착할 수 있어.'$fire_message$ in v_function_sql) = 0
+     or (length(v_function_sql) - length(replace(v_function_sql, 'cha-effects-fire-01', ''))) / length('cha-effects-fire-01') < 5 then
+    raise exception 'FIRE_CHARACTER_EFFECT_PURCHASE_VERIFY_FAILED';
+  end if;
+
+  if not exists (
+       select 1
+       from pg_trigger
+       where tgrelid = 'public.profiles'::regclass
+         and tgname = 'profiles_character_effect_ownership_trigger'
+         and not tgisinternal
+     )
+     or has_function_privilege(
+       'anon',
+       'public.purchase_store_item(text)',
+       'execute'
+     )
+     or not has_function_privilege(
+       'authenticated',
+       'public.purchase_store_item(text)',
+       'execute'
+     ) then
+    raise exception 'FIRE_CHARACTER_EFFECT_PERMISSION_VERIFY_FAILED';
+  end if;
+end;
+$verify_fire_character_effect$;
+
+commit;
+
+select json_build_object(
+  'fire_price_mapping_applied', position(
+    $verify$v_price := 496;
+    v_name := '불꽃 효과';$verify$
+    in pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+  ) > 0,
+  'ownership_trigger_exists', exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.profiles'::regclass
+      and tgname = 'profiles_character_effect_ownership_trigger'
+      and not tgisinternal
+  ),
+  'anon_execute', has_function_privilege(
+    'anon',
+    'public.purchase_store_item(text)',
+    'execute'
+  ),
+  'authenticated_execute', has_function_privilege(
+    'authenticated',
+    'public.purchase_store_item(text)',
+    'execute'
+  )
+) as fire_character_effect_result;

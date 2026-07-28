@@ -737,9 +737,16 @@ function initCareerBestCarousel(listEl) {
   applyResponsiveMode();
 }
 
-function renderCareerBest(posts, listEl, monthRange) {
+function renderCareerBest(
+  posts,
+  listEl,
+  monthRange,
+  { alreadyRanked = false } = {},
+) {
   cleanupCareerBestCarousel();
-  const bestPosts = selectCareerMonthlyBest(posts, monthRange);
+  const bestPosts = alreadyRanked
+    ? (Array.isArray(posts) ? posts : []).slice(0, CAREER_BEST_LIMIT)
+    : selectCareerMonthlyBest(posts, monthRange);
   listEl.setAttribute('aria-busy', 'false');
 
   if (!bestPosts.length) {
@@ -869,10 +876,27 @@ export async function initPostsUI() {
 
   if (careerBestEl && monthRange) {
     try {
-      renderCareerBest(allPosts, careerBestEl, monthRange);
+      const awardMonth = `${monthRange.year}-${String(
+        monthRange.month,
+      ).padStart(2, '0')}-01`;
+      const careerBestPosts = await postsRepoModule.loadCareerMonthlyBest(
+        awardMonth,
+        CAREER_BEST_LIMIT,
+      );
+      renderCareerBest(careerBestPosts, careerBestEl, monthRange, {
+        alreadyRanked: true,
+      });
     } catch (error) {
-      console.error('[posts-ui] renderCareerBest failed:', error);
-      renderCareerBestError(careerBestEl);
+      console.warn(
+        '[posts-ui] monthly best RPC failed, local fallback 사용:',
+        error,
+      );
+      try {
+        renderCareerBest(allPosts, careerBestEl, monthRange);
+      } catch (renderError) {
+        console.error('[posts-ui] renderCareerBest failed:', renderError);
+        renderCareerBestError(careerBestEl);
+      }
     }
   }
 

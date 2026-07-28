@@ -66,6 +66,7 @@ const CORE_MODULE_SPECS = [
   ['profileModule', './modules/profile.js'],
   ['profileHistoryModule', './modules/profile-history.js'],
   ['storeModule', './modules/store.js'],
+  ['careerAwardPopupModule', './modules/career-award-popup.js'],
   ['dailyAttendancePopupModule', './modules/daily-attendance-popup.js'],
   ['notificationsModule', './modules/notifications.js'],
   ['notificationsPageModule', './modules/notifications-page.js'],
@@ -428,6 +429,7 @@ async function initGlobalModules(modules) {
     authStoreModule,
     serviceMenuModule,
 
+    careerAwardPopupModule,
     dailyAttendancePopupModule,
     notificationsModule,
     bgmPlayerModule,
@@ -464,6 +466,8 @@ async function initGlobalModules(modules) {
   const { initAuthUI = async () => {}, updateAuthUI = async () => {} } =
     authStoreModule;
   const { initServiceMenu = () => {} } = serviceMenuModule;
+  const { initCareerAwardPopup = async () => {} } =
+    careerAwardPopupModule;
   const { initDailyAttendancePopup = async () => {} } =
     dailyAttendancePopupModule;
   const { initNotifications = async () => {} } = notificationsModule;
@@ -541,6 +545,10 @@ async function initGlobalModules(modules) {
   if (!calendarAppMode) {
     await runSafe('service menu', async () => {
       initServiceMenu();
+    });
+
+    await runSafe('career award popup', async () => {
+      await initCareerAwardPopup();
     });
 
     await runSafe('daily attendance popup', async () => {
