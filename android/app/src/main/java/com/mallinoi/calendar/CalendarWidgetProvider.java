@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -36,9 +37,20 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
-            appWidgetManager.updateAppWidget(appWidgetId, buildViews(context));
+            appWidgetManager.updateAppWidget(appWidgetId, buildViews(context, appWidgetManager, appWidgetId));
         }
         CalendarWidgetRefreshReceiver.scheduleNextMidnight(context);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(
+            Context context,
+            AppWidgetManager appWidgetManager,
+            int appWidgetId,
+            Bundle newOptions
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+        appWidgetManager.updateAppWidget(appWidgetId, buildViews(context, appWidgetManager, appWidgetId));
     }
 
     @Override
@@ -51,19 +63,20 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         CalendarWidgetRefreshReceiver.cancelIfNoWidgets(context);
     }
 
-    RemoteViews buildViews(Context context) {
+    RemoteViews buildViews(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
         SharedPreferences prefs = context.getSharedPreferences(CalendarWidgetsPlugin.PREFS_NAME, Context.MODE_PRIVATE);
         boolean isLoggedIn = prefs.getBoolean(CalendarWidgetsPlugin.KEY_LOGGED_IN, false);
         String payloadJson = prefs.getString(CalendarWidgetsPlugin.KEY_PAYLOAD, "{}");
         WidgetTheme theme = getTheme();
+        boolean isCompactTwoWeek = isCompactTwoWeek(context, appWidgetManager, appWidgetId);
 
         views.setTextViewText(R.id.widgetTitle, label);
         views.setTextColor(R.id.widgetTitle, theme.text);
         views.setTextViewText(R.id.widgetSubtitle, getRangeLabel());
         views.setTextColor(R.id.widgetSubtitle, theme.mutedText);
         views.setOnClickPendingIntent(R.id.widgetRoot, buildOpenIntent(context));
-        configureLayout(context, views);
+        configureLayout(context, views, isCompactTwoWeek);
 
         if (!isLoggedIn) {
             setEmptyState(views, "로그인이 필요해요");
@@ -88,7 +101,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 views.setTextViewText(R.id.widgetSubtitle, monthNumber + "월");
             }
 
-            bindDays(context, views, days, theme);
+            bindDays(context, views, days, theme, isCompactTwoWeek);
         } catch (Exception error) {
             setEmptyState(views, "위젯을 열어 새로고침해줘요");
         }
@@ -121,9 +134,24 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         views.setViewVisibility(R.id.widgetEmpty, View.VISIBLE);
     }
 
-    void configureLayout(Context context, RemoteViews views) {
+    boolean isCompactTwoWeek(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        if (!"twoWeeks".equals(range)) return false;
+
+        Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
+        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+        int maxHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        boolean isLandscape = context.getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int availableHeight = isLandscape ? minHeight : maxHeight;
+        if (availableHeight == 0) {
+            availableHeight = isLandscape ? maxHeight : minHeight;
+        }
+        return availableHeight == 0 || availableHeight < 110;
+    }
+
+    void configureLayout(Context context, RemoteViews views, boolean isCompactTwoWeek) {
         int horizontalPadding = "month".equals(range) ? 8 : 10;
-        int verticalPadding = "month".equals(range) ? 11 : 9;
+        int verticalPadding = "month".equals(range) ? 11 : isCompactTwoWeek ? 5 : 9;
         views.setViewPadding(
                 R.id.widgetRoot,
                 dp(context, horizontalPadding),
@@ -134,10 +162,29 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
         int headerInset = "month".equals(range) ? 5 : 6;
         views.setViewPadding(R.id.widgetHeader, dp(context, headerInset), 0, dp(context, headerInset), 0);
+        if (isCompactTwoWeek) {
+            views.setTextViewTextSize(
+                    R.id.widgetTitle,
+                    TypedValue.COMPLEX_UNIT_SP,
+                    getCompactSafeTextSize(context, 13.0f, true)
+            );
+            views.setTextViewTextSize(
+                    R.id.widgetSubtitle,
+                    TypedValue.COMPLEX_UNIT_SP,
+                    getCompactSafeTextSize(context, 11.0f, true)
+            );
+        }
 
         views.setViewVisibility(R.id.widgetWeekdayRow, "month".equals(range) ? View.VISIBLE : View.GONE);
         views.setViewVisibility(R.id.widgetGrid, View.VISIBLE);
-        views.setViewPadding(R.id.widgetGrid, 0, dp(context, getGridTopPadding()), 0, dp(context, 1));
+        views.setViewPadding(
+                R.id.widgetGrid,
+                0,
+                dp(context, getGridTopPadding(isCompactTwoWeek)),
+                0,
+                dp(context, isCompactTwoWeek ? 0 : 1)
+        );
+        views.setViewPadding(R.id.widgetRow02, 0, dp(context, isCompactTwoWeek ? 1 : 0), 0, 0);
 
         setVisibleRows(views, getVisibleRowCount());
     }
@@ -149,7 +196,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    void bindDays(Context context, RemoteViews views, JSONArray days, WidgetTheme theme) {
+    void bindDays(
+            Context context,
+            RemoteViews views,
+            JSONArray days,
+            WidgetTheme theme,
+            boolean isCompactTwoWeek
+    ) {
         int[] ids = getDayIds();
         SimpleDateFormat input = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         SimpleDateFormat monthDay = "month".equals(range)
@@ -191,8 +244,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
             boolean shouldShowItems = !"month".equals(range) || isCurrentMonth;
             int itemCount = !shouldShowItems || items == null ? 0 : items.length();
-            int visibleCount = Math.min(itemCount, "work".equals(calendarType) ? 1 : getMaxVisibleItems());
-            int moreCount = "work".equals(calendarType) ? 0 : Math.max(itemCount - visibleCount, 0);
+            int maxVisibleItems = isCompactTwoWeek ? 1 : "work".equals(calendarType) ? 1 : getMaxVisibleItems();
+            int visibleCount = Math.min(itemCount, maxVisibleItems);
+            int moreCount = isCompactTwoWeek || "work".equals(calendarType)
+                    ? 0
+                    : Math.max(itemCount - visibleCount, 0);
             int layoutItemCount = "work".equals(calendarType) && itemCount > 0 ? 1 : itemCount;
 
             RemoteViews dayViews = new RemoteViews(context.getPackageName(), R.layout.widget_calendar_day);
@@ -202,13 +258,21 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             }
 
             dayViews.setTextViewText(R.id.widgetDayDate, fullDateText);
-            dayViews.setTextViewTextSize(R.id.widgetDayDate, TypedValue.COMPLEX_UNIT_SP, getDateTextSize(layoutItemCount));
+            dayViews.setTextViewTextSize(
+                    R.id.widgetDayDate,
+                    TypedValue.COMPLEX_UNIT_SP,
+                    getCompactSafeTextSize(
+                            context,
+                            getDateTextSize(layoutItemCount, isCompactTwoWeek),
+                            isCompactTwoWeek
+                    )
+            );
             dayViews.setTextColor(R.id.widgetDayDate, isToday ? Color.WHITE : isCurrentMonth ? theme.text : theme.mutedText);
             dayViews.setInt(R.id.widgetDayContent, "setBackgroundResource", isToday ? theme.todayBackground : R.drawable.widget_day_background);
             dayViews.setViewPadding(
                     R.id.widgetDayContent,
                     dp(context, 1),
-                    dp(context, getCellTopPadding(layoutItemCount, monthRows)),
+                    dp(context, getCellTopPadding(layoutItemCount, monthRows, isCompactTwoWeek)),
                     dp(context, 1),
                     dp(context, 1)
             );
@@ -230,7 +294,15 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 int textId = eventTextIds[itemIndex];
 
                 dayViews.setTextViewText(textId, title);
-                dayViews.setTextViewTextSize(textId, TypedValue.COMPLEX_UNIT_SP, getBadgeTextSize(layoutItemCount));
+                dayViews.setTextViewTextSize(
+                        textId,
+                        TypedValue.COMPLEX_UNIT_SP,
+                        getCompactSafeTextSize(
+                                context,
+                                getBadgeTextSize(layoutItemCount, isCompactTwoWeek),
+                                isCompactTwoWeek
+                        )
+                );
                 dayViews.setTextColor(textId, theme.text);
                 dayViews.setBoolean(textId, "setSingleLine", true);
                 dayViews.setInt(textId, "setMaxLines", 1);
@@ -238,7 +310,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 dayViews.setViewVisibility(rowId, View.VISIBLE);
             }
 
-            if ("work".equals(calendarType) && visibleCount > 0) {
+            if (!isCompactTwoWeek && "work".equals(calendarType) && visibleCount > 0) {
                 JSONObject workItem = items.optJSONObject(0);
                 String memo = workItem == null ? "" : sanitizeDisplayTitle(workItem.optString("memo", ""));
 
@@ -284,18 +356,21 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return 2;
     }
 
-    float getDateTextSize(int itemCount) {
+    float getDateTextSize(int itemCount, boolean isCompactTwoWeek) {
         if ("fourDays".equals(range)) return itemCount <= 1 ? 13.5f : 12.2f;
+        if (isCompactTwoWeek) return 8.5f;
         if ("twoWeeks".equals(range)) return 8.8f;
         return 8.5f;
     }
 
-    float getBadgeTextSize(int itemCount) {
+    float getBadgeTextSize(int itemCount, boolean isCompactTwoWeek) {
         if ("fourDays".equals(range)) {
             if (itemCount <= 1) return 14.8f;
             if (itemCount == 2) return 13.2f;
             return 10.5f;
         }
+
+        if (isCompactTwoWeek) return 9.0f;
 
         if ("twoWeeks".equals(range)) {
             if (itemCount <= 1) return 11.2f;
@@ -306,6 +381,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (itemCount <= 1) return 11.2f;
         if (itemCount == 2) return 10.0f;
         return 8.5f;
+    }
+
+    float getCompactSafeTextSize(Context context, float textSize, boolean isCompactTwoWeek) {
+        if (!isCompactTwoWeek) return textSize;
+
+        float fontScale = context.getResources().getConfiguration().fontScale;
+        return fontScale > 1.0f ? textSize / fontScale : textSize;
     }
 
     float getMoreTextSize() {
@@ -320,12 +402,14 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return 8.2f;
     }
 
-    int getCellTopPadding(int itemCount, int monthRows) {
+    int getCellTopPadding(int itemCount, int monthRows, boolean isCompactTwoWeek) {
         if ("fourDays".equals(range)) {
             if (itemCount <= 1) return 8;
             if (itemCount == 2) return 5;
             return 3;
         }
+
+        if (isCompactTwoWeek) return 0;
 
         if ("twoWeeks".equals(range)) {
             if (itemCount <= 1) return 4;
@@ -336,8 +420,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return itemCount <= 1 ? 2 : 1;
     }
 
-    int getGridTopPadding() {
+    int getGridTopPadding(boolean isCompactTwoWeek) {
         if ("fourDays".equals(range)) return 5;
+        if (isCompactTwoWeek) return 3;
         if ("twoWeeks".equals(range)) return 6;
         return 3;
     }

@@ -24,7 +24,9 @@ export function createInitialGameState(now = Date.now()) {
     saveVersion: GAME_CONFIG.saveVersion,
     cucumbers: 0,
     totalEarned: 0,
-    touchYield: 1,
+    touchYield: GAME_CONFIG.touchExperience,
+    growthExperience: 0,
+    harvestCount: 0,
     facilities: createEmptyFacilities(),
     perSecond: 0,
     growthStageId: GAME_CONFIG.growthStages[0].id,
@@ -58,7 +60,20 @@ export function normalizeGameState(rawState, now = Date.now()) {
     saveVersion: GAME_CONFIG.saveVersion,
     cucumbers: toSafeNonNegativeNumber(rawState.cucumbers),
     totalEarned: toSafeNonNegativeNumber(rawState.totalEarned),
-    touchYield: Math.max(1, toSafeNonNegativeNumber(rawState.touchYield, 1)),
+    touchYield: Math.max(
+      GAME_CONFIG.touchExperience,
+      toSafeNonNegativeNumber(
+        rawState.touchYield,
+        GAME_CONFIG.touchExperience
+      )
+    ),
+    growthExperience: Math.min(
+      toSafeNonNegativeNumber(rawState.growthExperience),
+      GAME_CONFIG.harvestExperience
+    ),
+    harvestCount: Math.floor(
+      toSafeNonNegativeNumber(rawState.harvestCount)
+    ),
     facilities,
     perSecond: toSafeNonNegativeNumber(rawState.perSecond),
     growthStageId:

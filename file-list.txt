@@ -997,7 +997,10 @@
 ./games/cucumber-grow/tests/game.test.mjs
 ./games/cucumber-grow/assets/README.md
 ./games/cucumber-grow/assets/images/README.md
+./games/cucumber-grow/assets/images/cucumber-baby.png
+./games/cucumber-grow/assets/images/cucumber-boy.png
 ./games/cucumber-grow/assets/images/cucumber.png
+./games/cucumber-grow/assets/images/water-gun.png
 ./games/cucumber-grow/assets/sounds/README.md
 ./images/skins/ozyo.png
 ./supabase-SQLEditor/20260728-ozyo-cucumber-skin.sql

@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "./game-config.js";
 import {
   GameEngine,
   collectTouch,
+  harvestCucumber,
   purchaseFacility,
   synchronizeDerivedState,
 } from "./game-engine.js";
@@ -9,13 +10,15 @@ import { applyOfflineReward } from "./offline-reward.js";
 import { clearGameSave, loadGameSave, saveGame } from "./save-manager.js";
 import { createInitialGameState } from "./game-state.js";
 import { formatExactNumber } from "./number-format.js";
-import { UIRenderer } from "./ui-renderer.js?v=20260728-03";
+import { UIRenderer } from "./ui-renderer.js?v=20260728-04";
 
 const loadResult = loadGameSave();
 const state = loadResult.state;
 const ui = new UIRenderer();
 let deferredSaveTimer = null;
 let isResetting = false;
+let isHarvesting = false;
+let lastKeyboardWaterAt = 0;
 
 synchronizeDerivedState(state);
 
@@ -47,6 +50,12 @@ function scheduleSave() {
 }
 
 function handleGrowthChange(result) {
+  if (result?.becameHarvestReady) {
+    ui.showHarvestReady();
+    ui.announce("어른오이가 모두 자라 수확할 수 있습니다.");
+    return;
+  }
+
   if (result?.stageChanged) {
     ui.showStageUp(result.stage);
     ui.announce(`성장 단계가 ${result.stage.name}(으)로 올랐습니다.`);
@@ -88,14 +97,60 @@ if (loadResult.status === "recovered") {
 ui.render(state);
 engine.start();
 
-ui.elements.characterButton.addEventListener("click", (event) => {
+function waterCucumber(event) {
   engine.synchronize();
   const result = collectTouch(state);
 
   ui.render(state);
-  ui.renderTouchGain(result.gained, event);
+  if (result.gained > 0) {
+    ui.renderWatering(result.gained, event);
+  }
   handleGrowthChange(result);
   scheduleSave();
+}
+
+ui.elements.characterButton.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+
+  event.preventDefault();
+  waterCucumber(event);
+});
+
+ui.elements.characterButton.addEventListener("keydown", (event) => {
+  if ((event.key !== "Enter" && event.key !== " ") || event.repeat) return;
+
+  event.preventDefault();
+  lastKeyboardWaterAt = Date.now();
+  waterCucumber(event);
+});
+
+ui.elements.characterButton.addEventListener("click", (event) => {
+  if (event.detail !== 0 || Date.now() - lastKeyboardWaterAt < 700) return;
+
+  waterCucumber(event);
+});
+
+ui.elements.harvestButton.addEventListener("click", () => {
+  if (isHarvesting) return;
+
+  isHarvesting = true;
+  engine.synchronize();
+  const result = harvestCucumber(state);
+
+  if (!result.harvested) {
+    ui.render(state);
+    ui.announce("아직 수확할 수 없습니다.");
+    isHarvesting = false;
+    return;
+  }
+
+  ui.render(state);
+  ui.showHarvestReward(result.reward);
+  ui.announce(
+    `수확을 완료해 오이 ${formatExactNumber(result.reward)}개를 획득했습니다.`
+  );
+  persistNow();
+  isHarvesting = false;
 });
 
 ui.elements.facilityList.addEventListener("click", (event) => {

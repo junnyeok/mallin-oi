@@ -9,11 +9,11 @@
     <meta name="theme-color" content="#163f2b" />
     <meta
       name="description"
-      content="터치와 자동 생산으로 오이를 키우는 독립 방치형 웹게임 MVP"
+      content="물주기와 자동 경험치로 오이 캐릭터를 키우고 수확하는 독립 육성형 웹게임"
     />
     <title>오이키우기</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./css/game.css?v=20260728-03" />
+    <link rel="stylesheet" href="./css/game.css?v=20260728-04" />
   </head>
   <body>
     <main class="game-shell" id="gameApp">
@@ -42,16 +42,16 @@
           </p>
           <div class="status-grid">
             <div class="status-item">
-              <span>초당 생산</span>
-              <strong><span id="productionRate">0</span>/초</strong>
+              <span>자동 경험치</span>
+              <strong><span id="productionRate">0</span> XP/초</strong>
             </div>
             <div class="status-item">
-              <span>터치 획득</span>
-              <strong>+<span id="touchYield">1</span></strong>
+              <span>물주기 경험치</span>
+              <strong>+<span id="touchYield">1</span> XP</strong>
             </div>
             <div class="status-item status-item--stage">
               <span>성장 단계</span>
-              <strong id="growthStage">길바닥 오이</strong>
+              <strong id="growthStageSummary">새싹</strong>
             </div>
           </div>
         </section>
@@ -60,7 +60,7 @@
       <section
         class="character-zone"
         id="characterZone"
-        data-stage-id="street"
+        data-stage-id="sprout"
         aria-labelledby="characterHeading"
       >
         <div class="character-zone__sky" aria-hidden="true">
@@ -74,21 +74,56 @@
           class="character-button"
           id="characterButton"
           type="button"
-          aria-label="오이 캐릭터를 터치해 오이 획득"
+          aria-label="새싹에게 물을 주고 경험치 1 획득"
         >
           <img
             class="cucumber-character"
-            src="./assets/images/cucumber.png"
-            width="900"
-            height="1400"
+            id="characterImage"
+            src="./assets/images/cucumber-baby.png"
+            width="1254"
+            height="1254"
             alt=""
             draggable="false"
             decoding="async"
           />
         </button>
-        <p class="tap-guide">오이를 톡톡 눌러주세요</p>
-        <p class="tap-guide__sub">빠르게 연속 터치할 수 있어요</p>
+        <p class="tap-guide" id="tapGuide">오이에게 물을 주세요</p>
+        <p class="tap-guide__sub">누른 곳에서 물뿌리개가 나타나요</p>
         <div class="touch-effects" id="touchEffects" aria-hidden="true"></div>
+      </section>
+
+      <section class="growth-panel" aria-labelledby="growthPanelTitle">
+        <div class="growth-panel__summary">
+          <div class="growth-panel__title">
+            <span id="growthPanelTitle">현재 성장</span>
+            <strong id="growthStage">새싹</strong>
+            <span class="growth-panel__level" id="growthLevel">Lv.1</span>
+          </div>
+          <span class="growth-panel__status" id="growthStatus">다음 · 애기오이</span>
+        </div>
+        <div class="growth-panel__experience">
+          <span>경험치</span>
+          <strong>
+            <span id="growthExperience">0</span>
+            <span aria-hidden="true"> / </span>
+            <span id="growthTarget">15</span>
+            XP
+          </strong>
+        </div>
+        <div
+          class="growth-progress"
+          id="growthProgress"
+          role="progressbar"
+          aria-label="현재 성장 경험치"
+          aria-valuemin="0"
+          aria-valuemax="15"
+          aria-valuenow="0"
+        >
+          <span class="growth-progress__fill" id="growthProgressFill"></span>
+        </div>
+        <button class="harvest-button" id="harvestButton" type="button" disabled>
+          성장 중 · 15 XP 남음
+        </button>
       </section>
 
       <section class="facilities-section" aria-labelledby="facilitiesTitle">
@@ -102,7 +137,7 @@
               옆으로 밀어 시설 선택 <span aria-hidden="true">→</span>
             </span>
             <span class="facility-hint facility-hint--wide">
-              시설 구매로 자동 생산 증가
+              시설 구매로 자동 경험치 증가
             </span>
           </p>
         </div>
@@ -118,7 +153,7 @@
         <summary class="play-info-summary">
           <span>플레이 정보</span>
           <span class="play-info-summary__total">
-            누적 <strong id="totalEarned">0</strong>개
+            누적 수확 <strong id="totalEarned">0</strong>개
             <span class="play-info-summary__caret" aria-hidden="true">⌃</span>
           </span>
         </summary>
@@ -165,7 +200,7 @@
     >
       <span class="toast__spark" aria-hidden="true">✦</span>
       <div>
-        <strong>성장 단계 상승!</strong>
+        <strong id="stageToastTitle">성장 단계 상승!</strong>
         <span id="stageToastText"></span>
       </div>
     </div>
@@ -188,18 +223,18 @@
             <dd id="offlineDuration">0초</dd>
           </div>
           <div>
-            <dt>수확한 오이</dt>
-            <dd><span id="offlineReward">0</span>개</dd>
+            <dt>자동 획득 경험치</dt>
+            <dd><span id="offlineReward">0</span> XP</dd>
           </div>
         </dl>
         <button class="primary-button" id="offlineConfirmButton" type="button">
-          수확 확인
+          성장 확인
         </button>
       </section>
     </div>
 
     <p class="visually-hidden" id="gameAnnouncement" aria-live="polite"></p>
 
-    <script type="module" src="./js/main.js?v=20260728-03"></script>
+    <script type="module" src="./js/main.js?v=20260728-04"></script>
   </body>
 </html>

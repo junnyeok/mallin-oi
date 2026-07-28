@@ -72,7 +72,7 @@ summary:focus-visible {
 .game-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(210px, 1fr) auto auto;
+  grid-template-rows: auto minmax(210px, 1fr) auto auto auto;
   gap: 6px;
   width: min(100%, var(--content-max));
   height: 100vh;
@@ -395,6 +395,10 @@ summary:focus-visible {
   animation: character-tap 260ms ease-out;
 }
 
+.character-button:disabled {
+  cursor: default;
+}
+
 .cucumber-character {
   display: block;
   width: auto;
@@ -403,10 +407,16 @@ summary:focus-visible {
   max-width: 94%;
   object-fit: contain;
   transform-origin: 50% 90%;
-  transition: transform 120ms ease;
+  transition: transform 120ms ease, opacity 160ms ease, filter 160ms ease;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+.cucumber-character.is-transitioning {
+  opacity: 0.18;
+  filter: blur(3px);
+  transform: scale(0.94);
 }
 
 .tap-guide,
@@ -447,14 +457,98 @@ summary:focus-visible {
   pointer-events: none;
 }
 
-.touch-gain {
-  --gain-x: 50%;
-  --gain-y: 50%;
+.touch-burst {
+  --effect-x: 50%;
+  --effect-y: 50%;
+  --water-angle: 0rad;
+  --water-distance: 80px;
 
   position: absolute;
-  top: var(--gain-y);
-  left: var(--gain-x);
-  min-width: 60px;
+  top: var(--effect-y);
+  left: var(--effect-x);
+  width: 0;
+  height: 0;
+}
+
+.watering-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--water-angle));
+  transform-origin: 0 0;
+}
+
+.watering-effect__can {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: block;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  transform: translate(-50%, -50%) scaleX(-1);
+  animation: watering-can-pop 820ms ease-out forwards;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.watering-effect__stream {
+  position: absolute;
+  top: -5px;
+  left: 27px;
+  width: var(--water-distance);
+  height: 10px;
+  overflow: visible;
+  border-radius: 999px;
+  background: repeating-radial-gradient(
+    circle at 5px 5px,
+    rgba(78, 180, 235, 0.95) 0 3px,
+    rgba(187, 233, 255, 0.88) 3px 5px,
+    transparent 5px 14px
+  );
+  background-size: 18px 10px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.72));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  animation: water-stream 720ms ease-out 70ms forwards;
+}
+
+.watering-effect__drop {
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 55% 45% 60% 40%;
+  background: #8fd9ff;
+  opacity: 0;
+  animation: water-drop 620ms ease-out 100ms forwards;
+}
+
+.watering-effect__drop:nth-child(2) {
+  top: -5px;
+  animation-delay: 160ms;
+}
+
+.watering-effect__drop:nth-child(3) {
+  top: 7px;
+  animation-delay: 220ms;
+}
+
+.watering-effect__drop:nth-child(4) {
+  top: -2px;
+  animation-delay: 280ms;
+}
+
+.touch-gain {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  z-index: 3;
+  min-width: 78px;
   color: var(--color-forest-900);
   font-size: 1.25rem;
   font-variant-numeric: tabular-nums;
@@ -464,6 +558,150 @@ summary:focus-visible {
     -1px 0 0 var(--color-cream-50);
   transform: translate(-50%, -50%);
   animation: gain-rise 760ms ease-out forwards;
+}
+
+.growth-panel {
+  display: grid;
+  grid-template-areas:
+    "summary summary"
+    "experience harvest"
+    "progress harvest";
+  grid-template-columns: minmax(0, 1fr) minmax(116px, 0.46fr);
+  gap: 5px 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(43, 117, 75, 0.14);
+  border-radius: var(--radius-medium);
+  background: var(--color-white);
+  box-shadow: 0 4px 14px rgba(16, 43, 30, 0.08);
+}
+
+.growth-panel__summary {
+  display: flex;
+  grid-area: summary;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.growth-panel__title {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.growth-panel__title > span:first-child {
+  color: var(--color-leaf-700);
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.growth-panel__title strong {
+  overflow: hidden;
+  color: var(--color-forest-900);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.growth-panel__level,
+.growth-panel__status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.growth-panel__level {
+  padding: 2px 6px;
+  background: var(--color-leaf-100);
+  color: var(--color-leaf-700);
+}
+
+.growth-panel__status {
+  max-width: 48%;
+  padding: 3px 7px;
+  overflow: hidden;
+  background: var(--color-cream-100);
+  color: var(--color-earth-700);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.growth-panel__status[data-ready="true"] {
+  background: var(--color-sun-200);
+  color: var(--color-forest-900);
+}
+
+.growth-panel__experience {
+  display: flex;
+  grid-area: experience;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-leaf-700);
+  font-size: 0.62rem;
+  font-weight: 750;
+}
+
+.growth-panel__experience strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-forest-900);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.growth-progress {
+  position: relative;
+  grid-area: progress;
+  height: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(43, 117, 75, 0.18);
+  border-radius: 999px;
+  background: var(--color-leaf-100);
+}
+
+.growth-progress__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-leaf-500), var(--color-sun-400));
+  transition: width 180ms ease;
+}
+
+.harvest-button {
+  grid-area: harvest;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 9px;
+  border-radius: var(--radius-small);
+  background: var(--color-sun-400);
+  color: var(--color-forest-950);
+  box-shadow: 0 3px 0 #b8891d;
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1.25;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.harvest-button:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.harvest-button:disabled {
+  background: #e7ebe5;
+  color: #748076;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 .section-heading {
@@ -1018,6 +1256,54 @@ summary:focus-visible {
   }
 }
 
+@keyframes watering-can-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleX(-1) scale(0.64);
+  }
+  18%,
+  76% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(-1) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleX(-1) scale(0.92);
+  }
+}
+
+@keyframes water-stream {
+  0% {
+    opacity: 0;
+    background-position: 0 0;
+    transform: scaleX(0);
+  }
+  22%,
+  72% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    background-position: 36px 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes water-drop {
+  0% {
+    opacity: 0;
+    transform: translateX(0) scale(0.5);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(var(--water-distance)) scale(1.1);
+  }
+}
+
 @keyframes toast-in {
   0% {
     opacity: 0;
@@ -1098,7 +1384,7 @@ summary:focus-visible {
 
   .character-zone {
     min-height: 460px;
-    margin: 12px 0 22px;
+    margin: 12px 0 10px;
   }
 
   .character-button {
@@ -1112,6 +1398,21 @@ summary:focus-visible {
   .tap-guide {
     bottom: 12px;
     font-size: 0.75rem;
+  }
+
+  .growth-panel {
+    margin-bottom: 22px;
+    padding: 11px 13px;
+  }
+
+  .growth-panel__title strong {
+    font-size: 0.92rem;
+  }
+
+  .growth-panel__experience,
+  .growth-panel__experience strong,
+  .harvest-button {
+    font-size: 0.72rem;
   }
 
   .section-heading {
@@ -1204,8 +1505,16 @@ summary:focus-visible {
   }
 
   .character-zone {
-    grid-row: 2 / span 2;
-    min-height: 540px;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 440px;
+    margin: 0;
+  }
+
+  .growth-panel {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: end;
     margin: 0;
   }
 
