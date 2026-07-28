@@ -46,6 +46,7 @@ export class UIRenderer {
       const card = this.document.createElement("article");
       card.className = "facility-card";
       card.dataset.facilityId = facility.id;
+      card.setAttribute("role", "listitem");
       card.innerHTML = `
         <div class="facility-card__header">
           <span class="facility-card__icon" aria-hidden="true">${facility.icon}</span>

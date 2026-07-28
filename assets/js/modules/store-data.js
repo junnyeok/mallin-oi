@@ -99,6 +99,15 @@ export const NIGHT_MELODY_BGM_PREVIEW = [
   },
 ];
 
+export const BURNING_SOUL_BGM_PREVIEW = [
+  {
+    code: 'bgm-burning-soul',
+    label: 'Burning Soul LP',
+    imagePath: withAssetVersion('./images/BGM/Burning-Soul_LP.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -211,6 +220,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/Night-melody_LP.png'),
     isDefault: false,
     displayOrder: 11,
+  },
+  {
+    id: 'mallin-oi-burning-soul',
+    storeItemId: 'bgm-tetocarrto-02',
+    title: 'Burning Soul',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/Burning-Soul.mp3'),
+    coverPath: withAssetVersion('./images/BGM/Burning-Soul_LP.png'),
+    isDefault: false,
+    displayOrder: 12,
   },
 ];
 
@@ -530,6 +549,24 @@ export const CHARACTER_EFFECT_CATALOG = [
       rotation: '0deg',
       aspectRatio: '1 / 1',
     },
+    contexts: {
+      profile: {
+        width: '135%',
+        groundOffset: '6%',
+      },
+      inventory: {
+        width: '135%',
+        groundOffset: '6%',
+      },
+      post: {
+        width: '135%',
+        groundOffset: '6%',
+      },
+      comment: {
+        width: '135%',
+        groundOffset: '6%',
+      },
+    },
     motion: {
       animation: 'none',
     },
@@ -541,6 +578,10 @@ export const CHARACTER_EFFECT_CATALOG = [
       frameCount: 22,
       frameDurationMs: 90,
       loop: true,
+      frameBottomOffsets: [
+        1, 2, 2, 1, 1, 20, 1, 2, 6, 1, 0, 1, 0, 2, 4, 1, 1, 9, 1, 2,
+        4, 1,
+      ],
     },
     displayOrder: 2,
   },
@@ -570,6 +611,7 @@ const CHARACTER_EFFECT_LAYOUT_CSS_VARS = {
   x: '--character-effect-default-x',
   y: '--character-effect-default-y',
   width: '--character-effect-default-width',
+  groundOffset: '--character-effect-ground-offset',
   zIndex: '--character-effect-default-z',
   origin: '--character-effect-default-origin',
   rotation: '--character-effect-default-rotation',
@@ -1494,6 +1536,23 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'bgm-tetocarrto-02',
+    name: 'Burning Soul',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥕🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/Burning-Soul_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/Burning-Soul.mp3'),
+    price: 665,
+    state: '판매 중',
+    description: "단다단 OST 'Hunting Soul'을 참고해봤어.",
+    detailDescription:
+      '강렬한 록 사운드가 돋보이는 BGM이야.<br>(구매하면 내 프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
+    previewImages: BURNING_SOUL_BGM_PREVIEW,
+    releaseDate: '2026-07-28',
+    isPurchasable: true,
+  },
+  {
     id: 'BG-03',
     name: '냉장고 프로필배경',
     category: 'profile',
@@ -1590,6 +1649,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'bgm-tetocarrto-02',
   'cha-effects-fire-01',
   'BG-04',
   'skin-cucumber-03',

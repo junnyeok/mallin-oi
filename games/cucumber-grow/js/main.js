@@ -9,7 +9,7 @@ import { applyOfflineReward } from "./offline-reward.js";
 import { clearGameSave, loadGameSave, saveGame } from "./save-manager.js";
 import { createInitialGameState } from "./game-state.js";
 import { formatExactNumber } from "./number-format.js";
-import { UIRenderer } from "./ui-renderer.js";
+import { UIRenderer } from "./ui-renderer.js?v=20260728-03";
 
 const loadResult = loadGameSave();
 const state = loadResult.state;

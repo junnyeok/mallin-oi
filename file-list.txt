@@ -997,6 +997,7 @@
 ./games/cucumber-grow/tests/game.test.mjs
 ./games/cucumber-grow/assets/README.md
 ./games/cucumber-grow/assets/images/README.md
+./games/cucumber-grow/assets/images/cucumber.png
 ./games/cucumber-grow/assets/sounds/README.md
 ./images/skins/ozyo.png
 ./supabase-SQLEditor/20260728-ozyo-cucumber-skin.sql
@@ -1030,3 +1031,7 @@
 ./supabase-SQLEditor/20260728-fire-character-effect.sql
 ./supabase/migrations/20260728030000_fire_character_effect.sql
 ./tests/character-effects-fire.test.mjs
+./supabase-SQLEditor/20260728-burning-soul-bgm.sql
+./supabase/migrations/20260728040000_burning_soul_bgm.sql
+./tests/burning-soul-bgm.test.mjs
+./supabase/migrations/20260728050000_burning_soul_strict_balance.sql

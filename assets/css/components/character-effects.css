@@ -103,6 +103,19 @@
   transform-origin: 50% 50%;
 }
 
+.character-effect-layer[data-character-effect-placement='front']:is(
+    [data-character-effect-context='profile'],
+    [data-character-effect-context='inventory'],
+    [data-character-effect-context='post'],
+    [data-character-effect-context='comment']
+  ) {
+  top: auto;
+  bottom: var(--character-effect-ground-offset, 0px);
+  --character-effect-anchor-x: -50%;
+  --character-effect-anchor-y: 0%;
+  transform-origin: 50% 100%;
+}
+
 .character-effect-layer[data-character-effect-placement='front-small'] {
   --character-effect-width: var(--character-effect-default-width, 34%);
   --character-effect-z: var(--character-effect-default-z, 30);
@@ -163,6 +176,9 @@
   width: 100%;
   aspect-ratio: var(--character-effect-sprite-aspect-ratio, 1 / 1);
   overflow: hidden;
+  transform: translateY(
+    var(--character-effect-sprite-frame-bottom-offset, 0%)
+  );
 }
 
 .character-effect-sprite__sheet {
@@ -187,6 +203,7 @@
 
 .character-effect-sprite--fire {
   filter: drop-shadow(0 3px 8px rgba(255, 96, 0, 0.2));
+  will-change: transform;
 }
 
 @keyframes characterEffectFloat {

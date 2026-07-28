@@ -13,7 +13,7 @@
     />
     <title>오이키우기</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./css/game.css" />
+    <link rel="stylesheet" href="./css/game.css?v=20260728-03" />
   </head>
   <body>
     <main class="game-shell" id="gameApp">
@@ -76,23 +76,15 @@
           type="button"
           aria-label="오이 캐릭터를 터치해 오이 획득"
         >
-          <span class="cucumber-character" aria-hidden="true">
-            <span class="cucumber-character__crown"></span>
-            <span class="cucumber-character__hat"></span>
-            <span class="cucumber-character__body">
-              <span class="cucumber-character__spot spot--one"></span>
-              <span class="cucumber-character__spot spot--two"></span>
-              <span class="cucumber-character__spot spot--three"></span>
-              <span class="cucumber-character__eye eye--left"></span>
-              <span class="cucumber-character__eye eye--right"></span>
-              <span class="cucumber-character__mouth"></span>
-              <span class="cucumber-character__tie"></span>
-            </span>
-            <span class="cucumber-character__arm arm--left"></span>
-            <span class="cucumber-character__arm arm--right"></span>
-            <span class="cucumber-character__foot foot--left"></span>
-            <span class="cucumber-character__foot foot--right"></span>
-          </span>
+          <img
+            class="cucumber-character"
+            src="./assets/images/cucumber.png"
+            width="900"
+            height="1400"
+            alt=""
+            draggable="false"
+            decoding="async"
+          />
         </button>
         <p class="tap-guide">오이를 톡톡 눌러주세요</p>
         <p class="tap-guide__sub">빠르게 연속 터치할 수 있어요</p>
@@ -102,45 +94,62 @@
       <section class="facilities-section" aria-labelledby="facilitiesTitle">
         <div class="section-heading">
           <div>
-            <p class="section-heading__eyebrow">AUTO HARVEST</p>
-            <h2 id="facilitiesTitle">생산 시설</h2>
+            <p class="section-heading__eyebrow">FARM UPGRADE</p>
+            <h2 id="facilitiesTitle">농장 업그레이드</h2>
           </div>
-          <p>시설이 쉬지 않고 오이를 길러요.</p>
+          <p>
+            <span class="facility-hint facility-hint--mobile">
+              옆으로 밀어 시설 선택 <span aria-hidden="true">→</span>
+            </span>
+            <span class="facility-hint facility-hint--wide">
+              시설 구매로 자동 생산 증가
+            </span>
+          </p>
         </div>
-        <div class="facility-list" id="facilityList"></div>
+        <div
+          class="facility-list"
+          id="facilityList"
+          role="list"
+          aria-label="생산 시설 목록"
+        ></div>
       </section>
 
-      <section class="support-section" aria-labelledby="supportTitle">
-        <div class="section-heading section-heading--compact">
-          <div>
-            <p class="section-heading__eyebrow">LOCAL SAVE</p>
-            <h2 id="supportTitle">플레이 정보</h2>
+      <details class="support-section">
+        <summary class="play-info-summary">
+          <span>플레이 정보</span>
+          <span class="play-info-summary__total">
+            누적 <strong id="totalEarned">0</strong>개
+            <span class="play-info-summary__caret" aria-hidden="true">⌃</span>
+          </span>
+        </summary>
+        <div class="support-panel">
+          <div class="section-heading section-heading--compact">
+            <div>
+              <p class="section-heading__eyebrow">LOCAL SAVE</p>
+              <h2 id="supportTitle">플레이 정보</h2>
+            </div>
           </div>
-        </div>
-        <dl class="play-info">
-          <div>
-            <dt>누적 획득</dt>
-            <dd><span id="totalEarned">0</span>개</dd>
-          </div>
-          <div>
-            <dt>게임 시작</dt>
-            <dd id="startedAt">-</dd>
-          </div>
-        </dl>
+          <dl class="play-info">
+            <div>
+              <dt>게임 시작</dt>
+              <dd id="startedAt">-</dd>
+            </div>
+          </dl>
 
-        <details class="developer-tools">
-          <summary>개발용 도구</summary>
-          <div class="developer-tools__content">
-            <p>
-              이 기능은 MVP 검증용입니다. 초기화하면 이 게임의 로컬 저장
-              데이터만 삭제됩니다.
-            </p>
-            <button class="danger-button" id="resetButton" type="button">
-              게임 데이터 초기화
-            </button>
-          </div>
-        </details>
-      </section>
+          <details class="developer-tools">
+            <summary>개발용 도구</summary>
+            <div class="developer-tools__content">
+              <p>
+                이 기능은 MVP 검증용입니다. 초기화하면 이 게임의 로컬 저장
+                데이터만 삭제됩니다.
+              </p>
+              <button class="danger-button" id="resetButton" type="button">
+                게임 데이터 초기화
+              </button>
+            </div>
+          </details>
+        </div>
+      </details>
 
       <footer class="game-footer">
         <p>오이키우기 MVP · 기기 로컬 저장</p>
@@ -191,6 +200,6 @@
 
     <p class="visually-hidden" id="gameAnnouncement" aria-live="polite"></p>
 
-    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./js/main.js?v=20260728-03"></script>
   </body>
 </html>

@@ -14,18 +14,27 @@ function getSpriteMeta(sprite = {}) {
     maximumFrameCount,
     Math.max(1, Math.trunc(Number(sprite.frameCount) || maximumFrameCount)),
   );
+  const frameWidth = Math.max(1, Math.trunc(Number(sprite.frameWidth) || 1));
+  const frameHeight = Math.max(1, Math.trunc(Number(sprite.frameHeight) || 1));
+  const frameBottomOffsets = Array.from({ length: frameCount }, (_, index) =>
+    Math.min(
+      frameHeight,
+      Math.max(0, Number(sprite.frameBottomOffsets?.[index]) || 0),
+    ),
+  );
 
   return {
     columnCount,
     rowCount,
-    frameWidth: Math.max(1, Math.trunc(Number(sprite.frameWidth) || 1)),
-    frameHeight: Math.max(1, Math.trunc(Number(sprite.frameHeight) || 1)),
+    frameWidth,
+    frameHeight,
     frameCount,
     frameDurationMs: Math.max(
       16,
       Math.trunc(Number(sprite.frameDurationMs) || 100),
     ),
     loop: sprite.loop !== false,
+    frameBottomOffsets,
   };
 }
 
@@ -56,6 +65,19 @@ function stopSpriteAnimationLoop() {
   spriteAnimationFrameId = 0;
 }
 
+function applySpriteFrame(spriteLayer, sprite, frame) {
+  const frameBottomOffset = sprite.frameBottomOffsets[frame.index] || 0;
+  const frameBottomOffsetPercent =
+    (frameBottomOffset / sprite.frameHeight) * 100;
+
+  spriteLayer.style.setProperty('--character-effect-sprite-column', frame.column);
+  spriteLayer.style.setProperty('--character-effect-sprite-row', frame.row);
+  spriteLayer.style.setProperty(
+    '--character-effect-sprite-frame-bottom-offset',
+    `${frameBottomOffsetPercent}%`,
+  );
+}
+
 function renderSpriteAnimationFrame(timestamp) {
   spriteAnimationFrameId = 0;
 
@@ -68,9 +90,14 @@ function renderSpriteAnimationFrame(timestamp) {
     const sprite = getSpriteMeta({
       columnCount: spriteLayer.dataset.spriteColumns,
       rowCount: spriteLayer.dataset.spriteRows,
+      frameWidth: spriteLayer.dataset.spriteFrameWidth,
+      frameHeight: spriteLayer.dataset.spriteFrameHeight,
       frameCount: spriteLayer.dataset.spriteFrameCount,
       frameDurationMs: spriteLayer.dataset.spriteFrameDuration,
       loop: spriteLayer.dataset.spriteLoop !== 'false',
+      frameBottomOffsets: String(
+        spriteLayer.dataset.spriteFrameBottomOffsets || '',
+      ).split(','),
     });
     const startedAt = Number(spriteLayer.dataset.spriteStartedAt) || timestamp;
     const elapsedFrame = Math.floor(
@@ -78,8 +105,7 @@ function renderSpriteAnimationFrame(timestamp) {
     );
     const frame = getCharacterEffectSpriteFrame(sprite, elapsedFrame);
 
-    spriteLayer.style.setProperty('--character-effect-sprite-column', frame.column);
-    spriteLayer.style.setProperty('--character-effect-sprite-row', frame.row);
+    applySpriteFrame(spriteLayer, sprite, frame);
   });
 
   startSpriteAnimationLoop();
@@ -100,8 +126,19 @@ function registerSpriteLayers(root) {
 
   layers.forEach((layer) => {
     if (animatedSpriteLayers.has(layer)) return;
-    layer.style.setProperty('--character-effect-sprite-column', '0');
-    layer.style.setProperty('--character-effect-sprite-row', '0');
+    const sprite = getSpriteMeta({
+      columnCount: layer.dataset.spriteColumns,
+      rowCount: layer.dataset.spriteRows,
+      frameWidth: layer.dataset.spriteFrameWidth,
+      frameHeight: layer.dataset.spriteFrameHeight,
+      frameCount: layer.dataset.spriteFrameCount,
+      frameDurationMs: layer.dataset.spriteFrameDuration,
+      loop: layer.dataset.spriteLoop !== 'false',
+      frameBottomOffsets: String(
+        layer.dataset.spriteFrameBottomOffsets || '',
+      ).split(','),
+    });
+    applySpriteFrame(layer, sprite, getCharacterEffectSpriteFrame(sprite, 0));
     layer.dataset.spriteStartedAt = String(
       typeof performance === 'undefined' ? 0 : performance.now(),
     );
@@ -258,6 +295,9 @@ export function renderCharacterEffectHtml(effect = null) {
   const context = String(effect.context || 'default').trim() || 'default';
   const animation = String(effect.animation || 'none').trim() || 'none';
   const sprite = effect.sprite ? getSpriteMeta(effect.sprite) : null;
+  const initialSpriteBottomOffset = sprite
+    ? (sprite.frameBottomOffsets[0] / sprite.frameHeight) * 100
+    : 0;
   const effectMedia = sprite
     ? `
         <span
@@ -265,10 +305,13 @@ export function renderCharacterEffectHtml(effect = null) {
           data-character-effect-sprite
           data-sprite-columns="${sprite.columnCount}"
           data-sprite-rows="${sprite.rowCount}"
+          data-sprite-frame-width="${sprite.frameWidth}"
+          data-sprite-frame-height="${sprite.frameHeight}"
           data-sprite-frame-count="${sprite.frameCount}"
           data-sprite-frame-duration="${sprite.frameDurationMs}"
           data-sprite-loop="${sprite.loop ? 'true' : 'false'}"
-          style="--character-effect-sprite-columns: ${sprite.columnCount}; --character-effect-sprite-rows: ${sprite.rowCount}; --character-effect-sprite-column: 0; --character-effect-sprite-row: 0; --character-effect-sprite-aspect-ratio: ${sprite.frameWidth} / ${sprite.frameHeight};"
+          data-sprite-frame-bottom-offsets="${sprite.frameBottomOffsets.join(',')}"
+          style="--character-effect-sprite-columns: ${sprite.columnCount}; --character-effect-sprite-rows: ${sprite.rowCount}; --character-effect-sprite-column: 0; --character-effect-sprite-row: 0; --character-effect-sprite-aspect-ratio: ${sprite.frameWidth} / ${sprite.frameHeight}; --character-effect-sprite-frame-bottom-offset: ${initialSpriteBottomOffset}%;"
         >
           <img
             class="character-effect-sprite__sheet"
