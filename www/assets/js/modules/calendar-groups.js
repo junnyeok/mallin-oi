@@ -897,6 +897,7 @@ export async function initCalendarGroupBar({
   getViewDate,
   renderAll,
   onModeChange,
+  runCalendarLoad,
 }) {
   if (!pageRoot || !CALENDAR_LABELS[calendarType]) return null;
 
@@ -1207,7 +1208,7 @@ export async function initCalendarGroupBar({
     updateBackupButtonState();
   }
 
-  async function loadGroupEvents() {
+  async function loadGroupEvents({ isCurrent = () => true } = {}) {
     const loadId = ++state.groupLoadId;
     const selectedGroup = state.selectedGroup;
     state.eventsByDate = {};
@@ -1219,6 +1220,9 @@ export async function initCalendarGroupBar({
       state.backupChecking = false;
       setBackupNeeded(false);
       await onModeChange?.({ group: null, rows: [], mode: CALENDAR_MODES.PERSONAL });
+      if (!isCurrent() || loadId !== state.groupLoadId || state.selectedGroup) {
+        return;
+      }
       renderAll?.();
       return;
     }
@@ -1235,7 +1239,11 @@ export async function initCalendarGroupBar({
 
     await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.SHARED_GROUP });
 
-    if (loadId !== state.groupLoadId || selectedGroup?.id !== state.selectedGroup?.id) {
+    if (
+      !isCurrent() ||
+      loadId !== state.groupLoadId ||
+      selectedGroup?.id !== state.selectedGroup?.id
+    ) {
       return;
     }
 
@@ -1253,20 +1261,47 @@ export async function initCalendarGroupBar({
       p_end_date: endDate,
     });
 
-    if (loadId !== state.groupLoadId || selectedGroup.id !== state.selectedGroup?.id) {
+    if (
+      !isCurrent() ||
+      loadId !== state.groupLoadId ||
+      selectedGroup.id !== state.selectedGroup?.id
+    ) {
       return;
     }
 
     state.eventsByDate = groupEventsByDateAndUser(rows || []);
     await refreshBackupNeeded();
 
-    if (loadId !== state.groupLoadId || selectedGroup.id !== state.selectedGroup?.id) {
+    if (
+      !isCurrent() ||
+      loadId !== state.groupLoadId ||
+      selectedGroup.id !== state.selectedGroup?.id
+    ) {
       return;
     }
     setStatus(
       `${selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 그룹 일정 표시 중`,
     );
     renderAll?.();
+  }
+
+  function getCalendarLoadKey(reason) {
+    const viewDate = getViewDate();
+    const year = viewDate?.getFullYear?.() || 0;
+    const month = String((viewDate?.getMonth?.() || 0) + 1).padStart(2, '0');
+    return [
+      calendarType,
+      reason,
+      state.selectedGroup?.id || 'personal',
+      `${year}-${month}`,
+    ].join(':');
+  }
+
+  function refreshCalendar({ reason = 'refresh' } = {}) {
+    const task = (loadContext) => loadGroupEvents(loadContext);
+    return typeof runCalendarLoad === 'function'
+      ? runCalendarLoad(task, { key: getCalendarLoadKey(reason) })
+      : task();
   }
 
   async function loadGroups() {
@@ -1279,7 +1314,7 @@ export async function initCalendarGroupBar({
       .find((group) => group.id === selectedId) || null;
 
     renderSelect();
-    await loadGroupEvents();
+    await refreshCalendar({ reason: 'initial-group' });
   }
 
   select.addEventListener('change', async () => {
@@ -1293,10 +1328,12 @@ export async function initCalendarGroupBar({
     renderSelect();
 
     try {
-      await loadGroupEvents();
+      await refreshCalendar({ reason: 'group-selection' });
     } catch (error) {
       console.error('[calendar-groups] load group events failed:', error);
-      setStatus('그룹 일정을 불러오지 못했어. SQL 적용 여부를 확인해줘.');
+      if ((state.selectedGroup?.id || '') === groupId) {
+        setStatus('그룹 일정을 불러오지 못했어. SQL 적용 여부를 확인해줘.');
+      }
     }
   });
 
@@ -1339,7 +1376,7 @@ export async function initCalendarGroupBar({
           backedUpAt,
         ).toLocaleString('ko-KR')}`,
       );
-      await loadGroupEvents();
+      await refreshCalendar({ reason: 'group-backup' });
     } catch (error) {
       console.error('[calendar-groups] backup failed:', error);
       setStatus('백업에 실패했어. 그룹 권한과 SQL 적용 여부를 확인해줘.');
@@ -1359,7 +1396,7 @@ export async function initCalendarGroupBar({
 
   return {
     state,
-    refresh: loadGroupEvents,
+    refresh: refreshCalendar,
     refreshBackupNeeded,
   };
 }

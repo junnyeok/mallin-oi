@@ -225,6 +225,7 @@
 ./assets/css/components/auth-links.css
 ./assets/css/components/calendar-app-download-popup.css
 ./assets/css/components/calendar-entry-sheet.css
+./assets/css/components/calendar-loading.css
 ./assets/css/components/character-effects.css
 ./assets/css/components/cursor-buddy.css
 ./assets/css/components/footer.css
@@ -272,6 +273,7 @@
 ./assets/js/modules/calendar-app-download-popup.js
 ./assets/js/modules/calendar-entry-sheet.js
 ./assets/js/modules/calendar-groups.js
+./assets/js/modules/calendar-loading.js
 ./assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./assets/js/modules/calendar-shared-personal-readonly.js
 ./assets/js/modules/calendar-shared-personal.js
@@ -302,6 +304,7 @@
 ./assets/js/modules/posts-repo.js
 ./assets/js/modules/posts-ui.js
 ./assets/js/modules/prev-mypage.js
+./assets/js/modules/profile-background-contrast.js
 ./assets/js/modules/profile-history.js
 ./assets/js/modules/profile.js
 ./assets/js/modules/pwa-install.js
@@ -353,6 +356,7 @@
 ./images/apple-touch-icon.png
 ./images/bad.png
 ./images/calendar-app-icon.png
+./images/calendar/dancing-cucumber-sprite-sheet.png
 ./images/BGM/avocado-sunset.png
 ./images/BGM/Burning-Soul_LP.png
 ./images/BGM/Cherry-Smile_LP.png
@@ -712,6 +716,7 @@
 ./www/assets/css/components/auth-links.css
 ./www/assets/css/components/calendar-app-download-popup.css
 ./www/assets/css/components/calendar-entry-sheet.css
+./www/assets/css/components/calendar-loading.css
 ./www/assets/css/components/character-effects.css
 ./www/assets/css/components/cursor-buddy.css
 ./www/assets/css/components/footer.css
@@ -759,6 +764,7 @@
 ./www/assets/js/modules/calendar-app-download-popup.js
 ./www/assets/js/modules/calendar-entry-sheet.js
 ./www/assets/js/modules/calendar-groups.js
+./www/assets/js/modules/calendar-loading.js
 ./www/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./www/assets/js/modules/calendar-shared-personal-readonly.js
 ./www/assets/js/modules/calendar-shared-personal.js
@@ -789,6 +795,7 @@
 ./www/assets/js/modules/posts-repo.js
 ./www/assets/js/modules/posts-ui.js
 ./www/assets/js/modules/prev-mypage.js
+./www/assets/js/modules/profile-background-contrast.js
 ./www/assets/js/modules/profile-history.js
 ./www/assets/js/modules/profile.js
 ./www/assets/js/modules/pwa-install.js
@@ -818,6 +825,7 @@
 ./www/images/apple-touch-icon.png
 ./www/images/bad.png
 ./www/images/calendar-app-icon.png
+./www/images/calendar/dancing-cucumber-sprite-sheet.png
 ./www/images/favicon-16x16.png
 ./www/images/favicon-32x32.png
 ./www/images/favicon.ico
@@ -1001,6 +1009,7 @@
 ./games/cucumber-grow/assets/images/cucumber-boy.png
 ./games/cucumber-grow/assets/images/cucumber.png
 ./games/cucumber-grow/assets/images/water-gun.png
+./games/cucumber-grow/assets/images/water.png
 ./games/cucumber-grow/assets/sounds/README.md
 ./images/skins/ozyo.png
 ./supabase-SQLEditor/20260728-ozyo-cucumber-skin.sql
@@ -1049,3 +1058,5 @@
 ./supabase-SQLEditor/20260728-mallin-shiny-profile-frame.sql
 ./supabase/migrations/20260728060000_bf02_mallin_shiny_profile_frame.sql
 ./tests/bf02-profile-frame.test.mjs
+./tests/calendar-loading.test.mjs
+./tests/profile-bio-contrast.test.mjs

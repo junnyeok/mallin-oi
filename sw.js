@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20260728-05';
+const SITE_VERSION = '20260730-01';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -44,6 +44,7 @@ const APP_SHELL_FILES = [
   './assets/css/components/pwa-install.css',
   './assets/css/components/refresh-control.css',
   './assets/css/components/calendar-entry-sheet.css',
+  './assets/css/components/calendar-loading.css',
 
   './assets/css/main/main.css',
   './assets/css/main/mypage-main.css',
@@ -68,6 +69,7 @@ const APP_SHELL_FILES = [
   './assets/js/modules/calendar-widget-data.js',
   './assets/js/modules/calendar-groups.js',
   './assets/js/modules/calendar-entry-sheet.js',
+  './assets/js/modules/calendar-loading.js',
 
   './images/favicon.ico',
   './images/favicon-16x16.png',
@@ -80,6 +82,7 @@ const APP_SHELL_FILES = [
   './images/logo-study.png',
   './images/logo-work.png',
   './images/logo-event.png',
+  './images/calendar/dancing-cucumber-sprite-sheet.png',
 ];
 
 function isSupabaseRequest(url) {

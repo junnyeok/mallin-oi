@@ -1,0 +1,210 @@
+.calendar-loading-region {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 730px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.calendar-loading-region__grid {
+  position: relative;
+  z-index: 0;
+}
+
+.calendar-loading-overlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-16);
+  overflow: hidden;
+  background: var(--color-surface);
+  pointer-events: auto;
+}
+
+.calendar-loading-overlay[hidden] {
+  display: none;
+}
+
+.calendar-loading-overlay__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  gap: var(--space-8);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.calendar-loading-overlay__sprite {
+  display: block;
+  width: clamp(184px, 26%, 208px);
+  aspect-ratio: 1;
+  flex: 0 1 auto;
+  background-image: url('../../../images/calendar/dancing-cucumber-sprite-sheet.png');
+  background-repeat: no-repeat;
+  background-position: 0% 0%;
+  background-size: 400% 400%;
+}
+
+.calendar-loading-overlay.is-active .calendar-loading-overlay__sprite {
+  animation: calendar-cucumber-dance 5s steps(1, end) infinite;
+  will-change: background-position;
+}
+
+.calendar-loading-overlay__label {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  min-height: 1.5em;
+  font-family: inherit;
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.calendar-loading-overlay__dot {
+  display: inline-block;
+  min-width: 0.32em;
+  transform: translateY(0);
+  text-align: center;
+}
+
+.calendar-loading-overlay.is-active .calendar-loading-overlay__dot {
+  animation: calendar-loading-dot-bounce 1.2s ease-in-out infinite;
+}
+
+.calendar-loading-overlay.is-active
+  .calendar-loading-overlay__dot:nth-child(2) {
+  animation-delay: 0s;
+}
+
+.calendar-loading-overlay.is-active
+  .calendar-loading-overlay__dot:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.calendar-loading-overlay.is-active
+  .calendar-loading-overlay__dot:nth-child(4) {
+  animation-delay: 0.32s;
+}
+
+.calendar-loading-overlay__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes calendar-cucumber-dance {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  6.25% {
+    background-position: 33.333333% 0%;
+  }
+
+  12.5% {
+    background-position: 66.666667% 0%;
+  }
+
+  18.75% {
+    background-position: 100% 0%;
+  }
+
+  25% {
+    background-position: 0% 33.333333%;
+  }
+
+  31.25% {
+    background-position: 33.333333% 33.333333%;
+  }
+
+  37.5% {
+    background-position: 66.666667% 33.333333%;
+  }
+
+  43.75% {
+    background-position: 100% 33.333333%;
+  }
+
+  50% {
+    background-position: 0% 66.666667%;
+  }
+
+  56.25% {
+    background-position: 33.333333% 66.666667%;
+  }
+
+  62.5% {
+    background-position: 66.666667% 66.666667%;
+  }
+
+  68.75% {
+    background-position: 100% 66.666667%;
+  }
+
+  75% {
+    background-position: 0% 100%;
+  }
+
+  81.25% {
+    background-position: 33.333333% 100%;
+  }
+
+  87.5% {
+    background-position: 66.666667% 100%;
+  }
+
+  93.75%,
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+@keyframes calendar-loading-dot-bounce {
+  0%,
+  12.5%,
+  100% {
+    transform: translateY(0);
+  }
+
+  6.25% {
+    transform: translateY(-0.18em);
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-loading-region {
+    min-height: 533px;
+  }
+
+  .calendar-loading-overlay__sprite {
+    width: clamp(176px, 52%, 184px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-loading-overlay.is-active .calendar-loading-overlay__sprite {
+    animation: none;
+    background-position: 0% 0%;
+    will-change: auto;
+  }
+
+  .calendar-loading-overlay.is-active .calendar-loading-overlay__dot {
+    animation: none;
+    transform: translateY(0);
+  }
+}

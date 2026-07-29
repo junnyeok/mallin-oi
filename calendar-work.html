@@ -27,6 +27,11 @@
     />
     <link rel="shortcut icon" href="./images/favicon.ico" />
     <link rel="manifest" href="./site.webmanifest" />
+    <link
+      rel="preload"
+      as="image"
+      href="./images/calendar/dancing-cucumber-sprite-sheet.png"
+    />
     <meta name="theme-color" content="#111111" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -74,6 +79,10 @@
     <link
       rel="stylesheet"
       href="./assets/css/components/calendar-entry-sheet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="./assets/css/components/calendar-loading.css"
     />
     <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-groups-main.css" />
@@ -136,10 +145,15 @@
                 </div>
 
                 <div
-                  class="work-calendar-grid work-calendar-grid--page"
-                  id="workCalendarGrid"
-                  aria-label="업무 달력"
-                ></div>
+                  class="calendar-loading-region"
+                  id="workCalendarLoadingRegion"
+                >
+                  <div
+                    class="calendar-loading-region__grid work-calendar-grid work-calendar-grid--page"
+                    id="workCalendarGrid"
+                    aria-label="업무 달력"
+                  ></div>
+                </div>
               </section>
 
               <aside class="panel work-calendar-todo-panel">

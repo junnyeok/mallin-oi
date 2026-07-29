@@ -19,6 +19,7 @@ import {
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
+import { createCalendarLoadingController } from './calendar-loading.js';
 
 let appendCalendarGroupBoard;
 let getVisiblePersonalTodos;
@@ -1396,7 +1397,7 @@ function renderPageLoginRequired() {
   });
 }
 
-async function initPageCalendar() {
+async function initPageCalendar(loadingController) {
   const pageRoot = document.getElementById('eventCalendarPage');
   if (!pageRoot) return;
 
@@ -1880,6 +1881,7 @@ async function initPageCalendar() {
     getViewDate: () => state.viewDate,
     renderAll,
     onModeChange: handleGroupModeChange,
+    runCalendarLoad: loadingController?.runLatest,
   });
   renderAll();
 
@@ -2122,26 +2124,27 @@ async function initPageCalendar() {
     }
   }
 
-  prevBtn.addEventListener('click', () => {
+  async function changeMonth(offset) {
     state.viewDate = new Date(
       state.viewDate.getFullYear(),
-      state.viewDate.getMonth() - 1,
+      state.viewDate.getMonth() + offset,
       1,
     );
 
     renderPageCalendar(state);
-    state.group?.refresh?.();
+    try {
+      await state.group?.refresh?.({ reason: 'month-navigation' });
+    } catch (error) {
+      console.error('[event-calendar] month load failed:', error);
+    }
+  }
+
+  prevBtn.addEventListener('click', () => {
+    void changeMonth(-1);
   });
 
   nextBtn.addEventListener('click', () => {
-    state.viewDate = new Date(
-      state.viewDate.getFullYear(),
-      state.viewDate.getMonth() + 1,
-      1,
-    );
-
-    renderPageCalendar(state);
-    state.group?.refresh?.();
+    void changeMonth(1);
   });
 
   form.addEventListener('submit', async (event) => {
@@ -2245,15 +2248,29 @@ function bindPreviewLinkLoginGuard() {
 export async function initEventCalendar() {
   const previewRoot = document.getElementById('eventCalendarPreview');
   const pageRoot = document.getElementById('eventCalendarPage');
+  const loadingRegion = document.getElementById('eventCalendarLoadingRegion');
 
   if (!previewRoot && !pageRoot) return;
 
   bindPreviewLinkLoginGuard();
+  const loadingController = loadingRegion
+    ? createCalendarLoadingController({ root: loadingRegion })
+    : null;
 
-  try {
+  const initialize = async () => {
     await loadCalendarGroupsModule();
     await renderPreviewCalendar();
-    await initPageCalendar();
+    await initPageCalendar(loadingController);
+  };
+
+  try {
+    if (loadingController) {
+      await loadingController.runLatest(initialize, {
+        key: 'event:initial-load',
+      });
+    } else {
+      await initialize();
+    }
   } catch (error) {
     console.error('[event-calendar] init failed:', error);
 

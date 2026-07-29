@@ -323,6 +323,12 @@ body[data-page='profile']
   line-height: 1.6;
 }
 
+body[data-page='profile']
+  .profile-hero__desc.is-on-dark-profile-background {
+  color: var(--color-surface);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.42);
+}
+
 .profile-form {
   margin-bottom: var(--space-24);
 }

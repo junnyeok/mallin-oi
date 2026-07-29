@@ -10,7 +10,7 @@ import { applyOfflineReward } from "./offline-reward.js";
 import { clearGameSave, loadGameSave, saveGame } from "./save-manager.js";
 import { createInitialGameState } from "./game-state.js";
 import { formatExactNumber } from "./number-format.js";
-import { UIRenderer } from "./ui-renderer.js?v=20260728-05";
+import { UIRenderer } from "./ui-renderer.js?v=20260730-01";
 
 const loadResult = loadGameSave();
 const state = loadResult.state;
@@ -109,8 +109,9 @@ function waterCucumber(event) {
   scheduleSave();
 }
 
-ui.elements.characterButton.addEventListener("pointerdown", (event) => {
+ui.elements.characterZone.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (ui.elements.characterButton.disabled) return;
 
   event.preventDefault();
   waterCucumber(event);

@@ -460,8 +460,7 @@ summary:focus-visible {
 .touch-burst {
   --effect-x: 50%;
   --effect-y: 50%;
-  --water-angle: 0rad;
-  --water-distance: 80px;
+  --water-mirror-x: 1;
 
   position: absolute;
   top: var(--effect-y);
@@ -470,83 +469,79 @@ summary:focus-visible {
   height: 0;
 }
 
-.watering-effect {
+.watering-effect__mirror {
   position: absolute;
   top: 0;
   left: 0;
   width: 0;
   height: 0;
-  transform: rotate(var(--water-angle));
+  pointer-events: none;
+  transform: scaleX(var(--water-mirror-x));
   transform-origin: 0 0;
 }
 
-.watering-effect__can {
-  --water-can-scale-x: -1;
-
+.watering-effect__can-pivot {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 2;
+  width: var(--water-can-size, 88px);
+  height: var(--water-can-size, 88px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: var(--water-can-pivot-x, 44%)
+    var(--water-can-pivot-y, 55%);
+  will-change: opacity, transform;
+}
+
+.watering-effect__can {
   display: block;
-  width: 88px;
-  height: 88px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x));
-  animation: watering-can-pop 820ms ease-out forwards;
+  pointer-events: none;
+  transform: scaleX(-1);
   user-select: none;
   -webkit-user-drag: none;
 }
 
-.watering-effect__can--from-right {
-  --water-can-scale-x: 1;
+.touch-burst.is-playing .watering-effect__can-pivot {
+  animation: watering-can-pour 820ms ease-in-out forwards;
 }
 
-.watering-effect__stream {
+.watering-effect__sprite-anchor {
   position: absolute;
-  top: -5px;
-  left: 27px;
-  width: var(--water-distance);
-  height: 10px;
-  overflow: visible;
-  border-radius: 999px;
-  background: repeating-radial-gradient(
-    circle at 5px 5px,
-    rgba(78, 180, 235, 0.95) 0 3px,
-    rgba(187, 233, 255, 0.88) 3px 5px,
-    transparent 5px 14px
-  );
-  background-size: 18px 10px;
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.72));
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  animation: water-stream 720ms ease-out 70ms forwards;
+  top: var(--water-sprite-top, -48px);
+  left: var(--water-sprite-left, 4px);
+  width: var(--water-sprite-width, 96px);
+  height: var(--water-sprite-height, 96px);
+  pointer-events: none;
 }
 
-.watering-effect__drop {
+.watering-effect__sprite {
   position: absolute;
-  top: 1px;
+  top: 0;
   left: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 55% 45% 60% 40%;
-  background: #8fd9ff;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: var(--water-sprite-sheet-width, 400%)
+    var(--water-sprite-sheet-height, 200%);
   opacity: 0;
-  animation: water-drop 620ms ease-out 100ms forwards;
+  pointer-events: none;
+  transform: translate(
+    var(--water-frame-1-offset-x, 0%),
+    var(--water-frame-1-offset-y, 0%)
+  );
+  will-change: background-position, opacity, transform;
 }
 
-.watering-effect__drop:nth-child(2) {
-  top: -5px;
-  animation-delay: 160ms;
-}
-
-.watering-effect__drop:nth-child(3) {
-  top: 7px;
-  animation-delay: 220ms;
-}
-
-.watering-effect__drop:nth-child(4) {
-  top: -2px;
-  animation-delay: 280ms;
+.touch-burst.is-playing .watering-effect__sprite {
+  animation: water-sprite-play var(--water-sprite-animation-duration, 820ms)
+    steps(1, end) forwards;
 }
 
 .touch-gain {
@@ -562,7 +557,12 @@ summary:focus-visible {
   text-align: center;
   text-shadow: 0 2px 0 var(--color-cream-50), 1px 0 0 var(--color-cream-50),
     -1px 0 0 var(--color-cream-50);
+  opacity: 0;
+  pointer-events: none;
   transform: translate(-50%, -50%);
+}
+
+.touch-burst.is-playing .touch-gain {
   animation: gain-rise 760ms ease-out forwards;
 }
 
@@ -1262,53 +1262,155 @@ summary:focus-visible {
   }
 }
 
-@keyframes watering-can-pop {
+@keyframes watering-can-pour {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x))
-      scale(0.64);
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.96);
   }
-  18%,
-  76% {
+
+  10%,
+  78% {
     opacity: 1;
-    transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x)) scale(1);
+    transform: translate(-50%, -50%) rotate(var(--water-can-tilt, 16deg))
+      scale(1);
   }
+
+  94% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scaleX(var(--water-can-scale-x))
-      scale(0.92);
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.98);
   }
 }
 
-@keyframes water-stream {
+@keyframes water-sprite-play {
   0% {
+    background-position: 0% 0%;
     opacity: 0;
-    background-position: 0 0;
-    transform: scaleX(0);
+    transform: translate(
+      var(--water-frame-1-offset-x, 0%),
+      var(--water-frame-1-offset-y, 0%)
+    );
   }
-  22%,
-  72% {
+
+  10% {
+    background-position: 0% 0%;
+    opacity: 0;
+    transform: translate(
+      var(--water-frame-1-offset-x, 0%),
+      var(--water-frame-1-offset-y, 0%)
+    );
+  }
+
+  12% {
+    background-position: 0% 0%;
     opacity: 1;
-    transform: scaleX(1);
+    transform: translate(
+      var(--water-frame-1-offset-x, 0%),
+      var(--water-frame-1-offset-y, 0%)
+    );
   }
+
+  23% {
+    background-position: 33.333333% 0%;
+    transform: translate(
+      var(--water-frame-2-offset-x, 0%),
+      var(--water-frame-2-offset-y, 0%)
+    );
+  }
+
+  34% {
+    background-position: 66.666667% 0%;
+    transform: translate(
+      var(--water-frame-3-offset-x, 0%),
+      var(--water-frame-3-offset-y, 0%)
+    );
+  }
+
+  45% {
+    background-position: 100% 0%;
+    transform: translate(
+      var(--water-frame-4-offset-x, 0%),
+      var(--water-frame-4-offset-y, 0%)
+    );
+  }
+
+  56% {
+    background-position: 0% 100%;
+    transform: translate(
+      var(--water-frame-5-offset-x, 0%),
+      var(--water-frame-5-offset-y, 0%)
+    );
+  }
+
+  67% {
+    background-position: 33.333333% 100%;
+    transform: translate(
+      var(--water-frame-6-offset-x, 0%),
+      var(--water-frame-6-offset-y, 0%)
+    );
+  }
+
+  78% {
+    background-position: 66.666667% 100%;
+    transform: translate(
+      var(--water-frame-7-offset-x, 0%),
+      var(--water-frame-7-offset-y, 0%)
+    );
+  }
+
+  89% {
+    background-position: 100% 100%;
+    opacity: 1;
+    transform: translate(
+      var(--water-frame-8-offset-x, 0%),
+      var(--water-frame-8-offset-y, 0%)
+    );
+  }
+
   100% {
+    background-position: 100% 100%;
     opacity: 0;
-    background-position: 36px 0;
-    transform: scaleX(1);
+    transform: translate(
+      var(--water-frame-8-offset-x, 0%),
+      var(--water-frame-8-offset-y, 0%)
+    );
   }
 }
 
-@keyframes water-drop {
+@keyframes watering-can-reduced {
   0% {
     opacity: 0;
-    transform: translateX(0) scale(0.5);
+    transform: translate(-50%, -50%) scale(0.98);
   }
-  18% {
+
+  15%,
+  70% {
     opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
+
   100% {
     opacity: 0;
-    transform: translateX(var(--water-distance)) scale(1.1);
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+}
+
+@keyframes water-sprite-reduced {
+  0% {
+    opacity: 0;
+  }
+
+  15%,
+  70% {
+    opacity: 0.88;
+  }
+
+  100% {
+    opacity: 0;
   }
 }
 
@@ -1572,5 +1674,21 @@ summary:focus-visible {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
+  }
+
+  .watering-effect__sprite {
+    background-position: 100% 0%;
+    transform: translate(
+      var(--water-frame-4-offset-x, 0%),
+      var(--water-frame-4-offset-y, 0%)
+    );
+  }
+
+  .touch-burst.is-playing .watering-effect__can-pivot {
+    animation: watering-can-reduced 180ms ease-out forwards !important;
+  }
+
+  .touch-burst.is-playing .watering-effect__sprite {
+    animation: water-sprite-reduced 180ms ease-out forwards !important;
   }
 }

@@ -63,7 +63,7 @@ test('BF-02가 New 상품 목록과 최신순 전체 상품의 첫 번째다', a
   const homeHtml = await readFile('index.html', 'utf8');
   assert.match(
     homeHtml,
-    /<h2 class="home-section__title">New 상품 품목<\/h2>/,
+    /<h2 class="home-section__title">🛍️ NEW 상품 품목<\/h2>/,
   );
   assert.doesNotMatch(homeHtml, /🛍️ New 상품 품목/);
 

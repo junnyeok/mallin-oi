@@ -56,6 +56,11 @@ const [
     renderCharacterEffectHtml,
     replaceCharacterEffect,
   },
+  {
+    createLatestProfileBioToneUpdater,
+    createProfileBackgroundContrastAnalyzer,
+    PROFILE_BIO_LIGHT_CLASS,
+  },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
   import(`./store-data.js?v=${MODULE_VERSION}`),
@@ -63,10 +68,15 @@ const [
   import(`./bgm-preferences.js?v=${MODULE_VERSION}`),
   import(`./bgm-player.js?v=${MODULE_VERSION}`),
   import(`./character-effects.js?v=${MODULE_VERSION}`),
+  import(`./profile-background-contrast.js?v=${MODULE_VERSION}`),
 ]);
 
 let profileFeaturedBgmState = null;
 let profileFeaturedBgmResumeHandle = null;
+let profileBioContrastController = null;
+
+const profileBackgroundContrastAnalyzer =
+  createProfileBackgroundContrastAnalyzer();
 
 function $(id) {
   return document.getElementById(id);
@@ -1699,6 +1709,178 @@ function renderCharacterInventoryItem(item, equippedImageUrl = '') {
   `;
 }
 
+function getBackgroundImageUrl(backgroundImage = '') {
+  const match = String(backgroundImage || '').match(
+    /url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/,
+  );
+  return String(match?.[1] || match?.[2] || match?.[3] || '').trim();
+}
+
+function getProfileColorToken(tokenName, fallback) {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(tokenName)
+    .trim();
+  return value || fallback;
+}
+
+function createProfileBioContrastController(cardEl, descEl) {
+  let backgroundKey = '';
+  let toneOverride = '';
+  let resizeTimer = null;
+  let animationFrame = null;
+  let resizeObserver = null;
+  let lastResult = null;
+
+  const toneUpdater = createLatestProfileBioToneUpdater({
+    analyze: profileBackgroundContrastAnalyzer.analyze,
+    applyTone(tone, result) {
+      lastResult = result;
+      descEl.classList.toggle(PROFILE_BIO_LIGHT_CLASS, tone === 'light');
+    },
+  });
+
+  const getAnalysisOptions = () => {
+    if (!cardEl.isConnected || !descEl.isConnected) return null;
+    if (!cardEl.classList.contains('has-profile-background')) return null;
+
+    const cardStyle = getComputedStyle(cardEl, '::before');
+    const imageUrl = getBackgroundImageUrl(cardStyle.backgroundImage);
+    if (!imageUrl) return null;
+
+    const cardRect = cardEl.getBoundingClientRect();
+    const descRect = descEl.getBoundingClientRect();
+    const heroEl = descEl.closest('.profile-hero');
+
+    return {
+      imageUrl,
+      cardRect: {
+        width: cardRect.width,
+        height: cardRect.height,
+      },
+      targetRect: {
+        x: descRect.left - cardRect.left,
+        y: descRect.top - cardRect.top,
+        width: descRect.width,
+        height: descRect.height,
+      },
+      backgroundPosition: cardStyle.backgroundPosition,
+      overlayColor: heroEl
+        ? getComputedStyle(heroEl).backgroundColor
+        : 'transparent',
+      cardBackgroundColor: getComputedStyle(cardEl).backgroundColor,
+      defaultTextColor: getProfileColorToken('--color-text-sub', '#666666'),
+      lightTextColor: getProfileColorToken('--color-surface', '#ffffff'),
+      toneOverride,
+    };
+  };
+
+  const analyzeCurrentBackground = () => {
+    animationFrame = null;
+    const options = getAnalysisOptions();
+    if (!options) {
+      toneUpdater.reset('no-background');
+      return;
+    }
+    void toneUpdater.update(options);
+  };
+
+  const schedule = (delay = 0) => {
+    if (resizeTimer !== null) {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = null;
+    }
+    if (animationFrame !== null) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    }
+
+    const queueFrame = () => {
+      resizeTimer = null;
+      animationFrame = window.requestAnimationFrame(analyzeCurrentBackground);
+    };
+
+    if (delay > 0) {
+      resizeTimer = window.setTimeout(queueFrame, delay);
+    } else {
+      queueFrame();
+    }
+  };
+
+  const handleResize = () => schedule(140);
+  if (typeof ResizeObserver === 'function') {
+    resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(cardEl);
+    resizeObserver.observe(descEl);
+  } else {
+    window.addEventListener('resize', handleResize, { passive: true });
+  }
+
+  return {
+    cardEl,
+    updateBackground(background = null) {
+      const nextBackgroundKey = background
+        ? [
+            background.pcImagePath || '',
+            background.mobileImagePath || '',
+            background.profileBioTone || '',
+          ].join('|')
+        : '';
+
+      toneOverride =
+        background?.profileBioTone === 'light' ||
+        background?.profileBioTone === 'default'
+          ? background.profileBioTone
+          : '';
+
+      if (nextBackgroundKey === backgroundKey) {
+        if (nextBackgroundKey) schedule();
+        return;
+      }
+
+      backgroundKey = nextBackgroundKey;
+      toneUpdater.reset(
+        nextBackgroundKey ? 'background-changing' : 'no-background',
+      );
+      if (nextBackgroundKey) schedule();
+    },
+    schedule,
+    getLastResult() {
+      return lastResult;
+    },
+    destroy() {
+      if (resizeTimer !== null) window.clearTimeout(resizeTimer);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', handleResize);
+      toneUpdater.reset('destroyed');
+    },
+  };
+}
+
+function syncProfileBioContrast(cardEl, background = null) {
+  const descEl = cardEl?.querySelector?.('#profileDesc');
+  if (!descEl) return;
+
+  if (profileBioContrastController?.cardEl !== cardEl) {
+    profileBioContrastController?.destroy();
+    profileBioContrastController = createProfileBioContrastController(
+      cardEl,
+      descEl,
+    );
+  }
+
+  profileBioContrastController.updateBackground(background);
+}
+
+function destroyProfileBioContrastController() {
+  profileBioContrastController?.destroy();
+  profileBioContrastController = null;
+}
+
+window.addEventListener('mallin:before-pjax-swap', () => {
+  destroyProfileBioContrastController();
+});
+
 function setProfileBackgroundStyle(targetEl, backgroundItemId = '') {
   if (!targetEl) return;
 
@@ -1708,6 +1890,7 @@ function setProfileBackgroundStyle(targetEl, backgroundItemId = '') {
     targetEl.classList.remove('has-profile-background');
     targetEl.style.removeProperty('--profile-bg-desktop');
     targetEl.style.removeProperty('--profile-bg-mobile');
+    syncProfileBioContrast(targetEl, null);
     return;
   }
 
@@ -1720,6 +1903,7 @@ function setProfileBackgroundStyle(targetEl, backgroundItemId = '') {
     '--profile-bg-mobile',
     `url("${background.mobileImagePath || background.pcImagePath}")`,
   );
+  syncProfileBioContrast(targetEl, background);
 }
 
 function applyProfileBackground(profileRow = {}) {
@@ -3136,6 +3320,8 @@ function applyProfileModeUI({
       descEl.textContent = '';
       descEl.hidden = true;
     }
+
+    profileBioContrastController?.schedule();
   }
 
   if (form) {
@@ -3209,6 +3395,8 @@ export async function initProfile() {
   const isProfileSettingPage = pageName === 'profile-setting';
 
   if (!['profile', 'profile-setting', 'inventory'].includes(pageName)) return;
+
+  destroyProfileBioContrastController();
 
   if (pageName !== 'profile') {
     await destroyProfileFeaturedBgm({
