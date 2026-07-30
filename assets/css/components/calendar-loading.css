@@ -20,12 +20,26 @@
   place-items: center;
   padding: var(--space-16);
   overflow: hidden;
-  background: var(--color-surface);
-  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    visibility 0s linear 160ms;
 }
 
 .calendar-loading-overlay[hidden] {
   display: none;
+}
+
+.calendar-loading-overlay.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
 }
 
 .calendar-loading-overlay__content {
@@ -41,20 +55,18 @@
   text-align: center;
 }
 
-.calendar-loading-overlay__sprite {
+.calendar-loading-overlay__image {
   display: block;
   width: clamp(184px, 26%, 208px);
   aspect-ratio: 1;
+  max-width: 100%;
   flex: 0 1 auto;
-  background-image: url('../../../images/calendar/dancing-cucumber-sprite-sheet.png');
-  background-repeat: no-repeat;
-  background-position: 0% 0%;
-  background-size: 400% 400%;
+  object-fit: contain;
+  object-position: center;
 }
 
-.calendar-loading-overlay.is-active .calendar-loading-overlay__sprite {
-  animation: calendar-cucumber-dance 5s steps(1, end) infinite;
-  will-change: background-position;
+.calendar-loading-overlay__image[hidden] {
+  display: none;
 }
 
 .calendar-loading-overlay__label {
@@ -107,73 +119,6 @@
   border: 0;
 }
 
-@keyframes calendar-cucumber-dance {
-  0% {
-    background-position: 0% 0%;
-  }
-
-  6.25% {
-    background-position: 33.333333% 0%;
-  }
-
-  12.5% {
-    background-position: 66.666667% 0%;
-  }
-
-  18.75% {
-    background-position: 100% 0%;
-  }
-
-  25% {
-    background-position: 0% 33.333333%;
-  }
-
-  31.25% {
-    background-position: 33.333333% 33.333333%;
-  }
-
-  37.5% {
-    background-position: 66.666667% 33.333333%;
-  }
-
-  43.75% {
-    background-position: 100% 33.333333%;
-  }
-
-  50% {
-    background-position: 0% 66.666667%;
-  }
-
-  56.25% {
-    background-position: 33.333333% 66.666667%;
-  }
-
-  62.5% {
-    background-position: 66.666667% 66.666667%;
-  }
-
-  68.75% {
-    background-position: 100% 66.666667%;
-  }
-
-  75% {
-    background-position: 0% 100%;
-  }
-
-  81.25% {
-    background-position: 33.333333% 100%;
-  }
-
-  87.5% {
-    background-position: 66.666667% 100%;
-  }
-
-  93.75%,
-  100% {
-    background-position: 100% 100%;
-  }
-}
-
 @keyframes calendar-loading-dot-bounce {
   0%,
   12.5%,
@@ -191,16 +136,14 @@
     min-height: 533px;
   }
 
-  .calendar-loading-overlay__sprite {
+  .calendar-loading-overlay__image {
     width: clamp(176px, 52%, 184px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .calendar-loading-overlay.is-active .calendar-loading-overlay__sprite {
-    animation: none;
-    background-position: 0% 0%;
-    will-change: auto;
+  .calendar-loading-overlay {
+    transition: none;
   }
 
   .calendar-loading-overlay.is-active .calendar-loading-overlay__dot {

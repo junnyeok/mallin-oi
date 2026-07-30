@@ -51,13 +51,17 @@ const BACKUP_STATUS = {
   CHECKING: 'checking',
   RUNNING: 'running',
 };
-const BACKUP_BOOLEAN_PAYLOAD_KEYS = new Set(['isDone', 'is_shared_copy']);
+const BACKUP_BOOLEAN_PAYLOAD_KEYS = new Set([
+  'isDone',
+  'is_shared_copy',
+  'categoryEndsNextDay',
+]);
 const BACKUP_SOURCE_CONFIG = {
   study: {
     table: 'study_calendar_todos',
     categoryRelation: 'study_calendar_categories',
     select: `
-      id, todo_date, todo_type, todo_text, memo, is_done,
+      id, todo_date, todo_type, todo_text, memo, todo_time, todo_end_date, todo_end_time, is_done,
       study_calendar_categories (name, slug, color)
     `,
   },
@@ -66,14 +70,14 @@ const BACKUP_SOURCE_CONFIG = {
     categoryRelation: 'work_calendar_categories',
     select: `
       id, work_date, work_type, work_text, memo, is_done,
-      work_calendar_categories (name, slug, color)
+      work_calendar_categories (name, slug, color, start_time, end_time, ends_next_day)
     `,
   },
   event: {
     table: 'event_calendar_todos',
     categoryRelation: 'event_calendar_categories',
     select: `
-      id, event_date, event_type, event_text, memo, event_time, event_end_time, is_done,
+      id, event_date, event_type, event_text, memo, event_time, event_end_time, event_range_id, is_done,
       shared_group_id, shared_origin_todo_id, shared_origin_user_id,
       shared_created_by, is_shared_copy,
       event_calendar_categories (name, slug, color)
@@ -232,6 +236,9 @@ function getEventTimeSortValue(event) {
       'time',
       'start_time',
       'startTime',
+      'todo_time',
+      'todoTime',
+      'categoryStartTime',
     ) || '',
   ).trim();
 
@@ -481,8 +488,21 @@ function getRelatedCategory(row, relation) {
 
 function normalizeBackupPayload(payload = {}, calendarType = '') {
   const comparableKeys = {
-    study: new Set(['isDone', 'categoryName']),
-    work: new Set(['isDone', 'workText']),
+    study: new Set([
+      'isDone',
+      'categoryName',
+      'todoTime',
+      'todoEndDate',
+      'todoEndTime',
+    ]),
+    work: new Set([
+      'isDone',
+      'workText',
+      'categoryName',
+      'categoryStartTime',
+      'categoryEndTime',
+      'categoryEndsNextDay',
+    ]),
   }[calendarType];
 
   return Object.keys(payload)
@@ -528,6 +548,9 @@ function makeSourceBackupEvent(row, calendarType) {
       payload: {
         isDone: Boolean(row.is_done),
         categoryName: category?.name || null,
+        todoTime: row.todo_time || null,
+        todoEndDate: row.todo_end_date || null,
+        todoEndTime: row.todo_end_time || null,
       },
     }, calendarType);
   }
@@ -543,6 +566,10 @@ function makeSourceBackupEvent(row, calendarType) {
       payload: {
         isDone: Boolean(row.is_done),
         workText: row.work_text || null,
+        categoryName: category?.name || null,
+        categoryStartTime: category?.start_time || null,
+        categoryEndTime: category?.end_time || null,
+        categoryEndsNextDay: Boolean(category?.ends_next_day),
       },
     }, calendarType);
   }
@@ -558,6 +585,7 @@ function makeSourceBackupEvent(row, calendarType) {
       isDone: Boolean(row.is_done),
       eventTime: row.event_time || null,
       eventEndTime: row.event_end_time || null,
+      eventRangeId: row.event_range_id || null,
       categoryName: category?.name || null,
       shared_group_id: row.shared_group_id || null,
       shared_origin_todo_id: row.shared_origin_todo_id || null,

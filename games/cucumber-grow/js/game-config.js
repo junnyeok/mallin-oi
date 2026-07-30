@@ -8,7 +8,7 @@ function deepFreeze(value) {
 }
 
 export const GAME_CONFIG = deepFreeze({
-  saveVersion: 1,
+  saveVersion: 2,
   storageKey: "mallinoi_cucumber_grow_save_v1",
   autosaveIntervalMs: 5_000,
   tickIntervalMs: 250,
@@ -16,9 +16,11 @@ export const GAME_CONFIG = deepFreeze({
   maxOfflineSeconds: 8 * 60 * 60,
   maxGameNumber: Number.MAX_SAFE_INTEGER,
   maxFacilityCount: 1_000_000_000,
+  slotsPerPlot: 4,
   touchExperience: 1,
   harvestExperience: 50,
-  harvestReward: 50,
+  harvestReward: 1,
+  additionalGardenPrice: null,
   facilities: [
     {
       id: "small-garden",

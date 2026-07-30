@@ -30,7 +30,7 @@
     <link
       rel="preload"
       as="image"
-      href="./images/calendar/dancing-cucumber-sprite-sheet.png"
+      href="./assets/images/calendar/logo-work.png"
     />
     <meta name="theme-color" content="#111111" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -147,6 +147,7 @@
                 <div
                   class="calendar-loading-region"
                   id="workCalendarLoadingRegion"
+                  data-calendar-type="work"
                 >
                   <div
                     class="calendar-loading-region__grid work-calendar-grid work-calendar-grid--page"
@@ -360,6 +361,27 @@
                           placeholder="새 카테고리 이름"
                           autocomplete="off"
                         />
+
+                        <div class="work-category-form__times">
+                          <input
+                            class="work-category-time-input"
+                            id="workCategoryStartTime"
+                            type="text"
+                            readonly
+                            inputmode="none"
+                            placeholder="시작시간 지정"
+                            aria-label="새 업무 카테고리 시작시간"
+                          />
+                          <input
+                            class="work-category-time-input"
+                            id="workCategoryEndTime"
+                            type="text"
+                            readonly
+                            inputmode="none"
+                            placeholder="종료시간 지정"
+                            aria-label="새 업무 카테고리 종료시간"
+                          />
+                        </div>
 
                         <input
                           class="work-category-form__color"

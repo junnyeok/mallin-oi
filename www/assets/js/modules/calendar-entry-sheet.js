@@ -1,3 +1,10 @@
+import {
+  joinLocalDateTimeValue,
+  openCalendarTimePicker,
+  setCalendarTimeInputValue,
+  splitLocalDateTimeValue,
+} from './calendar-time.js';
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -210,6 +217,62 @@ function wrapField(control, label) {
 
   control.before(field);
   field.append(labelEl, control);
+}
+
+function createCalendarDateTimeControl(field) {
+  const control = document.createElement('div');
+  control.className = 'calendar-entry-sheet__datetime';
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.required = Boolean(field.required);
+  dateInput.setAttribute('aria-label', `${field.label} 날짜`);
+
+  const timeInput = document.createElement('input');
+  timeInput.type = 'text';
+  timeInput.readOnly = true;
+  timeInput.inputMode = 'none';
+  timeInput.setAttribute('aria-label', `${field.label} 시간`);
+  timeInput.placeholder = field.timePlaceholder || `${field.label}시간 지정`;
+
+  function setValue(value) {
+    const parsed = splitLocalDateTimeValue(value);
+    dateInput.value = parsed.date;
+    setCalendarTimeInputValue(timeInput, parsed.time, {
+      emptyLabel: field.timePlaceholder || `${field.label}시간 지정`,
+    });
+  }
+
+  Object.defineProperty(control, 'value', {
+    configurable: true,
+    get() {
+      return joinLocalDateTimeValue(dateInput.value, timeInput.dataset.time);
+    },
+    set: setValue,
+  });
+  control.focus = () => dateInput.focus();
+  control.append(dateInput, timeInput);
+  setValue(field.value || '');
+
+  timeInput.addEventListener('click', () => {
+    openCalendarTimePicker({
+      anchorEl: timeInput,
+      initialTime: timeInput.dataset.time,
+      allowEmpty: Boolean(field.allowEmptyTime),
+      ariaLabel: `${field.label} 시간 선택`,
+      clearLabel: `${field.label}시간 해제`,
+      onChange: (nextTime) => {
+        setCalendarTimeInputValue(timeInput, nextTime, {
+          emptyLabel: field.timePlaceholder || `${field.label}시간 지정`,
+        });
+      },
+    });
+  });
+
+  field.dateInput = dateInput;
+  field.timeInput = timeInput;
+  field.input = control;
+  return control;
 }
 
 function enhanceCategoryField(form, selectSelector, settingsSelector) {
@@ -617,6 +680,8 @@ export function openCalendarDetailSheet({
         control = document.createElement('span');
         control.className = 'calendar-entry-sheet__value';
         control.textContent = field.display || field.value || '없음';
+      } else if (field.type === 'calendar-datetime') {
+        control = createCalendarDateTimeControl(field);
       } else if (field.type === 'textarea') {
         control = document.createElement('textarea');
         control.rows = 3;

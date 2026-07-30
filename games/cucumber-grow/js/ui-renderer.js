@@ -1,11 +1,15 @@
 import { GAME_CONFIG } from "./game-config.js";
 import {
-  formatDateTime,
   formatDuration,
   formatExactNumber,
   formatNumber,
 } from "./number-format.js";
-import { getGrowthProgress, getNextPrice } from "./game-engine.js";
+import { getGrowthProgress } from "./game-engine.js";
+import {
+  createWholeXpGainAccumulator,
+  showXpGain as showXpGainEffect,
+} from "./xp-gain-effect.js?v=20260730-05";
+import { CropTransitionController } from "./crop-transition.js?v=20260730-05";
 
 const clamp = (value, minimum, maximum) =>
   Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
@@ -196,11 +200,11 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
   );
   const normalizedX = requestedX / sceneWidth;
   const normalizedY = requestedY / sceneHeight;
-  const safeMargin = clamp(Math.min(sceneWidth, sceneHeight) * 0.02, 6, 12);
+  const safeMargin = clamp(Math.min(sceneWidth, sceneHeight) * 0.02, 4, 8);
   const canSize = clamp(
-    Math.min(sceneWidth * 0.22, sceneHeight * 0.22),
-    64,
-    92
+    Math.min(sceneWidth * 0.3, sceneHeight * 0.3),
+    36,
+    54
   );
   const side = getWateringSide(sceneRect.left + requestedX, sceneRect);
   const directionSign = side === "left" ? 1 : -1;
@@ -241,10 +245,10 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
           right: -directionalBounds.left,
           bottom: directionalBounds.bottom,
         };
-  const gainHalfWidth = Math.max(42, canSize * 0.5);
+  const gainHalfWidth = Math.max(24, canSize * 0.46);
   const gainBounds = {
     left: -gainHalfWidth,
-    top: -Math.max(70, canSize * 0.85),
+    top: -Math.max(44, canSize * 0.78),
     right: gainHalfWidth,
     bottom: 0,
   };
@@ -319,63 +323,83 @@ export class UIRenderer {
       cucumberCount: documentRoot.querySelector("#cucumberCount"),
       productionRate: documentRoot.querySelector("#productionRate"),
       touchYield: documentRoot.querySelector("#touchYield"),
-      growthStageSummary: documentRoot.querySelector("#growthStageSummary"),
-      growthStage: documentRoot.querySelector("#growthStage"),
-      growthLevel: documentRoot.querySelector("#growthLevel"),
-      growthExperience: documentRoot.querySelector("#growthExperience"),
-      growthTarget: documentRoot.querySelector("#growthTarget"),
-      growthProgress: documentRoot.querySelector("#growthProgress"),
-      growthProgressFill: documentRoot.querySelector("#growthProgressFill"),
-      growthStatus: documentRoot.querySelector("#growthStatus"),
-      harvestButton: documentRoot.querySelector("#harvestButton"),
-      characterZone: documentRoot.querySelector("#characterZone"),
-      characterButton: documentRoot.querySelector("#characterButton"),
-      characterImage: documentRoot.querySelector("#characterImage"),
-      tapGuide: documentRoot.querySelector("#tapGuide"),
-      touchEffects: documentRoot.querySelector("#touchEffects"),
-      facilityList: documentRoot.querySelector("#facilityList"),
-      totalEarned: documentRoot.querySelector("#totalEarned"),
-      startedAt: documentRoot.querySelector("#startedAt"),
-      saveStatus: documentRoot.querySelector("#saveStatus"),
-      stageToast: documentRoot.querySelector("#stageToast"),
-      stageToastTitle: documentRoot.querySelector("#stageToastTitle"),
-      stageToastText: documentRoot.querySelector("#stageToastText"),
+      menuButton: documentRoot.querySelector("#menuButton"),
+      plotList: documentRoot.querySelector("#plotList"),
+      gardenEmptyLand: documentRoot.querySelector("#gardenEmptyLand"),
+      menuModal: documentRoot.querySelector("#menuModal"),
+      menuCloseButton: documentRoot.querySelector("#menuCloseButton"),
+      menuPanel: documentRoot.querySelector("#menuPanel"),
+      shopPanel: documentRoot.querySelector("#shopPanel"),
+      shopMenuButton: documentRoot.querySelector("#shopMenuButton"),
+      shopBackButton: documentRoot.querySelector("#shopBackButton"),
+      gardenShopItem: documentRoot.querySelector("#gardenShopItem"),
+      gardenShopTitle: documentRoot.querySelector("#gardenShopTitle"),
+      gardenShopDescription: documentRoot.querySelector(
+        "#gardenShopDescription"
+      ),
+      gardenShopPrice: documentRoot.querySelector("#gardenShopPrice"),
+      gardenPurchaseButton: documentRoot.querySelector(
+        "#gardenPurchaseButton"
+      ),
       offlineModal: documentRoot.querySelector("#offlineModal"),
       offlineDuration: documentRoot.querySelector("#offlineDuration"),
       offlineReward: documentRoot.querySelector("#offlineReward"),
       offlineConfirmButton: documentRoot.querySelector("#offlineConfirmButton"),
       announcement: documentRoot.querySelector("#gameAnnouncement"),
     };
-    this.facilityElements = new Map();
-    this.stageToastTimer = null;
-    this.characterTapTimer = null;
-    this.characterTransitionTimer = null;
-    this.characterAsset = this.elements.characterImage.getAttribute("src");
-    this.wateringEffect = this.buildWateringEffect();
+    this.plotViews = new Map();
+    this.slotViews = new Map();
+    this.currentState = null;
+    this.pendingOfflineAllocations = [];
+    this.lastModalTrigger = null;
+    this.purchasePending = false;
+    this.plotObserver = this.createPlotObserver();
     this.handleWateringResize = () => {
-      if (!this.wateringEffect.root.classList.contains("is-playing")) return;
+      this.slotViews.forEach((view) => {
+        if (!view.wateringEffect.root.classList.contains("is-playing")) {
+          return;
+        }
 
-      this.positionWateringEffect(this.wateringEffect.inputPoint);
+        this.positionWateringEffect(view, view.wateringEffect.inputPoint);
+      });
     };
     this.document.defaultView?.addEventListener(
       "resize",
       this.handleWateringResize
     );
 
-    this.buildFacilityCards();
     this.elements.offlineConfirmButton.addEventListener("click", () => {
-      this.hideOfflineReward();
+      this.hideOfflineReward({ showGain: true });
     });
   }
 
-  buildWateringEffect() {
+  getSlotKey(plotId, slotId) {
+    return `${plotId}\u0000${slotId}`;
+  }
+
+  createPlotObserver() {
+    const WindowIntersectionObserver =
+      this.document.defaultView?.IntersectionObserver;
+
+    if (typeof WindowIntersectionObserver !== "function") return null;
+
+    return new WindowIntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.dataset.visible = String(entry.isIntersecting);
+        });
+      },
+      { rootMargin: "160px 0px" }
+    );
+  }
+
+  buildWateringEffect(effectLayer) {
     const root = this.document.createElement("span");
     const mirror = this.document.createElement("span");
     const canPivot = this.document.createElement("span");
     const wateringCan = this.document.createElement("img");
     const spriteAnchor = this.document.createElement("span");
     const waterSprite = this.document.createElement("span");
-    const gain = this.document.createElement("span");
 
     root.className = "touch-burst touch-burst--watering";
     mirror.className = "watering-effect__mirror";
@@ -424,23 +448,338 @@ export class UIRenderer {
       );
     });
     waterSprite.dataset.frameCount = String(WATER_SPRITE_CONFIG.frameCount);
-    gain.className = "touch-gain";
-
     canPivot.append(wateringCan);
     spriteAnchor.append(waterSprite);
     mirror.append(canPivot, spriteAnchor);
-    root.append(mirror, gain);
-    this.elements.touchEffects.append(root);
+    root.append(mirror);
+    effectLayer.append(root);
 
-    waterSprite.addEventListener("animationend", () =>
-      this.resetWateringEffect()
-    );
-
-    return { root, waterSprite, gain, inputPoint: null };
+    return { root, waterSprite, inputPoint: null };
   }
 
-  applyWateringLayout(layout) {
-    const { root } = this.wateringEffect;
+  createSlotView(plot, slot, plotIndex, slotIndex) {
+    const button = this.document.createElement("button");
+    const soilMark = this.document.createElement("span");
+    const emptyCue = this.document.createElement("span");
+    const progress = this.document.createElement("span");
+    const progressFill = this.document.createElement("span");
+    const characterImage = this.document.createElement("img");
+    const transitionLayer = this.document.createElement("span");
+    const xpGainLayer = this.document.createElement("span");
+    const touchEffects = this.document.createElement("span");
+
+    button.type = "button";
+    button.className = "crop-slot";
+    button.dataset.plotId = plot.plotId;
+    button.dataset.slotId = slot.slotId;
+    button.dataset.slotIndex = String(slotIndex + 1);
+    soilMark.className = "crop-slot__soil-mark";
+    soilMark.setAttribute("aria-hidden", "true");
+    emptyCue.className = "crop-slot__empty-cue";
+    emptyCue.setAttribute("aria-hidden", "true");
+    progress.className = "crop-xp-bar";
+    progress.setAttribute("role", "progressbar");
+    progress.setAttribute("aria-valuemin", "0");
+    progress.setAttribute(
+      "aria-valuemax",
+      String(GAME_CONFIG.harvestExperience)
+    );
+    progressFill.className = "crop-xp-bar__fill";
+    progress.append(progressFill);
+    characterImage.className = "cucumber-character";
+    characterImage.width = 1254;
+    characterImage.height = 1254;
+    characterImage.alt = "";
+    characterImage.draggable = false;
+    characterImage.decoding = "async";
+    transitionLayer.className = "crop-transition-layer";
+    transitionLayer.setAttribute("aria-hidden", "true");
+    xpGainLayer.className = "xp-gain-layer";
+    xpGainLayer.setAttribute("aria-hidden", "true");
+    touchEffects.className = "touch-effects";
+    touchEffects.setAttribute("aria-hidden", "true");
+    button.append(
+      soilMark,
+      emptyCue,
+      progress,
+      characterImage,
+      transitionLayer,
+      xpGainLayer,
+      touchEffects
+    );
+
+    const controller = new CropTransitionController({
+      characterZone: button,
+      characterButton: button,
+      characterImage,
+      effectLayer: transitionLayer,
+      stages: GAME_CONFIG.growthStages,
+      documentRef: this.document,
+      windowRef: this.document.defaultView,
+    });
+    const wateringEffect = this.buildWateringEffect(touchEffects);
+    const view = {
+      key: this.getSlotKey(plot.plotId, slot.slotId),
+      plotId: plot.plotId,
+      slotId: slot.slotId,
+      plotIndex,
+      slotIndex,
+      button,
+      progress,
+      progressFill,
+      characterImage,
+      transitionLayer,
+      xpGainLayer,
+      touchEffects,
+      controller,
+      wateringEffect,
+      productionAccumulator: createWholeXpGainAccumulator(),
+      characterTapTimer: null,
+      transitionPromise: null,
+    };
+
+    wateringEffect.waterSprite.addEventListener("animationend", () =>
+      this.resetWateringEffect(view)
+    );
+    this.slotViews.set(view.key, view);
+    return view;
+  }
+
+  createPlotView(plot, plotIndex) {
+    const article = this.document.createElement("article");
+    const label = this.document.createElement("span");
+    const bed = this.document.createElement("div");
+    const slotGrid = this.document.createElement("div");
+
+    article.className = "garden-plot";
+    article.dataset.plotId = plot.plotId;
+    article.dataset.plotType = plot.type;
+    article.dataset.visible = "true";
+    label.className = "garden-plot__label";
+    label.textContent = `텃밭 ${plotIndex + 1}`;
+    bed.className = "garden-plot__bed";
+    slotGrid.className = "crop-slot-grid";
+    slotGrid.setAttribute(
+      "aria-label",
+      `텃밭 ${plotIndex + 1}, 작물 슬롯 4개`
+    );
+    plot.slots.forEach((slot, slotIndex) => {
+      const slotView = this.createSlotView(
+        plot,
+        slot,
+        plotIndex,
+        slotIndex
+      );
+
+      slotGrid.append(slotView.button);
+    });
+    bed.append(slotGrid);
+    article.append(label, bed);
+    this.plotObserver?.observe(article);
+    this.plotViews.set(plot.plotId, { article, label, slotGrid });
+    return article;
+  }
+
+  removePlotView(plotId) {
+    const plotView = this.plotViews.get(plotId);
+
+    if (!plotView) return;
+
+    this.plotObserver?.unobserve(plotView.article);
+    [...this.slotViews.values()]
+      .filter((view) => view.plotId === plotId)
+      .forEach((view) => {
+        view.controller.suspend();
+        this.resetWateringEffect(view);
+        this.document.defaultView?.clearTimeout(view.characterTapTimer);
+        this.slotViews.delete(view.key);
+      });
+    plotView.article.remove();
+    this.plotViews.delete(plotId);
+  }
+
+  ensurePlotViews(state) {
+    const currentPlotIds = new Set(state.plots.map((plot) => plot.plotId));
+
+    [...this.plotViews.keys()].forEach((plotId) => {
+      if (!currentPlotIds.has(plotId)) this.removePlotView(plotId);
+    });
+
+    state.plots.forEach((plot, plotIndex) => {
+      let plotView = this.plotViews.get(plot.plotId);
+
+      if (!plotView) {
+        const article = this.createPlotView(plot, plotIndex);
+        this.elements.plotList.append(article);
+        plotView = this.plotViews.get(plot.plotId);
+      } else {
+        this.elements.plotList.append(plotView.article);
+      }
+
+      plotView.label.textContent = `텃밭 ${plotIndex + 1}`;
+      plotView.slotGrid.setAttribute(
+        "aria-label",
+        `텃밭 ${plotIndex + 1}, 작물 슬롯 4개`
+      );
+    });
+  }
+
+  getSlotView(plotId, slotId) {
+    return this.slotViews.get(this.getSlotKey(plotId, slotId)) ?? null;
+  }
+
+  trackTransition(view, transitionPromise) {
+    if (!view || !transitionPromise || view.transitionPromise === transitionPromise) {
+      return transitionPromise;
+    }
+
+    view.transitionPromise = transitionPromise;
+    transitionPromise.finally(() => {
+      if (view.transitionPromise !== transitionPromise) return;
+
+      view.transitionPromise = null;
+      if (this.currentState) this.render(this.currentState);
+    });
+    return transitionPromise;
+  }
+
+  renderSlot(state, plot, slot, plotIndex, slotIndex) {
+    const view = this.getSlotView(plot.plotId, slot.slotId);
+
+    if (!view) return;
+
+    const progress = getGrowthProgress(slot.xp);
+    const { stage } = progress;
+    const isPlanted = slot.isPlanted === true;
+    const isHarvestReady = isPlanted && progress.isHarvestReady;
+    const transition = view.controller.syncState({ isPlanted, stage });
+
+    if (view.controller.isBusy) {
+      this.trackTransition(view, transition);
+    }
+
+    view.plotIndex = plotIndex;
+    view.slotIndex = slotIndex;
+    view.button.dataset.stageId = stage.id;
+    view.button.dataset.stageLevel = String(stage.level);
+    view.button.dataset.empty = String(!isPlanted);
+    view.button.dataset.harvestReady = String(isHarvestReady);
+    view.button.disabled = view.controller.isBusy;
+    view.progress.hidden = !isPlanted;
+    view.progress.style.setProperty(
+      "--crop-progress",
+      `${progress.progressPercent}%`
+    );
+    view.progressFill.style.width = `${progress.progressPercent}%`;
+    view.progress.setAttribute(
+      "aria-valuenow",
+      String(progress.experience)
+    );
+    view.progress.setAttribute(
+      "aria-valuetext",
+      `${formatExactNumber(progress.experience)} / ${formatExactNumber(
+        GAME_CONFIG.harvestExperience
+      )} 경험치`
+    );
+    view.progress.setAttribute(
+      "aria-label",
+      `텃밭 ${plotIndex + 1} ${slotIndex + 1}번 오이 성장 경험치`
+    );
+
+    const location = `텃밭 ${plotIndex + 1}, ${slotIndex + 1}번 슬롯`;
+    const actionLabel = !isPlanted
+      ? `${location}, 빈 슬롯, 새싹 심기`
+      : isHarvestReady
+        ? `${location}, 어른오이, 경험치 ${formatExactNumber(
+            progress.experience
+          )}/${GAME_CONFIG.harvestExperience}, 수확하기`
+        : `${location}, ${stage.name}, 경험치 ${formatExactNumber(
+            progress.experience
+          )}/${GAME_CONFIG.harvestExperience}, 물주기 ${formatExactNumber(
+            state.touchYield
+          )} 경험치`;
+
+    view.button.setAttribute("aria-label", actionLabel);
+  }
+
+  renderShop(state) {
+    const freeAvailable =
+      !state.hasClaimedFreeGarden && state.plots.length === 0;
+
+    this.elements.gardenShopItem.dataset.mode = freeAvailable
+      ? "free"
+      : "pending";
+    this.elements.gardenShopTitle.textContent = freeAvailable
+      ? "첫 텃밭"
+      : "추가 텃밭";
+    this.elements.gardenShopDescription.textContent = freeAvailable
+      ? "작물 슬롯 4개"
+      : "가격 확정 후 이용 가능";
+    this.elements.gardenShopPrice.textContent = freeAvailable
+      ? "무료"
+      : "준비 중";
+    this.elements.gardenPurchaseButton.disabled =
+      this.purchasePending || !freeAvailable;
+    this.elements.gardenPurchaseButton.textContent = this.purchasePending
+      ? "구매 중"
+      : freeAvailable
+        ? "무료 구매"
+        : "구매 준비 중";
+  }
+
+  render(state) {
+    this.currentState = state;
+    const formattedBalance = formatNumber(state.cucumbers);
+
+    this.elements.cucumberCount.textContent = formattedBalance;
+    this.elements.cucumberCount.title = `${formatExactNumber(
+      state.cucumbers
+    )}개`;
+    this.elements.productionRate.textContent = formatNumber(state.perSecond);
+    this.elements.touchYield.textContent = formatNumber(state.touchYield);
+    this.ensurePlotViews(state);
+    this.elements.gardenEmptyLand.hidden = state.plots.length > 0;
+
+    state.plots.forEach((plot, plotIndex) => {
+      plot.slots.forEach((slot, slotIndex) =>
+        this.renderSlot(state, plot, slot, plotIndex, slotIndex)
+      );
+    });
+    this.renderShop(state);
+  }
+
+  setPurchasePending(pending) {
+    this.purchasePending = pending === true;
+    if (this.currentState) this.renderShop(this.currentState);
+  }
+
+  openMenu(trigger = this.elements.menuButton) {
+    this.lastModalTrigger = trigger;
+    this.showMenuPanel();
+    this.elements.menuModal.hidden = false;
+    this.elements.menuCloseButton.focus();
+  }
+
+  closeMenu() {
+    this.elements.menuModal.hidden = true;
+    this.lastModalTrigger?.focus?.();
+    this.lastModalTrigger = null;
+  }
+
+  showMenuPanel() {
+    this.elements.menuPanel.hidden = false;
+    this.elements.shopPanel.hidden = true;
+    this.elements.menuModal.setAttribute("aria-labelledby", "menuModalTitle");
+  }
+
+  showShopPanel() {
+    this.elements.menuPanel.hidden = true;
+    this.elements.shopPanel.hidden = false;
+    this.elements.gardenPurchaseButton.focus();
+  }
+
+  applyWateringLayout(view, layout) {
+    const { root } = view.wateringEffect;
 
     root.dataset.side = layout.side;
     root.dataset.inputX = String(layout.inputX);
@@ -476,22 +815,22 @@ export class UIRenderer {
     root.style.setProperty("--water-sprite-width", `${layout.spriteWidth}px`);
     root.style.setProperty("--water-sprite-height", `${layout.spriteHeight}px`);
     root.style.setProperty("--water-mirror-x", String(layout.mirrorScaleX));
-    this.wateringEffect.inputPoint = {
+    view.wateringEffect.inputPoint = {
       normalizedX: layout.normalizedX,
       normalizedY: layout.normalizedY,
     };
   }
 
-  positionWateringEffect(pointer = null) {
-    const sceneRect = this.elements.touchEffects.getBoundingClientRect();
+  positionWateringEffect(view, pointer = null) {
+    const sceneRect = view.touchEffects.getBoundingClientRect();
     const layout = calculateWateringLayout(sceneRect, pointer || {});
 
-    this.applyWateringLayout(layout);
+    this.applyWateringLayout(view, layout);
     return layout;
   }
 
-  resetWateringEffect() {
-    const { root } = this.wateringEffect;
+  resetWateringEffect(view) {
+    const { root } = view.wateringEffect;
 
     root.classList.remove("is-playing");
     root.dataset.state = "idle";
@@ -505,266 +844,146 @@ export class UIRenderer {
       "--water-sprite-height",
       "--water-mirror-x",
     ].forEach((property) => root.style.removeProperty(property));
-    this.wateringEffect.inputPoint = null;
+    view.wateringEffect.inputPoint = null;
   }
 
-  buildFacilityCards() {
-    const fragment = this.document.createDocumentFragment();
-
-    GAME_CONFIG.facilities.forEach((facility) => {
-      const card = this.document.createElement("article");
-      card.className = "facility-card";
-      card.dataset.facilityId = facility.id;
-      card.setAttribute("role", "listitem");
-      card.innerHTML = `
-        <div class="facility-card__header">
-          <span class="facility-card__icon" aria-hidden="true">${facility.icon}</span>
-          <div class="facility-card__title">
-            <h3>${facility.name}</h3>
-            <p class="facility-card__owned">보유 <strong data-role="owned">0</strong>개</p>
-          </div>
-        </div>
-        <div class="facility-card__stats">
-          <div class="facility-card__stat">
-            <span>하나당 경험치</span>
-            <strong data-role="unit-production">0 XP/초</strong>
-          </div>
-          <div class="facility-card__stat">
-            <span>현재 자동 경험치</span>
-            <strong data-role="total-production">0 XP/초</strong>
-          </div>
-        </div>
-        <div class="facility-card__purchase">
-          <p class="facility-card__price">
-            <span>다음 가격</span>
-            <strong data-role="price">0 오이</strong>
-          </p>
-          <button class="buy-button" data-action="buy" type="button">구매</button>
-        </div>
-      `;
-
-      this.facilityElements.set(facility.id, {
-        card,
-        owned: card.querySelector('[data-role="owned"]'),
-        unitProduction: card.querySelector('[data-role="unit-production"]'),
-        totalProduction: card.querySelector('[data-role="total-production"]'),
-        price: card.querySelector('[data-role="price"]'),
-        button: card.querySelector('[data-action="buy"]'),
-      });
-      fragment.append(card);
-    });
-
-    this.elements.facilityList.replaceChildren(fragment);
+  isSlotTransitioning(plotId, slotId) {
+    return this.getSlotView(plotId, slotId)?.controller.isBusy === true;
   }
 
-  render(state) {
-    const progress = getGrowthProgress(state.growthExperience);
-    const { stage } = progress;
-    const formattedBalance = formatNumber(state.cucumbers);
-    const formattedTotal = formatNumber(state.totalEarned);
-    const formattedExperience = formatNumber(progress.experience);
-    const formattedTarget = formatNumber(progress.targetExperience);
-    const remainingExperience = Math.max(
-      0,
-      Math.ceil(progress.targetExperience - progress.experience)
-    );
+  playPlantTransition(
+    plotId,
+    slotId,
+    stage = GAME_CONFIG.growthStages[0]
+  ) {
+    const view = this.getSlotView(plotId, slotId);
+    if (!view) return Promise.resolve(false);
 
-    this.elements.cucumberCount.textContent = formattedBalance;
-    this.elements.cucumberCount.title = `${formatExactNumber(
-      state.cucumbers
-    )}개`;
-    this.elements.productionRate.textContent = formatNumber(state.perSecond);
-    this.elements.touchYield.textContent = formatNumber(state.touchYield);
-    this.elements.growthStageSummary.textContent = progress.isHarvestReady
-      ? "수확 가능"
-      : stage.name;
-    this.elements.growthStage.textContent = stage.name;
-    this.elements.growthLevel.textContent = `Lv.${stage.level}`;
-    this.elements.growthExperience.textContent = formattedExperience;
-    this.elements.growthExperience.title = `${formatExactNumber(
-      progress.experience
-    )} XP`;
-    this.elements.growthTarget.textContent = formattedTarget;
-    this.elements.growthTarget.title = `${formatExactNumber(
-      progress.targetExperience
-    )} XP`;
-    this.elements.growthProgress.setAttribute(
-      "aria-valuemin",
-      String(stage.minimumExperience)
-    );
-    this.elements.growthProgress.setAttribute(
-      "aria-valuemax",
-      String(progress.targetExperience)
-    );
-    this.elements.growthProgress.setAttribute(
-      "aria-valuenow",
-      String(progress.experience)
-    );
-    this.elements.growthProgress.setAttribute(
-      "aria-valuetext",
-      progress.isHarvestReady
-        ? `경험치 ${formatExactNumber(progress.experience)}, 수확 가능`
-        : `경험치 ${formatExactNumber(
-            progress.experience
-          )}, 다음 성장까지 ${formatExactNumber(
-            remainingExperience
-          )}`
-    );
-    this.elements.growthProgressFill.style.width = `${progress.progressPercent}%`;
-    this.elements.growthStatus.textContent = progress.isHarvestReady
-      ? "수확 가능"
-      : progress.nextStage
-        ? `다음 · ${progress.nextStage.name}`
-        : "성장 중";
-    this.elements.growthStatus.dataset.ready = String(
-      progress.isHarvestReady
-    );
-    this.elements.harvestButton.disabled = !progress.isHarvestReady;
-    this.elements.harvestButton.textContent = progress.isHarvestReady
-      ? `수확하기 · +${formatNumber(GAME_CONFIG.harvestReward)} 오이`
-      : `성장 중 · ${formatNumber(remainingExperience)} XP 남음`;
-    this.elements.harvestButton.setAttribute(
-      "aria-label",
-      progress.isHarvestReady
-        ? `어른오이 수확, 오이 ${formatExactNumber(
-            GAME_CONFIG.harvestReward
-          )}개 획득`
-        : `아직 수확할 수 없음, 다음 성장까지 ${formatExactNumber(
-            remainingExperience
-          )} 경험치 남음`
-    );
-    this.elements.characterZone.dataset.stageId = stage.id;
-    this.elements.characterZone.dataset.stageLevel = String(stage.level);
-    this.elements.characterZone.dataset.harvestReady = String(
-      progress.isHarvestReady
-    );
-    this.elements.characterButton.disabled = progress.isHarvestReady;
-    this.elements.characterButton.setAttribute(
-      "aria-label",
-      progress.isHarvestReady
-        ? "성장이 끝났습니다. 아래 수확 버튼을 눌러주세요."
-        : `${stage.name}에게 물을 주고 ${formatExactNumber(
-            state.touchYield
-          )} 경험치 획득`
-    );
-    this.elements.tapGuide.textContent = progress.isHarvestReady
-      ? "다 자랐어요! 아래에서 수확해 주세요"
-      : "오이에게 물을 주세요";
-    this.updateCharacter(stage);
-    this.elements.totalEarned.textContent = formattedTotal;
-    this.elements.totalEarned.title = `${formatExactNumber(
-      state.totalEarned
-    )}개`;
-    this.elements.startedAt.textContent = formatDateTime(state.startedAt);
+    return this.trackTransition(view, view.controller.playPlant(stage));
+  }
 
-    GAME_CONFIG.facilities.forEach((facility) => {
-      const elements = this.facilityElements.get(facility.id);
-      const owned = state.facilities[facility.id] ?? 0;
-      const price = getNextPrice(facility, owned);
-      const totalProduction = owned * facility.productionPerSecond;
-      const canAfford = state.cucumbers >= price;
+  playHarvestTransition(plotId, slotId) {
+    const view = this.getSlotView(plotId, slotId);
+    if (!view) return Promise.resolve(false);
 
-      elements.owned.textContent = formatNumber(owned);
-      elements.unitProduction.textContent = `${formatNumber(
-        facility.productionPerSecond
-      )} XP/초`;
-      elements.totalProduction.textContent = `${formatNumber(
-        totalProduction
-      )} XP/초`;
-      elements.totalProduction.title = `${formatExactNumber(
-        totalProduction
-      )} XP/초`;
-      elements.price.textContent = `${formatNumber(price)} 오이`;
-      elements.price.title = `${formatExactNumber(price)} 오이`;
-      elements.button.disabled = !canAfford;
-      elements.button.textContent = canAfford ? "구매" : "부족";
-      elements.button.setAttribute(
-        "aria-label",
-        `${facility.name} 구매, 가격 ${formatExactNumber(price)} 오이`
-      );
+    return this.trackTransition(view, view.controller.playHarvest());
+  }
+
+  suspendTransientEffects() {
+    this.slotViews.forEach((view) => {
+      view.controller.suspend();
+      this.resetWateringEffect(view);
+      view.xpGainLayer.replaceChildren();
     });
   }
 
-  updateCharacter(stage) {
-    if (this.characterAsset === stage.characterAsset) return;
+  resumeTransientEffects(state) {
+    state.plots.forEach((plot) => {
+      plot.slots.forEach((slot) => {
+        const view = this.getSlotView(plot.plotId, slot.slotId);
+        if (!view) return;
 
-    window.clearTimeout(this.characterTransitionTimer);
-    this.characterAsset = stage.characterAsset;
-    this.elements.characterImage.classList.add("is-transitioning");
-    this.characterTransitionTimer = window.setTimeout(() => {
-      this.elements.characterImage.src = stage.characterAsset;
-      window.requestAnimationFrame(() => {
-        this.elements.characterImage.classList.remove("is-transitioning");
+        view.controller.resume({
+          isPlanted: slot.isPlanted === true,
+          stage: getGrowthProgress(slot.xp).stage,
+        });
       });
-    }, 90);
+    });
   }
 
-  renderWatering(amount, event) {
+  renderWatering(event, plotId, slotId) {
+    const view = this.getSlotView(plotId, slotId);
+    if (!view) return null;
+
     const pointer =
       event?.type === "pointerdown" &&
       Number.isFinite(event.clientX) &&
       Number.isFinite(event.clientY)
         ? { clientX: event.clientX, clientY: event.clientY }
         : null;
-    const { root, gain } = this.wateringEffect;
+    const { root } = view.wateringEffect;
 
-    this.resetWateringEffect();
-    this.positionWateringEffect(pointer);
-    gain.textContent = `+${formatNumber(amount)} XP`;
+    this.resetWateringEffect(view);
+    this.positionWateringEffect(view, pointer);
     void root.offsetWidth;
     root.classList.add("is-playing");
 
-    this.elements.characterButton.classList.remove("is-tapped");
-    void this.elements.characterButton.offsetWidth;
-    this.elements.characterButton.classList.add("is-tapped");
-    window.clearTimeout(this.characterTapTimer);
-    this.characterTapTimer = window.setTimeout(
-      () => this.elements.characterButton.classList.remove("is-tapped"),
+    view.button.classList.remove("is-tapped");
+    void view.button.offsetWidth;
+    view.button.classList.add("is-tapped");
+    this.document.defaultView?.clearTimeout(view.characterTapTimer);
+    view.characterTapTimer = this.document.defaultView?.setTimeout(
+      () => view.button.classList.remove("is-tapped"),
       280
     );
+    return root;
   }
 
-  showToast(title, message) {
-    window.clearTimeout(this.stageToastTimer);
-    this.elements.stageToastTitle.textContent = title;
-    this.elements.stageToastText.textContent = message;
-    this.elements.stageToast.hidden = false;
-    this.elements.stageToast.classList.remove("is-visible");
-    void this.elements.stageToast.offsetWidth;
-    this.elements.stageToast.classList.add("is-visible");
-    this.stageToastTimer = window.setTimeout(() => {
-      this.elements.stageToast.classList.remove("is-visible");
-      this.elements.stageToast.hidden = true;
-    }, 2_800);
+  showXpGain(amount, { plotId, slotId, ...options } = {}) {
+    const view = this.getSlotView(plotId, slotId);
+    if (!view) return null;
+
+    return showXpGainEffect(amount, {
+      ...options,
+      container: view.xpGainLayer,
+      anchor: view.characterImage,
+      documentRef: this.document,
+      windowRef: this.document.defaultView,
+    });
   }
 
-  showStageUp(stage) {
-    this.showToast("성장 단계 상승!", `${stage.level}단계 · ${stage.name}`);
+  showProductionXpGain(allocations = []) {
+    return allocations
+      .map((allocation) => {
+        const view = this.getSlotView(
+          allocation.plotId,
+          allocation.slotId
+        );
+        if (!view) return null;
+
+        const readyAmount = view.productionAccumulator.add(
+          allocation.amount
+        );
+        return readyAmount > 0
+          ? this.showXpGain(readyAmount, {
+              plotId: allocation.plotId,
+              slotId: allocation.slotId,
+              source: "production",
+            })
+          : null;
+      })
+      .filter(Boolean);
   }
 
-  showHarvestReady() {
-    this.showToast("수확 가능!", "어른오이가 모두 자랐어요");
+  resetProductionXpGain(plotId, slotId) {
+    this.getSlotView(plotId, slotId)?.productionAccumulator.reset();
   }
 
-  showHarvestReward(reward) {
-    this.showToast("수확 완료!", `오이 ${formatNumber(reward)}개 획득`);
-  }
-
-  showOfflineReward({ elapsedSeconds, reward }) {
+  showOfflineReward({ elapsedSeconds, reward, allocations = [] }) {
     this.elements.offlineDuration.textContent = formatDuration(elapsedSeconds);
     this.elements.offlineReward.textContent = formatNumber(reward);
-    this.elements.offlineReward.title = `${formatExactNumber(reward)}개`;
+    this.elements.offlineReward.title = `${formatExactNumber(reward)} XP`;
+    this.pendingOfflineAllocations = allocations.map((allocation) => ({
+      ...allocation,
+    }));
     this.elements.offlineModal.hidden = false;
     this.elements.offlineConfirmButton.focus();
   }
 
-  hideOfflineReward() {
+  hideOfflineReward({ showGain = false } = {}) {
+    const pendingAllocations = this.pendingOfflineAllocations;
+    this.pendingOfflineAllocations = [];
     this.elements.offlineModal.hidden = true;
-  }
 
-  setSaveStatus(message, status = "saved") {
-    this.elements.saveStatus.textContent = message;
-    this.elements.saveStatus.dataset.status = status;
+    if (showGain) {
+      pendingAllocations.forEach((allocation) => {
+        this.showXpGain(allocation.amount, {
+          plotId: allocation.plotId,
+          slotId: allocation.slotId,
+          source: "offline",
+        });
+      });
+    }
   }
 
   announce(message) {

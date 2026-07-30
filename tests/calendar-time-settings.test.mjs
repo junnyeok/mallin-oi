@@ -1,0 +1,137 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import {
+  formatCalendarTimeLabel,
+  isOvernightTimeRange,
+  joinLocalDateTimeValue,
+  normalizeCalendarTime,
+  splitLocalDateTimeValue,
+} from '../assets/js/modules/calendar-time.js';
+
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const read = (relativePath) => fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
+
+test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 문자열로 정규화한다', () => {
+  assert.equal(normalizeCalendarTime('09:05:30'), '09:05');
+  assert.equal(normalizeCalendarTime('24:00'), '');
+  assert.equal(formatCalendarTimeLabel('00:00'), '오전 12:00');
+  assert.deepEqual(splitLocalDateTimeValue('2026-07-30T22:15'), {
+    date: '2026-07-30',
+    time: '22:15',
+  });
+  assert.equal(joinLocalDateTimeValue('2026-07-30', ''), '2026-07-30');
+  assert.equal(joinLocalDateTimeValue('2026-07-30', '06:30'), '2026-07-30T06:30');
+});
+
+test('업무 야간 범위는 종료가 시작보다 이르면 익일 종료로 해석한다', () => {
+  assert.equal(isOvernightTimeRange('22:00', '06:00'), true);
+  assert.equal(isOvernightTimeRange('09:00', '18:00'), false);
+  assert.equal(isOvernightTimeRange('', '06:00'), false);
+});
+
+test('자기개발 생성·조회·수정은 nullable 시작/종료 필드를 모두 전달한다', () => {
+  const source = read('assets/js/modules/study-calendar.js');
+  assert.match(source, /todo_time,\s*todo_end_date,\s*todo_end_time/s);
+  assert.match(source, /todo_time:\s*normalizeCalendarTime\(todoTime\)\s*\|\|\s*null/);
+  assert.match(source, /p_todo_time:/);
+  assert.match(source, /p_todo_end_date:/);
+  assert.match(source, /p_todo_end_time:/);
+  assert.match(source, /requireStartTime:\s*!isEdit/);
+  assert.match(source, /type:\s*'calendar-datetime'/);
+  assert.doesNotMatch(source, /new Date\([^\n]*studyStart/);
+});
+
+test('업무 시간은 일정이 아니라 카테고리를 단일 기준으로 저장한다', () => {
+  const source = read('assets/js/modules/work-calendar.js');
+  assert.match(source, /start_time:\s*times\.startTime\s*\|\|\s*null/);
+  assert.match(source, /end_time:\s*times\.endTime\s*\|\|\s*null/);
+  assert.match(source, /ends_next_day:\s*times\.endsNextDay/);
+  assert.match(source, /isOvernightTimeRange\(start, end\)/);
+
+  const todoInsert = source.match(/\.from\(TABLE_NAME\)\s*\.insert\(\{([\s\S]*?)\}\)/)?.[1] || '';
+  assert.doesNotMatch(todoInsert, /start_time|end_time|ends_next_day/);
+});
+
+test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 UI를 유지한다', () => {
+  const sheetSource = read('assets/js/modules/calendar-entry-sheet.js');
+  const studySource = read('assets/js/modules/study-calendar.js');
+  const workSource = read('assets/js/modules/work-calendar.js');
+
+  assert.match(
+    sheetSource,
+    /submitButton\.disabled = true;[\s\S]*?await onSave\?\.\(values\);[\s\S]*?close\(\);[\s\S]*?catch \{[\s\S]*?submitButton\.disabled = false;/,
+  );
+  assert.match(studySource, /if \(state\.isAddingTodo\) throw new Error/);
+  assert.match(
+    studySource,
+    /state\.isAddingTodo = true;[\s\S]*?finally \{\s*state\.isAddingTodo = false;/,
+  );
+  assert.match(workSource, /if \(isAddingCategory\) return;/);
+  assert.match(
+    workSource,
+    /isAddingCategory = true;[\s\S]*?finally \{\s*isAddingCategory = false;/,
+  );
+  assert.match(workSource, /if \(saveButton\.disabled\) return;/);
+  assert.match(
+    workSource,
+    /const updatedCategory = await updateCategory\([\s\S]*?state\.categories = state\.categories\.map/,
+  );
+});
+
+test('운영 마이그레이션은 기존 데이터를 채우지 않고 검증된 nullable 시간 필드를 추가한다', () => {
+  const sql = read('supabase-SQLEditor/20260730-study-work-calendar-times.sql');
+  assert.match(sql, /todo_time time without time zone/);
+  assert.match(sql, /todo_end_date date/);
+  assert.match(sql, /start_time time without time zone/);
+  assert.match(sql, /ends_next_day boolean not null default false/);
+  assert.match(sql, /todo_end_time >= todo_time/);
+  assert.match(sql, /ends_next_day = \(end_time < start_time\)/);
+  assert.doesNotMatch(sql, /update\s+public\.study_calendar_todos\s+set\s+todo_time\s*=\s*['"]?00:00/i);
+  assert.doesNotMatch(sql, /update\s+public\.work_calendar_categories\s+set\s+start_time/i);
+  assert.match(sql, /from public, anon/);
+  assert.match(sql, /to authenticated/);
+});
+
+test('그룹 백업·붙여넣기는 자기개발 및 업무 카테고리 시간 정보를 포함한다', () => {
+  const sql = read('supabase-SQLEditor/20260730-calendar-copy-paste-fix.sql');
+  for (const key of [
+    'todoTime',
+    'todoEndDate',
+    'todoEndTime',
+    'categoryStartTime',
+    'categoryEndTime',
+    'categoryEndsNextDay',
+  ]) {
+    assert.match(sql, new RegExp(key));
+  }
+  assert.match(sql, /ends_next_day/);
+  assert.doesNotMatch(sql, /coalesce\([^\n]*(todoTime|categoryStartTime)[^\n]*'00:00'/i);
+});
+
+test('루트·www·Android·iOS 시간 기능 자산은 바이트 단위로 일치한다', () => {
+  const syncedFiles = [
+    'calendar-work.html',
+    'assets/css/components/calendar-entry-sheet.css',
+    'assets/css/main/calendar-event-main.css',
+    'assets/css/main/calendar-work-main.css',
+    'assets/js/modules/calendar-time.js',
+    'assets/js/modules/calendar-entry-sheet.js',
+    'assets/js/modules/event-calendar.js',
+    'assets/js/modules/study-calendar.js',
+    'assets/js/modules/work-calendar.js',
+    'assets/js/modules/calendar-groups.js',
+    'assets/js/modules/calendar-shared-personal-readonly.js',
+    'assets/js/modules/calendar-widget-data.js',
+  ];
+
+  for (const file of syncedFiles) {
+    const expected = read(file);
+    for (const prefix of ['www/', 'android/app/src/main/assets/public/', 'ios/App/App/public/']) {
+      assert.equal(read(`${prefix}${file}`), expected, `${prefix}${file} is out of sync`);
+    }
+  }
+});

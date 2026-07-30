@@ -251,7 +251,7 @@ body.calendar-entry-sheet-open {
 }
 
 .calendar-entry-sheet__optional-enable {
-  background: #fff0f6;
+  background: var(--color-primary-sub);
 }
 
 .calendar-entry-sheet__optional-clear {
@@ -282,6 +282,136 @@ body.calendar-entry-sheet-open {
   font-size: var(--text-small);
   font-weight: 800;
   text-align: right;
+}
+
+.calendar-entry-sheet__datetime {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(124px, 0.8fr);
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  width: 100%;
+}
+
+.calendar-entry-sheet__datetime > input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 800;
+  text-align: right;
+}
+
+.calendar-entry-sheet__datetime > input[readonly] {
+  cursor: pointer;
+}
+
+.calendar-entry-sheet__datetime > input:focus {
+  outline: 2px solid var(--color-primary-sub);
+  outline-offset: 2px;
+}
+
+/* 이벤트·자기개발·업무에서 함께 사용하는 시간 선택기 */
+.calendar-time-picker {
+  position: fixed;
+  z-index: 10020;
+}
+
+.calendar-time-picker__panel {
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.calendar-time-picker__title {
+  display: block;
+  margin-bottom: var(--space-8);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 900;
+}
+
+.calendar-time-picker__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.calendar-time-picker__field {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.calendar-time-picker__label {
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 800;
+}
+
+.calendar-time-picker__select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.calendar-time-picker__select:focus {
+  outline: 2px solid var(--color-primary-sub);
+  border-color: var(--color-primary);
+}
+
+.calendar-time-picker__close,
+.calendar-time-picker__clear {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-btn);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-time-picker__close {
+  margin-top: var(--space-12);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.calendar-time-picker__clear {
+  margin-top: var(--space-8);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+}
+
+.calendar-time-picker__clear:hover,
+.calendar-time-picker__clear:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.calendar-time-picker__close:hover {
+  opacity: 0.82;
+}
+
+.calendar-time-picker__close:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }
 
 .calendar-entry-sheet__optional-enable:focus-visible,
@@ -330,6 +460,16 @@ body.calendar-entry-sheet-open {
   .calendar-entry-sheet__field > textarea,
   .calendar-entry-sheet__category-actions > select,
   .calendar-entry-sheet__optional-control > input {
+    font-size: var(--text-body);
+  }
+
+  .calendar-entry-sheet__datetime {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: var(--space-4) 0;
+  }
+
+  .calendar-entry-sheet__datetime > input {
     font-size: var(--text-body);
   }
 

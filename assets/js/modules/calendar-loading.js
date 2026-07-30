@@ -1,49 +1,21 @@
 // assets/js/modules/calendar-loading.js
 
-export const CALENDAR_LOADING_SPRITE = Object.freeze({
-  path: './images/calendar/dancing-cucumber-sprite-sheet.png',
-  sheetWidth: 1280,
-  sheetHeight: 1280,
-  columns: 4,
-  rows: 4,
-  frameCount: 16,
-  frameWidth: 320,
-  frameHeight: 320,
-  cycleDurationMs: 5000,
-  frameOrder: 'row-major',
+export const CALENDAR_LOADING_IMAGE_PATHS = Object.freeze({
+  study: 'assets/images/calendar/logo-study.png',
+  work: 'assets/images/calendar/logo-work.png',
+  event: 'assets/images/calendar/logo-event.png',
+});
+
+export const CALENDAR_LOADING_TIMING = Object.freeze({
+  showDelayMs: 180,
+  fadeDurationMs: 160,
 });
 
 const controllerByRoot = new WeakMap();
-let spritePreloadPromise = null;
 
-function getSpriteUrl() {
-  return new URL(
-    '../../../images/calendar/dancing-cucumber-sprite-sheet.png',
-    import.meta.url,
-  ).href;
-}
-
-export function preloadCalendarLoadingSprite(
-  ImageConstructor = globalThis.Image,
-) {
-  if (spritePreloadPromise) return spritePreloadPromise;
-  if (typeof ImageConstructor !== 'function') {
-    return Promise.resolve(false);
-  }
-
-  const image = new ImageConstructor();
-  image.decoding = 'async';
-  image.src = getSpriteUrl();
-
-  spritePreloadPromise =
-    typeof image.decode === 'function'
-      ? image
-          .decode()
-          .then(() => true)
-          .catch(() => false)
-      : Promise.resolve(true);
-
-  return spritePreloadPromise;
+export function getCalendarLoadingImageUrl(calendarType) {
+  const path = CALENDAR_LOADING_IMAGE_PATHS[String(calendarType || '')];
+  return path ? new URL(`../../../${path}`, import.meta.url).href : null;
 }
 
 export function waitForCalendarPaint(windowRef = globalThis.window) {
@@ -70,8 +42,11 @@ function createLoadingOverlay(documentRef) {
   content.className = 'calendar-loading-overlay__content';
   content.setAttribute('aria-hidden', 'true');
 
-  const sprite = documentRef.createElement('span');
-  sprite.className = 'calendar-loading-overlay__sprite';
+  const image = documentRef.createElement('img');
+  image.className = 'calendar-loading-overlay__image';
+  image.hidden = true;
+  image.setAttribute('alt', '');
+  image.setAttribute('decoding', 'async');
 
   const label = documentRef.createElement('span');
   label.className = 'calendar-loading-overlay__label';
@@ -88,7 +63,7 @@ function createLoadingOverlay(documentRef) {
     label.append(dot);
   }
 
-  content.append(sprite, label);
+  content.append(image, label);
 
   const status = documentRef.createElement('span');
   status.className = 'calendar-loading-overlay__status';
@@ -102,6 +77,8 @@ export function createCalendarLoadingController({
   root,
   documentRef = root?.ownerDocument || globalThis.document,
   windowRef = documentRef?.defaultView || globalThis.window,
+  showDelayMs = CALENDAR_LOADING_TIMING.showDelayMs,
+  fadeDurationMs = CALENDAR_LOADING_TIMING.fadeDurationMs,
 } = {}) {
   if (!root || !documentRef) return null;
 
@@ -112,27 +89,89 @@ export function createCalendarLoadingController({
   const overlay =
     root.querySelector('.calendar-loading-overlay') ||
     createLoadingOverlay(documentRef);
+  const loadingImage = overlay.querySelector(
+    '.calendar-loading-overlay__image',
+  );
 
   if (!overlay.parentNode) root.append(overlay);
-  void preloadCalendarLoadingSprite();
 
   let generation = 0;
   let activeToken = null;
   let destroyed = false;
+  let showTimerId = null;
+  let fadeTimerId = null;
+  let fadePromise = null;
+  let resolveFade = null;
+  let fadingTokenId = null;
+  let imageRequestId = 0;
   const pendingByKey = new Map();
+  const setTimer =
+    typeof windowRef?.setTimeout === 'function'
+      ? windowRef.setTimeout.bind(windowRef)
+      : globalThis.setTimeout.bind(globalThis);
+  const clearTimer =
+    typeof windowRef?.clearTimeout === 'function'
+      ? windowRef.clearTimeout.bind(windowRef)
+      : globalThis.clearTimeout.bind(globalThis);
 
-  function show(token) {
-    if (destroyed) return;
-    activeToken = token;
-    root.setAttribute('aria-busy', 'true');
-    root.classList.add('is-calendar-loading');
-    overlay.hidden = false;
-    overlay.classList.add('is-active');
+  function clearShowTimer() {
+    if (showTimerId === null) return;
+    clearTimer(showTimerId);
+    showTimerId = null;
   }
 
-  function hide() {
-    overlay.classList.remove('is-active');
-    overlay.hidden = true;
+  function syncLoadingImage() {
+    if (!loadingImage) return;
+
+    const calendarType = String(
+      root.getAttribute('data-calendar-type') || '',
+    );
+    const imageUrl = getCalendarLoadingImageUrl(calendarType);
+    const requestId = ++imageRequestId;
+
+    loadingImage.hidden = true;
+    loadingImage.onload = null;
+    loadingImage.onerror = null;
+    loadingImage.removeAttribute('data-calendar-type');
+
+    if (!imageUrl) {
+      loadingImage.removeAttribute('src');
+      return;
+    }
+
+    loadingImage.setAttribute('data-calendar-type', calendarType);
+    loadingImage.onload = () => {
+      if (
+        requestId === imageRequestId &&
+        loadingImage.getAttribute('data-calendar-type') === calendarType
+      ) {
+        loadingImage.hidden = false;
+      }
+    };
+    loadingImage.onerror = () => {
+      if (requestId === imageRequestId) loadingImage.hidden = true;
+    };
+    loadingImage.setAttribute('src', imageUrl);
+
+    if (loadingImage.complete && loadingImage.naturalWidth > 0) {
+      loadingImage.hidden = false;
+    }
+  }
+
+  function interruptFade() {
+    if (fadeTimerId !== null) {
+      clearTimer(fadeTimerId);
+      fadeTimerId = null;
+    }
+
+    const interruptedResolve = resolveFade;
+    fadePromise = null;
+    resolveFade = null;
+    fadingTokenId = null;
+    interruptedResolve?.(false);
+  }
+
+  function restoreRootState() {
     root.classList.remove('is-calendar-loading');
 
     if (originalAriaBusy === null) {
@@ -140,8 +179,52 @@ export function createCalendarLoadingController({
     } else {
       root.setAttribute('aria-busy', originalAriaBusy);
     }
+  }
 
+  function hideImmediately() {
+    clearShowTimer();
+    interruptFade();
+    overlay.classList.remove('is-active');
+    overlay.hidden = true;
+    restoreRootState();
     activeToken = null;
+  }
+
+  function show(token) {
+    showTimerId = null;
+    if (!isCurrent(token)) return;
+    root.classList.add('is-calendar-loading');
+    overlay.hidden = false;
+    void overlay.offsetWidth;
+    overlay.classList.add('is-active');
+  }
+
+  function fadeOut(token) {
+    if (!isCurrent(token)) return Promise.resolve(false);
+    if (fadingTokenId === token.id && fadePromise) return fadePromise;
+
+    overlay.classList.remove('is-active');
+    fadingTokenId = token.id;
+    fadePromise = new Promise((resolve) => {
+      resolveFade = resolve;
+      fadeTimerId = setTimer(() => {
+        fadeTimerId = null;
+        fadePromise = null;
+        resolveFade = null;
+        fadingTokenId = null;
+
+        if (!isCurrent(token)) {
+          resolve(false);
+          return;
+        }
+
+        overlay.hidden = true;
+        restoreRootState();
+        activeToken = null;
+        resolve(true);
+      }, Math.max(0, fadeDurationMs));
+    });
+    return fadePromise;
   }
 
   function begin({ key = '' } = {}) {
@@ -149,7 +232,27 @@ export function createCalendarLoadingController({
       id: ++generation,
       key: String(key || ''),
     });
-    show(token);
+    if (destroyed) return token;
+
+    syncLoadingImage();
+    const overlayWasShown = !overlay.hidden;
+    clearShowTimer();
+    interruptFade();
+    activeToken = token;
+    root.setAttribute('aria-busy', 'true');
+
+    if (overlayWasShown) {
+      root.classList.add('is-calendar-loading');
+      overlay.classList.add('is-active');
+    } else {
+      overlay.classList.remove('is-active');
+      overlay.hidden = true;
+      showTimerId = setTimer(
+        () => show(token),
+        Math.max(0, showDelayMs),
+      );
+    }
+
     return token;
   }
 
@@ -161,16 +264,22 @@ export function createCalendarLoadingController({
 
   async function finish(token) {
     if (!isCurrent(token)) return false;
+    clearShowTimer();
     await waitForCalendarPaint(windowRef);
     if (!isCurrent(token)) return false;
-    hide();
-    return true;
+
+    if (overlay.hidden) {
+      hideImmediately();
+      return true;
+    }
+
+    return fadeOut(token);
   }
 
   function cancel(token = activeToken) {
     if (token && !isCurrent(token)) return false;
     generation += 1;
-    hide();
+    hideImmediately();
     return true;
   }
 
@@ -230,7 +339,10 @@ export function createCalendarLoadingController({
     runLatest,
     getState() {
       return {
-        active: Boolean(activeToken && !overlay.hidden),
+        active: Boolean(activeToken),
+        visible: Boolean(
+          !overlay.hidden && overlay.classList.contains('is-active'),
+        ),
         generation,
         pendingKeys: [...pendingByKey.keys()],
       };
@@ -238,6 +350,7 @@ export function createCalendarLoadingController({
   };
 
   controllerByRoot.set(root, controller);
+  syncLoadingImage();
   windowRef?.addEventListener?.('mallin:before-pjax-swap', destroy, {
     once: true,
   });

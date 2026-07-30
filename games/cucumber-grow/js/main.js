@@ -2,46 +2,36 @@ import { GAME_CONFIG } from "./game-config.js";
 import {
   GameEngine,
   collectTouch,
+  findCropSlot,
+  getGrowthProgress,
   harvestCucumber,
-  purchaseFacility,
+  plantCucumber,
+  purchaseFirstGarden,
   synchronizeDerivedState,
 } from "./game-engine.js";
 import { applyOfflineReward } from "./offline-reward.js";
-import { clearGameSave, loadGameSave, saveGame } from "./save-manager.js";
-import { createInitialGameState } from "./game-state.js";
+import { loadGameSave, saveGame } from "./save-manager.js";
 import { formatExactNumber } from "./number-format.js";
-import { UIRenderer } from "./ui-renderer.js?v=20260730-01";
+import { UIRenderer } from "./ui-renderer.js?v=20260730-05";
 
 const loadResult = loadGameSave();
 const state = loadResult.state;
 const ui = new UIRenderer();
+const slotLocks = new Set();
+const lastPointerInteractionAtBySlot = new Map();
 let deferredSaveTimer = null;
-let isResetting = false;
-let isHarvesting = false;
-let lastKeyboardWaterAt = 0;
+let purchasePending = false;
 
 synchronizeDerivedState(state);
 
-function reportSaveResult(result) {
-  if (!result.ok) {
-    ui.setSaveStatus("저장 사용 불가", "error");
-    return;
-  }
-
-  const time = new Date(result.savedAt).toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  ui.setSaveStatus(`${time} 저장됨`);
+function getSlotKey(plotId, slotId) {
+  return `${plotId}\u0000${slotId}`;
 }
 
 function persistNow() {
-  if (isResetting) return;
-
   window.clearTimeout(deferredSaveTimer);
   deferredSaveTimer = null;
-  reportSaveResult(saveGame(state));
+  saveGame(state);
 }
 
 function scheduleSave() {
@@ -49,170 +39,237 @@ function scheduleSave() {
   deferredSaveTimer = window.setTimeout(persistNow, 450);
 }
 
-function handleGrowthChange(result) {
-  if (result?.becameHarvestReady) {
-    ui.showHarvestReady();
-    ui.announce("어른오이가 모두 자라 수확할 수 있습니다.");
-    return;
-  }
-
-  if (result?.stageChanged) {
-    ui.showStageUp(result.stage);
-    ui.announce(`성장 단계가 ${result.stage.name}(으)로 올랐습니다.`);
-  }
-}
-
 const engine = new GameEngine({
   state,
   onUpdate(result) {
-    ui.render(state);
-    handleGrowthChange(result);
+    if (result?.reason === "production" && result.gained > 0) {
+      ui.render(state);
+      ui.showProductionXpGain(result.allocations);
+    }
   },
 });
 
 function collectOfflineProgress() {
   const rewardResult = applyOfflineReward(state);
-  const saveResult = saveGame(state);
 
-  reportSaveResult(saveResult);
+  saveGame(state);
   ui.render(state);
-  handleGrowthChange(rewardResult);
 
-  if (rewardResult.reward > 0) {
+  if (rewardResult.gained > 0) {
     ui.showOfflineReward(rewardResult);
   }
 
   return rewardResult;
 }
 
-collectOfflineProgress();
+async function plantSlot(plotId, slotId) {
+  const key = getSlotKey(plotId, slotId);
 
-if (loadResult.status === "recovered") {
-  ui.setSaveStatus("손상 데이터 초기화", "error");
-  ui.announce("저장 데이터를 읽을 수 없어 안전한 초기값으로 시작합니다.");
-} else if (loadResult.status === "unavailable") {
-  ui.setSaveStatus("저장 사용 불가", "error");
-}
-
-ui.render(state);
-engine.start();
-
-function waterCucumber(event) {
-  engine.synchronize();
-  const result = collectTouch(state);
-
-  ui.render(state);
-  if (result.gained > 0) {
-    ui.renderWatering(result.gained, event);
-  }
-  handleGrowthChange(result);
-  scheduleSave();
-}
-
-ui.elements.characterZone.addEventListener("pointerdown", (event) => {
-  if (event.pointerType === "mouse" && event.button !== 0) return;
-  if (ui.elements.characterButton.disabled) return;
-
-  event.preventDefault();
-  waterCucumber(event);
-});
-
-ui.elements.characterButton.addEventListener("keydown", (event) => {
-  if ((event.key !== "Enter" && event.key !== " ") || event.repeat) return;
-
-  event.preventDefault();
-  lastKeyboardWaterAt = Date.now();
-  waterCucumber(event);
-});
-
-ui.elements.characterButton.addEventListener("click", (event) => {
-  if (event.detail !== 0 || Date.now() - lastKeyboardWaterAt < 700) return;
-
-  waterCucumber(event);
-});
-
-ui.elements.harvestButton.addEventListener("click", () => {
-  if (isHarvesting) return;
-
-  isHarvesting = true;
-  engine.synchronize();
-  const result = harvestCucumber(state);
-
-  if (!result.harvested) {
-    ui.render(state);
-    ui.announce("아직 수확할 수 없습니다.");
-    isHarvesting = false;
+  if (slotLocks.has(key) || ui.isSlotTransitioning(plotId, slotId)) {
     return;
   }
 
+  slotLocks.add(key);
+  const result = plantCucumber(state, plotId, slotId);
+
+  if (!result.planted) {
+    slotLocks.delete(key);
+    ui.render(state);
+    return;
+  }
+
+  const transition = ui.playPlantTransition(
+    plotId,
+    slotId,
+    result.stage
+  );
+
   ui.render(state);
-  ui.showHarvestReward(result.reward);
+  ui.resetProductionXpGain(plotId, slotId);
+  ui.announce("새싹을 심었습니다.");
+  persistNow();
+
+  try {
+    await transition;
+  } finally {
+    slotLocks.delete(key);
+    ui.render(state);
+  }
+}
+
+function waterSlot(event, plotId, slotId) {
+  const result = collectTouch(state, plotId, slotId);
+
+  ui.render(state);
+  if (result.gained > 0) {
+    ui.renderWatering(event, plotId, slotId);
+    ui.showXpGain(result.gained, {
+      plotId,
+      slotId,
+      source: "watering",
+    });
+  }
+  scheduleSave();
+}
+
+async function harvestSlot(plotId, slotId) {
+  const key = getSlotKey(plotId, slotId);
+
+  if (slotLocks.has(key) || ui.isSlotTransitioning(plotId, slotId)) {
+    return;
+  }
+
+  slotLocks.add(key);
+  const result = harvestCucumber(state, plotId, slotId);
+
+  if (!result.harvested) {
+    slotLocks.delete(key);
+    ui.render(state);
+    return;
+  }
+
+  const transition = ui.playHarvestTransition(plotId, slotId);
+
+  ui.render(state);
+  ui.resetProductionXpGain(plotId, slotId);
   ui.announce(
     `수확을 완료해 오이 ${formatExactNumber(result.reward)}개를 획득했습니다.`
   );
   persistNow();
-  isHarvesting = false;
-});
 
-ui.elements.facilityList.addEventListener("click", (event) => {
-  const button = event.target.closest('[data-action="buy"]');
+  try {
+    await transition;
+  } finally {
+    slotLocks.delete(key);
+    ui.render(state);
+  }
+}
 
-  if (!button) return;
+function interactWithSlot(event, plotId, slotId) {
+  const key = getSlotKey(plotId, slotId);
 
-  const card = button.closest("[data-facility-id]");
-  const facilityId = card?.dataset.facilityId;
+  if (slotLocks.has(key) || ui.isSlotTransitioning(plotId, slotId)) {
+    return;
+  }
 
   engine.synchronize();
-  const result = purchaseFacility(state, facilityId);
+  const target = findCropSlot(state, plotId, slotId);
 
-  if (!result.purchased) {
-    if (result.reason === "insufficient") {
-      ui.announce(
-        `오이가 부족합니다. ${formatExactNumber(result.price)}개가 필요합니다.`
-      );
-    }
+  if (!target) return;
+
+  if (!target.slot.isPlanted) {
+    void plantSlot(plotId, slotId);
+    return;
+  }
+
+  if (getGrowthProgress(target.slot.xp).isHarvestReady) {
+    void harvestSlot(plotId, slotId);
+    return;
+  }
+
+  waterSlot(event, plotId, slotId);
+}
+
+function getSlotButton(event) {
+  const button = event.target.closest?.(".crop-slot");
+
+  return button && ui.elements.plotList.contains(button) ? button : null;
+}
+
+ui.elements.plotList.addEventListener("pointerdown", (event) => {
+  const button = getSlotButton(event);
+
+  if (!button) return;
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (button.disabled) return;
+
+  event.preventDefault();
+  const { plotId, slotId } = button.dataset;
+  const key = getSlotKey(plotId, slotId);
+
+  lastPointerInteractionAtBySlot.set(key, Date.now());
+  interactWithSlot(event, plotId, slotId);
+});
+
+ui.elements.plotList.addEventListener("click", (event) => {
+  const button = getSlotButton(event);
+
+  if (!button || button.disabled || event.detail !== 0) return;
+
+  const { plotId, slotId } = button.dataset;
+  const key = getSlotKey(plotId, slotId);
+
+  if (Date.now() - (lastPointerInteractionAtBySlot.get(key) ?? 0) < 700) {
+    return;
+  }
+
+  interactWithSlot(event, plotId, slotId);
+});
+
+function stopModalInput(event) {
+  event.stopPropagation();
+}
+
+ui.elements.menuButton.addEventListener("pointerdown", stopModalInput);
+ui.elements.menuButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  ui.openMenu(event.currentTarget);
+});
+ui.elements.menuModal.addEventListener("pointerdown", stopModalInput);
+ui.elements.menuModal.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (event.target === ui.elements.menuModal) ui.closeMenu();
+});
+ui.elements.menuCloseButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  ui.closeMenu();
+});
+ui.elements.shopMenuButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  ui.showShopPanel();
+});
+ui.elements.shopBackButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  ui.showMenuPanel();
+  ui.elements.shopMenuButton.focus();
+});
+ui.elements.gardenPurchaseButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (purchasePending) return;
+
+  purchasePending = true;
+  ui.setPurchasePending(true);
+  const result = purchaseFirstGarden(state);
+
+  if (result.purchased) {
+    persistNow();
     ui.render(state);
-    return;
+    ui.announce("첫 텃밭을 구매했습니다.");
   }
 
-  ui.render(state);
-  ui.announce(
-    `${result.facility.name}을(를) 구매했습니다. 현재 ${formatExactNumber(
-      result.owned
-    )}개입니다.`
-  );
-  handleGrowthChange(result);
-  persistNow();
+  purchasePending = false;
+  ui.setPurchasePending(false);
 });
 
-document.querySelector("#resetButton").addEventListener("click", () => {
-  const confirmed = window.confirm(
-    "오이키우기 데이터를 모두 초기화할까요?\n이 게임의 로컬 저장 데이터만 삭제됩니다."
-  );
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || ui.elements.menuModal.hidden) return;
 
-  if (!confirmed) return;
-
-  isResetting = true;
-  engine.pause();
-  window.clearTimeout(deferredSaveTimer);
-
-  if (!clearGameSave()) {
-    isResetting = false;
-    ui.setSaveStatus("초기화 실패", "error");
-    ui.announce("로컬 저장 데이터 초기화에 실패했습니다.");
-    engine.resume();
-    return;
-  }
-
-  Object.assign(state, createInitialGameState());
-  synchronizeDerivedState(state);
-  ui.hideOfflineReward();
-  ui.render(state);
-  isResetting = false;
-  reportSaveResult(saveGame(state));
-  ui.announce("오이키우기 데이터가 초기화되었습니다.");
-  engine.resume();
+  event.preventDefault();
+  ui.closeMenu();
 });
+
+ui.render(state);
+collectOfflineProgress();
+
+if (loadResult.status === "migrated") {
+  ui.announce("기존 오이를 첫 번째 텃밭으로 안전하게 옮겼습니다.");
+} else if (loadResult.status === "recovered") {
+  ui.announce("저장 데이터를 읽을 수 없어 안전한 초기값으로 시작합니다.");
+} else if (loadResult.status === "unavailable") {
+  ui.announce("이 브라우저에서는 로컬 저장을 사용할 수 없습니다.");
+}
+
+engine.start();
 
 window.setInterval(() => {
   if (document.hidden) return;
@@ -223,16 +280,19 @@ window.setInterval(() => {
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
+    ui.suspendTransientEffects();
     engine.pause();
     persistNow();
     return;
   }
 
+  ui.resumeTransientEffects(state);
   collectOfflineProgress();
   engine.resume();
 });
 
 window.addEventListener("pagehide", () => {
+  ui.suspendTransientEffects();
   engine.pause();
   persistNow();
 });
@@ -240,11 +300,13 @@ window.addEventListener("pagehide", () => {
 window.addEventListener("pageshow", (event) => {
   if (!event.persisted || document.hidden || engine.isRunning) return;
 
+  ui.resumeTransientEffects(state);
   collectOfflineProgress();
   engine.resume();
 });
 
 window.addEventListener("beforeunload", () => {
+  ui.suspendTransientEffects();
   engine.pause();
   persistNow();
 });

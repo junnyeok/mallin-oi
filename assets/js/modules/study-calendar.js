@@ -8,11 +8,14 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
-import {
-  initCalendarEntrySheet,
-  openCalendarDetailSheet,
-} from './calendar-entry-sheet.js';
+import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
+import {
+  formatCalendarTimeLabel,
+  joinLocalDateTimeValue,
+  normalizeCalendarTime,
+  splitLocalDateTimeValue,
+} from './calendar-time.js';
 
 let appendCalendarGroupBoard;
 let getVisiblePersonalTodos;
@@ -188,7 +191,10 @@ function appendTypeBadges(root, todos = [], categories = []) {
     }
 
     badge.textContent = title;
-    badge.title = `${category.name} · ${title}`;
+    const timeLabel = todo.todoTime
+      ? ` · ${formatCalendarTimeLabel(todo.todoTime)}`
+      : '';
+    badge.title = `${category.name} · ${title}${timeLabel}`;
 
     wrap.append(badge);
   });
@@ -205,6 +211,9 @@ function normalizeTodo(row) {
     text: row.todo_text,
     memo: row.memo || '',
     done: Boolean(row.is_done),
+    todoTime: normalizeCalendarTime(row.todo_time),
+    todoEndDate: row.todo_end_date || null,
+    todoEndTime: normalizeCalendarTime(row.todo_end_time),
     type: row.todo_type || row.study_calendar_categories?.slug || 'etc',
     categoryId: row.category_id || row.study_calendar_categories?.id || null,
     date: row.todo_date,
@@ -212,7 +221,7 @@ function normalizeTodo(row) {
 }
 
 function groupTodosByDate(rows = []) {
-  return rows.reduce((acc, row) => {
+  const grouped = rows.reduce((acc, row) => {
     const todo = normalizeTodo(row);
     const dateKey = todo.date;
 
@@ -223,6 +232,15 @@ function groupTodosByDate(rows = []) {
     acc[dateKey].push(todo);
     return acc;
   }, {});
+
+  Object.values(grouped).forEach((todos) => {
+    todos.sort((left, right) => {
+      const leftTime = left.todoTime || '99:99';
+      const rightTime = right.todoTime || '99:99';
+      return leftTime.localeCompare(rightTime);
+    });
+  });
+  return grouped;
 }
 
 async function fetchUserTodos(userId) {
@@ -239,6 +257,9 @@ async function fetchUserTodos(userId) {
       category_id,
       todo_text,
       memo,
+      todo_time,
+      todo_end_date,
+      todo_end_time,
       is_done,
       created_at,
       study_calendar_categories (
@@ -251,6 +272,7 @@ async function fetchUserTodos(userId) {
     )
     .eq('user_id', userId)
     .order('todo_date', { ascending: true })
+    .order('todo_time', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -424,7 +446,16 @@ async function deleteCategoryById(categoryId) {
   }
 }
 
-async function insertTodo({ userId, dateKey, text, memo, category }) {
+async function insertTodo({
+  userId,
+  dateKey,
+  text,
+  memo,
+  todoTime,
+  todoEndDate,
+  todoEndTime,
+  category,
+}) {
   const latestCategory = category?.id
     ? await fetchCategoryById(userId, category.id)
     : null;
@@ -438,6 +469,9 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
       category_id: safeCategory.id || null,
       todo_text: text,
       memo: memo || '',
+      todo_time: normalizeCalendarTime(todoTime) || null,
+      todo_end_date: todoEndDate || null,
+      todo_end_time: normalizeCalendarTime(todoEndTime) || null,
       is_done: false,
     })
     .select(
@@ -449,6 +483,9 @@ async function insertTodo({ userId, dateKey, text, memo, category }) {
       category_id,
       todo_text,
       memo,
+      todo_time,
+      todo_end_date,
+      todo_end_time,
       is_done,
       created_at,
       study_calendar_categories (
@@ -481,12 +518,24 @@ async function updateTodoDone({ todoId, done }) {
   }
 }
 
-async function saveTodoAtomic({ todoId, text, memo, dateKey, categoryId }) {
+async function saveTodoAtomic({
+  todoId,
+  text,
+  memo,
+  dateKey,
+  todoTime,
+  todoEndDate,
+  todoEndTime,
+  categoryId,
+}) {
   const { error } = await supabase.rpc('save_study_calendar_todo', {
     p_todo_id: todoId,
     p_todo_text: text,
     p_memo: memo || '',
     p_todo_date: dateKey,
+    p_todo_time: normalizeCalendarTime(todoTime) || null,
+    p_todo_end_date: todoEndDate || null,
+    p_todo_end_time: normalizeCalendarTime(todoEndTime) || null,
     p_category_id: categoryId,
   });
 
@@ -745,7 +794,15 @@ function renderTodoList({
 
     const memo = document.createElement('p');
     memo.className = 'study-todo-item__summary';
-    memo.textContent = String(todo.memo || '').trim() || '메모 없음';
+    const timeSummary = todo.todoTime
+      ? `${formatCalendarTimeLabel(todo.todoTime)}${
+          todo.todoEndTime
+            ? ` ~ ${formatCalendarTimeLabel(todo.todoEndTime)}`
+            : ''
+        }`
+      : '시간 미지정';
+    const memoText = String(todo.memo || '').trim();
+    memo.textContent = memoText ? `${timeSummary} · ${memoText}` : timeSummary;
 
     openButton.addEventListener('click', () => onOpenDetail?.(todo, openButton));
     body.append(type, text, memo);
@@ -1002,39 +1059,16 @@ async function initPageCalendar(loadingController) {
     return;
   }
 
-  let state;
-  const entrySheet = initCalendarEntrySheet({
-    calendarType: 'study',
-    openButton: entrySheetOpen,
-    form,
-    title: '할 일 추가',
-    submitLabel: '완료',
-    editableFields: [
-      {
-        key: 'date',
-        label: '날짜',
-        type: 'date',
-        id: 'studyTodoDate',
-        required: true,
-        value: () => state?.selectedDateKey || getTodayKey(),
-      },
-    ],
-    onAfterClose: () => {
-      input.value = '';
-      memoInput.value = '';
-      autoResizeTextarea(memoInput);
-    },
-  });
-
   const today = new Date();
 
-  state = {
+  const state = {
     userId: user.id,
     viewDate: new Date(today.getFullYear(), today.getMonth(), 1),
     selectedDateKey: getTodayKey(),
     categories: await ensureDefaultCategories(user.id),
     store: await fetchUserTodos(user.id),
     personalStore: null,
+    isAddingTodo: false,
     onSelect: null,
     onSelectGroupEvent: null,
     group: null,
@@ -1098,7 +1132,6 @@ async function initPageCalendar(loadingController) {
 
     renderAll();
 
-    entrySheet?.close({ restoreFocus: false });
   }
 
   function selectGroupEvent(event) {
@@ -1154,7 +1187,45 @@ async function initPageCalendar(loadingController) {
     }
   }
 
-  async function saveTodoEdit(todoId, { text, memo, category, dateKey }) {
+  function validateTimeRange({
+    startDate,
+    startTime,
+    endDate,
+    endTime,
+    requireStartTime = false,
+  }) {
+    if (!isValidDateKey(startDate)) {
+      alert('올바른 시작 날짜를 선택해줘.');
+      return false;
+    }
+    if (requireStartTime && !startTime) {
+      alert('시작시간을 지정해줘.');
+      return false;
+    }
+    if (!endDate && !endTime) return true;
+    if (!startTime) {
+      alert('종료시간을 지정하려면 시작시간을 먼저 지정해줘.');
+      return false;
+    }
+    if (!isValidDateKey(endDate) || !endTime) {
+      alert('종료 날짜와 시간을 모두 지정해줘.');
+      return false;
+    }
+    if (endDate < startDate) {
+      alert('종료 날짜는 시작 날짜보다 빠를 수 없어.');
+      return false;
+    }
+    if (endDate === startDate && endTime < startTime) {
+      alert('같은 날 종료시간은 시작시간보다 빠를 수 없어.');
+      return false;
+    }
+    return true;
+  }
+
+  async function saveTodoEdit(
+    todoId,
+    { text, memo, category, dateKey, todoTime, todoEndDate, todoEndTime },
+  ) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
     const fallback = getFallbackCategory(state.categories);
@@ -1165,10 +1236,23 @@ async function initPageCalendar(loadingController) {
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
     const nextDateKey = String(dateKey || target.date || state.selectedDateKey);
+    const nextTime = normalizeCalendarTime(todoTime);
+    const nextEndDate = String(todoEndDate || '');
+    const nextEndTime = normalizeCalendarTime(todoEndTime);
 
     if (!nextText || !nextCategory?.id || !isValidDateKey(nextDateKey)) {
       alert('올바른 날짜와 제목을 입력해줘.');
       throw new Error('Invalid study calendar values.');
+    }
+    if (
+      !validateTimeRange({
+        startDate: nextDateKey,
+        startTime: nextTime,
+        endDate: nextEndDate,
+        endTime: nextEndTime,
+      })
+    ) {
+      throw new Error('Invalid study calendar time range.');
     }
 
     await saveTodoAtomic({
@@ -1176,6 +1260,9 @@ async function initPageCalendar(loadingController) {
       text: nextText,
       memo: nextMemo,
       dateKey: nextDateKey,
+      todoTime: nextTime,
+      todoEndDate: nextEndDate || null,
+      todoEndTime: nextEndTime,
       categoryId: nextCategory.id,
     });
     await reloadStoreForMode();
@@ -1187,20 +1274,33 @@ async function initPageCalendar(loadingController) {
     refreshGroupBackupNeeded();
   }
 
-  function openTodoDetail(todo, opener) {
-    const category = getCategoryByTodo(todo, state.categories);
+  function openStudyDetailSheet({ todo = null, opener = entrySheetOpen } = {}) {
+    const isEdit = Boolean(todo?.id);
+    const category = isEdit
+      ? getCategoryByTodo(todo, state.categories)
+      : getFallbackCategory(state.categories);
+    const startDate = isEdit
+      ? todo.date || state.selectedDateKey
+      : state.selectedDateKey;
+    const startTime = isEdit ? normalizeCalendarTime(todo.todoTime) : '';
+    const endDate = isEdit ? String(todo.todoEndDate || '') : '';
+    const endTime = isEdit ? normalizeCalendarTime(todo.todoEndTime) : '';
+
     openCalendarDetailSheet({
       calendarType: 'study',
-      mode: 'edit',
-      title: '할 일',
+      mode: isEdit ? 'edit' : 'create',
+      title: isEdit ? '할 일' : '할 일 추가',
+      submitLabel: isEdit ? '저장' : '완료',
       opener,
       fields: [
-        { key: 'title', label: '제목', value: todo.text || '' },
+        { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
         {
           key: 'categoryId',
           label: '카테고리',
           type: 'select',
-          value: getTodoCategorySelectValue(todo, state.categories),
+          value: isEdit
+            ? getTodoCategorySelectValue(todo, state.categories)
+            : category?.id || '',
           options: state.categories.map((item) => ({
             value: item.id,
             label: item.name,
@@ -1208,29 +1308,112 @@ async function initPageCalendar(loadingController) {
           onSettings: openCategoryModal,
         },
         {
-          key: 'date',
-          label: '날짜',
-          type: 'date',
-          value: todo.date || state.selectedDateKey,
+          key: 'studyStart',
+          label: '시작',
+          type: 'calendar-datetime',
+          value: joinLocalDateTimeValue(startDate, startTime),
+          required: true,
+          allowEmptyTime: true,
+          timePlaceholder: '시작시간 지정',
         },
-        { key: 'memo', label: '메모', type: 'textarea', value: todo.memo || '' },
+        {
+          key: 'studyEnd',
+          label: '종료',
+          type: 'calendar-datetime',
+          value: endDate && endTime
+            ? joinLocalDateTimeValue(endDate, endTime)
+            : '',
+          optional: true,
+          optionalLabel: '종료시간 지정',
+          clearLabel: '해제',
+          getDefaultValue: ({ getValue }) => getValue('studyStart'),
+        },
+        {
+          key: 'memo',
+          label: '메모',
+          type: 'textarea',
+          value: isEdit ? todo.memo || '' : '',
+        },
       ],
       onSave: async (values) => {
         const nextCategory =
           state.categories.find((item) => item.id === values.categoryId) ||
           category ||
           getFallbackCategory(state.categories);
-        await saveTodoEdit(todo.id, {
-          text: values.title,
-          memo: values.memo,
-          category: nextCategory,
-          dateKey: values.date,
+        const nextStart = splitLocalDateTimeValue(values.studyStart, {
+          date: startDate,
+          time: startTime,
         });
+        const nextEnd = splitLocalDateTimeValue(values.studyEnd);
+        const nextText = String(values.title || '').trim();
+
+        if (!nextText) {
+          alert('제목을 입력해줘.');
+          throw new Error('Missing study title.');
+        }
+        if (
+          !validateTimeRange({
+            startDate: nextStart.date,
+            startTime: nextStart.time,
+            endDate: nextEnd.date,
+            endTime: nextEnd.time,
+            requireStartTime: !isEdit,
+          })
+        ) {
+          throw new Error('Invalid study calendar time range.');
+        }
+
+        if (isEdit) {
+          await saveTodoEdit(todo.id, {
+            text: nextText,
+            memo: values.memo,
+            category: nextCategory,
+            dateKey: nextStart.date,
+            todoTime: nextStart.time,
+            todoEndDate: nextEnd.date || null,
+            todoEndTime: nextEnd.time,
+          });
+          return;
+        }
+
+        if (state.isAddingTodo) throw new Error('Study todo save in progress.');
+        state.isAddingTodo = true;
+        try {
+          const latestCategory = await refreshCategories(nextCategory?.id || '');
+          const nextTodo = await insertTodo({
+            userId: state.userId,
+            dateKey: nextStart.date,
+            text: nextText,
+            memo: String(values.memo || ''),
+            todoTime: nextStart.time,
+            todoEndDate: nextEnd.date || null,
+            todoEndTime: nextEnd.time,
+            category: latestCategory,
+          });
+          state.selectedDateKey = nextStart.date;
+          const [year, month] = nextStart.date.split('-').map(Number);
+          state.viewDate = new Date(year, month - 1, 1);
+          await reloadStoreForMode();
+          renderAll();
+          state.group?.refresh?.();
+          scheduleCalendarWidgetRefresh();
+          refreshGroupBackupNeeded();
+          return nextTodo;
+        } catch (error) {
+          alert('할 일 추가에 실패했어. 잠시 후 다시 시도해줘.');
+          throw error;
+        } finally {
+          state.isAddingTodo = false;
+        }
       },
-      onDelete: async () => {
-        return deleteTodo(todo.id);
-      },
+      onDelete: isEdit
+        ? async () => deleteTodo(todo.id)
+        : undefined,
     });
+  }
+
+  function openTodoDetail(todo, opener) {
+    openStudyDetailSheet({ todo, opener });
   }
 
   state.onSelect = selectDate;
@@ -1474,50 +1657,8 @@ async function initPageCalendar(loadingController) {
     void changeMonth(1);
   });
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    const text = input.value.trim();
-    const memo = memoInput.value.trim();
-    const selectedCategoryId = typeSelect.value;
-    const dateKey = document.getElementById('studyTodoDate')?.value || '';
-
-    if (!text || !isValidDateKey(dateKey)) {
-      if (!dateKey) alert('날짜를 선택해줘.');
-      input.focus();
-      return;
-    }
-
-    try {
-      const category = await refreshCategories(selectedCategoryId);
-
-
-      const nextTodo = await insertTodo({
-        userId: state.userId,
-        dateKey,
-        text,
-        memo,
-        category,
-      });
-
-      state.selectedDateKey = dateKey;
-      const [year, month] = dateKey.split('-').map(Number);
-      state.viewDate = new Date(year, month - 1, 1);
-      await reloadStoreForMode();
-
-      input.value = '';
-      memoInput.value = '';
-      autoResizeTextarea(memoInput);
-
-      renderAll();
-      state.group?.refresh?.();
-      scheduleCalendarWidgetRefresh();
-      refreshGroupBackupNeeded();
-
-      entrySheet?.close();
-    } catch (error) {
-      alert('할 일 추가에 실패했어. 잠시 후 다시 시도해줘.');
-    }
+  entrySheetOpen?.addEventListener('click', () => {
+    openStudyDetailSheet({ opener: entrySheetOpen });
   });
 
   memoInput.addEventListener('input', () => {

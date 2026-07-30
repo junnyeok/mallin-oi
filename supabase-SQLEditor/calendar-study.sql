@@ -7,6 +7,9 @@ create table if not exists public.study_calendar_todos (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   todo_date date not null,
+  todo_time time without time zone,
+  todo_end_date date,
+  todo_end_time time without time zone,
   todo_type text not null default 'study',
   todo_text text not null,
   memo text not null default '',
@@ -15,8 +18,41 @@ create table if not exists public.study_calendar_todos (
   updated_at timestamptz not null default now(),
 
   constraint study_calendar_todos_type_check
-    check (todo_type in ('study', 'workout', 'etc'))
+    check (todo_type in ('study', 'workout', 'etc')),
+
+  constraint study_calendar_todos_time_range_check
+    check (
+      (todo_end_date is null) = (todo_end_time is null)
+      and (todo_end_time is null or todo_time is not null)
+      and (todo_end_date is null or todo_end_date >= todo_date)
+      and (
+        todo_end_date is null
+        or todo_end_date > todo_date
+        or todo_end_time >= todo_time
+      )
+    )
 );
+
+alter table public.study_calendar_todos
+  add column if not exists todo_time time without time zone,
+  add column if not exists todo_end_date date,
+  add column if not exists todo_end_time time without time zone;
+
+alter table public.study_calendar_todos
+  drop constraint if exists study_calendar_todos_time_range_check;
+
+alter table public.study_calendar_todos
+  add constraint study_calendar_todos_time_range_check
+  check (
+    (todo_end_date is null) = (todo_end_time is null)
+    and (todo_end_time is null or todo_time is not null)
+    and (todo_end_date is null or todo_end_date >= todo_date)
+    and (
+      todo_end_date is null
+      or todo_end_date > todo_date
+      or todo_end_time >= todo_time
+    )
+  );
 
 create index if not exists study_calendar_todos_user_date_idx
   on public.study_calendar_todos (user_id, todo_date);

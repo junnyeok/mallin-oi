@@ -12,6 +12,12 @@ import {
   openCalendarDetailSheet,
 } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
+import {
+  isOvernightTimeRange,
+  normalizeCalendarTime,
+  openCalendarTimePicker,
+  setCalendarTimeInputValue,
+} from './calendar-time.js';
 
 let appendCalendarGroupBoard;
 let getVisiblePersonalTodos;
@@ -231,6 +237,74 @@ function normalizeColor(color) {
   return '#eaffd7';
 }
 
+function setWorkCategoryTimeInputValue(input, value, options = {}) {
+  setCalendarTimeInputValue(input, value, {
+    emptyLabel: options.emptyLabel,
+  });
+
+  if (
+    options.isEnd &&
+    isOvernightTimeRange(options.startTime, input?.dataset.time)
+  ) {
+    input.value = `${input.value} · 익일`;
+    input.title = '다음 날 종료';
+    return;
+  }
+
+  if (input) input.title = '';
+}
+
+function validateWorkCategoryTimes(startTime, endTime) {
+  const start = normalizeCalendarTime(startTime);
+  const end = normalizeCalendarTime(endTime);
+
+  if (end && !start) {
+    alert('종료시간을 지정하려면 시작시간을 먼저 지정해줘.');
+    return null;
+  }
+
+  return {
+    startTime: start,
+    endTime: end,
+    endsNextDay: isOvernightTimeRange(start, end),
+  };
+}
+
+function bindWorkCategoryTimeInput({
+  input,
+  getStartTime,
+  onChange,
+  isEnd = false,
+  emptyLabel,
+  ariaLabel,
+}) {
+  if (!input) return;
+
+  input.addEventListener('click', () => {
+    const startTime = normalizeCalendarTime(getStartTime?.());
+    if (isEnd && !startTime) {
+      alert('종료시간을 지정하려면 시작시간을 먼저 지정해줘.');
+      return;
+    }
+
+    openCalendarTimePicker({
+      anchorEl: input,
+      initialTime: input.dataset.time,
+      allowEmpty: true,
+      ariaLabel,
+      clearLabel: isEnd ? '종료시간 해제' : '시작시간 해제',
+      onChange: (nextTime) => {
+        onChange?.(normalizeCalendarTime(nextTime));
+        setWorkCategoryTimeInputValue(input, nextTime, {
+          emptyLabel,
+          isEnd,
+          startTime: getStartTime?.(),
+        });
+      },
+    });
+  });
+}
+
 function getCategoryTextColor(bgColor) {
   const color = normalizeColor(bgColor).replace('#', '');
   const r = parseInt(color.slice(0, 2), 16);
@@ -357,7 +431,7 @@ async function fetchUserCategories(userId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, start_time, end_time, ends_next_day, is_default, sort_order, created_at',
     )
     .eq('user_id', userId)
     .order('sort_order', { ascending: true })
@@ -377,7 +451,7 @@ async function fetchCategoryById(userId, categoryId) {
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, start_time, end_time, ends_next_day, is_default, sort_order, created_at',
     )
     .eq('user_id', userId)
     .eq('id', categoryId)
@@ -655,7 +729,17 @@ async function deleteTodoById(todoId) {
   }
 }
 
-async function insertCategory({ userId, name, color, sortOrder }) {
+async function insertCategory({
+  userId,
+  name,
+  color,
+  startTime,
+  endTime,
+  sortOrder,
+}) {
+  const times = validateWorkCategoryTimes(startTime, endTime);
+  if (!times) throw new Error('Invalid work category time range.');
+
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .insert({
@@ -663,11 +747,14 @@ async function insertCategory({ userId, name, color, sortOrder }) {
       name: normalizeCategoryName(name),
       slug: `custom-${crypto.randomUUID()}`,
       color: normalizeColor(color),
+      start_time: times.startTime || null,
+      end_time: times.endTime || null,
+      ends_next_day: times.endsNextDay,
       is_default: false,
       sort_order: sortOrder || 100,
     })
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, start_time, end_time, ends_next_day, is_default, sort_order, created_at',
     )
     .single();
 
@@ -679,16 +766,22 @@ async function insertCategory({ userId, name, color, sortOrder }) {
   return data;
 }
 
-async function updateCategory({ categoryId, name, color }) {
+async function updateCategory({ categoryId, name, color, startTime, endTime }) {
+  const times = validateWorkCategoryTimes(startTime, endTime);
+  if (!times) throw new Error('Invalid work category time range.');
+
   const { data, error } = await supabase
     .from(CATEGORY_TABLE_NAME)
     .update({
       name: normalizeCategoryName(name),
       color: normalizeColor(color),
+      start_time: times.startTime || null,
+      end_time: times.endTime || null,
+      ends_next_day: times.endsNextDay,
     })
     .eq('id', categoryId)
     .select(
-      'id, user_id, name, slug, color, is_default, sort_order, created_at',
+      'id, user_id, name, slug, color, start_time, end_time, ends_next_day, is_default, sort_order, created_at',
     )
     .single();
 
@@ -793,6 +886,9 @@ function renderCategoryList({
     const item = makeEl('li', 'work-category-list__item');
     const dot = makeEl('span', 'work-category-list__dot');
     const input = document.createElement('input');
+    const times = makeEl('div', 'work-category-list__times');
+    const startTimeInput = document.createElement('input');
+    const endTimeInput = document.createElement('input');
     const color = document.createElement('input');
     const saveButton = makeEl('button', 'work-category-list__save', '저장');
     const deleteButton = makeEl('button', 'work-category-list__delete', '삭제');
@@ -803,6 +899,60 @@ function renderCategoryList({
     input.type = 'text';
     input.maxLength = 20;
     input.value = category.name;
+    input.setAttribute('aria-label', `${category.name} 이름`);
+
+    startTimeInput.className = 'work-category-time-input';
+    startTimeInput.type = 'text';
+    startTimeInput.readOnly = true;
+    startTimeInput.inputMode = 'none';
+    startTimeInput.setAttribute('aria-label', `${category.name} 시작시간`);
+    setWorkCategoryTimeInputValue(startTimeInput, category.start_time, {
+      emptyLabel: '시작시간 지정',
+    });
+
+    endTimeInput.className = 'work-category-time-input';
+    endTimeInput.type = 'text';
+    endTimeInput.readOnly = true;
+    endTimeInput.inputMode = 'none';
+    endTimeInput.setAttribute('aria-label', `${category.name} 종료시간`);
+    setWorkCategoryTimeInputValue(endTimeInput, category.end_time, {
+      emptyLabel: '종료시간 지정',
+      isEnd: true,
+      startTime: category.start_time,
+    });
+
+    bindWorkCategoryTimeInput({
+      input: startTimeInput,
+      getStartTime: () => startTimeInput.dataset.time,
+      emptyLabel: '시작시간 지정',
+      ariaLabel: `${category.name} 시작시간 선택`,
+      onChange: (nextTime) => {
+        if (!nextTime) {
+          setWorkCategoryTimeInputValue(endTimeInput, '', {
+            emptyLabel: '종료시간 지정',
+            isEnd: true,
+          });
+          return;
+        }
+        setWorkCategoryTimeInputValue(
+          endTimeInput,
+          endTimeInput.dataset.time,
+          {
+            emptyLabel: '종료시간 지정',
+            isEnd: true,
+            startTime: nextTime,
+          },
+        );
+      },
+    });
+    bindWorkCategoryTimeInput({
+      input: endTimeInput,
+      getStartTime: () => startTimeInput.dataset.time,
+      isEnd: true,
+      emptyLabel: '종료시간 지정',
+      ariaLabel: `${category.name} 종료시간 선택`,
+    });
+    times.append(startTimeInput, endTimeInput);
 
     color.className = 'work-category-list__color';
     color.type = 'color';
@@ -813,19 +963,31 @@ function renderCategoryList({
     deleteButton.type = 'button';
     deleteButton.disabled = Boolean(category.is_default);
 
-    saveButton.addEventListener('click', () => {
-      onSave?.({
-        category,
-        name: input.value,
-        color: color.value,
-      });
+    saveButton.addEventListener('click', async () => {
+      if (saveButton.disabled) return;
+      saveButton.disabled = true;
+      saveButton.textContent = '저장 중';
+      try {
+        await onSave?.({
+          category,
+          name: input.value,
+          color: color.value,
+          startTime: startTimeInput.dataset.time,
+          endTime: endTimeInput.dataset.time,
+        });
+      } finally {
+        if (saveButton.isConnected) {
+          saveButton.disabled = false;
+          saveButton.textContent = '저장';
+        }
+      }
     });
 
     deleteButton.addEventListener('click', () => {
       onDelete?.(category);
     });
 
-    item.append(dot, input, color, saveButton, deleteButton);
+    item.append(dot, input, times, color, saveButton, deleteButton);
     root.append(item);
   });
 }
@@ -1097,6 +1259,10 @@ async function initPageCalendar(loadingController) {
   const categoryClose = document.getElementById('workCategoryClose');
   const categoryForm = document.getElementById('workCategoryForm');
   const categoryNameInput = document.getElementById('workCategoryName');
+  const categoryStartTimeInput = document.getElementById(
+    'workCategoryStartTime',
+  );
+  const categoryEndTimeInput = document.getElementById('workCategoryEndTime');
   const categoryColorInput = document.getElementById('workCategoryColor');
   const categoryPalette = document.getElementById('workCategoryPalette');
   const categoryList = document.getElementById('workCategoryList');
@@ -1508,13 +1674,19 @@ async function initPageCalendar(loadingController) {
     );
   }
 
-  async function saveCategory({ category, name, color }) {
+  async function saveCategory({
+    category,
+    name,
+    color,
+    startTime,
+    endTime,
+  }) {
     const safeName = normalizeCategoryName(name);
     const safeColor = normalizeColor(color);
 
     if (!safeName) {
       alert('카테고리 이름을 입력해줘.');
-      return;
+      throw createHandledCalendarError('Missing work category name.');
     }
 
     const duplicated = state.categories.some(
@@ -1525,7 +1697,12 @@ async function initPageCalendar(loadingController) {
 
     if (duplicated) {
       alert('이미 같은 이름의 카테고리가 있어.');
-      return;
+      throw createHandledCalendarError('Duplicated work category name.');
+    }
+
+    const times = validateWorkCategoryTimes(startTime, endTime);
+    if (!times) {
+      throw createHandledCalendarError('Invalid work category times.');
     }
 
     try {
@@ -1533,6 +1710,8 @@ async function initPageCalendar(loadingController) {
         categoryId: category.id,
         name: safeName,
         color: safeColor,
+        startTime: times.startTime,
+        endTime: times.endTime,
       });
 
       const selectedCategoryId = typeSelect.value;
@@ -1545,6 +1724,7 @@ async function initPageCalendar(loadingController) {
       renderAll();
     } catch (error) {
       alert('카테고리 수정에 실패했어. 잠시 후 다시 시도해줘.');
+      throw error;
     }
   }
 
@@ -1854,17 +2034,66 @@ async function initPageCalendar(loadingController) {
     });
   }
 
+  if (categoryStartTimeInput && categoryEndTimeInput) {
+    setWorkCategoryTimeInputValue(categoryStartTimeInput, '', {
+      emptyLabel: '시작시간 지정',
+    });
+    setWorkCategoryTimeInputValue(categoryEndTimeInput, '', {
+      emptyLabel: '종료시간 지정',
+      isEnd: true,
+    });
+
+    bindWorkCategoryTimeInput({
+      input: categoryStartTimeInput,
+      getStartTime: () => categoryStartTimeInput.dataset.time,
+      emptyLabel: '시작시간 지정',
+      ariaLabel: '새 업무 카테고리 시작시간 선택',
+      onChange: (nextTime) => {
+        if (!nextTime) {
+          setWorkCategoryTimeInputValue(categoryEndTimeInput, '', {
+            emptyLabel: '종료시간 지정',
+            isEnd: true,
+          });
+          return;
+        }
+        setWorkCategoryTimeInputValue(
+          categoryEndTimeInput,
+          categoryEndTimeInput.dataset.time,
+          {
+            emptyLabel: '종료시간 지정',
+            isEnd: true,
+            startTime: nextTime,
+          },
+        );
+      },
+    });
+    bindWorkCategoryTimeInput({
+      input: categoryEndTimeInput,
+      getStartTime: () => categoryStartTimeInput.dataset.time,
+      isEnd: true,
+      emptyLabel: '종료시간 지정',
+      ariaLabel: '새 업무 카테고리 종료시간 선택',
+    });
+  }
+
   if (categoryForm && categoryNameInput && categoryColorInput) {
+    let isAddingCategory = false;
     categoryForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (isAddingCategory) return;
 
       const name = normalizeCategoryName(categoryNameInput.value);
       const color = normalizeColor(categoryColorInput.value);
+      const times = validateWorkCategoryTimes(
+        categoryStartTimeInput?.dataset.time,
+        categoryEndTimeInput?.dataset.time,
+      );
 
       if (!name) {
         categoryNameInput.focus();
         return;
       }
+      if (!times) return;
 
       const duplicated = state.categories.some(
         (category) => category.name.trim().toLowerCase() === name.toLowerCase(),
@@ -1876,11 +2105,20 @@ async function initPageCalendar(loadingController) {
         return;
       }
 
+      const submitButton = categoryForm.querySelector('[type="submit"]');
+      isAddingCategory = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = '추가 중';
+      }
+
       try {
         const nextCategory = await insertCategory({
           userId: state.userId,
           name,
           color,
+          startTime: times.startTime,
+          endTime: times.endTime,
           sortOrder: 100 + state.categories.length,
         });
 
@@ -1888,6 +2126,13 @@ async function initPageCalendar(loadingController) {
         typeSelect.value = nextCategory.id;
         categoryNameInput.value = '';
         categoryColorInput.value = '#eaffd7';
+        setWorkCategoryTimeInputValue(categoryStartTimeInput, '', {
+          emptyLabel: '시작시간 지정',
+        });
+        setWorkCategoryTimeInputValue(categoryEndTimeInput, '', {
+          emptyLabel: '종료시간 지정',
+          isEnd: true,
+        });
 
         renderAll();
         syncOpenCategorySelect(nextCategory.id);
@@ -1898,6 +2143,12 @@ async function initPageCalendar(loadingController) {
         });
       } catch (error) {
         alert('카테고리 추가에 실패했어. 이름 중복 여부를 확인해줘.');
+      } finally {
+        isAddingCategory = false;
+        if (submitButton?.isConnected) {
+          submitButton.disabled = false;
+          submitButton.textContent = '추가';
+        }
       }
     });
   }

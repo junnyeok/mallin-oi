@@ -1,5 +1,9 @@
 import { GAME_CONFIG } from "./game-config.js";
-import { createInitialGameState, normalizeGameState } from "./game-state.js";
+import {
+  createInitialGameState,
+  detectGameStateSchema,
+  normalizeGameState,
+} from "./game-state.js";
 import { synchronizeDerivedState } from "./game-engine.js";
 
 function getBrowserStorage() {
@@ -29,16 +33,18 @@ export function loadGameSave(storage = getBrowserStorage(), now = Date.now()) {
     }
 
     const parsed = JSON.parse(storedValue);
-    const hasSupportedVersion =
-      parsed &&
-      typeof parsed === "object" &&
-      parsed.saveVersion === GAME_CONFIG.saveVersion;
+    const schema = detectGameStateSchema(parsed);
     const state = normalizeGameState(parsed, now);
     synchronizeDerivedState(state);
 
     return {
       state,
-      status: hasSupportedVersion ? "loaded" : "recovered",
+      status:
+        schema === "v2"
+          ? "loaded"
+          : schema === "legacy"
+            ? "migrated"
+            : "recovered",
     };
   } catch {
     return {
@@ -61,6 +67,10 @@ export function saveGame(
     {
       ...state,
       facilities: { ...state.facilities },
+      plots: state.plots.map((plot) => ({
+        ...plot,
+        slots: plot.slots.map((slot) => ({ ...slot })),
+      })),
       settings: { ...state.settings },
       saveVersion: GAME_CONFIG.saveVersion,
       lastSavedAt: now,

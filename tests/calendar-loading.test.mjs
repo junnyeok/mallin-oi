@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { inflateSync } from 'node:zlib';
 
 import {
-  CALENDAR_LOADING_SPRITE,
+  CALENDAR_LOADING_IMAGE_PATHS,
+  CALENDAR_LOADING_TIMING,
   createCalendarLoadingController,
+  getCalendarLoadingImageUrl,
 } from '../assets/js/modules/calendar-loading.js';
 
 const ROOT_FILES = [
@@ -21,85 +21,15 @@ const ROOT_FILES = [
   'assets/js/modules/event-calendar.js',
 ];
 
-function decodeRgbaPng(buffer) {
+function readPngMetadata(buffer) {
   assert.deepEqual([...buffer.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
-  const width = buffer.readUInt32BE(16);
-  const height = buffer.readUInt32BE(20);
-  const bitDepth = buffer[24];
-  const colorType = buffer[25];
-  const idat = [];
-  let offset = 8;
-
-  while (offset < buffer.length) {
-    const length = buffer.readUInt32BE(offset);
-    const type = buffer.toString('ascii', offset + 4, offset + 8);
-    if (type === 'IDAT') idat.push(buffer.subarray(offset + 8, offset + 8 + length));
-    offset += 12 + length;
-    if (type === 'IEND') break;
-  }
-
-  assert.equal(bitDepth, 8);
-  assert.equal(colorType, 6);
-  const bytesPerPixel = 4;
-  const stride = width * bytesPerPixel;
-  const encoded = inflateSync(Buffer.concat(idat));
-  const pixels = Buffer.alloc(width * height * bytesPerPixel);
-
-  for (let y = 0; y < height; y += 1) {
-    const filter = encoded[y * (stride + 1)];
-    const rowStart = y * (stride + 1) + 1;
-    const pixelStart = y * stride;
-    assert.ok(filter >= 0 && filter <= 4, `unsupported PNG filter ${filter}`);
-    for (let x = 0; x < stride; x += 1) {
-      const raw = encoded[rowStart + x];
-      const left = x >= bytesPerPixel ? pixels[pixelStart + x - bytesPerPixel] : 0;
-      const up = y > 0 ? pixels[pixelStart + x - stride] : 0;
-      const upLeft =
-        y > 0 && x >= bytesPerPixel
-          ? pixels[pixelStart + x - stride - bytesPerPixel]
-          : 0;
-      let value = raw;
-
-      if (filter === 1) value += left;
-      if (filter === 2) value += up;
-      if (filter === 3) value += Math.floor((left + up) / 2);
-      if (filter === 4) {
-        const prediction = left + up - upLeft;
-        const leftDistance = Math.abs(prediction - left);
-        const upDistance = Math.abs(prediction - up);
-        const diagonalDistance = Math.abs(prediction - upLeft);
-        value +=
-          leftDistance <= upDistance && leftDistance <= diagonalDistance
-            ? left
-            : upDistance <= diagonalDistance
-              ? up
-              : upLeft;
-      }
-      pixels[pixelStart + x] = value & 0xff;
-    }
-  }
-
-  return { width, height, bitDepth, colorType, pixels };
-}
-
-function getFrameBytes(image, frameIndex) {
-  const { columns, frameWidth, frameHeight } = CALENDAR_LOADING_SPRITE;
-  const frameX = (frameIndex % columns) * frameWidth;
-  const frameY = Math.floor(frameIndex / columns) * frameHeight;
-  const frame = Buffer.alloc(frameWidth * frameHeight * 4);
-
-  for (let y = 0; y < frameHeight; y += 1) {
-    const sourceStart = ((frameY + y) * image.width + frameX) * 4;
-    const targetStart = y * frameWidth * 4;
-    image.pixels.copy(
-      frame,
-      targetStart,
-      sourceStart,
-      sourceStart + frameWidth * 4,
-    );
-  }
-
-  return frame;
+  assert.equal(buffer.toString('ascii', 12, 16), 'IHDR');
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+    bitDepth: buffer[24],
+    colorType: buffer[25],
+  };
 }
 
 class FakeClassList {
@@ -200,6 +130,9 @@ class FakeWindow {
   constructor() {
     this.listeners = new Map();
     this.animationFrameCount = 0;
+    this.currentTime = 0;
+    this.nextTimerId = 1;
+    this.timers = new Map();
   }
 
   requestAnimationFrame(callback) {
@@ -217,9 +150,41 @@ class FakeWindow {
   removeEventListener(type, listener) {
     this.listeners.get(type)?.delete(listener);
   }
+
+  setTimeout(callback, delay = 0) {
+    const id = this.nextTimerId;
+    this.nextTimerId += 1;
+    this.timers.set(id, {
+      callback,
+      dueAt: this.currentTime + Math.max(0, Number(delay) || 0),
+    });
+    return id;
+  }
+
+  clearTimeout(id) {
+    this.timers.delete(id);
+  }
+
+  advanceTime(milliseconds) {
+    const targetTime = this.currentTime + milliseconds;
+
+    while (true) {
+      const nextTimer = [...this.timers.entries()]
+        .filter(([, timer]) => timer.dueAt <= targetTime)
+        .sort((left, right) => left[1].dueAt - right[1].dueAt)[0];
+      if (!nextTimer) break;
+
+      const [id, timer] = nextTimer;
+      this.currentTime = timer.dueAt;
+      this.timers.delete(id);
+      timer.callback();
+    }
+
+    this.currentTime = targetTime;
+  }
 }
 
-function createFakeCalendarRoot() {
+function createFakeCalendarRoot(calendarType = '') {
   const windowRef = new FakeWindow();
   const documentRef = {
     defaultView: windowRef,
@@ -227,6 +192,7 @@ function createFakeCalendarRoot() {
     createElement: () => new FakeElement(documentRef),
   };
   const root = new FakeElement(documentRef);
+  if (calendarType) root.setAttribute('data-calendar-type', calendarType);
   documentRef.activeElement = root;
   return { root, documentRef, windowRef };
 }
@@ -241,97 +207,56 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-test('저장소 PNG는 1280×1280 RGBA의 4×4, 16개 비중복 프레임이다', async () => {
-  const buffer = await readFile(
-    'images/calendar/dancing-cucumber-sprite-sheet.png',
-  );
-  const image = decodeRgbaPng(buffer);
-  assert.equal(
-    createHash('sha256').update(buffer).digest('hex'),
-    '2db6c66dc02cfb9d86f69d5315c3745f2846cc0eaa261556a73c1044d94dba7b',
-    '스프라이트 원본 해시가 유지되어야 한다',
-  );
+async function flushMicrotasks() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
-  assert.deepEqual(
-    {
+test('세 캘린더는 손상되지 않은 투명 PNG와 정확히 매핑되고 알 수 없는 타입은 폴백 이미지를 쓰지 않는다', async () => {
+  const expected = {
+    study: {
+      path: 'assets/images/calendar/logo-study.png',
+      width: 1024,
+      height: 1024,
+    },
+    work: {
+      path: 'assets/images/calendar/logo-work.png',
+      width: 568,
+      height: 805,
+    },
+    event: {
+      path: 'assets/images/calendar/logo-event.png',
+      width: 992,
+      height: 1035,
+    },
+  };
+
+  assert.deepEqual(CALENDAR_LOADING_IMAGE_PATHS, {
+    study: expected.study.path,
+    work: expected.work.path,
+    event: expected.event.path,
+  });
+
+  for (const [calendarType, image] of Object.entries(expected)) {
+    const metadata = readPngMetadata(await readFile(image.path));
+    assert.deepEqual(metadata, {
       width: image.width,
       height: image.height,
-      bitDepth: image.bitDepth,
-      colorType: image.colorType,
-    },
-    { width: 1280, height: 1280, bitDepth: 8, colorType: 6 },
-  );
-  assert.deepEqual(CALENDAR_LOADING_SPRITE, {
-    path: './images/calendar/dancing-cucumber-sprite-sheet.png',
-    sheetWidth: 1280,
-    sheetHeight: 1280,
-    columns: 4,
-    rows: 4,
-    frameCount: 16,
-    frameWidth: 320,
-    frameHeight: 320,
-    cycleDurationMs: 5000,
-    frameOrder: 'row-major',
-  });
+      bitDepth: 8,
+      colorType: 6,
+    });
+    assert.ok(
+      getCalendarLoadingImageUrl(calendarType).endsWith(`/${image.path}`),
+    );
+  }
 
-  const frames = Array.from({ length: 16 }, (_, index) =>
-    getFrameBytes(image, index),
-  );
-  const signatures = frames.map((frame) => frame.toString('base64'));
-  assert.equal(new Set(signatures).size, 16, '빈 프레임이나 완전 중복이 없어야 한다');
-  frames.forEach((frame, index) => {
-    let visiblePixelCount = 0;
-    for (let offset = 3; offset < frame.length; offset += 4) {
-      if (frame[offset] > 0) visiblePixelCount += 1;
-    }
-    assert.ok(visiblePixelCount > 30_000, `${index}번 프레임에 캐릭터가 있어야 한다`);
-  });
+  assert.equal(getCalendarLoadingImageUrl('unknown'), null);
+  assert.equal(getCalendarLoadingImageUrl(''), null);
 });
 
-test('스프라이트는 행 우선 16프레임을 단계형으로 정확히 5초 순환한다', async () => {
-  const css = await readFile(
-    'assets/css/components/calendar-loading.css',
-    'utf8',
-  );
-  const positions = [
-    '0% 0%',
-    '33.333333% 0%',
-    '66.666667% 0%',
-    '100% 0%',
-    '0% 33.333333%',
-    '33.333333% 33.333333%',
-    '66.666667% 33.333333%',
-    '100% 33.333333%',
-    '0% 66.666667%',
-    '33.333333% 66.666667%',
-    '66.666667% 66.666667%',
-    '100% 66.666667%',
-    '0% 100%',
-    '33.333333% 100%',
-    '66.666667% 100%',
-    '100% 100%',
-  ];
-
-  let previousIndex = -1;
-  positions.forEach((position) => {
-    const index = css.indexOf(`background-position: ${position};`, previousIndex + 1);
-    assert.ok(index > previousIndex, `${position} 프레임 순서가 필요하다`);
-    previousIndex = index;
-  });
-  assert.match(css, /animation:\s*calendar-cucumber-dance 5s steps\(1, end\) infinite/);
-  assert.match(css, /background-size:\s*400% 400%/);
-  assert.match(css, /\.calendar-loading-overlay\[hidden\]\s*\{\s*display:\s*none;/s);
-  assert.match(
-    css,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none;[\s\S]*background-position:\s*0% 0%;/,
-  );
-  assert.doesNotMatch(
-    css.slice(0, css.indexOf('.calendar-loading-overlay.is-active')),
-    /animation:\s*calendar-cucumber-dance/,
-  );
-});
-
-test('로딩 오버레이는 캘린더 본문만 불투명하게 덮고 세 점을 순차 표시한다', async () => {
+test('로딩 오버레이는 캘린더 본문을 반투명하게 덮고 세 점을 순차 표시한다', async () => {
   const css = await readFile(
     'assets/css/components/calendar-loading.css',
     'utf8',
@@ -346,10 +271,31 @@ test('로딩 오버레이는 캘린더 본문만 불투명하게 덮고 세 점�
   assert.match(overlayRule, /position:\s*absolute/);
   assert.doesNotMatch(overlayRule, /position:\s*fixed/);
   assert.match(overlayRule, /inset:\s*0/);
-  assert.match(overlayRule, /background:\s*var\(--color-surface\)/);
-  assert.match(overlayRule, /pointer-events:\s*auto/);
-  assert.doesNotMatch(overlayRule, /opacity|color-mix|transparent/);
+  assert.match(overlayRule, /background:\s*rgba\(255, 255, 255, 0\.86\)/);
+  assert.match(overlayRule, /backdrop-filter:\s*blur\(2px\)/);
+  assert.match(overlayRule, /opacity:\s*0/);
+  assert.match(overlayRule, /visibility:\s*hidden/);
+  assert.match(overlayRule, /pointer-events:\s*none/);
+  assert.match(overlayRule, /opacity 160ms ease/);
+  assert.match(
+    css,
+    /\.calendar-loading-overlay\.is-active\s*\{[^}]*opacity:\s*1[^}]*visibility:\s*visible[^}]*pointer-events:\s*auto/s,
+  );
 
+  const contentRule =
+    css.match(/\.calendar-loading-overlay__content\s*\{[^}]+\}/s)?.[0] || '';
+  assert.doesNotMatch(contentRule, /opacity/);
+
+  const imageRule =
+    css.match(/\.calendar-loading-overlay__image\s*\{[^}]+\}/s)?.[0] || '';
+  assert.match(imageRule, /aspect-ratio:\s*1/);
+  assert.match(imageRule, /object-fit:\s*contain/);
+  assert.match(imageRule, /object-position:\s*center/);
+  assert.doesNotMatch(imageRule, /animation|transform/);
+  assert.doesNotMatch(
+    css,
+    /calendar-cucumber-dance|dancing-cucumber|calendar-loading-overlay__sprite/,
+  );
   assert.match(css, /width:\s*clamp\(176px, 52%, 184px\)/);
   assert.match(css, /animation:\s*calendar-loading-dot-bounce 1\.2s ease-in-out infinite/);
   assert.match(css, /animation-delay:\s*0s/);
@@ -358,12 +304,12 @@ test('로딩 오버레이는 캘린더 본문만 불투명하게 덮고 세 점�
   assert.match(css, /transform:\s*translateY\(-0\.18em\)/);
   assert.match(
     css,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*calendar-loading-overlay__sprite[\s\S]*animation:\s*none[\s\S]*calendar-loading-overlay__dot[\s\S]*animation:\s*none/,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*calendar-loading-overlay__dot[\s\S]*animation:\s*none/,
   );
 });
 
 test('최초·빈 결과·오류 경로는 aria-busy와 단일 오버레이를 정상 복구한다', async () => {
-  const { root, documentRef, windowRef } = createFakeCalendarRoot();
+  const { root, documentRef, windowRef } = createFakeCalendarRoot('study');
   const controller = createCalendarLoadingController({
     root,
     documentRef,
@@ -379,9 +325,19 @@ test('최초·빈 결과·오류 경로는 aria-busy와 단일 오버레이를 �
   assert.equal(windowRef.listeners.get('mallin:before-pjax-swap')?.size, 1);
   const overlay = root.querySelector('.calendar-loading-overlay');
   const content = overlay.querySelector('.calendar-loading-overlay__content');
+  const image = overlay.querySelector('.calendar-loading-overlay__image');
   const label = overlay.querySelector('.calendar-loading-overlay__label');
   const status = overlay.querySelector('.calendar-loading-overlay__status');
   assert.equal(content.getAttribute('aria-hidden'), 'true');
+  assert.equal(image.getAttribute('alt'), '');
+  assert.equal(image.getAttribute('decoding'), 'async');
+  assert.equal(image.getAttribute('data-calendar-type'), 'study');
+  assert.ok(
+    image.getAttribute('src').endsWith('/assets/images/calendar/logo-study.png'),
+  );
+  assert.equal(image.hidden, true, '로드 전에는 깨진 이미지가 보여서는 안 된다');
+  image.onload();
+  assert.equal(image.hidden, false);
   assert.equal(label.querySelector('.calendar-loading-overlay__label-text').textContent, '로딩중');
   assert.equal(label.querySelectorAll('.calendar-loading-overlay__dot').length, 3);
   assert.equal(status.textContent, '캘린더를 불러오는 중입니다');
@@ -392,23 +348,93 @@ test('최초·빈 결과·오류 경로는 aria-busy와 단일 오버레이를 �
     key: 'initial',
   });
   assert.equal(root.getAttribute('aria-busy'), 'true');
-  assert.equal(root.querySelector('.calendar-loading-overlay').hidden, false);
+  assert.equal(root.querySelector('.calendar-loading-overlay').hidden, true);
   assert.equal(documentRef.activeElement, focusBefore, '포커스를 빼앗지 않아야 한다');
 
   firstLoad.resolve([]);
   assert.deepEqual(await firstPromise, []);
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs * 2);
   assert.equal(root.getAttribute('aria-busy'), null);
   assert.equal(root.querySelector('.calendar-loading-overlay').hidden, true);
   assert.equal(windowRef.animationFrameCount, 2, '렌더 후 다음 페인트까지 기다린다');
 
-  await assert.rejects(
-    controller.runLatest(async () => {
-      throw new Error('network failed');
-    }),
-    /network failed/,
-  );
+  const rejected = controller.runLatest(async () => {
+    throw new Error('network failed');
+  });
+  await assert.rejects(rejected, /network failed/);
   assert.equal(root.getAttribute('aria-busy'), null);
   assert.equal(root.querySelector('.calendar-loading-overlay').hidden, true);
+});
+
+test('캘린더 타입 변경 시 표시 전에 새 이미지를 적용하고 이전 이미지와 잘못된 폴백을 숨긴다', () => {
+  const { root, documentRef, windowRef } = createFakeCalendarRoot('study');
+  const controller = createCalendarLoadingController({
+    root,
+    documentRef,
+    windowRef,
+  });
+  const image = root.querySelector('.calendar-loading-overlay__image');
+  const staleStudyLoad = image.onload;
+  staleStudyLoad();
+  assert.equal(image.hidden, false);
+
+  root.setAttribute('data-calendar-type', 'work');
+  const workToken = controller.begin({ key: 'work' });
+  assert.equal(image.hidden, true, '이전 테마 이미지는 즉시 숨겨야 한다');
+  assert.equal(image.getAttribute('data-calendar-type'), 'work');
+  assert.ok(
+    image.getAttribute('src').endsWith('/assets/images/calendar/logo-work.png'),
+  );
+  staleStudyLoad();
+  assert.equal(image.hidden, true, '이전 이미지의 지연 load 이벤트를 무시해야 한다');
+  image.onload();
+  assert.equal(image.hidden, false);
+  controller.cancel(workToken);
+
+  root.setAttribute('data-calendar-type', 'unknown');
+  const unknownToken = controller.begin({ key: 'unknown' });
+  assert.equal(image.hidden, true);
+  assert.equal(image.getAttribute('src'), null);
+  assert.equal(image.getAttribute('data-calendar-type'), null);
+  controller.cancel(unknownToken);
+});
+
+test('긴 로딩만 지연 후 표시하고 완료 시 페이드아웃한 뒤 숨긴다', async () => {
+  const { root, documentRef, windowRef } = createFakeCalendarRoot();
+  const controller = createCalendarLoadingController({
+    root,
+    documentRef,
+    windowRef,
+  });
+  const loading = deferred();
+  const operation = controller.runLatest(() => loading.promise, { key: 'long' });
+  const overlay = root.querySelector('.calendar-loading-overlay');
+
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs - 1);
+  assert.equal(overlay.hidden, true);
+  assert.equal(overlay.classList.contains('is-active'), false);
+
+  windowRef.advanceTime(1);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.classList.contains('is-active'), true);
+  assert.equal(controller.getState().visible, true);
+
+  loading.resolve('loaded');
+  await flushMicrotasks();
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.classList.contains('is-active'), false);
+  assert.equal(controller.getState().active, true);
+
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.fadeDurationMs);
+  assert.equal(await operation, 'loaded');
+  assert.equal(overlay.hidden, true);
+  assert.equal(root.getAttribute('aria-busy'), null);
+  assert.deepEqual(controller.getState(), {
+    active: false,
+    visible: false,
+    generation: 1,
+    pendingKeys: [],
+  });
 });
 
 test('빠른 연속 요청에서 이전 완료와 결과가 최신 로딩을 덮어쓰지 않는다', async () => {
@@ -431,6 +457,9 @@ test('빠른 연속 요청에서 이전 완료와 결과가 최신 로딩을 덮
     if (isCurrent()) renderedMonth = '2026-09';
   }, { key: 'month:2026-09' });
 
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs);
+  assert.equal(root.querySelector('.calendar-loading-overlay').hidden, false);
+
   older.resolve();
   await olderPromise;
   assert.equal(renderedMonth, '');
@@ -438,10 +467,84 @@ test('빠른 연속 요청에서 이전 완료와 결과가 최신 로딩을 덮
   assert.equal(root.querySelector('.calendar-loading-overlay').hidden, false);
 
   latest.resolve();
+  await flushMicrotasks();
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.fadeDurationMs);
   await latestPromise;
   assert.equal(renderedMonth, '2026-09');
   assert.equal(root.getAttribute('aria-busy'), null);
   assert.equal(root.querySelector('.calendar-loading-overlay').hidden, true);
+});
+
+test('겹친 짧은 요청은 이전 표시 타이머를 정리해 나중에 다시 나타나지 않는다', async () => {
+  const { root, documentRef, windowRef } = createFakeCalendarRoot();
+  const controller = createCalendarLoadingController({ root, documentRef, windowRef });
+  const older = deferred();
+  const latest = deferred();
+  const olderPromise = controller.runLatest(() => older.promise, { key: 'older' });
+
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs - 20);
+  const latestPromise = controller.runLatest(() => latest.promise, { key: 'latest' });
+  older.resolve();
+  latest.resolve();
+  await Promise.all([olderPromise, latestPromise]);
+
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs * 2);
+  const overlay = root.querySelector('.calendar-loading-overlay');
+  assert.equal(overlay.hidden, true);
+  assert.equal(overlay.classList.contains('is-active'), false);
+  assert.equal(root.getAttribute('aria-busy'), null);
+  assert.equal(windowRef.timers.size, 0);
+});
+
+test('페이드아웃 중 새 요청은 이전 종료 타이머에 숨겨지지 않는다', async () => {
+  const { root, documentRef, windowRef } = createFakeCalendarRoot();
+  const controller = createCalendarLoadingController({ root, documentRef, windowRef });
+  const first = deferred();
+  const second = deferred();
+  const firstPromise = controller.runLatest(() => first.promise, { key: 'first' });
+  const overlay = root.querySelector('.calendar-loading-overlay');
+
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs);
+  first.resolve();
+  await flushMicrotasks();
+  assert.equal(overlay.classList.contains('is-active'), false);
+
+  const secondPromise = controller.runLatest(() => second.promise, { key: 'second' });
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.classList.contains('is-active'), true);
+
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.fadeDurationMs);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.classList.contains('is-active'), true);
+  assert.equal(await firstPromise, undefined);
+
+  second.resolve();
+  await flushMicrotasks();
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.fadeDurationMs);
+  assert.equal(await secondPromise, undefined);
+  assert.equal(overlay.hidden, true);
+  assert.equal(windowRef.timers.size, 0);
+});
+
+test('컨트롤러 제거는 예약 타이머를 정리하고 이후 다시 활성화되지 않는다', async () => {
+  const { root, documentRef, windowRef } = createFakeCalendarRoot();
+  const controller = createCalendarLoadingController({ root, documentRef, windowRef });
+  const loading = deferred();
+  const operation = controller.runLatest(() => loading.promise, { key: 'destroy' });
+
+  controller.destroy();
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs * 2);
+  assert.equal(root.querySelector('.calendar-loading-overlay'), null);
+  assert.equal(root.getAttribute('aria-busy'), null);
+  assert.equal(windowRef.timers.size, 0);
+
+  controller.begin({ key: 'after-destroy' });
+  windowRef.advanceTime(CALENDAR_LOADING_TIMING.showDelayMs * 2);
+  assert.equal(root.getAttribute('aria-busy'), null);
+  assert.equal(windowRef.timers.size, 0);
+
+  loading.resolve();
+  assert.equal(await operation, undefined);
 });
 
 test('현재와 동일한 요청만 중복 실행하지 않고 재방문한 최신 대상은 다시 요청한다', async () => {
@@ -501,23 +604,27 @@ test('세 캘린더의 최초·이전·다음·그룹 적용 로딩 경로와 �
   assert.doesNotMatch(openHandler, /refreshCalendar|loadGroupEvents|runCalendarLoad/);
 });
 
-test('페이지 프리로드·서비스 워커 프리캐시·루트와 www 배포본이 일치한다', async () => {
-  const [studyHtml, workHtml, eventHtml, serviceWorker, fileList] =
-    await Promise.all([
-      readFile('calendar-study.html', 'utf8'),
-      readFile('calendar-work.html', 'utf8'),
-      readFile('calendar-event.html', 'utf8'),
-      readFile('sw.js', 'utf8'),
-      readFile('file-list.txt', 'utf8'),
-    ]);
-  const spritePath = './images/calendar/dancing-cucumber-sprite-sheet.png';
+test('페이지별 테마 이미지를 프리로드하고 루트와 www 배포본이 일치한다', async () => {
+  const [studyHtml, workHtml, eventHtml, fileList] = await Promise.all([
+    readFile('calendar-study.html', 'utf8'),
+    readFile('calendar-work.html', 'utf8'),
+    readFile('calendar-event.html', 'utf8'),
+    readFile('file-list.txt', 'utf8'),
+  ]);
 
   for (const [type, html] of Object.entries({
     study: studyHtml,
     work: workHtml,
     event: eventHtml,
   })) {
-    assert.match(html, /rel="preload"\s+as="image"\s+href="\.\/images\/calendar\/dancing-cucumber-sprite-sheet\.png"/s);
+    assert.match(
+      html,
+      new RegExp(
+        `rel="preload"\\s+as="image"\\s+href="\\./assets/images/calendar/logo-${type}\\.png"`,
+        's',
+      ),
+    );
+    assert.doesNotMatch(html, /dancing-cucumber-sprite-sheet/);
     assert.match(html, /assets\/css\/components\/calendar-loading\.css/);
     const toolbarIndex = html.indexOf(`${type}-calendar-toolbar`);
     const regionIndex = html.indexOf(`id="${type}CalendarLoadingRegion"`);
@@ -530,11 +637,22 @@ test('페이지 프리로드·서비스 워커 프리캐시·루트와 www 배�
       html.slice(regionIndex, selectedIndex),
       /class="calendar-loading-region__grid[^"\n]*"/,
     );
+    assert.match(
+      html.slice(regionIndex, gridIndex),
+      new RegExp(`data-calendar-type="${type}"`),
+    );
   }
-  assert.ok(serviceWorker.includes(`'${spritePath}'`));
-  assert.equal(serviceWorker.match(/dancing-cucumber-sprite-sheet\.png/g)?.length, 1);
 
   const listedPaths = [
+    './assets/images/calendar/logo-event.png',
+    './assets/images/calendar/logo-study.png',
+    './assets/images/calendar/logo-work.png',
+    './images/calendar/logo-event.png',
+    './images/calendar/logo-study.png',
+    './images/calendar/logo-work.png',
+    './www/assets/images/calendar/logo-event.png',
+    './www/assets/images/calendar/logo-study.png',
+    './www/assets/images/calendar/logo-work.png',
     './images/calendar/dancing-cucumber-sprite-sheet.png',
     './www/images/calendar/dancing-cucumber-sprite-sheet.png',
     './assets/css/components/calendar-loading.css',
@@ -559,9 +677,11 @@ test('페이지 프리로드·서비스 워커 프리캐시·루트와 www 배�
     assert.deepEqual(appFile, rootFile, `${rootPath} must stay mirrored`);
   }
 
-  const [rootSprite, appSprite] = await Promise.all([
-    readFile('images/calendar/dancing-cucumber-sprite-sheet.png'),
-    readFile('www/images/calendar/dancing-cucumber-sprite-sheet.png'),
-  ]);
-  assert.deepEqual(appSprite, rootSprite);
+  for (const imagePath of Object.values(CALENDAR_LOADING_IMAGE_PATHS)) {
+    const [rootImage, appImage] = await Promise.all([
+      readFile(imagePath),
+      readFile(`www/${imagePath}`),
+    ]);
+    assert.deepEqual(appImage, rootImage, `${imagePath} must stay mirrored`);
+  }
 });

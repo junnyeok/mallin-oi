@@ -20,6 +20,15 @@ import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
+import {
+  formatCalendarTimeLabel,
+  joinLocalDateTimeValue,
+  normalizeCalendarTime,
+  normalizeRequiredCalendarTime,
+  openCalendarTimePicker,
+  setCalendarTimeInputValue,
+  splitLocalDateTimeValue,
+} from './calendar-time.js';
 
 let appendCalendarGroupBoard;
 let getVisiblePersonalTodos;
@@ -185,55 +194,27 @@ function autoResizeTextarea(textarea) {
 }
 
 function normalizeEventTime(value) {
-  const nextValue = String(value || '').trim();
-
-  if (!nextValue) return '00:00';
-
-  const matched = nextValue.match(/^([01]\d|2[0-3]):([0-5]\d)/);
-  if (!matched) return '00:00';
-
-  return `${matched[1]}:${matched[2]}`;
+  return normalizeRequiredCalendarTime(value);
 }
 
 function normalizeOptionalEventTime(value) {
-  const nextValue = String(value || '').trim();
-  if (!nextValue) return '';
-
-  const matched = nextValue.match(/^([01]\d|2[0-3]):([0-5]\d)/);
-  if (!matched) return '';
-
-  return `${matched[1]}:${matched[2]}`;
+  return normalizeCalendarTime(value);
 }
 
 function formatEventTimeLabel(value) {
-  const time = normalizeEventTime(value);
-
-  const [hourText, minuteText] = time.split(':');
-  const hour24 = Number(hourText);
-  const minute = Number(minuteText);
-
-  const period = hour24 < 12 ? '오전' : '오후';
-  const hour12 = hour24 % 12 || 12;
-
-  return `${period} ${hour12}:${pad(minute)}`;
+  return formatCalendarTimeLabel(normalizeEventTime(value));
 }
 
 function setTimeInputValue(input, value) {
   if (!input) return;
 
-  const time = normalizeEventTime(value);
-
-  input.dataset.time = time;
-  input.value = formatEventTimeLabel(time);
+  setCalendarTimeInputValue(input, normalizeEventTime(value));
 }
 
 function setOptionalTimeInputValue(input, value) {
   if (!input) return;
 
-  const time = normalizeOptionalEventTime(value);
-
-  input.dataset.time = time;
-  input.value = time ? formatEventTimeLabel(time) : '';
+  setCalendarTimeInputValue(input, normalizeOptionalEventTime(value));
 }
 
 function formatEventTimeRange(startTime, endTime) {
@@ -287,234 +268,19 @@ function getTodoDateRange(todo, store = {}) {
     }));
 }
 
-function convertPickerTimeTo24Hour({ period, hour, minute }) {
-  const safePeriod = period === 'PM' ? 'PM' : 'AM';
-  const safeHour = Math.min(Math.max(Number(hour) || 12, 1), 12);
-  const safeMinute = Math.min(Math.max(Number(minute) || 0, 0), 59);
-
-  let hour24 = safeHour;
-
-  if (safePeriod === 'AM' && safeHour === 12) {
-    hour24 = 0;
-  }
-
-  if (safePeriod === 'PM' && safeHour !== 12) {
-    hour24 = safeHour + 12;
-  }
-
-  return `${pad(hour24)}:${pad(safeMinute)}`;
-}
-
-function getPickerStateFromTime(value) {
-  const time = normalizeEventTime(value);
-  const [hourText, minuteText] = time.split(':');
-  const hour24 = Number(hourText);
-
-  return {
-    period: hour24 < 12 ? 'AM' : 'PM',
-    hour: hour24 % 12 || 12,
-    minute: Number(minuteText) || 0,
-  };
-}
-
-function createPickerSelect({ className, label, options, value }) {
-  const wrap = document.createElement('label');
-  wrap.className = 'event-time-picker__field';
-
-  const labelText = document.createElement('span');
-  labelText.className = 'event-time-picker__label';
-  labelText.textContent = label;
-
-  const select = document.createElement('select');
-  select.className = className;
-
-  options.forEach((item) => {
-    const option = document.createElement('option');
-    option.value = item.value;
-    option.textContent = item.label;
-    select.append(option);
-  });
-
-  select.value = String(value);
-
-  wrap.append(labelText, select);
-
-  return {
-    wrap,
-    select,
-  };
-}
-
 function openEventTimePicker({
   anchorEl,
   initialTime,
   onChange,
   allowEmpty = false,
 }) {
-  if (!anchorEl) return;
-
-  const previousPicker = document.querySelector('.event-time-picker');
-  previousPicker?.remove();
-
-  const state = getPickerStateFromTime(initialTime);
-
-  const popover = document.createElement('div');
-  popover.className = 'event-time-picker';
-  popover.setAttribute('role', 'dialog');
-  popover.setAttribute('aria-label', '일정 시간 선택');
-
-  const panel = document.createElement('div');
-  panel.className = 'event-time-picker__panel';
-
-  const title = document.createElement('strong');
-  title.className = 'event-time-picker__title';
-  title.textContent = '시간 선택';
-
-  const fields = document.createElement('div');
-  fields.className = 'event-time-picker__fields';
-
-  const periodField = createPickerSelect({
-    className: 'event-time-picker__select',
-    label: '오전/오후',
-    value: state.period,
-    options: [
-      { value: 'AM', label: '오전' },
-      { value: 'PM', label: '오후' },
-    ],
+  return openCalendarTimePicker({
+    anchorEl,
+    initialTime,
+    onChange,
+    allowEmpty,
+    ariaLabel: '일정 시간 선택',
   });
-
-  const hourField = createPickerSelect({
-    className: 'event-time-picker__select',
-    label: '시',
-    value: state.hour,
-    options: Array.from({ length: 12 }, (_, index) => {
-      const hour = index + 1;
-
-      return {
-        value: String(hour),
-        label: `${hour}시`,
-      };
-    }),
-  });
-
-  const minuteField = createPickerSelect({
-    className: 'event-time-picker__select',
-    label: '분',
-    value: state.minute,
-    options: Array.from({ length: 60 }, (_, index) => ({
-      value: String(index),
-      label: `${pad(index)}분`,
-    })),
-  });
-
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'event-time-picker__close';
-  closeButton.textContent = '닫기';
-
-  const clearButton = document.createElement('button');
-  clearButton.type = 'button';
-  clearButton.className = 'event-time-picker__clear';
-  clearButton.textContent = '시간 없음';
-
-  let isSaving = false;
-
-  function positionPicker() {
-    const rect = anchorEl.getBoundingClientRect();
-    const pickerWidth = Math.min(360, window.innerWidth - 24);
-    const left = Math.min(
-      Math.max(rect.left, 12),
-      window.innerWidth - pickerWidth - 12,
-    );
-    const pickerHeight = popover.offsetHeight || 260;
-    const spaceBelow = window.innerHeight - rect.bottom - 12;
-    const top =
-      spaceBelow >= pickerHeight || rect.top < pickerHeight + 12
-        ? rect.bottom + 6
-        : Math.max(12, rect.top - pickerHeight - 6);
-
-    popover.style.width = `${pickerWidth}px`;
-    popover.style.left = `${left}px`;
-    popover.style.top = `${top}px`;
-  }
-
-  function closePicker() {
-    popover.remove();
-    document.removeEventListener('keydown', handleKeydown);
-    document.removeEventListener('pointerdown', handlePointerDown);
-    window.removeEventListener('resize', positionPicker);
-    window.removeEventListener('scroll', positionPicker, true);
-  }
-
-  function handleKeydown(event) {
-    if (event.key !== 'Escape') return;
-
-    closePicker();
-  }
-
-  function handlePointerDown(event) {
-    if (popover.contains(event.target) || anchorEl.contains(event.target)) {
-      return;
-    }
-
-    closePicker();
-  }
-
-  async function applySelectedTime() {
-    if (isSaving) return;
-
-    const nextTime = convertPickerTimeTo24Hour({
-      period: periodField.select.value,
-      hour: hourField.select.value,
-      minute: minuteField.select.value,
-    });
-
-    isSaving = true;
-
-    try {
-      await onChange(nextTime);
-    } finally {
-      isSaving = false;
-    }
-  }
-
-  periodField.select.addEventListener('change', applySelectedTime);
-  hourField.select.addEventListener('change', applySelectedTime);
-  minuteField.select.addEventListener('change', applySelectedTime);
-  closeButton.addEventListener('click', () => {
-    closePicker();
-    anchorEl.focus();
-  });
-
-  clearButton.addEventListener('click', async () => {
-    if (isSaving) return;
-
-    isSaving = true;
-    try {
-      await onChange('');
-      closePicker();
-      anchorEl.focus();
-    } finally {
-      isSaving = false;
-    }
-  });
-
-  fields.append(periodField.wrap, hourField.wrap, minuteField.wrap);
-  panel.append(title, fields);
-  if (allowEmpty) panel.append(clearButton);
-  panel.append(closeButton);
-  popover.append(panel);
-  document.body.append(popover);
-
-  positionPicker();
-
-  window.setTimeout(() => {
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeydown);
-    window.addEventListener('resize', positionPicker);
-    window.addEventListener('scroll', positionPicker, true);
-    periodField.select.focus();
-  }, 0);
 }
 
 function getTodoDisplayText(todo) {
@@ -1746,13 +1512,6 @@ async function initPageCalendar(loadingController) {
     const endTime = normalizeOptionalEventTime(
       isEdit ? todo.eventEndTime : '',
     );
-    const splitDateTime = (value, fallbackDate, fallbackTime) => {
-      const [datePart, timePart = fallbackTime] = String(value || '').split('T');
-      return {
-        date: datePart || fallbackDate,
-        time: normalizeEventTime(timePart || fallbackTime),
-      };
-    };
 
     openCalendarDetailSheet({
       calendarType: 'event',
@@ -1778,19 +1537,19 @@ async function initPageCalendar(loadingController) {
         {
           key: 'eventStart',
           label: '시작',
-          type: 'datetime-local',
-          value: `${startDate}T${startTime}`,
+          type: 'calendar-datetime',
+          value: joinLocalDateTimeValue(startDate, startTime),
         },
         {
           key: 'eventEnd',
           label: '종료',
-          type: 'datetime-local',
-          value: endTime ? `${endDate}T${endTime}` : '',
+          type: 'calendar-datetime',
+          value: endTime ? joinLocalDateTimeValue(endDate, endTime) : '',
           optional: true,
           optionalLabel: '종료시간 지정',
           clearLabel: '취소',
           getDefaultValue: ({ getValue }) =>
-            getValue('eventStart') || `${startDate}T${startTime}`,
+            getValue('eventStart') || joinLocalDateTimeValue(startDate, startTime),
         },
         { key: 'memo', label: '메모', type: 'textarea', value: isEdit ? todo.memo || '' : '' },
       ],
@@ -1799,10 +1558,16 @@ async function initPageCalendar(loadingController) {
           state.categories.find((item) => item.id === values.categoryId) ||
           category ||
           getFallbackCategory(state.categories);
-        const nextStart = splitDateTime(values.eventStart, startDate, startTime);
+        const nextStart = splitLocalDateTimeValue(values.eventStart, {
+          date: startDate,
+          time: startTime,
+        });
         const rawEnd = String(values.eventEnd || '').trim();
         const nextEnd = rawEnd
-          ? splitDateTime(rawEnd, nextStart.date, nextStart.time)
+          ? splitLocalDateTimeValue(rawEnd, {
+              date: nextStart.date,
+              time: nextStart.time,
+            })
           : { date: nextStart.date, time: '' };
         const nextText = String(values.title || '').trim();
         const dateKeys = getDateRangeKeys(nextStart.date, nextEnd.date);

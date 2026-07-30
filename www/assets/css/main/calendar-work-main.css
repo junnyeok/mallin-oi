@@ -758,7 +758,7 @@ body.work-category-modal-open {
 }
 
 .work-category-manager__dialog {
-  width: min(560px, 100%);
+  width: min(920px, 100%);
   max-height: min(720px, calc(100vh - var(--space-32)));
   overflow-y: auto;
   display: grid;
@@ -812,13 +812,15 @@ body.work-category-modal-open {
 
 .work-category-form {
   display: grid;
-  grid-template-columns: 1fr 46px auto;
+  grid-template-columns:
+    minmax(150px, 1fr) minmax(260px, 1.4fr) 46px auto;
   gap: var(--space-8);
   align-items: center;
 }
 
 .work-category-form__input,
-.work-category-form__color {
+.work-category-form__color,
+.work-category-time-input {
   min-height: 42px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
@@ -832,6 +834,30 @@ body.work-category-modal-open {
   padding: 0 var(--space-12);
 }
 
+.work-category-form__times,
+.work-category-list__times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.work-category-time-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0 var(--space-8);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.work-category-time-input::placeholder {
+  color: var(--color-text-sub);
+  opacity: 1;
+}
+
 .work-category-form__color {
   width: 46px;
   padding: var(--space-4);
@@ -839,7 +865,8 @@ body.work-category-modal-open {
 }
 
 .work-category-form__input:focus,
-.work-category-form__color:focus {
+.work-category-form__color:focus,
+.work-category-time-input:focus {
   outline: 2px solid var(--color-primary-sub);
   border-color: var(--color-primary);
 }
@@ -891,7 +918,8 @@ body.work-category-modal-open {
 
 .work-category-list__item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 46px auto auto;
+  grid-template-columns:
+    auto minmax(130px, 1fr) minmax(260px, 1.4fr) 46px auto auto;
   gap: var(--space-6);
   align-items: center;
   padding: var(--space-8);
@@ -931,7 +959,8 @@ body.work-category-modal-open {
 }
 
 .work-category-list__input:focus,
-.work-category-list__color:focus {
+.work-category-list__color:focus,
+.work-category-list__times .work-category-time-input:focus {
   outline: 2px solid var(--color-primary-sub);
   border-color: var(--color-primary);
 }
@@ -957,6 +986,12 @@ body.work-category-modal-open {
 
 .work-category-list__delete:disabled {
   opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.work-category-list__save:disabled,
+.work-category-form__button:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -1262,11 +1297,16 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
   }
 
   .work-category-form {
-    grid-template-columns: 1fr 46px;
+    grid-template-columns: 46px minmax(96px, 1fr);
+  }
+
+  .work-category-form__input,
+  .work-category-form__times {
+    grid-column: 1 / -1;
   }
 
   .work-category-form__button {
-    grid-column: 1 / -1;
+    grid-column: 2;
     width: 100%;
   }
 
@@ -1274,14 +1314,36 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
     grid-template-columns: auto minmax(0, 1fr) 42px;
   }
 
-  .work-category-list__save,
-  .work-category-list__delete {
+  .work-category-list__dot {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .work-category-list__input {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .work-category-list__color {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .work-category-list__times {
     grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .work-category-list__save {
+    grid-column: 2;
+    grid-row: 3;
     width: 100%;
   }
 
   .work-category-list__delete {
-    margin-top: -2px;
+    grid-column: 3;
+    grid-row: 3;
+    width: 100%;
   }
 
 }

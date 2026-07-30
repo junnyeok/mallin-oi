@@ -9,6 +9,9 @@ create table if not exists public.work_calendar_categories (
   name text not null,
   slug text not null,
   color text not null default '#e7f6ff',
+  start_time time without time zone,
+  end_time time without time zone,
+  ends_next_day boolean not null default false,
   is_default boolean not null default false,
   sort_order integer not null default 100,
   created_at timestamptz not null default now(),
@@ -21,8 +24,37 @@ create table if not exists public.work_calendar_categories (
     check (color ~ '^#[0-9A-Fa-f]{6}$'),
 
   constraint work_calendar_categories_user_slug_unique
-    unique (user_id, slug)
+    unique (user_id, slug),
+
+  constraint work_calendar_categories_time_range_check
+    check (
+      (end_time is null or start_time is not null)
+      and (end_time is not null or ends_next_day = false)
+      and (
+        end_time is null
+        or ends_next_day = (end_time < start_time)
+      )
+    )
 );
+
+alter table public.work_calendar_categories
+  add column if not exists start_time time without time zone,
+  add column if not exists end_time time without time zone,
+  add column if not exists ends_next_day boolean not null default false;
+
+alter table public.work_calendar_categories
+  drop constraint if exists work_calendar_categories_time_range_check;
+
+alter table public.work_calendar_categories
+  add constraint work_calendar_categories_time_range_check
+  check (
+    (end_time is null or start_time is not null)
+    and (end_time is not null or ends_next_day = false)
+    and (
+      end_time is null
+      or ends_next_day = (end_time < start_time)
+    )
+  );
 
 create index if not exists work_calendar_categories_user_idx
   on public.work_calendar_categories (user_id, sort_order, created_at);

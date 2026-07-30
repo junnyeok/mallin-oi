@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from "./game-config.js";
+import { createGardenPlot } from "./game-state.js";
 import {
   addSafeNumbers,
   toSafeCount,
@@ -69,7 +70,7 @@ export function getGrowthProgress(growthExperience) {
   );
   const progressPercent = Math.min(
     100,
-    Math.max(0, (stageExperience / stageRequirement) * 100)
+    Math.max(0, (experience / GAME_CONFIG.harvestExperience) * 100)
   );
 
   return {
@@ -84,17 +85,57 @@ export function getGrowthProgress(growthExperience) {
   };
 }
 
-export function synchronizeDerivedState(state) {
-  const previousStageId = state.growthStageId;
-  const stage = getGrowthStage(state.growthExperience);
+export function getAllSlots(state) {
+  if (!Array.isArray(state?.plots)) return [];
 
-  state.perSecond = calculateProductionRate(state);
-  state.growthStageId = stage.id;
+  return state.plots.flatMap((plot) =>
+    plot.slots.map((slot) => ({
+      plot,
+      slot,
+      plotId: plot.plotId,
+      slotId: slot.slotId,
+    }))
+  );
+}
 
+export function findCropSlot(state, plotId, slotId) {
+  const plot = state?.plots?.find(
+    (candidate) => candidate.plotId === plotId
+  );
+  const slot = plot?.slots?.find(
+    (candidate) => candidate.slotId === slotId
+  );
+
+  return plot && slot ? { plot, slot } : null;
+}
+
+export function isCropPlanted(state, plotId, slotId) {
+  return findCropSlot(state, plotId, slotId)?.slot.isPlanted === true;
+}
+
+function synchronizeSlot(slot) {
+  const previousStageId = slot.growthStageId;
+  const stage = getGrowthStage(slot.xp);
+
+  slot.growthStageId = stage.id;
   return {
+    slotId: slot.slotId,
     stage,
     stageChanged: previousStageId !== stage.id,
     previousStageId,
+  };
+}
+
+export function synchronizeDerivedState(state) {
+  const slotChanges = getAllSlots(state).map(({ plotId, slot }) => ({
+    plotId,
+    ...synchronizeSlot(slot),
+  }));
+
+  state.perSecond = calculateProductionRate(state);
+  return {
+    perSecond: state.perSecond,
+    slotChanges,
   };
 }
 
@@ -117,10 +158,49 @@ export function grantCucumbers(state, amount) {
   };
 }
 
-export function addGrowthExperience(state, amount) {
+export function addGrowthExperience(
+  state,
+  plotId,
+  slotId,
+  amount
+) {
   const safeAmount = toSafeNonNegativeNumber(amount);
+  const target = findCropSlot(state, plotId, slotId);
+
+  if (!target) {
+    return {
+      gained: 0,
+      discarded: safeAmount,
+      becameHarvestReady: false,
+      isHarvestReady: false,
+      reason: "unknown-slot",
+      stage: GAME_CONFIG.growthStages[0],
+      stageChanged: false,
+      previousStageId: null,
+      plotId,
+      slotId,
+    };
+  }
+
+  const { slot } = target;
+
+  if (!slot.isPlanted) {
+    slot.xp = 0;
+    const derived = synchronizeSlot(slot);
+
+    return {
+      gained: 0,
+      discarded: safeAmount,
+      becameHarvestReady: false,
+      isHarvestReady: false,
+      reason: "empty-slot",
+      plotId,
+      ...derived,
+    };
+  }
+
   const previousExperience = Math.min(
-    toSafeNonNegativeNumber(state.growthExperience),
+    toSafeNonNegativeNumber(slot.xp),
     GAME_CONFIG.harvestExperience
   );
   const availableExperience = Math.max(
@@ -131,27 +211,29 @@ export function addGrowthExperience(state, amount) {
   const wasHarvestReady =
     previousExperience >= GAME_CONFIG.harvestExperience;
 
-  state.growthExperience = Math.min(
+  slot.xp = Math.min(
     GAME_CONFIG.harvestExperience,
     addSafeNumbers(previousExperience, gained)
   );
-  const derived = synchronizeDerivedState(state);
+  const derived = synchronizeSlot(slot);
 
   return {
     gained,
     discarded: Math.max(0, safeAmount - gained),
     becameHarvestReady:
-      !wasHarvestReady &&
-      state.growthExperience >= GAME_CONFIG.harvestExperience,
-    isHarvestReady:
-      state.growthExperience >= GAME_CONFIG.harvestExperience,
+      !wasHarvestReady && slot.xp >= GAME_CONFIG.harvestExperience,
+    isHarvestReady: slot.xp >= GAME_CONFIG.harvestExperience,
+    reason: gained > 0 ? "gained" : "full",
+    plotId,
     ...derived,
   };
 }
 
-export function collectTouch(state) {
+export function collectTouch(state, plotId, slotId) {
   return addGrowthExperience(
     state,
+    plotId,
+    slotId,
     Math.max(
       GAME_CONFIG.touchExperience,
       toSafeNonNegativeNumber(
@@ -162,6 +244,108 @@ export function collectTouch(state) {
   );
 }
 
+function addAllocation(allocations, plotId, slotId, amount) {
+  const key = `${plotId}\u0000${slotId}`;
+  const current = allocations.get(key);
+
+  if (current) {
+    current.amount = addSafeNumbers(current.amount, amount);
+    return;
+  }
+
+  allocations.set(key, { plotId, slotId, amount });
+}
+
+export function distributeAutomaticExperience(state, amount) {
+  const generated = toSafeNonNegativeNumber(amount);
+  const existingRemainder =
+    toSafeNonNegativeNumber(state.automaticXpRemainder) % 1;
+  const totalAvailable = addSafeNumbers(generated, existingRemainder);
+  const wholeAvailable = Math.floor(totalAvailable);
+  const allSlots = getAllSlots(state);
+  const allocations = new Map();
+  const hasEligibleSlot = allSlots.some(
+    ({ slot }) =>
+      slot.isPlanted &&
+      toSafeNonNegativeNumber(slot.xp) < GAME_CONFIG.harvestExperience
+  );
+
+  if (!hasEligibleSlot) {
+    state.automaticXpRemainder = 0;
+    const derived = synchronizeDerivedState(state);
+    return {
+      generated,
+      gained: 0,
+      discarded: totalAvailable,
+      allocations: [],
+      ...derived,
+    };
+  }
+
+  state.automaticXpRemainder = totalAvailable - wholeAvailable;
+
+  if (wholeAvailable <= 0) {
+    const derived = synchronizeDerivedState(state);
+    return {
+      generated,
+      gained: 0,
+      discarded: 0,
+      allocations: [],
+      ...derived,
+    };
+  }
+
+  let remaining = wholeAvailable;
+  let cursor = allSlots.length
+    ? toSafeCount(state.autoXpCursor) % allSlots.length
+    : 0;
+  let consecutiveIneligible = 0;
+
+  while (remaining > 0 && consecutiveIneligible < allSlots.length) {
+    const target = allSlots[cursor];
+    cursor = (cursor + 1) % allSlots.length;
+    const capacity =
+      target?.slot.isPlanted === true
+        ? Math.max(
+            0,
+            GAME_CONFIG.harvestExperience -
+              toSafeNonNegativeNumber(target.slot.xp)
+          )
+        : 0;
+
+    if (capacity <= 0) {
+      consecutiveIneligible += 1;
+      continue;
+    }
+
+    const granted = Math.min(1, remaining, capacity);
+    target.slot.xp = addSafeNumbers(target.slot.xp, granted);
+    addAllocation(
+      allocations,
+      target.plotId,
+      target.slotId,
+      granted
+    );
+    remaining -= granted;
+    consecutiveIneligible = 0;
+  }
+
+  state.autoXpCursor = cursor;
+  const gained = [...allocations.values()].reduce(
+    (total, allocation) => addSafeNumbers(total, allocation.amount),
+    0
+  );
+  const derived = synchronizeDerivedState(state);
+
+  return {
+    generated,
+    gained,
+    discarded: Math.max(0, wholeAvailable - gained),
+    allocations: [...allocations.values()],
+    ...derived,
+  };
+}
+
 export function applyProduction(state, elapsedMilliseconds) {
   const maximumElapsed = GAME_CONFIG.maxOfflineSeconds * 1_000;
   const safeElapsed = Math.min(
@@ -169,39 +353,105 @@ export function applyProduction(state, elapsedMilliseconds) {
     maximumElapsed
   );
   const rate = calculateProductionRate(state);
-  const experience = (safeElapsed / 1_000) * rate;
+  const generated = (safeElapsed / 1_000) * rate;
 
   state.perSecond = rate;
-  return addGrowthExperience(state, experience);
+  return distributeAutomaticExperience(state, generated);
 }
 
-export function harvestCucumber(state) {
-  const progress = getGrowthProgress(state.growthExperience);
+export function plantCucumber(state, plotId, slotId) {
+  const target = findCropSlot(state, plotId, slotId);
 
-  if (!progress.isHarvestReady) {
+  if (!target) {
     return {
-      harvested: false,
-      reason: "not-ready",
-      reward: 0,
-      ...synchronizeDerivedState(state),
+      planted: false,
+      reason: "unknown-slot",
+      plotId,
+      slotId,
+      stage: GAME_CONFIG.growthStages[0],
     };
   }
 
-  state.growthExperience = 0;
+  if (target.slot.isPlanted) {
+    return {
+      planted: false,
+      reason: "already-planted",
+      plotId,
+      ...synchronizeSlot(target.slot),
+    };
+  }
+
+  target.slot.isPlanted = true;
+  target.slot.xp = 0;
+
+  return {
+    planted: true,
+    reason: "planted",
+    plotId,
+    ...synchronizeSlot(target.slot),
+  };
+}
+
+export function harvestCucumber(state, plotId, slotId) {
+  const target = findCropSlot(state, plotId, slotId);
+  const progress = getGrowthProgress(target?.slot.xp);
+
+  if (!target || !target.slot.isPlanted || !progress.isHarvestReady) {
+    return {
+      harvested: false,
+      reason: target ? "not-ready" : "unknown-slot",
+      reward: 0,
+      plotId,
+      slotId,
+      stage: progress.stage,
+    };
+  }
+
+  target.slot.xp = 0;
+  target.slot.isPlanted = false;
   state.harvestCount = Math.min(
     Math.floor(toSafeNonNegativeNumber(state.harvestCount)) + 1,
     GAME_CONFIG.maxGameNumber
   );
   const rewardResult = grantCucumbers(state, GAME_CONFIG.harvestReward);
+  const slotDerived = synchronizeSlot(target.slot);
 
   return {
     harvested: true,
     reason: "harvested",
     reward: rewardResult.gained,
     harvestCount: state.harvestCount,
-    stage: rewardResult.stage,
-    stageChanged: rewardResult.stageChanged,
-    previousStageId: rewardResult.previousStageId,
+    plotId,
+    ...slotDerived,
+  };
+}
+
+export function purchaseFirstGarden(state) {
+  if (state.hasClaimedFreeGarden || state.plots.length > 0) {
+    state.hasClaimedFreeGarden = true;
+    return {
+      purchased: false,
+      reason: "already-claimed",
+      plot: null,
+    };
+  }
+
+  let sequence = Math.max(1, toSafeCount(state.nextPlotSequence) || 1);
+  const usedIds = new Set(state.plots.map((plot) => plot.plotId));
+
+  while (usedIds.has(`garden-${sequence}`)) {
+    sequence += 1;
+  }
+
+  const plot = createGardenPlot(sequence);
+  state.plots.push(plot);
+  state.hasClaimedFreeGarden = true;
+  state.nextPlotSequence = sequence + 1;
+
+  return {
+    purchased: true,
+    reason: "purchased",
+    plot,
   };
 }
 

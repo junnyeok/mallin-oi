@@ -1,16 +1,58 @@
 import { supabase } from './supabase-client.js';
 import { refreshCalendarWidgets } from './calendar-native-widgets.js';
+import {
+  CALENDAR_COPY_BUFFER_KEY,
+  buildCalendarPasteRpcArgs,
+  classifyCalendarPasteError,
+  createCalendarCopyBuffer,
+  createSingleFlight,
+  parseCalendarCopyBuffer,
+  validateCalendarPasteResult,
+} from './calendar-copy-buffer.js';
 
-const BUFFER_KEY = 'mallin_calendar_copy_buffer';
 const LABELS = { study: '자기개발', work: '업무', event: '이벤트' };
 
-function readBuffer() {
-  try { return JSON.parse(localStorage.getItem(BUFFER_KEY) || 'null'); } catch { return null; }
+function getCopyStorage() {
+  for (const getStorage of [
+    () => window.localStorage,
+    () => window.sessionStorage,
+  ]) {
+    try {
+      const storage = getStorage();
+      const testKey = `${CALENDAR_COPY_BUFFER_KEY}:storage-test`;
+      storage.setItem(testKey, '1');
+      storage.removeItem(testKey);
+      return storage;
+    } catch {
+      // Capacitor WebView와 브라우저 모두 다음 안전한 웹 저장소를 시도한다.
+    }
+  }
+  return null;
 }
 
-function saveBuffer(value) { localStorage.setItem(BUFFER_KEY, JSON.stringify(value)); }
+function readBuffer(calendarType) {
+  const storage = getCopyStorage();
+  if (!storage) return { buffer: null, reason: 'storage' };
 
-function getBufferMode(buffer) { return buffer?.mode === 'range' ? 'range' : 'all'; }
+  const result = parseCalendarCopyBuffer(
+    storage.getItem(CALENDAR_COPY_BUFFER_KEY),
+    { calendarType },
+  );
+  if (['corrupt', 'unsupported', 'expired'].includes(result.reason)) {
+    storage.removeItem(CALENDAR_COPY_BUFFER_KEY);
+  }
+  return result;
+}
+
+function saveBuffer(value) {
+  const storage = getCopyStorage();
+  if (!storage) throw new Error('calendar copy storage is unavailable');
+  storage.setItem(CALENDAR_COPY_BUFFER_KEY, JSON.stringify(value));
+}
+
+function clearBuffer() {
+  getCopyStorage()?.removeItem(CALENDAR_COPY_BUFFER_KEY);
+}
 
 function formatDate(dateKey) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ''))) return '';
@@ -44,14 +86,21 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
   button.className = 'calendar-group-bar__copy-paste';
   backupButton.insertAdjacentElement('beforebegin', button);
   let selectedGroup = null;
+  const pasteFlight = createSingleFlight();
 
   function render() {
     button.textContent = selectedGroup ? '캘린더 복사' : '캘린더 붙여넣기';
-    const buffer = readBuffer();
-    button.disabled = !selectedGroup && buffer?.calendarType !== calendarType;
-    button.title = button.disabled
-      ? '현재 캘린더에 붙여넣을 복사본이 없어.'
-      : (!selectedGroup && getBufferMode(buffer) === 'range')
+    const { buffer, reason } = readBuffer(calendarType);
+    button.disabled = pasteFlight.isActive() || (!selectedGroup && !buffer);
+    button.title = pasteFlight.isActive()
+      ? '캘린더를 붙여넣는 중이야.'
+      : button.disabled
+        ? reason === 'expired'
+          ? '복사본이 만료됐어. 그룹 캘린더에서 다시 복사해줘.'
+          : reason === 'storage'
+            ? '복사본을 보관할 웹 저장소를 사용할 수 없어.'
+            : '현재 캘린더에 붙여넣을 복사본이 없어.'
+        : (!selectedGroup && buffer.mode === 'range')
         ? `${formatDate(buffer.startDate)} ~ ${formatDate(buffer.endDate)} 범위 붙여넣기`
         : '';
   }
@@ -74,7 +123,14 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
           </div>
         </div>
       `;
-      const finish = (confirmed) => { closeDialog(dialog); resolve(confirmed); };
+      let settled = false;
+      const finish = (confirmed) => {
+        if (settled) return;
+        settled = true;
+        dialog.querySelectorAll('button').forEach((item) => { item.disabled = true; });
+        closeDialog(dialog);
+        resolve(confirmed);
+      };
       dialog.querySelector('[data-cancel]').onclick = () => finish(false);
       dialog.querySelector('[data-confirm]').onclick = () => finish(true);
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); finish(false); }, { once: true });
@@ -83,16 +139,17 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
   }
 
   function storeCopy(source, mode, dates = {}) {
-    const buffer = {
+    const buffer = createCalendarCopyBuffer({
       mode,
       calendarType,
       groupId: selectedGroup.id,
       groupName: selectedGroup.name,
       sourceUserId: source.source_user_id,
       sourceNickname: source.nickname,
+      backupCount: Number(source.backup_count || 0),
       ...dates,
       copiedAt: new Date().toISOString(),
-    };
+    });
     saveBuffer(buffer);
     render();
     return buffer;
@@ -111,9 +168,14 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
     `;
     card.querySelector('[data-cancel]').onclick = () => closeDialog(dialog);
     card.querySelector('[data-copy-all]').onclick = () => {
-      storeCopy(source, 'all');
-      window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 전체를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
-      closeDialog(dialog);
+      try {
+        storeCopy(source, 'all');
+        window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 전체를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
+        closeDialog(dialog);
+      } catch (error) {
+        console.error('[calendar-copy-paste] copy buffer save failed');
+        window.alert('복사본을 보관하지 못했어. 저장소 설정을 확인해줘.');
+      }
     };
     card.querySelector('[data-copy-range]').onclick = () => renderDateRange(dialog, source);
   }
@@ -151,9 +213,15 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
         error.hidden = false;
         return;
       }
-      storeCopy(source, 'range', { startDate, endDate });
-      window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 중 ${formatDate(startDate)} ~ ${formatDate(endDate)} 범위를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
-      closeDialog(dialog);
+      try {
+        storeCopy(source, 'range', { startDate, endDate });
+        window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 중 ${formatDate(startDate)} ~ ${formatDate(endDate)} 범위를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
+        closeDialog(dialog);
+      } catch (saveError) {
+        console.error('[calendar-copy-paste] copy buffer save failed');
+        error.textContent = '복사본을 보관하지 못했어. 저장소 설정을 확인해줘.';
+        error.hidden = false;
+      }
     };
   }
 
@@ -175,46 +243,67 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
         renderCopyMode(dialog, source);
       };
     } catch (error) {
-      console.error('[calendar-copy-paste] copy sources load failed:', error);
+      console.error('[calendar-copy-paste] copy sources load failed', {
+        code: error?.code || null,
+        status: error?.status || null,
+      });
       dialog.querySelector('[data-list]').textContent = '복사 대상을 불러오지 못했어.';
     }
   }
 
   async function paste() {
-    const buffer = readBuffer();
-    if (!buffer || buffer.calendarType !== calendarType) return;
-    const mode = getBufferMode(buffer);
-    const isRange = mode === 'range';
-    const confirmed = await confirmPaste(isRange
-      ? {
-        title: '캘린더 범위 붙여넣기',
-        message: `내 ${LABELS[calendarType]} 캘린더의 ${formatDate(buffer.startDate)} ~ ${formatDate(buffer.endDate)} 일정만 '${buffer.sourceNickname}'님의 백업 캘린더로 덮어쓰기 돼. 계속할까?`,
-      }
-      : {
-        title: '캘린더 붙여넣기',
-        message: `내 ${LABELS[calendarType]} 캘린더 전체가 '${buffer.sourceNickname}'님의 백업 캘린더로 덮어쓰기 돼. 계속할까?`,
-      });
-    if (!confirmed) return;
-    button.disabled = true;
-    try {
-      await rpc('paste_group_calendar_backup_to_my_calendar', {
-        p_group_id: buffer.groupId,
-        p_calendar_type: calendarType,
-        p_source_user_id: buffer.sourceUserId,
-        p_start_date: isRange ? buffer.startDate : null,
-        p_end_date: isRange ? buffer.endDate : null,
-      });
-      await refreshCalendarWidgets({ force: true });
-      window.alert(isRange
-        ? `붙여넣기 완료. 내 ${LABELS[calendarType]} 캘린더의 선택한 날짜 범위가 업데이트됐어.`
-        : `붙여넣기 완료. 내 ${LABELS[calendarType]} 캘린더가 업데이트됐어.`);
-      await onPasted?.();
-      window.location.reload();
-    } catch (error) {
-      console.error('[calendar-copy-paste] paste failed:', error);
-      window.alert('캘린더를 붙여넣지 못했어. 잠시 후 다시 시도해줘.');
+    const run = await pasteFlight.run(async () => {
       render();
-    }
+      const { buffer, reason } = readBuffer(calendarType);
+      if (!buffer) {
+        const message = reason === 'expired'
+          ? '복사본이 만료됐어. 그룹 캘린더에서 다시 복사해줘.'
+          : reason === 'storage'
+            ? '복사본 저장소를 사용할 수 없어. 앱이나 브라우저 설정을 확인해줘.'
+            : '붙여넣을 복사본이 없어. 그룹 캘린더에서 먼저 복사해줘.';
+        window.alert(message);
+        return;
+      }
+
+      const isRange = buffer.mode === 'range';
+      const confirmed = await confirmPaste(isRange
+        ? {
+          title: '캘린더 범위 붙여넣기',
+          message: `'${buffer.sourceNickname}'님의 ${formatDate(buffer.startDate)} ~ ${formatDate(buffer.endDate)} 일정을 내 ${LABELS[calendarType]} 캘린더에 새 일정으로 추가해. 계속할까?`,
+        }
+        : {
+          title: '캘린더 붙여넣기',
+          message: `'${buffer.sourceNickname}'님의 ${LABELS[calendarType]} 일정 ${buffer.backupCount}개를 내 캘린더에 새 일정으로 추가해. 계속할까?`,
+        });
+      if (!confirmed) return;
+
+      try {
+        const data = await rpc(
+          'paste_group_calendar_backup_to_my_calendar',
+          buildCalendarPasteRpcArgs(buffer, calendarType),
+        );
+        const { insertedCount } = validateCalendarPasteResult(data);
+        clearBuffer();
+        await refreshCalendarWidgets({ force: true });
+
+        try {
+          await onPasted?.();
+        } catch (refreshError) {
+          console.warn('[calendar-copy-paste] calendar refresh callback failed');
+        }
+
+        window.alert(`붙여넣기 완료. 내 ${LABELS[calendarType]} 캘린더에 새 일정 ${insertedCount}개를 추가했어.`);
+        window.location.reload();
+      } catch (error) {
+        console.error('[calendar-copy-paste] paste failed:', {
+          code: error?.code || null,
+          status: error?.status || null,
+        });
+        window.alert(classifyCalendarPasteError(error).message);
+      }
+    });
+
+    if (run.started) render();
   }
 
   button.addEventListener('click', () => selectedGroup ? void openCopy() : void paste());

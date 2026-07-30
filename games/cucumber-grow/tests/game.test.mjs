@@ -1,30 +1,35 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { GAME_CONFIG } from "../js/game-config.js";
 import {
+  GameEngine,
   addGrowthExperience,
   applyProduction,
   calculateProductionRate,
   collectTouch,
+  distributeAutomaticExperience,
+  findCropSlot,
+  getAllSlots,
   getGrowthProgress,
   getGrowthStage,
-  getNextPrice,
   harvestCucumber,
-  purchaseFacility,
+  plantCucumber,
+  purchaseFirstGarden,
   synchronizeDerivedState,
 } from "../js/game-engine.js";
-import { createInitialGameState } from "../js/game-state.js";
+import {
+  createGardenPlot,
+  createInitialGameState,
+  detectGameStateSchema,
+  normalizeGameState,
+} from "../js/game-state.js";
 import {
   applyOfflineReward,
   calculateOfflineReward,
 } from "../js/offline-reward.js";
 import { clearGameSave, loadGameSave, saveGame } from "../js/save-manager.js";
-import { formatExactNumber, formatNumber } from "../js/number-format.js";
 import {
   calculateWateringLayout,
-  getTiltedCanNozzleOffset,
-  getWaterFrameTranslation,
   getWateringSide,
   WATERING_CAN_CONFIG,
   WATER_SPRITE_CONFIG,
@@ -57,693 +62,674 @@ function test(name, callback) {
   tests.push({ name, callback });
 }
 
-function assertNear(actual, expected, tolerance = 0.001, message = "") {
-  assert.ok(
-    Math.abs(actual - expected) <= tolerance,
-    message || `${actual} must be within ${tolerance} of ${expected}`
-  );
+function createOwnedState(now = 1_000) {
+  const state = createInitialGameState(now);
+  const purchase = purchaseFirstGarden(state);
+
+  assert.equal(purchase.purchased, true);
+  return state;
 }
 
-test("초기 상태는 기존 재화와 성장 경험치가 0이고 새싹 단계다", () => {
+function getSlotAddress(state, plotIndex = 0, slotIndex = 0) {
+  const plot = state.plots[plotIndex];
+  const slot = plot.slots[slotIndex];
+
+  return { plotId: plot.plotId, slotId: slot.slotId, plot, slot };
+}
+
+function plantAt(state, plotIndex = 0, slotIndex = 0) {
+  const address = getSlotAddress(state, plotIndex, slotIndex);
+  const result = plantCucumber(state, address.plotId, address.slotId);
+
+  assert.equal(result.planted, true);
+  return address;
+}
+
+function legacyState(overrides = {}) {
+  return {
+    saveVersion: 1,
+    cucumbers: 173,
+    totalEarned: 240,
+    touchYield: 2,
+    growthExperience: 18,
+    isPlanted: true,
+    harvestCount: 7,
+    facilities: {
+      "small-garden": 2,
+      greenhouse: 1,
+      "watering-system": 0,
+      "smart-farm": 0,
+      "processing-factory": 0,
+    },
+    perSecond: 10,
+    growthStageId: "young",
+    lastSavedAt: 8_000,
+    startedAt: 1_000,
+    settings: { sound: false },
+    ...overrides,
+  };
+}
+
+test("신규 이용자는 텃밭 0개와 무료 구매 가능 상태로 시작한다", () => {
   const state = createInitialGameState(1_000);
 
+  assert.equal(state.saveVersion, 2);
+  assert.equal(state.plots.length, 0);
+  assert.equal(state.hasClaimedFreeGarden, false);
+  assert.equal(state.nextPlotSequence, 1);
   assert.equal(state.cucumbers, 0);
-  assert.equal(state.totalEarned, 0);
-  assert.equal(state.growthExperience, 0);
-  assert.equal(state.perSecond, 0);
-  assert.equal(state.touchYield, GAME_CONFIG.touchExperience);
-  assert.equal(state.growthStageId, "sprout");
 });
 
-test("물주기는 한 번마다 경험치 한 번만 지급하고 오이를 직접 늘리지 않는다", () => {
+test("저장 데이터가 없으면 텃밭을 자동 지급하지 않는다", () => {
+  const storage = new MemoryStorage();
+  const result = loadGameSave(storage, 1_000);
+
+  assert.equal(result.status, "empty");
+  assert.equal(result.state.plots.length, 0);
+  assert.equal(result.state.hasClaimedFreeGarden, false);
+});
+
+test("첫 무료 구매는 텃밭 하나와 정확히 4개 슬롯을 만든다", () => {
+  const state = createInitialGameState(1_000);
+  const result = purchaseFirstGarden(state);
+
+  assert.equal(result.purchased, true);
+  assert.equal(state.plots.length, 1);
+  assert.equal(state.plots[0].type, "garden");
+  assert.equal(state.plots[0].slots.length, 4);
+  assert.equal(new Set(state.plots[0].slots.map((slot) => slot.slotId)).size, 4);
+  assert.ok(state.plots[0].slots.every((slot) => !slot.isPlanted));
+});
+
+test("무료 구매는 연속 호출과 새로고침 뒤에도 중복되지 않는다", () => {
+  const storage = new MemoryStorage();
   const state = createInitialGameState(1_000);
 
-  for (let index = 0; index < 10; index += 1) {
-    const result = collectTouch(state);
-    assert.equal(result.gained, 1);
-  }
+  assert.equal(purchaseFirstGarden(state).purchased, true);
+  assert.equal(purchaseFirstGarden(state).purchased, false);
+  assert.equal(state.plots.length, 1);
+  saveGame(state, storage, 2_000);
+  const reloaded = loadGameSave(storage, 3_000);
 
-  assert.equal(state.growthExperience, 10);
-  assert.equal(state.cucumbers, 0);
-  assert.equal(state.totalEarned, 0);
+  assert.equal(reloaded.state.plots.length, 1);
+  assert.equal(purchaseFirstGarden(reloaded.state).purchased, false);
+  assert.equal(reloaded.state.plots.length, 1);
 });
 
-test("물주기 좌우는 브라우저가 아닌 게임 장면 중앙선과 포인터 X로 판정한다", () => {
-  const sceneRect = { left: 100, top: 50, width: 400, height: 320 };
+test("여러 텃밭의 ID·순서·4슬롯 상태를 저장하고 복원한다", () => {
+  const storage = new MemoryStorage();
+  const state = createOwnedState();
 
-  assert.equal(getWateringSide(200, sceneRect), "left", "장면 왼쪽 25%");
-  assert.equal(getWateringSide(400, sceneRect), "right", "장면 오른쪽 75%");
-  assert.equal(getWateringSide(299.999, sceneRect), "left");
-  assert.equal(getWateringSide(300, sceneRect), "right");
+  state.plots.push(createGardenPlot(2), createGardenPlot(3));
+  state.nextPlotSequence = 4;
+  plantAt(state, 0, 0);
+  plantAt(state, 1, 2);
+  state.plots[0].slots[0].xp = 9;
+  state.plots[1].slots[2].xp = 34;
+  saveGame(state, storage, 2_000);
+
+  const loaded = loadGameSave(storage, 3_000).state;
+  const plotIds = loaded.plots.map((plot) => plot.plotId);
+  const slotIds = getAllSlots(loaded).map(({ slotId }) => slotId);
+
+  assert.deepEqual(plotIds, ["garden-1", "garden-2", "garden-3"]);
+  assert.equal(new Set(plotIds).size, 3);
+  assert.equal(new Set(slotIds).size, 12);
+  assert.ok(loaded.plots.every((plot) => plot.slots.length === 4));
+  assert.equal(loaded.plots[0].slots[0].xp, 9);
+  assert.equal(loaded.plots[1].slots[2].xp, 34);
 });
 
-test("포인터 X·Y는 스크롤과 장면 위치에 무관한 로컬 좌표로 변환된다", () => {
-  const sceneRect = { left: 100, top: 50, width: 400, height: 320 };
-  const movedSceneRect = { left: 810, top: 960, width: 400, height: 320 };
-  const first = calculateWateringLayout(sceneRect, {
-    clientX: sceneRect.left + 120,
-    clientY: sceneRect.top + 150,
+test("중복되거나 잘못된 저장 ID도 충돌 없는 안정 ID로 정규화한다", () => {
+  const raw = {
+    ...createInitialGameState(1_000),
+    plots: [
+      {
+        plotId: "same",
+        type: "garden",
+        slots: Array.from({ length: 4 }, () => ({
+          slotId: "same-slot",
+          isPlanted: false,
+        })),
+      },
+      {
+        plotId: "same",
+        type: "garden",
+        slots: [],
+      },
+    ],
+  };
+  const state = normalizeGameState(raw, 2_000);
+  const plotIds = state.plots.map((plot) => plot.plotId);
+  const slotIds = getAllSlots(state).map(({ slotId }) => slotId);
+
+  assert.equal(new Set(plotIds).size, 2);
+  assert.equal(new Set(slotIds).size, 8);
+  assert.ok(state.plots.every((plot) => plot.slots.length === 4));
+});
+
+for (const [experience, expectedStage] of [
+  [0, "sprout"],
+  [15, "young"],
+  [35, "adult"],
+  [50, "adult"],
+]) {
+  test(`v1 ${expectedStage} ${experience}XP 작물을 첫 텃밭 첫 슬롯으로 옮긴다`, () => {
+    const storage = new MemoryStorage(
+      JSON.stringify(legacyState({ growthExperience: experience }))
+    );
+    const result = loadGameSave(storage, 10_000);
+    const firstSlot = result.state.plots[0].slots[0];
+
+    assert.equal(result.status, "migrated");
+    assert.equal(result.state.plots.length, 1);
+    assert.equal(firstSlot.isPlanted, true);
+    assert.equal(firstSlot.xp, experience);
+    assert.equal(firstSlot.growthStageId, expectedStage);
+    assert.ok(result.state.plots[0].slots.slice(1).every((slot) => !slot.isPlanted));
+    assert.equal(result.state.hasClaimedFreeGarden, true);
   });
-  const moved = calculateWateringLayout(movedSceneRect, {
-    clientX: movedSceneRect.left + 120,
-    clientY: movedSceneRect.top + 150,
-  });
+}
 
-  assert.equal(first.inputX, 120);
-  assert.equal(first.inputY, 150);
-  assert.equal(first.canX, 120);
-  assert.equal(first.canY, 150);
-  assert.equal(moved.inputX, first.inputX);
-  assert.equal(moved.inputY, first.inputY);
-  assert.equal(moved.canX, first.canX);
-  assert.equal(moved.canY, first.canY);
-  assert.equal(moved.nozzleX, first.nozzleX);
-  assert.equal(moved.nozzleY, first.nozzleY);
-});
-
-test("서로 다른 상단·중앙·하단 입력은 고정 위치가 아닌 서로 다른 배치를 만든다", () => {
-  const sceneRect = { left: 100, top: 50, width: 400, height: 420 };
-  const layouts = [0.25, 0.5, 0.9].map((ratioY) =>
-    calculateWateringLayout(sceneRect, {
-      clientX: sceneRect.left + sceneRect.width * 0.25,
-      clientY: sceneRect.top + sceneRect.height * ratioY,
-    })
+test("v1 빈 작물도 첫 텃밭의 빈 첫 슬롯으로 보존한다", () => {
+  const state = normalizeGameState(
+    legacyState({ isPlanted: false, growthExperience: 42 }),
+    10_000
   );
+
+  assert.equal(state.plots.length, 1);
+  assert.equal(state.plots[0].slots[0].isPlanted, false);
+  assert.equal(state.plots[0].slots[0].xp, 0);
+  assert.equal(state.hasClaimedFreeGarden, true);
+});
+
+test("v1에 isPlanted가 없으면 과거 작물을 잃지 않게 심어진 것으로 본다", () => {
+  const raw = legacyState();
+  delete raw.isPlanted;
+  const state = normalizeGameState(raw, 10_000);
+
+  assert.equal(state.plots[0].slots[0].isPlanted, true);
+  assert.equal(state.plots[0].slots[0].xp, 18);
+});
+
+test("마이그레이션은 재화·시설·수확 기록·시각·설정을 보존한다", () => {
+  const state = normalizeGameState(legacyState(), 10_000);
+
+  assert.equal(state.cucumbers, 173);
+  assert.equal(state.totalEarned, 240);
+  assert.equal(state.touchYield, 2);
+  assert.equal(state.harvestCount, 7);
+  assert.equal(state.facilities["small-garden"], 2);
+  assert.equal(state.facilities.greenhouse, 1);
+  assert.equal(state.lastSavedAt, 8_000);
+  assert.equal(state.startedAt, 1_000);
+  assert.equal(state.settings.sound, false);
+  assert.equal(calculateProductionRate(state), 10);
+});
+
+test("마이그레이션 저장을 반복 로드해도 텃밭이 늘어나지 않는다", () => {
+  const storage = new MemoryStorage(JSON.stringify(legacyState()));
+  const migrated = loadGameSave(storage, 10_000);
+
+  assert.equal(saveGame(migrated.state, storage, 11_000).ok, true);
+  const once = loadGameSave(storage, 12_000);
+  assert.equal(saveGame(once.state, storage, 13_000).ok, true);
+  const twice = loadGameSave(storage, 14_000);
+
+  assert.equal(once.status, "loaded");
+  assert.equal(twice.status, "loaded");
+  assert.equal(twice.state.plots.length, 1);
+  assert.equal(twice.state.plots[0].slots[0].xp, 18);
+});
+
+test("저장 형식은 명시적으로 v2·legacy·unsupported를 판별한다", () => {
+  assert.equal(detectGameStateSchema(createInitialGameState()), "v2");
+  assert.equal(detectGameStateSchema(legacyState()), "legacy");
+  assert.equal(detectGameStateSchema({ saveVersion: 99 }), "unsupported");
+  assert.equal(detectGameStateSchema(null), "unsupported");
+});
+
+test("빈 슬롯 첫 입력은 심기만 하고 XP를 지급하지 않는다", () => {
+  const state = createOwnedState();
+  const address = getSlotAddress(state);
+  const result = plantCucumber(state, address.plotId, address.slotId);
+
+  assert.equal(result.planted, true);
+  assert.equal(address.slot.isPlanted, true);
+  assert.equal(address.slot.xp, 0);
+  assert.equal(state.cucumbers, 0);
+});
+
+test("심은 뒤 다음 물주기부터 대상 슬롯에만 1XP를 지급한다", () => {
+  const state = createOwnedState();
+  const first = plantAt(state, 0, 0);
+  const second = plantAt(state, 0, 1);
+  const result = collectTouch(state, first.plotId, first.slotId);
+
+  assert.equal(result.gained, 1);
+  assert.equal(first.slot.xp, 1);
+  assert.equal(second.slot.xp, 0);
+});
+
+test("네 슬롯은 서로 다른 XP와 성장 단계를 독립적으로 유지한다", () => {
+  const state = createOwnedState();
+
+  for (let index = 0; index < 4; index += 1) plantAt(state, 0, index);
+  const amounts = [2, 15, 34, 50];
+  amounts.forEach((amount, index) => {
+    const { plotId, slotId } = getSlotAddress(state, 0, index);
+    addGrowthExperience(state, plotId, slotId, amount);
+  });
 
   assert.deepEqual(
-    layouts.map((layout) => layout.inputY),
-    [105, 210, 378]
+    state.plots[0].slots.map((slot) => slot.xp),
+    amounts
   );
-  assert.equal(new Set(layouts.map((layout) => layout.canY)).size, 3);
-  assert.ok(layouts[0].canY < layouts[1].canY);
-  assert.ok(layouts[1].canY < layouts[2].canY);
+  assert.deepEqual(
+    state.plots[0].slots.map((slot) => slot.growthStageId),
+    ["sprout", "young", "young", "adult"]
+  );
 });
 
-test("좌우는 한 효과의 수평 대칭이고 물과 물보라는 언제나 주둥이보다 아래다", () => {
-  const sceneRect = { left: 100, top: 50, width: 400, height: 360 };
-  const left = calculateWateringLayout(sceneRect, {
-    clientX: sceneRect.left + sceneRect.width * 0.25,
-    clientY: sceneRect.top + sceneRect.height * 0.45,
-  });
-  const right = calculateWateringLayout(sceneRect, {
-    clientX: sceneRect.left + sceneRect.width * 0.75,
-    clientY: sceneRect.top + sceneRect.height * 0.45,
-  });
-
-  assert.equal(left.side, "left");
-  assert.equal(right.side, "right");
-  assert.ok(left.directionX > 0, "왼쪽 물은 오른쪽으로 진행");
-  assert.ok(right.directionX < 0, "오른쪽 물은 왼쪽으로 진행");
-  assert.ok(left.directionY > 0, "왼쪽 물은 아래로 진행");
-  assert.ok(right.directionY > 0, "오른쪽 물은 아래로 진행");
-  assert.ok(left.splashY > left.nozzleY);
-  assert.ok(right.splashY > right.nozzleY);
-  assert.equal(left.canY, right.canY);
-  assert.equal(left.canX + right.canX, sceneRect.width);
-  assertNear(left.nozzleX, left.spriteStartX, 0.001);
-  assertNear(left.nozzleY, left.spriteStartY, 0.001);
-  assertNear(right.nozzleX, right.spriteStartX, 0.001);
-  assertNear(right.nozzleY, right.spriteStartY, 0.001);
-  assertNear(left.nozzleX + right.nozzleX, sceneRect.width, 0.001);
-  assertNear(
-    left.spriteStartX + right.spriteStartX,
-    sceneRect.width,
-    0.001
-  );
-  assertNear(left.splashX + right.splashX, sceneRect.width, 0.001);
-  assertNear(left.splashY, right.splashY, 0.001);
-  assert.equal(left.mirrorScaleX, 1);
-  assert.equal(right.mirrorScaleX, -1);
-  assert.equal(left.mirrorScaleY, 1);
-  assert.equal(right.mirrorScaleY, 1);
-  assert.equal(left.visualTiltDegrees, WATERING_CAN_CONFIG.tiltDegrees);
-  assert.equal(right.visualTiltDegrees, -WATERING_CAN_CONFIG.tiltDegrees);
+test("슬롯별 새싹→애기오이→어른오이 두 단계 진화 기준이 유지된다", () => {
+  assert.equal(getGrowthStage(14).id, "sprout");
+  assert.equal(getGrowthStage(15).id, "young");
+  assert.equal(getGrowthStage(34).id, "young");
+  assert.equal(getGrowthStage(35).id, "adult");
+  assert.equal(getGrowthProgress(50).isHarvestReady, true);
 });
 
-test("모든 물 프레임의 실제 시작 픽셀은 같은 주둥이 앵커에 고정된다", () => {
-  const sceneRect = { left: 100, top: 50, width: 400, height: 320 };
-  const layouts = [
-    calculateWateringLayout(sceneRect, { clientX: 200, clientY: 180 }),
-    calculateWateringLayout(sceneRect, { clientX: 400, clientY: 180 }),
-  ];
+test("다 자란 슬롯 수확은 그 슬롯만 비우고 보유 오이를 정확히 1 늘린다", () => {
+  const state = createOwnedState();
+  const first = plantAt(state, 0, 0);
+  const second = plantAt(state, 0, 1);
 
-  for (const layout of layouts) {
-    const directionSign = layout.side === "left" ? 1 : -1;
+  addGrowthExperience(state, first.plotId, first.slotId, 50);
+  addGrowthExperience(state, second.plotId, second.slotId, 17);
+  const before = state.cucumbers;
+  const result = harvestCucumber(state, first.plotId, first.slotId);
 
-    WATER_SPRITE_CONFIG.frameStartPixels.forEach((frameStart, frameIndex) => {
-      const translation = getWaterFrameTranslation(frameIndex);
-      const localStartX =
-        layout.spriteLeft +
-        layout.spriteWidth *
-          (frameStart.x / WATER_SPRITE_CONFIG.frameWidth +
-            translation.x / 100);
-      const localStartY =
-        layout.spriteTop +
-        layout.spriteHeight *
-          (frameStart.y / WATER_SPRITE_CONFIG.frameHeight +
-            translation.y / 100);
-      const actualX = layout.canX + directionSign * localStartX;
-      const actualY = layout.canY + localStartY;
+  assert.equal(GAME_CONFIG.harvestReward, 1);
+  assert.equal(result.harvested, true);
+  assert.equal(result.reward, 1);
+  assert.equal(state.cucumbers, before + 1);
+  assert.equal(first.slot.isPlanted, false);
+  assert.equal(first.slot.xp, 0);
+  assert.equal(second.slot.isPlanted, true);
+  assert.equal(second.slot.xp, 17);
+});
 
-      assertNear(actualX, layout.nozzleX, 0.001, `frame ${frameIndex + 1} X`);
-      assertNear(actualY, layout.nozzleY, 0.001, `frame ${frameIndex + 1} Y`);
+test("같은 성숙 슬롯을 두 번 수확해도 보상은 한 번만 지급된다", () => {
+  const state = createOwnedState();
+  const address = plantAt(state);
+
+  addGrowthExperience(state, address.plotId, address.slotId, 50);
+  assert.equal(
+    harvestCucumber(state, address.plotId, address.slotId).harvested,
+    true
+  );
+  assert.equal(
+    harvestCucumber(state, address.plotId, address.slotId).harvested,
+    false
+  );
+  assert.equal(state.cucumbers, 1);
+  assert.equal(state.harvestCount, 1);
+});
+
+test("수확 후에는 별도 심기 호출 전까지 빈 상태가 유지된다", () => {
+  const state = createOwnedState();
+  const address = plantAt(state);
+
+  addGrowthExperience(state, address.plotId, address.slotId, 50);
+  harvestCucumber(state, address.plotId, address.slotId);
+  assert.equal(address.slot.isPlanted, false);
+  assert.equal(address.slot.xp, 0);
+  assert.equal(
+    plantCucumber(state, address.plotId, address.slotId).planted,
+    true
+  );
+  assert.equal(address.slot.xp, 0);
+});
+
+test("자동 XP는 작물 수와 무관하게 기존 전역 총량만 생성한다", () => {
+  const state = createOwnedState();
+
+  state.facilities["small-garden"] = 1;
+  for (let index = 0; index < 4; index += 1) plantAt(state, 0, index);
+  const result = applyProduction(state, 4_000);
+
+  assert.equal(result.generated, 4);
+  assert.equal(result.gained, 4);
+  assert.equal(
+    state.plots[0].slots.reduce((total, slot) => total + slot.xp, 0),
+    4
+  );
+  assert.deepEqual(
+    state.plots[0].slots.map((slot) => slot.xp),
+    [1, 1, 1, 1]
+  );
+});
+
+test("라운드로빈은 안정적인 슬롯 순서와 다음 커서를 유지한다", () => {
+  const state = createOwnedState();
+
+  for (let index = 0; index < 4; index += 1) plantAt(state, 0, index);
+  const first = distributeAutomaticExperience(state, 5);
+  const second = distributeAutomaticExperience(state, 3);
+
+  assert.equal(first.gained, 5);
+  assert.deepEqual(
+    state.plots[0].slots.map((slot) => slot.xp),
+    [2, 2, 2, 2]
+  );
+  assert.equal(second.gained, 3);
+  assert.equal(state.autoXpCursor, 0);
+});
+
+test("250ms 자동 생산은 소수 누적 후 확정된 정수 XP만 배분한다", () => {
+  const state = createOwnedState();
+  const address = plantAt(state);
+
+  state.facilities["small-garden"] = 1;
+  assert.equal(applyProduction(state, 250).gained, 0);
+  assert.equal(applyProduction(state, 250).gained, 0);
+  assert.equal(applyProduction(state, 250).gained, 0);
+  assert.equal(address.slot.xp, 0);
+  assert.equal(applyProduction(state, 250).gained, 1);
+  assert.equal(address.slot.xp, 1);
+  assert.equal(state.automaticXpRemainder, 0);
+});
+
+test("빈 슬롯과 성숙 슬롯은 자동 XP 대상에서 제외되고 다른 슬롯에 재배분된다", () => {
+  const state = createOwnedState();
+  const mature = plantAt(state, 0, 0);
+  const growing = plantAt(state, 0, 2);
+
+  addGrowthExperience(state, mature.plotId, mature.slotId, 50);
+  const result = distributeAutomaticExperience(state, 4);
+
+  assert.equal(result.gained, 4);
+  assert.equal(mature.slot.xp, 50);
+  assert.equal(state.plots[0].slots[1].xp, 0);
+  assert.equal(growing.slot.xp, 4);
+});
+
+test("모든 슬롯이 비었거나 성숙하면 자동 XP를 잘못 보관하거나 지급하지 않는다", () => {
+  const emptyState = createOwnedState();
+  const emptyResult = distributeAutomaticExperience(emptyState, 3.75);
+
+  assert.equal(emptyResult.gained, 0);
+  assert.equal(emptyState.automaticXpRemainder, 0);
+
+  const matureState = createOwnedState();
+  const mature = plantAt(matureState);
+  addGrowthExperience(matureState, mature.plotId, mature.slotId, 50);
+  const matureResult = distributeAutomaticExperience(matureState, 4);
+
+  assert.equal(matureResult.gained, 0);
+  assert.equal(mature.slot.xp, 50);
+});
+
+test("오프라인 XP도 전역 총량 한 번만 라운드로빈 배분한다", () => {
+  const state = createOwnedState(1_000);
+
+  state.facilities["small-garden"] = 1;
+  for (let index = 0; index < 4; index += 1) plantAt(state, 0, index);
+  state.lastSavedAt = 1_000;
+  const preview = calculateOfflineReward(state, 5_000);
+  const result = applyOfflineReward(state, 5_000);
+
+  assert.equal(preview.potentialExperience, 4);
+  assert.equal(preview.reward, 4);
+  assert.equal(result.gained, 4);
+  assert.equal(result.allocations.length, 4);
+  assert.deepEqual(
+    state.plots[0].slots.map((slot) => slot.xp),
+    [1, 1, 1, 1]
+  );
+});
+
+test("오프라인 보상 적용 시각을 전진시켜 같은 구간을 중복 지급하지 않는다", () => {
+  const state = createOwnedState(1_000);
+  const address = plantAt(state);
+
+  state.facilities["small-garden"] = 1;
+  state.lastSavedAt = 1_000;
+  assert.equal(applyOfflineReward(state, 4_000).gained, 3);
+  assert.equal(applyOfflineReward(state, 4_000).gained, 0);
+  assert.equal(address.slot.xp, 3);
+});
+
+test("오프라인 시간은 8시간 상한과 전체 남은 용량을 넘지 않는다", () => {
+  const state = createOwnedState(1_000);
+  const address = plantAt(state);
+
+  state.facilities["processing-factory"] = 1;
+  state.lastSavedAt = 1_000;
+  const result = applyOfflineReward(
+    state,
+    1_000 + (GAME_CONFIG.maxOfflineSeconds + 100) * 1_000
+  );
+
+  assert.equal(result.elapsedSeconds, GAME_CONFIG.maxOfflineSeconds);
+  assert.equal(result.gained, GAME_CONFIG.harvestExperience);
+  assert.equal(address.slot.xp, GAME_CONFIG.harvestExperience);
+});
+
+test("파생 생산량과 슬롯 단계는 저장값을 신뢰하지 않고 다시 계산한다", () => {
+  const state = createOwnedState();
+  const address = plantAt(state);
+
+  state.facilities.greenhouse = 2;
+  state.perSecond = 999_999;
+  address.slot.xp = 16;
+  address.slot.growthStageId = "adult";
+  synchronizeDerivedState(state);
+
+  assert.equal(state.perSecond, 16);
+  assert.equal(address.slot.growthStageId, "young");
+});
+
+test("게임 엔진 tick도 총 XP 한 번만 적용하고 콜백에 슬롯 배분을 전달한다", () => {
+  const originalWindow = globalThis.window;
+  globalThis.window = {
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
+  };
+
+  try {
+    const state = createOwnedState();
+    const address = plantAt(state);
+    const updates = [];
+    let now = 1_000;
+
+    state.facilities["small-garden"] = 1;
+    const engine = new GameEngine({
+      state,
+      clock: () => now,
+      onUpdate: (update) => updates.push(update),
     });
+    now = 3_000;
+    const result = engine.synchronize();
+
+    assert.equal(result.gained, 2);
+    assert.equal(address.slot.xp, 2);
+    assert.equal(updates.length, 1);
+    assert.equal(updates[0].allocations[0].slotId, address.slotId);
+  } finally {
+    globalThis.window = originalWindow;
   }
 });
 
-test("물뿌리개는 기존 8도보다 큰 16도로 기울고 물 표시 전에 자세를 잡는다", () => {
-  const canSize = 88;
-  const tiltedNozzle = getTiltedCanNozzleOffset(canSize);
-  const unrotatedNozzleY =
-    (WATERING_CAN_CONFIG.nozzleExitPixel.y /
-      WATERING_CAN_CONFIG.imageHeight -
-      0.5) *
-    canSize;
-
-  assert.equal(WATERING_CAN_CONFIG.tiltDegrees, 16);
-  assert.ok(WATERING_CAN_CONFIG.tiltDegrees > 8);
-  assert.ok(WATERING_CAN_CONFIG.tiltDegrees >= 14);
-  assert.ok(WATERING_CAN_CONFIG.tiltDegrees <= 18);
-  assert.ok(tiltedNozzle.y > unrotatedNozzleY);
-  assert.ok(WATERING_CAN_CONFIG.pivot.x > 0.35);
-  assert.ok(WATERING_CAN_CONFIG.pivot.x < 0.55);
-  assert.ok(WATERING_CAN_CONFIG.pivot.y > 0.45);
-  assert.ok(WATERING_CAN_CONFIG.pivot.y < 0.65);
-  assert.ok(
-    WATERING_CAN_CONFIG.tiltReachedAtPercent <
-      WATER_SPRITE_CONFIG.waterVisibleAtPercent
-  );
-});
-
-test("PC와 모바일 가장자리 보정은 실제 보이는 효과가 닿는 축에서만 최소 적용된다", () => {
-  const scenes = [
-    { left: 300, top: 180, width: 756, height: 617 },
-    { left: 8, top: 117, width: 374, height: 416 },
-  ];
-  const points = [
-    [0, 0],
-    [0.5, 0],
-    [1, 0],
-    [0, 0.5],
-    [0.5, 0.5],
-    [1, 0.5],
-    [0, 1],
-    [0.5, 1],
-    [1, 1],
-  ];
-
-  scenes.forEach((sceneRect) => {
-    points.forEach(([ratioX, ratioY]) => {
-      const layout = calculateWateringLayout(sceneRect, {
-        clientX: sceneRect.left + sceneRect.width * ratioX,
-        clientY: sceneRect.top + sceneRect.height * ratioY,
-      });
-      const { effectBounds, safeMargin } = layout;
-
-      assert.ok(effectBounds.left >= safeMargin - 0.001);
-      assert.ok(effectBounds.top >= safeMargin - 0.001);
-      assert.ok(effectBounds.right <= sceneRect.width - safeMargin + 0.001);
-      assert.ok(effectBounds.bottom <= sceneRect.height - safeMargin + 0.001);
-      assert.ok(layout.splashY > layout.nozzleY);
-      assert.ok(layout.directionY > 0);
-
-      if (layout.correctionX > 0) {
-        assertNear(effectBounds.left, safeMargin, 0.001);
-      } else if (layout.correctionX < 0) {
-        assertNear(effectBounds.right, sceneRect.width - safeMargin, 0.001);
-      } else {
-        assert.equal(layout.canX, layout.inputX);
-      }
-
-      if (layout.correctionY > 0) {
-        assertNear(effectBounds.top, safeMargin, 0.001);
-      } else if (layout.correctionY < 0) {
-        assertNear(effectBounds.bottom, sceneRect.height - safeMargin, 0.001);
-      } else {
-        assert.equal(layout.canY, layout.inputY);
-      }
-    });
+test("물 효과 배치는 슬롯 장면의 포인터 위치와 좌우를 사용한다", () => {
+  const sceneRect = { left: 100, top: 50, width: 170, height: 140 };
+  const left = calculateWateringLayout(sceneRect, {
+    clientX: 135,
+    clientY: 120,
   });
+  const right = calculateWateringLayout(sceneRect, {
+    clientX: 235,
+    clientY: 120,
+  });
+
+  assert.equal(getWateringSide(135, sceneRect), "left");
+  assert.equal(getWateringSide(235, sceneRect), "right");
+  assert.equal(left.side, "left");
+  assert.equal(right.side, "right");
+  assert.ok(left.canSize >= 36 && left.canSize <= 54);
+  assert.ok(right.canSize >= 36 && right.canSize <= 54);
+  assert.ok(left.splashY > left.nozzleY);
+  assert.ok(right.splashY > right.nozzleY);
+  assert.equal(WATERING_CAN_CONFIG.tiltDegrees, 16);
+  assert.equal(WATER_SPRITE_CONFIG.frameCount, 8);
 });
 
-test("정규화한 터치 위치는 화면 크기 변경 뒤에도 같은 상대 위치를 유지한다", () => {
-  const initial = calculateWateringLayout(
-    { left: 10, top: 20, width: 400, height: 360 },
-    { clientX: 130, clientY: 200 }
-  );
-  const resized = calculateWateringLayout(
-    { left: 40, top: 60, width: 760, height: 600 },
-    { normalizedX: initial.normalizedX, normalizedY: initial.normalizedY }
-  );
+test("슬롯 안 가장자리 물 효과는 가능한 범위에서 잘리지 않게 보정한다", () => {
+  const sceneRect = { left: 0, top: 0, width: 190, height: 170 };
 
-  assert.equal(initial.normalizedX, 0.3);
-  assert.equal(initial.normalizedY, 0.5);
-  assert.equal(resized.inputX, 228);
-  assert.equal(resized.inputY, 300);
-  assert.equal(resized.normalizedX, initial.normalizedX);
-  assert.equal(resized.normalizedY, initial.normalizedY);
+  for (const [x, y] of [
+    [0, 0],
+    [190, 0],
+    [0, 170],
+    [190, 170],
+  ]) {
+    const layout = calculateWateringLayout(sceneRect, {
+      clientX: x,
+      clientY: y,
+    });
+
+    assert.ok(layout.effectBounds.left >= layout.safeMargin - 0.001);
+    assert.ok(layout.effectBounds.top >= layout.safeMargin - 0.001);
+    assert.ok(
+      layout.effectBounds.right <= sceneRect.width - layout.safeMargin + 0.001
+    );
+    assert.ok(
+      layout.effectBounds.bottom <= sceneRect.height - layout.safeMargin + 0.001
+    );
+  }
 });
 
-test("포인터가 없을 때도 오이와 무관한 안전한 기본 위치를 사용한다", async () => {
-  const sceneRect = { left: 100, top: 50, width: 400, height: 320 };
-  const layout = calculateWateringLayout(sceneRect);
-  const rendererSource = await readFile(
+test("HTML에는 제거 대상 안내·알림·수확 버튼이 없고 HUD와 메뉴만 유지된다", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const body = html.match(/<body>([\s\S]*)<\/body>/)?.[1] ?? "";
+
+  assert.match(body, /id="cucumberCount"/);
+  assert.match(body, /id="productionRate"/);
+  assert.match(body, /id="touchYield"/);
+  assert.match(body, /id="menuButton"/);
+  assert.doesNotMatch(body, /id="stageToast"|id="harvestButton"/);
+  assert.doesNotMatch(body, /오이에게 물을 주세요/);
+  assert.doesNotMatch(body, /다 자랐어요!\s*수확/);
+  assert.doesNotMatch(body, /빈 밭을 톡/);
+  assert.doesNotMatch(body, /수확하고\s*\+50/);
+  assert.equal(body.match(/id="menuButton"/g)?.length, 1);
+});
+
+test("상점에는 첫 무료 텃밭 진입점과 가격 미정 후속 상태가 연결된다", async () => {
+  const [html, renderer, main] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
+    readFile(new URL("../js/main.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(html, /id="shopMenuButton"[\s\S]*상점/);
+  assert.match(html, /id="gardenPurchaseButton"[\s\S]*무료 구매/);
+  assert.match(renderer, /가격 확정 후 이용 가능/);
+  assert.match(renderer, /freeAvailable[\s\S]*gardenPurchaseButton\.disabled/);
+  assert.match(main, /purchasePending[\s\S]*purchaseFirstGarden\(state\)/);
+  assert.match(main, /menuModal\.addEventListener\("pointerdown", stopModalInput\)/);
+  assert.equal(GAME_CONFIG.additionalGardenPrice, null);
+});
+
+test("탑다운 밭·2×2 슬롯·세로 스크롤·고정 HUD 구조가 적용된다", async () => {
+  const [html, css, renderer] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../css/game.css", import.meta.url), "utf8"),
+    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(html, /class="sky-header"/);
+  assert.match(html, /id="plotList"/);
+  assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
+  assert.match(css, /\.sky-header\s*\{[\s\S]*position:\s*fixed;/);
+  assert.match(css, /\.crop-slot-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,/);
+  assert.match(css, /\.plot-list\s*\{[\s\S]*display:\s*grid;[\s\S]*gap:/);
+  assert.match(renderer, /GAME_CONFIG\.slotsPerPlot|plot\.slots\.forEach/);
+  assert.doesNotMatch(css, /\.game-shell\s*\{[^}]*overflow:\s*hidden;/s);
+});
+
+test("슬롯별 XP 막대는 심어진 슬롯만 표시하고 전체 성장 XP를 접근성 값으로 제공한다", async () => {
+  const [renderer, css] = await Promise.all([
+    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
+    readFile(new URL("../css/game.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(renderer, /progress\.setAttribute\("role", "progressbar"\)/);
+  assert.match(renderer, /view\.progress\.hidden = !isPlanted/);
+  assert.match(renderer, /progress\.progressPercent/);
+  assert.match(renderer, /aria-valuenow/);
+  assert.match(renderer, /aria-valuetext/);
+  assert.match(css, /\.crop-xp-bar\s*\{[\s\S]*height:\s*7px;/);
+  assert.match(css, /\.crop-xp-bar__fill\s*\{[\s\S]*#f2b935[\s\S]*#ffe47c/);
+});
+
+test("빈 슬롯·수확 슬롯 유도 효과와 화면 밖·reduced-motion 완화가 존재한다", async () => {
+  const [renderer, css] = await Promise.all([
+    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
+    readFile(new URL("../css/game.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(css, /empty-slot-pulse/);
+  assert.match(css, /harvest-ready-bob/);
+  assert.match(css, /\.garden-plot\[data-visible="false"\][\s\S]*animation-play-state:\s*paused/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /animation:\s*none !important/);
+  assert.match(renderer, /IntersectionObserver/);
+});
+
+test("슬롯별 컨트롤러·효과 레이어·전환 Promise를 재사용하고 제거 시 정리한다", async () => {
+  const renderer = await readFile(
     new URL("../js/ui-renderer.js", import.meta.url),
     "utf8"
   );
-  const layoutSource = rendererSource.slice(
-    rendererSource.indexOf("export function calculateWateringLayout"),
-    rendererSource.indexOf("export class UIRenderer")
-  );
-  const positioningSource = rendererSource.slice(
-    rendererSource.indexOf("positionWateringEffect(pointer"),
-    rendererSource.indexOf(
-      "\n  buildFacilityCards()",
-      rendererSource.indexOf("positionWateringEffect(pointer")
-    )
-  );
 
-  assert.ok(layout.inputX > 0 && layout.inputX < sceneRect.width);
-  assert.ok(layout.inputY > 0 && layout.inputY < sceneRect.height);
-  assert.ok(layout.splashY > layout.nozzleY);
-  assert.doesNotMatch(layoutSource, /character|target/i);
-  assert.doesNotMatch(positioningSource, /characterImage|getBoundingClientRect\(\).*character/s);
-  assert.doesNotMatch(rendererSource, /characterImage\.getBoundingClientRect\(\)/);
+  assert.match(renderer, /this\.slotViews = new Map\(\)/);
+  assert.match(renderer, /new CropTransitionController\(/);
+  assert.match(renderer, /buildWateringEffect\(touchEffects\)/);
+  assert.match(renderer, /productionAccumulator: createWholeXpGainAccumulator\(\)/);
+  assert.match(renderer, /view\.controller\.suspend\(\)/);
+  assert.match(renderer, /this\.slotViews\.delete\(view\.key\)/);
+  assert.doesNotMatch(renderer, /#characterButton|#characterImage|#harvestButton/);
 });
 
-test("물 스프라이트는 1776×888 RGBA의 4×2, 8프레임을 행 우선으로 재생한다", async () => {
-  const [waterPng, wateringCanPng, gameCss, rendererSource] = await Promise.all([
-    readFile(new URL("../assets/images/water.png", import.meta.url)),
-    readFile(new URL("../assets/images/water-gun.png", import.meta.url)),
-    readFile(new URL("../css/game.css", import.meta.url), "utf8"),
-    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
-  ]);
-
-  assert.deepEqual([...waterPng.subarray(1, 4)], [80, 78, 71]);
-  assert.equal(waterPng.readUInt32BE(16), 1776);
-  assert.equal(waterPng.readUInt32BE(20), 888);
-  assert.equal(waterPng[24], 8, "water.png must remain 8-bit");
-  assert.equal(waterPng[25], 6, "water.png must remain RGBA");
-  assert.equal(
-    createHash("sha256").update(waterPng).digest("hex"),
-    "a18b328a3176fd12d246edb6b3ccd004ed6c9eed5b2f6e6ac7759140f596b618"
-  );
-  assert.equal(
-    createHash("sha256").update(wateringCanPng).digest("hex"),
-    "1e89f5967c9b6d0422b635472e578e696a8ae285e8ddac9177f492bcc75c39e5"
-  );
-  assert.equal(
-    WATER_SPRITE_CONFIG.sheetWidth,
-    WATER_SPRITE_CONFIG.columns * WATER_SPRITE_CONFIG.frameWidth
-  );
-  assert.equal(
-    WATER_SPRITE_CONFIG.sheetHeight,
-    WATER_SPRITE_CONFIG.rows * WATER_SPRITE_CONFIG.frameHeight
-  );
-  assert.equal(
-    WATER_SPRITE_CONFIG.frameCount,
-    WATER_SPRITE_CONFIG.columns * WATER_SPRITE_CONFIG.rows
-  );
-  assert.equal(WATER_SPRITE_CONFIG.animationDurationMs, 820);
-  assert.equal(WATER_SPRITE_CONFIG.frameStartPixels.length, 8);
-  assert.deepEqual(WATER_SPRITE_CONFIG.frameStartPixels[0], { x: 91, y: 111 });
-  assert.deepEqual(WATER_SPRITE_CONFIG.alignedPeakImpactPixel, {
-    x: 313,
-    y: 368,
-  });
-  assert.deepEqual(WATER_SPRITE_CONFIG.alignedVisibleBoundsPixel, {
-    left: 88,
-    top: 108,
-    right: 412,
-    bottom: 373,
-  });
-  assert.deepEqual(
-    {
-      columns: WATER_SPRITE_CONFIG.columns,
-      rows: WATER_SPRITE_CONFIG.rows,
-      frameCount: WATER_SPRITE_CONFIG.frameCount,
-      frameWidth: WATER_SPRITE_CONFIG.frameWidth,
-      frameHeight: WATER_SPRITE_CONFIG.frameHeight,
-    },
-    { columns: 4, rows: 2, frameCount: 8, frameWidth: 444, frameHeight: 444 }
-  );
-  assert.match(
-    gameCss,
-    /@keyframes water-sprite-play[\s\S]*background-position: 0% 0%;[\s\S]*background-position: 33\.333333% 0%;[\s\S]*background-position: 66\.666667% 0%;[\s\S]*background-position: 100% 0%;[\s\S]*background-position: 0% 100%;[\s\S]*background-position: 33\.333333% 100%;[\s\S]*background-position: 66\.666667% 100%;[\s\S]*background-position: 100% 100%;/
-  );
-  assert.match(gameCss, /steps\(1, end\)/);
-  assert.match(gameCss, /watering-can-pour 820ms/);
-  assert.match(
-    gameCss,
-    /@keyframes watering-can-pour[\s\S]*10%,[\s\S]*rotate\(var\(--water-can-tilt, 16deg\)\)[\s\S]*94%[\s\S]*rotate\(0deg\)/
-  );
-  assert.match(
-    gameCss,
-    /@keyframes water-sprite-play[\s\S]*10%\s*\{[\s\S]*opacity: 0;[\s\S]*12%\s*\{[\s\S]*opacity: 1;/
-  );
-  assert.match(
-    gameCss,
-    /\.watering-effect__sprite\s*\{[\s\S]*?pointer-events: none;/
-  );
-  assert.match(
-    gameCss,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*watering-can-reduced 180ms[\s\S]*water-sprite-reduced 180ms/
-  );
-  assert.match(
-    rendererSource,
-    /this\.wateringEffect = this\.buildWateringEffect\(\)/
-  );
-  assert.match(rendererSource, /waterSprite\.addEventListener\("animationend"/);
-  assert.match(rendererSource, /root\.classList\.remove\("is-playing"\)/);
-  assert.match(rendererSource, /this\.resetWateringEffect\(\)/);
-  assert.match(rendererSource, /root\.style\.removeProperty\(property\)/);
-  assert.match(rendererSource, /this\.wateringEffect\.inputPoint = null/);
-  assert.match(
-    rendererSource,
-    /renderWatering\(amount, event\)[\s\S]*event\?\.type === "pointerdown"[\s\S]*this\.resetWateringEffect\(\);[\s\S]*this\.positionWateringEffect\(pointer\);[\s\S]*void root\.offsetWidth;[\s\S]*root\.classList\.add\("is-playing"\)/
-  );
-  assert.match(rendererSource, /void root\.offsetWidth/);
-  assert.equal(
-    rendererSource.match(/this\.elements\.touchEffects\.append\(root\)/g)
-      ?.length,
-    1,
-    "물 효과 DOM은 한 번만 생성"
-  );
-  assert.equal(
-    rendererSource.match(/addEventListener\("animationend"/g)?.length,
-    1,
-    "종료 리스너는 한 번만 등록"
-  );
-  assert.doesNotMatch(rendererSource, /watering-effect__drop/);
-  assert.doesNotMatch(rendererSource, /setTimeout\(\(\) => burst\.remove\(\)/);
-  assert.equal(
-    rendererSource.match(/getWaterFrameTranslation\(frameIndex\)/g)?.length,
-    2,
-    "프레임 여백 보정은 하나의 측정 함수에서 계산"
-  );
-});
-
-test("오른쪽은 바깥 래퍼만 반전하고 물뿌리개 내부 요소만 기울인다", async () => {
-  const [gameCss, rendererSource] = await Promise.all([
-    readFile(new URL("../css/game.css", import.meta.url), "utf8"),
-    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
-  ]);
-  const wateringCss = gameCss.slice(
-    gameCss.indexOf(".touch-burst {"),
-    gameCss.indexOf(".growth-panel {")
-  );
-  const mirrorRule = gameCss.match(/\.watering-effect__mirror\s*\{([^}]*)\}/s)?.[1];
-  const spriteRule = gameCss.match(/\.watering-effect__sprite\s*\{([^}]*)\}/s)?.[1];
-  const reducedCanKeyframes = gameCss.slice(
-    gameCss.indexOf("@keyframes watering-can-reduced"),
-    gameCss.indexOf("@keyframes water-sprite-reduced")
-  );
-
-  assert.match(mirrorRule, /scaleX\(var\(--water-mirror-x\)\)/);
-  assert.doesNotMatch(mirrorRule, /rotate|scaleY/);
-  assert.doesNotMatch(spriteRule, /rotate/);
-  assert.match(rendererSource, /canPivot\.append\(wateringCan\)/);
-  assert.match(rendererSource, /mirror\.append\(canPivot, spriteAnchor\)/);
-  assert.match(rendererSource, /root\.append\(mirror, gain\)/);
-  assert.match(
-    gameCss,
-    /\.touch-burst\.is-playing \.watering-effect__can-pivot\s*\{[^}]*watering-can-pour/s
-  );
-  assert.match(
-    gameCss,
-    /\.watering-effect__can\s*\{[^}]*transform:\s*scaleX\(-1\);/s
-  );
-  assert.doesNotMatch(wateringCss, /scaleY\(\s*-1\s*\)/);
-  assert.doesNotMatch(wateringCss, /rotate\(\s*180deg\s*\)/);
-  assert.doesNotMatch(reducedCanKeyframes, /rotate/);
-  assert.doesNotMatch(rendererSource, /Math\.atan2/);
-  assert.match(rendererSource, /clientX: event\.clientX, clientY: event\.clientY/);
-  assert.match(rendererSource, /mirror\.append\(canPivot, spriteAnchor\)/);
-  assert.match(rendererSource, /root\.append\(mirror, gain\)/);
-});
-
-test("마우스와 터치는 하나의 Pointer Event 물주기 경로를 사용한다", async () => {
-  const mainSource = await readFile(
+test("pointerdown과 합성 click의 중복, 슬롯별 전환 잠금, 수확 후 즉시 재심기를 방지한다", async () => {
+  const main = await readFile(
     new URL("../js/main.js", import.meta.url),
     "utf8"
   );
 
-  assert.match(
-    mainSource,
-    /characterZone\.addEventListener\("pointerdown"/
-  );
-  assert.doesNotMatch(mainSource, /addEventListener\("touchstart"/);
-  assert.match(
-    mainSource,
-    /if \(result\.gained > 0\) \{\s*ui\.renderWatering\(result\.gained, event\);/
-  );
+  assert.match(main, /const slotLocks = new Set\(\)/);
+  assert.match(main, /lastPointerInteractionAtBySlot/);
+  assert.match(main, /event\.detail !== 0/);
+  assert.match(main, /< 700/);
+  assert.match(main, /if \(!target\.slot\.isPlanted\)[\s\S]*return;[\s\S]*isHarvestReady[\s\S]*return;/);
+  assert.match(main, /try \{[\s\S]*await transition;[\s\S]*finally \{[\s\S]*slotLocks\.delete\(key\)/);
+  assert.doesNotMatch(main, /addEventListener\("touchstart"/);
 });
 
-test("큰 경험치 증가도 최종 기준에서 멈추고 진행률은 100%를 넘지 않는다", () => {
-  const state = createInitialGameState(1_000);
-  const result = addGrowthExperience(state, 10_000);
-  const progress = getGrowthProgress(state.growthExperience);
+test("게임은 기존 내부 이미지·CSS만 사용하고 외부 라이브러리를 추가하지 않는다", async () => {
+  const [html, renderer, packageJson] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
 
-  assert.equal(result.gained, GAME_CONFIG.harvestExperience);
-  assert.equal(result.becameHarvestReady, true);
-  assert.equal(state.growthExperience, GAME_CONFIG.harvestExperience);
-  assert.equal(progress.progressPercent, 100);
-  assert.equal(progress.isHarvestReady, true);
-});
-
-test("큰 숫자는 내부값을 바꾸지 않고 짧게 표시할 수 있다", () => {
-  const value = 1_234_567_890;
-
-  assert.equal(formatNumber(value), "12.3억");
-  assert.equal(formatExactNumber(value), "1,234,567,890");
-  assert.equal(value, 1_234_567_890);
-});
-
-test("시설 가격은 중앙 설정의 1.15배 공식을 따른다", () => {
-  const facility = GAME_CONFIG.facilities[0];
-
-  assert.equal(getNextPrice(facility, 0), 50);
-  assert.equal(getNextPrice(facility, 1), 57);
-  assert.equal(getNextPrice(facility, 2), 66);
-});
-
-test("오이가 부족하면 시설을 구매할 수 없다", () => {
-  const state = createInitialGameState(1_000);
-  const result = purchaseFacility(state, "small-garden");
-
-  assert.equal(result.purchased, false);
-  assert.equal(result.reason, "insufficient");
-  assert.equal(state.facilities["small-garden"], 0);
-  assert.equal(state.cucumbers, 0);
-});
-
-test("기존 시설 구매는 잔액과 자동 경험치 속도를 즉시 갱신한다", () => {
-  const state = createInitialGameState(1_000);
-  state.cucumbers = 1_000;
-
-  assert.equal(purchaseFacility(state, "small-garden").purchased, true);
-  assert.equal(purchaseFacility(state, "small-garden").purchased, true);
-  assert.equal(state.facilities["small-garden"], 2);
-  assert.equal(state.cucumbers, 893);
-  assert.equal(state.perSecond, 2);
-  assert.equal(calculateProductionRate(state), 2);
-});
-
-test("시간 차 기반 자동 생산은 오이 대신 경험치를 지급한다", () => {
-  const state = createInitialGameState(1_000);
-  state.facilities.greenhouse = 2;
-  synchronizeDerivedState(state);
-  const result = applyProduction(state, 2_500);
-
-  assert.equal(result.gained, 40);
-  assert.equal(state.growthExperience, 40);
-  assert.equal(state.cucumbers, 0);
-  assert.equal(state.totalEarned, 0);
-});
-
-test("성장 기준 15와 35에서 새싹, 애기오이, 어른오이로 전환된다", () => {
-  assert.equal(getGrowthStage(0).id, "sprout");
-  assert.equal(getGrowthStage(14.99).id, "sprout");
-  assert.equal(getGrowthStage(15).id, "young");
-  assert.equal(getGrowthStage(34.99).id, "young");
-  assert.equal(getGrowthStage(35).id, "adult");
-  assert.equal(getGrowthStage(50).id, "adult");
-});
-
-test("수확 전에는 보상을 지급하지 않는다", () => {
-  const state = createInitialGameState(1_000);
-  state.growthExperience = GAME_CONFIG.harvestExperience - 1;
-  synchronizeDerivedState(state);
-  const result = harvestCucumber(state);
-
-  assert.equal(result.harvested, false);
-  assert.equal(result.reward, 0);
-  assert.equal(state.cucumbers, 0);
-  assert.equal(state.growthExperience, GAME_CONFIG.harvestExperience - 1);
-});
-
-test("한 성장 주기 수확 보상은 정확히 한 번 지급되고 새싹으로 초기화된다", () => {
-  const state = createInitialGameState(1_000);
-  addGrowthExperience(state, GAME_CONFIG.harvestExperience);
-
-  const first = harvestCucumber(state);
-  const second = harvestCucumber(state);
-
-  assert.equal(first.harvested, true);
-  assert.equal(first.reward, GAME_CONFIG.harvestReward);
-  assert.equal(second.harvested, false);
-  assert.equal(second.reward, 0);
-  assert.equal(state.cucumbers, GAME_CONFIG.harvestReward);
-  assert.equal(state.totalEarned, GAME_CONFIG.harvestReward);
-  assert.equal(state.growthExperience, 0);
-  assert.equal(state.growthStageId, "sprout");
-  assert.equal(state.harvestCount, 1);
-});
-
-test("수확 가능 상태에서는 자동 경험치가 멈추고 다음 주기로 넘기지 않는다", () => {
-  const state = createInitialGameState(1_000);
-  state.facilities["watering-system"] = 1;
-  state.growthExperience = GAME_CONFIG.harvestExperience;
-  synchronizeDerivedState(state);
-  const result = applyProduction(state, 10_000);
-
-  assert.equal(result.gained, 0);
-  assert.equal(result.discarded, 500);
-  assert.equal(state.growthExperience, GAME_CONFIG.harvestExperience);
-  assert.equal(state.cucumbers, 0);
-});
-
-test("오프라인 경험치는 음수 시간을 0으로 처리한다", () => {
-  const state = createInitialGameState(10_000);
-  state.perSecond = 10;
-
-  const reward = calculateOfflineReward(state, 5_000);
-  assert.equal(reward.elapsedSeconds, 0);
-  assert.equal(reward.reward, 0);
-});
-
-test("1초 미만의 짧은 이탈은 0 XP 보상 모달을 만들지 않는다", () => {
-  const state = createInitialGameState(10_000);
-  state.perSecond = 10;
-
-  const reward = calculateOfflineReward(state, 10_999);
-  assert.equal(reward.elapsedSeconds, 0);
-  assert.equal(reward.reward, 0);
-});
-
-test("오프라인 계산은 8시간으로 제한되고 경험치는 수확 기준에서 멈춘다", () => {
-  const state = createInitialGameState(1_000);
-  state.facilities["small-garden"] = 10;
-  synchronizeDerivedState(state);
-  const now = state.lastSavedAt + 10 * 60 * 60 * 1_000;
-  const reward = calculateOfflineReward(state, now);
-
-  assert.equal(reward.elapsedSeconds, 8 * 60 * 60);
-  assert.equal(reward.potentialExperience, 288_000);
-  assert.equal(reward.reward, GAME_CONFIG.harvestExperience);
-});
-
-test("오프라인 경험치 적용 직후 같은 시각에는 중복 지급되지 않는다", () => {
-  const state = createInitialGameState(1_000);
-  state.facilities["small-garden"] = 2;
-  synchronizeDerivedState(state);
-  const now = 11_000;
-
-  const first = applyOfflineReward(state, now);
-  const experienceAfterFirst = state.growthExperience;
-  const second = applyOfflineReward(state, now);
-
-  assert.equal(first.reward, 20);
-  assert.equal(second.reward, 0);
-  assert.equal(state.growthExperience, experienceAfterFirst);
-  assert.equal(state.cucumbers, 0);
-  assert.equal(state.lastSavedAt, now);
-});
-
-test("저장 후 불러오기는 성장 상태와 기존 재화 및 시설을 함께 복원한다", () => {
-  const storage = new MemoryStorage();
-  const state = createInitialGameState(1_000);
-  state.cucumbers = 123;
-  state.totalEarned = 456;
-  state.growthExperience = 36;
-  state.harvestCount = 7;
-  state.facilities["small-garden"] = 3;
-
-  assert.equal(saveGame(state, storage, 2_000).ok, true);
-  const loaded = loadGameSave(storage, 3_000);
-
-  assert.equal(loaded.status, "loaded");
-  assert.equal(loaded.state.cucumbers, 123);
-  assert.equal(loaded.state.totalEarned, 456);
-  assert.equal(loaded.state.growthExperience, 36);
-  assert.equal(loaded.state.growthStageId, "adult");
-  assert.equal(loaded.state.harvestCount, 7);
-  assert.equal(loaded.state.facilities["small-garden"], 3);
-  assert.equal(loaded.state.perSecond, 3);
-});
-
-test("기존 v1 저장은 재화와 구매 내역을 유지하고 새 성장값만 기본값으로 보완한다", () => {
-  const storage = new MemoryStorage(
-    JSON.stringify({
-      saveVersion: 1,
-      cucumbers: 321,
-      totalEarned: 654,
-      touchYield: 1,
-      facilities: { "small-garden": 4, greenhouse: 2 },
-      perSecond: 999,
-      growthStageId: "farm-owner",
-      lastSavedAt: 1_000,
-      startedAt: 1_000,
-      settings: { sound: false },
-    })
-  );
-
-  const loaded = loadGameSave(storage, 2_000);
-
-  assert.equal(loaded.status, "loaded");
-  assert.equal(loaded.state.cucumbers, 321);
-  assert.equal(loaded.state.totalEarned, 654);
-  assert.equal(loaded.state.facilities["small-garden"], 4);
-  assert.equal(loaded.state.facilities.greenhouse, 2);
-  assert.equal(loaded.state.growthExperience, 0);
-  assert.equal(loaded.state.growthStageId, "sprout");
-  assert.equal(loaded.state.harvestCount, 0);
-  assert.equal(loaded.state.settings.sound, false);
-});
-
-test("손상되거나 범위를 벗어난 저장값은 NaN, 음수, 초과 경험치 없이 복구한다", () => {
-  const brokenJson = new MemoryStorage("{not-json");
-  const corruptNumbers = new MemoryStorage(
-    JSON.stringify({
-      saveVersion: 1,
-      cucumbers: -50,
-      totalEarned: "NaN",
-      touchYield: -1,
-      growthExperience: 999_999,
-      harvestCount: -4,
-      facilities: { "small-garden": Number.POSITIVE_INFINITY },
-      perSecond: Number.POSITIVE_INFINITY,
-      growthStageId: "missing-stage",
-      lastSavedAt: -1,
-      startedAt: -1,
-    })
-  );
-
-  const brokenResult = loadGameSave(brokenJson, 5_000);
-  const corruptResult = loadGameSave(corruptNumbers, 5_000);
-
-  assert.equal(brokenResult.status, "recovered");
-  assert.equal(brokenResult.state.cucumbers, 0);
-  assert.equal(corruptResult.state.cucumbers, 0);
-  assert.equal(corruptResult.state.totalEarned, 0);
-  assert.equal(corruptResult.state.touchYield, GAME_CONFIG.touchExperience);
-  assert.equal(
-    corruptResult.state.growthExperience,
-    GAME_CONFIG.harvestExperience
-  );
-  assert.equal(corruptResult.state.growthStageId, "adult");
-  assert.equal(corruptResult.state.harvestCount, 0);
-  assert.equal(corruptResult.state.perSecond, 0);
+  assert.doesNotMatch(html, /https?:\/\//);
+  assert.match(renderer, /\.\/assets\/images\/water-gun\.png/);
+  assert.match(renderer, /\.\/assets\/images\/water\.png/);
+  assert.equal(JSON.parse(packageJson).dependencies, undefined);
 });
 
 test("초기화는 오이키우기 전용 저장 키만 제거한다", () => {

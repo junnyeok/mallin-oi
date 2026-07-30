@@ -1,12 +1,14 @@
 import { GAME_CONFIG } from "./game-config.js";
 import {
-  addGrowthExperience,
+  calculateProductionRate,
+  distributeAutomaticExperience,
+  getAllSlots,
   synchronizeDerivedState,
 } from "./game-engine.js";
 import { toSafeNonNegativeNumber } from "./number-format.js";
 
-// MVP는 기기의 로컬 시각을 사용한다. 실제 앱에서는 서버 시각과 서버 검증으로
-// 기기 시간 변경 및 저장 데이터 조작을 방어해야 한다.
+// 로컬 전용 MVP이므로 기기의 시각을 사용한다. 서버 연동 시에는 서버가 검증한
+// 마지막 활동 시각과 시설 상태를 기준으로 다시 계산해야 한다.
 export function calculateOfflineReward(state, now = Date.now()) {
   const safeNow = toSafeNonNegativeNumber(now);
   const lastSavedAt = toSafeNonNegativeNumber(state.lastSavedAt, safeNow);
@@ -14,17 +16,31 @@ export function calculateOfflineReward(state, now = Date.now()) {
     Math.floor(Math.max(0, safeNow - lastSavedAt) / 1_000),
     GAME_CONFIG.maxOfflineSeconds
   );
-  const productionRate = toSafeNonNegativeNumber(state.perSecond);
+  const productionRate = calculateProductionRate(state);
   const potentialExperience = Math.min(
     elapsedSeconds * productionRate,
     GAME_CONFIG.maxGameNumber
   );
-  const remainingExperience = Math.max(
-    0,
-    GAME_CONFIG.harvestExperience -
-      toSafeNonNegativeNumber(state.growthExperience)
+  const remainingCapacity = getAllSlots(state).reduce(
+    (total, { slot }) =>
+      slot.isPlanted
+        ? Math.min(
+            GAME_CONFIG.maxGameNumber,
+            total +
+              Math.max(
+                0,
+                GAME_CONFIG.harvestExperience -
+                  toSafeNonNegativeNumber(slot.xp)
+              )
+          )
+        : total,
+    0
   );
-  const reward = Math.min(potentialExperience, remainingExperience);
+  const wholeAvailable = Math.floor(
+    potentialExperience +
+      (toSafeNonNegativeNumber(state.automaticXpRemainder) % 1)
+  );
+  const reward = Math.min(wholeAvailable, remainingCapacity);
 
   return {
     elapsedSeconds,
@@ -39,17 +55,19 @@ export function calculateOfflineReward(state, now = Date.now()) {
 export function applyOfflineReward(state, now = Date.now()) {
   synchronizeDerivedState(state);
   const result = calculateOfflineReward(state, now);
-  const growthResult = addGrowthExperience(state, result.reward);
+  const distribution = distributeAutomaticExperience(
+    state,
+    result.potentialExperience
+  );
 
-  // 계산 시각을 즉시 전진시켜 같은 경과 시간이 메모리에서 중복 지급되지 않게 한다.
+  // 같은 경과 시간이 메모리에서 다시 지급되지 않도록 계산 시각을 즉시 전진한다.
   state.lastSavedAt = toSafeNonNegativeNumber(now, state.lastSavedAt);
 
   return {
     ...result,
-    stage: growthResult.stage,
-    stageChanged: growthResult.stageChanged,
-    previousStageId: growthResult.previousStageId,
-    becameHarvestReady: growthResult.becameHarvestReady,
-    isHarvestReady: growthResult.isHarvestReady,
+    gained: distribution.gained,
+    discarded: distribution.discarded,
+    allocations: distribution.allocations,
+    slotChanges: distribution.slotChanges,
   };
 }
