@@ -8,8 +8,8 @@ import { getGrowthProgress } from "./game-engine.js";
 import {
   createWholeXpGainAccumulator,
   showXpGain as showXpGainEffect,
-} from "./xp-gain-effect.js?v=20260730-05";
-import { CropTransitionController } from "./crop-transition.js?v=20260730-05";
+} from "./xp-gain-effect.js?v=20260731-01";
+import { CropTransitionController } from "./crop-transition.js?v=20260731-01";
 
 const clamp = (value, minimum, maximum) =>
   Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
@@ -61,7 +61,20 @@ export const WATERING_CAN_CONFIG = Object.freeze({
   tiltReachedAtPercent: 10,
 });
 
-const DEFAULT_WATERING_POINT = Object.freeze({ x: 0.35, y: 0.26 });
+export const WATERING_LAYOUT_CONFIG = Object.freeze({
+  canToCropScale: 1,
+  minimumCanSize: 40,
+  maximumCanSize: 64,
+  spriteToCanScale: 2.35,
+});
+
+const DEFAULT_CROP_WATER_TARGET = Object.freeze({ x: 0.5, y: 0.38 });
+
+export const CROP_WATER_TARGETS = Object.freeze({
+  sprout: Object.freeze({ x: 0.5, y: 0.42 }),
+  young: Object.freeze({ x: 0.58, y: 0.3 }),
+  adult: Object.freeze({ x: 0.5, y: 0.32 }),
+});
 
 function mergeBounds(...boundsList) {
   return {
@@ -73,7 +86,9 @@ function mergeBounds(...boundsList) {
 }
 
 function fitAxisToBounds(value, minimum, maximum) {
-  return minimum <= maximum ? clamp(value, minimum, maximum) : (minimum + maximum) / 2;
+  return minimum <= maximum
+    ? clamp(value, minimum, maximum)
+    : (minimum + maximum) / 2;
 }
 
 export function getWaterFrameTranslation(frameIndex) {
@@ -174,40 +189,84 @@ export function getWateringSide(pointerClientX, sceneRect) {
   return pointerClientX < sceneMidpointX ? "left" : "right";
 }
 
-export function calculateWateringLayout(sceneRect, pointer = {}) {
+export function calculateCropWateringTarget(
+  sceneRect,
+  characterRect,
+  stageId = "sprout"
+) {
   const sceneWidth = Math.max(sceneRect.width, 1);
   const sceneHeight = Math.max(sceneRect.height, 1);
-  const hasNormalizedPoint =
-    Number.isFinite(pointer.normalizedX) &&
-    Number.isFinite(pointer.normalizedY);
-  const requestedX = clamp(
-    hasNormalizedPoint
-      ? pointer.normalizedX * sceneWidth
-      : Number.isFinite(pointer.clientX)
-        ? pointer.clientX - sceneRect.left
-        : DEFAULT_WATERING_POINT.x * sceneWidth,
+  const anchor =
+    CROP_WATER_TARGETS[stageId] ?? DEFAULT_CROP_WATER_TARGET;
+  const hasCharacterRect =
+    Number.isFinite(characterRect?.left) &&
+    Number.isFinite(characterRect?.top) &&
+    characterRect.width > 0 &&
+    characterRect.height > 0;
+  const targetX = clamp(
+    hasCharacterRect
+      ? characterRect.left - sceneRect.left + characterRect.width * anchor.x
+      : sceneWidth * DEFAULT_CROP_WATER_TARGET.x,
     0,
     sceneWidth
   );
-  const requestedY = clamp(
-    hasNormalizedPoint
-      ? pointer.normalizedY * sceneHeight
-      : Number.isFinite(pointer.clientY)
-        ? pointer.clientY - sceneRect.top
-        : DEFAULT_WATERING_POINT.y * sceneHeight,
+  const targetY = clamp(
+    hasCharacterRect
+      ? characterRect.top - sceneRect.top + characterRect.height * anchor.y
+      : sceneHeight * DEFAULT_CROP_WATER_TARGET.y,
     0,
     sceneHeight
   );
-  const normalizedX = requestedX / sceneWidth;
-  const normalizedY = requestedY / sceneHeight;
-  const safeMargin = clamp(Math.min(sceneWidth, sceneHeight) * 0.02, 4, 8);
-  const canSize = clamp(
-    Math.min(sceneWidth * 0.3, sceneHeight * 0.3),
-    36,
-    54
+
+  return {
+    targetX,
+    targetY,
+    normalizedX: targetX / sceneWidth,
+    normalizedY: targetY / sceneHeight,
+    anchor,
+    cropSize: hasCharacterRect ? characterRect.height : null,
+  };
+}
+
+export function calculateWateringLayout(sceneRect, target = {}) {
+  const sceneWidth = Math.max(sceneRect.width, 1);
+  const sceneHeight = Math.max(sceneRect.height, 1);
+  const hasNormalizedTarget =
+    Number.isFinite(target.normalizedX) &&
+    Number.isFinite(target.normalizedY);
+  const targetX = clamp(
+    hasNormalizedTarget
+      ? target.normalizedX * sceneWidth
+      : Number.isFinite(target.targetX)
+        ? target.targetX
+        : DEFAULT_CROP_WATER_TARGET.x * sceneWidth,
+    0,
+    sceneWidth
   );
-  const side = getWateringSide(sceneRect.left + requestedX, sceneRect);
-  const directionSign = side === "left" ? 1 : -1;
+  const targetY = clamp(
+    hasNormalizedTarget
+      ? target.normalizedY * sceneHeight
+      : Number.isFinite(target.targetY)
+        ? target.targetY
+        : DEFAULT_CROP_WATER_TARGET.y * sceneHeight,
+    0,
+    sceneHeight
+  );
+  const safeMargin = clamp(Math.min(sceneWidth, sceneHeight) * 0.02, 1, 8);
+  const fallbackCropSize = clamp(
+    Math.min(sceneWidth * 0.16, sceneHeight * 0.2),
+    WATERING_LAYOUT_CONFIG.minimumCanSize,
+    WATERING_LAYOUT_CONFIG.maximumCanSize
+  );
+  const cropSize =
+    Number.isFinite(target.cropSize) && target.cropSize > 0
+      ? target.cropSize
+      : fallbackCropSize;
+  const canSize = clamp(
+    cropSize * WATERING_LAYOUT_CONFIG.canToCropScale,
+    WATERING_LAYOUT_CONFIG.minimumCanSize,
+    WATERING_LAYOUT_CONFIG.maximumCanSize
+  );
   const nozzleOffset = getTiltedCanNozzleOffset(canSize);
   const frameStart = WATER_SPRITE_CONFIG.frameStartPixels[0];
   const peakImpact = WATER_SPRITE_CONFIG.alignedPeakImpactPixel;
@@ -215,7 +274,8 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
   const frameStartY = frameStart.y / WATER_SPRITE_CONFIG.frameHeight;
   const peakImpactX = peakImpact.x / WATER_SPRITE_CONFIG.frameWidth;
   const peakImpactY = peakImpact.y / WATER_SPRITE_CONFIG.frameHeight;
-  const spriteWidth = canSize * 2.35;
+  const spriteWidth =
+    canSize * WATERING_LAYOUT_CONFIG.spriteToCanScale;
   const spriteHeight = spriteWidth;
   const spriteLeft = nozzleOffset.x - spriteWidth * frameStartX;
   const spriteTop = nozzleOffset.y - spriteHeight * frameStartY;
@@ -236,42 +296,92 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
       spriteHeight * (waterVisible.bottom / WATER_SPRITE_CONFIG.frameHeight),
   };
   const directionalBounds = mergeBounds(canVisibleBounds, waterVisibleBounds);
-  const mirroredDirectionalBounds =
-    side === "left"
-      ? directionalBounds
-      : {
-          left: -directionalBounds.right,
-          top: directionalBounds.top,
-          right: -directionalBounds.left,
-          bottom: directionalBounds.bottom,
-        };
-  const gainHalfWidth = Math.max(24, canSize * 0.46);
-  const gainBounds = {
-    left: -gainHalfWidth,
-    top: -Math.max(44, canSize * 0.78),
-    right: gainHalfWidth,
-    bottom: 0,
-  };
-  const localEffectBounds = mergeBounds(
-    mirroredDirectionalBounds,
-    gainBounds
-  );
-  const minimumCanX = safeMargin - localEffectBounds.left;
-  const maximumCanX = sceneWidth - safeMargin - localEffectBounds.right;
-  const minimumCanY = safeMargin - localEffectBounds.top;
-  const maximumCanY = sceneHeight - safeMargin - localEffectBounds.bottom;
-  const canX = fitAxisToBounds(requestedX, minimumCanX, maximumCanX);
-  const canY = fitAxisToBounds(requestedY, minimumCanY, maximumCanY);
+  const impactOffsetX =
+    spriteLeft + spriteWidth * peakImpactX;
+  const impactOffsetY =
+    spriteTop + spriteHeight * peakImpactY;
+  const preferredSide =
+    target.preferredSide === "left" || target.preferredSide === "right"
+      ? target.preferredSide
+      : targetX <= sceneWidth * 0.62
+        ? "right"
+        : "left";
+  const candidates = [
+    preferredSide,
+    preferredSide === "right" ? "left" : "right",
+  ]
+    .map((side, index) => {
+      const directionSign = side === "left" ? 1 : -1;
+      const localEffectBounds =
+        side === "left"
+          ? directionalBounds
+          : {
+              left: -directionalBounds.right,
+              top: directionalBounds.top,
+              right: -directionalBounds.left,
+              bottom: directionalBounds.bottom,
+            };
+      const minimumCanX = safeMargin - localEffectBounds.left;
+      const maximumCanX = sceneWidth - safeMargin - localEffectBounds.right;
+      const minimumCanY = safeMargin - localEffectBounds.top;
+      const maximumCanY = sceneHeight - safeMargin - localEffectBounds.bottom;
+      const requestedCanX = targetX - directionSign * impactOffsetX;
+      const requestedCanY = targetY - impactOffsetY;
+      const canX = fitAxisToBounds(
+        requestedCanX,
+        minimumCanX,
+        maximumCanX
+      );
+      const canY = fitAxisToBounds(
+        requestedCanY,
+        minimumCanY,
+        maximumCanY
+      );
+      const spriteImpactX = canX + directionSign * impactOffsetX;
+      const spriteImpactY = canY + impactOffsetY;
+      const targetErrorX = spriteImpactX - targetX;
+      const targetErrorY = spriteImpactY - targetY;
+
+      return {
+        side,
+        directionSign,
+        localEffectBounds,
+        canX,
+        canY,
+        requestedCanX,
+        requestedCanY,
+        spriteImpactX,
+        spriteImpactY,
+        targetErrorX,
+        targetErrorY,
+        targetErrorDistance:
+          Math.hypot(targetErrorX, targetErrorY) + index * 0.001,
+      };
+    })
+    .sort((first, second) =>
+      first.targetErrorDistance - second.targetErrorDistance
+    );
+  const selected = candidates[0];
+  const {
+    side,
+    directionSign,
+    localEffectBounds,
+    canX,
+    canY,
+    requestedCanX,
+    requestedCanY,
+    spriteImpactX,
+    spriteImpactY,
+    targetErrorX,
+    targetErrorY,
+  } = selected;
   const nozzleX = canX + nozzleOffset.x * directionSign;
   const nozzleY = canY + nozzleOffset.y;
   const spriteStartX =
     canX + directionSign * (spriteLeft + spriteWidth * frameStartX);
   const spriteStartY = canY + spriteTop + spriteHeight * frameStartY;
-  const spriteImpactX =
-    canX + directionSign * (spriteLeft + spriteWidth * peakImpactX);
-  const spriteImpactY = canY + spriteTop + spriteHeight * peakImpactY;
-  const correctionX = canX - requestedX;
-  const correctionY = canY - requestedY;
+  const correctionX = canX - requestedCanX;
+  const correctionY = canY - requestedCanY;
   const effectBounds = {
     left: canX + localEffectBounds.left,
     top: canY + localEffectBounds.top,
@@ -281,10 +391,10 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
 
   return {
     side,
-    inputX: requestedX,
-    inputY: requestedY,
-    normalizedX,
-    normalizedY,
+    targetX,
+    targetY,
+    normalizedX: targetX / sceneWidth,
+    normalizedY: targetY / sceneHeight,
     canX,
     canY,
     canSize,
@@ -302,6 +412,9 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
     splashY: spriteImpactY,
     directionX: spriteImpactX - nozzleX,
     directionY: spriteImpactY - nozzleY,
+    targetErrorX,
+    targetErrorY,
+    targetErrorDistance: Math.hypot(targetErrorX, targetErrorY),
     correctionX,
     correctionY,
     correctionDistance: Math.hypot(correctionX, correctionY),
@@ -316,6 +429,38 @@ export function calculateWateringLayout(sceneRect, pointer = {}) {
   };
 }
 
+export function getPlotSurfaceJoin(plotIndex, plotCount, columns = 2) {
+  const safeColumns = Math.max(1, Math.floor(columns));
+  const row = Math.floor(plotIndex / safeColumns);
+  const column = plotIndex % safeColumns;
+  const hasPlot = (candidateIndex, candidateRow) =>
+    candidateIndex >= 0 &&
+    candidateIndex < plotCount &&
+    Math.floor(candidateIndex / safeColumns) === candidateRow;
+  const hasTop = hasPlot(plotIndex - safeColumns, row - 1);
+  const hasRight = hasPlot(plotIndex + 1, row);
+  const hasBottom = hasPlot(plotIndex + safeColumns, row + 1);
+  const hasLeft = hasPlot(plotIndex - 1, row);
+  const edges = {
+    top: !hasTop,
+    right: !hasRight,
+    bottom: !hasBottom,
+    left: !hasLeft,
+  };
+
+  return {
+    row,
+    column,
+    edges,
+    corners: {
+      topLeft: edges.top && edges.left,
+      topRight: edges.top && edges.right,
+      bottomRight: edges.bottom && edges.right,
+      bottomLeft: edges.bottom && edges.left,
+    },
+  };
+}
+
 export class UIRenderer {
   constructor(documentRoot = document) {
     this.document = documentRoot;
@@ -324,6 +469,7 @@ export class UIRenderer {
       productionRate: documentRoot.querySelector("#productionRate"),
       touchYield: documentRoot.querySelector("#touchYield"),
       menuButton: documentRoot.querySelector("#menuButton"),
+      gardenWorld: documentRoot.querySelector(".garden-world"),
       plotList: documentRoot.querySelector("#plotList"),
       gardenEmptyLand: documentRoot.querySelector("#gardenEmptyLand"),
       menuModal: documentRoot.querySelector("#menuModal"),
@@ -360,12 +506,17 @@ export class UIRenderer {
           return;
         }
 
-        this.positionWateringEffect(view, view.wateringEffect.inputPoint);
+        this.positionWateringEffect(view);
       });
     };
     this.document.defaultView?.addEventListener(
       "resize",
       this.handleWateringResize
+    );
+    this.document.defaultView?.addEventListener(
+      "scroll",
+      this.handleWateringResize,
+      { passive: true }
     );
 
     this.elements.offlineConfirmButton.addEventListener("click", () => {
@@ -454,7 +605,7 @@ export class UIRenderer {
     root.append(mirror);
     effectLayer.append(root);
 
-    return { root, waterSprite, inputPoint: null };
+    return { root, waterSprite };
   }
 
   createSlotView(plot, slot, plotIndex, slotIndex) {
@@ -504,8 +655,7 @@ export class UIRenderer {
       progress,
       characterImage,
       transitionLayer,
-      xpGainLayer,
-      touchEffects
+      xpGainLayer
     );
 
     const controller = new CropTransitionController({
@@ -547,7 +697,6 @@ export class UIRenderer {
 
   createPlotView(plot, plotIndex) {
     const article = this.document.createElement("article");
-    const label = this.document.createElement("span");
     const bed = this.document.createElement("div");
     const slotGrid = this.document.createElement("div");
 
@@ -555,8 +704,7 @@ export class UIRenderer {
     article.dataset.plotId = plot.plotId;
     article.dataset.plotType = plot.type;
     article.dataset.visible = "true";
-    label.className = "garden-plot__label";
-    label.textContent = `텃밭 ${plotIndex + 1}`;
+    article.setAttribute("aria-label", `텃밭 ${plotIndex + 1}`);
     bed.className = "garden-plot__bed";
     slotGrid.className = "crop-slot-grid";
     slotGrid.setAttribute(
@@ -572,11 +720,12 @@ export class UIRenderer {
       );
 
       slotGrid.append(slotView.button);
+      this.elements.gardenWorld.append(slotView.touchEffects);
     });
     bed.append(slotGrid);
-    article.append(label, bed);
+    article.append(bed);
     this.plotObserver?.observe(article);
-    this.plotViews.set(plot.plotId, { article, label, slotGrid });
+    this.plotViews.set(plot.plotId, { article, slotGrid });
     return article;
   }
 
@@ -592,6 +741,7 @@ export class UIRenderer {
         view.controller.suspend();
         this.resetWateringEffect(view);
         this.document.defaultView?.clearTimeout(view.characterTapTimer);
+        view.touchEffects.remove();
         this.slotViews.delete(view.key);
       });
     plotView.article.remove();
@@ -616,11 +766,26 @@ export class UIRenderer {
         this.elements.plotList.append(plotView.article);
       }
 
-      plotView.label.textContent = `텃밭 ${plotIndex + 1}`;
+      plotView.article.setAttribute("aria-label", `텃밭 ${plotIndex + 1}`);
       plotView.slotGrid.setAttribute(
         "aria-label",
         `텃밭 ${plotIndex + 1}, 작물 슬롯 4개`
       );
+      const join = getPlotSurfaceJoin(
+        plotIndex,
+        state.plots.length
+      );
+
+      Object.entries(join.edges).forEach(([edge, isOuterEdge]) => {
+        plotView.article.dataset[
+          `edge${edge[0].toUpperCase()}${edge.slice(1)}`
+        ] = String(isOuterEdge);
+      });
+      Object.entries(join.corners).forEach(([corner, isOuterCorner]) => {
+        plotView.article.dataset[
+          `corner${corner[0].toUpperCase()}${corner.slice(1)}`
+        ] = String(isOuterCorner);
+      });
     });
   }
 
@@ -703,28 +868,23 @@ export class UIRenderer {
   }
 
   renderShop(state) {
-    const freeAvailable =
-      !state.hasClaimedFreeGarden && state.plots.length === 0;
+    const { listPrice, temporaryFree } = GAME_CONFIG.gardenPurchase;
+    const formattedListPrice = formatExactNumber(listPrice);
 
-    this.elements.gardenShopItem.dataset.mode = freeAvailable
+    this.elements.gardenShopItem.dataset.mode = temporaryFree
       ? "free"
-      : "pending";
-    this.elements.gardenShopTitle.textContent = freeAvailable
-      ? "첫 텃밭"
-      : "추가 텃밭";
-    this.elements.gardenShopDescription.textContent = freeAvailable
-      ? "작물 슬롯 4개"
-      : "가격 확정 후 이용 가능";
-    this.elements.gardenShopPrice.textContent = freeAvailable
-      ? "무료"
-      : "준비 중";
-    this.elements.gardenPurchaseButton.disabled =
-      this.purchasePending || !freeAvailable;
+      : "paid";
+    this.elements.gardenShopTitle.textContent = "텃밭";
+    this.elements.gardenShopDescription.textContent = "작물 슬롯 4개";
+    this.elements.gardenShopPrice.textContent = temporaryFree
+      ? `정가 ${formattedListPrice}오이 · 현재 무료`
+      : `${formattedListPrice}오이`;
+    this.elements.gardenPurchaseButton.disabled = this.purchasePending;
     this.elements.gardenPurchaseButton.textContent = this.purchasePending
       ? "구매 중"
-      : freeAvailable
+      : temporaryFree
         ? "무료 구매"
-        : "구매 준비 중";
+        : `${formattedListPrice}오이 구매`;
   }
 
   render(state) {
@@ -782,8 +942,8 @@ export class UIRenderer {
     const { root } = view.wateringEffect;
 
     root.dataset.side = layout.side;
-    root.dataset.inputX = String(layout.inputX);
-    root.dataset.inputY = String(layout.inputY);
+    root.dataset.targetX = String(layout.targetX);
+    root.dataset.targetY = String(layout.targetY);
     root.dataset.normalizedX = String(layout.normalizedX);
     root.dataset.normalizedY = String(layout.normalizedY);
     root.dataset.canX = String(layout.canX);
@@ -798,6 +958,9 @@ export class UIRenderer {
     root.dataset.splashY = String(layout.splashY);
     root.dataset.directionX = String(layout.directionX);
     root.dataset.directionY = String(layout.directionY);
+    root.dataset.targetErrorX = String(layout.targetErrorX);
+    root.dataset.targetErrorY = String(layout.targetErrorY);
+    root.dataset.targetErrorDistance = String(layout.targetErrorDistance);
     root.dataset.correctionX = String(layout.correctionX);
     root.dataset.correctionY = String(layout.correctionY);
     root.dataset.correctionDistance = String(layout.correctionDistance);
@@ -815,15 +978,24 @@ export class UIRenderer {
     root.style.setProperty("--water-sprite-width", `${layout.spriteWidth}px`);
     root.style.setProperty("--water-sprite-height", `${layout.spriteHeight}px`);
     root.style.setProperty("--water-mirror-x", String(layout.mirrorScaleX));
-    view.wateringEffect.inputPoint = {
-      normalizedX: layout.normalizedX,
-      normalizedY: layout.normalizedY,
-    };
   }
 
-  positionWateringEffect(view, pointer = null) {
-    const sceneRect = view.touchEffects.getBoundingClientRect();
-    const layout = calculateWateringLayout(sceneRect, pointer || {});
+  positionWateringEffect(view) {
+    const sceneRect = this.elements.gardenWorld.getBoundingClientRect();
+    const characterRect = view.characterImage.getBoundingClientRect();
+    const plotRect = view.button.closest(".garden-plot").getBoundingClientRect();
+    const target = calculateCropWateringTarget(
+      sceneRect,
+      characterRect,
+      view.button.dataset.stageId
+    );
+
+    target.preferredSide =
+      characterRect.left + characterRect.width / 2 <
+      plotRect.left + plotRect.width / 2
+        ? "right"
+        : "left";
+    const layout = calculateWateringLayout(sceneRect, target);
 
     this.applyWateringLayout(view, layout);
     return layout;
@@ -844,7 +1016,9 @@ export class UIRenderer {
       "--water-sprite-height",
       "--water-mirror-x",
     ].forEach((property) => root.style.removeProperty(property));
-    view.wateringEffect.inputPoint = null;
+    Object.keys(root.dataset).forEach((key) => {
+      if (key !== "state") delete root.dataset[key];
+    });
   }
 
   isSlotTransitioning(plotId, slotId) {
@@ -895,16 +1069,10 @@ export class UIRenderer {
     const view = this.getSlotView(plotId, slotId);
     if (!view) return null;
 
-    const pointer =
-      event?.type === "pointerdown" &&
-      Number.isFinite(event.clientX) &&
-      Number.isFinite(event.clientY)
-        ? { clientX: event.clientX, clientY: event.clientY }
-        : null;
     const { root } = view.wateringEffect;
 
     this.resetWateringEffect(view);
-    this.positionWateringEffect(view, pointer);
+    this.positionWateringEffect(view);
     void root.offsetWidth;
     root.classList.add("is-playing");
 

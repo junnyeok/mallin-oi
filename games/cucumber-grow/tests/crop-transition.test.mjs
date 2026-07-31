@@ -398,7 +398,11 @@ test("다중 슬롯 이벤트 연결과 CSS는 별도 심기 입력, 중복 방�
   );
   assert.match(
     css,
-    /\.crop-transition-layer,\s*\.xp-gain-layer,\s*\.touch-effects\s*\{[^}]*pointer-events:\s*none/s
+    /\.crop-transition-layer,\s*\.xp-gain-layer\s*\{[^}]*pointer-events:\s*none/s
+  );
+  assert.match(
+    css,
+    /\.touch-effects\s*\{[^}]*pointer-events:\s*none/s
   );
   assert.match(
     css,

@@ -24,7 +24,6 @@ import {
   formatCalendarTimeLabel,
   joinLocalDateTimeValue,
   normalizeCalendarTime,
-  normalizeRequiredCalendarTime,
   openCalendarTimePicker,
   setCalendarTimeInputValue,
   splitLocalDateTimeValue,
@@ -194,7 +193,7 @@ function autoResizeTextarea(textarea) {
 }
 
 function normalizeEventTime(value) {
-  return normalizeRequiredCalendarTime(value);
+  return normalizeCalendarTime(value);
 }
 
 function normalizeOptionalEventTime(value) {
@@ -208,13 +207,17 @@ function formatEventTimeLabel(value) {
 function setTimeInputValue(input, value) {
   if (!input) return;
 
-  setCalendarTimeInputValue(input, normalizeEventTime(value));
+  setCalendarTimeInputValue(input, normalizeEventTime(value), {
+    emptyLabel: '시작시간 지정',
+  });
 }
 
 function setOptionalTimeInputValue(input, value) {
   if (!input) return;
 
-  setCalendarTimeInputValue(input, normalizeOptionalEventTime(value));
+  setCalendarTimeInputValue(input, normalizeOptionalEventTime(value), {
+    emptyLabel: '종료시간 지정',
+  });
 }
 
 function formatEventTimeRange(startTime, endTime) {
@@ -273,6 +276,7 @@ function openEventTimePicker({
   initialTime,
   onChange,
   allowEmpty = false,
+  clearLabel = '시간 없음',
 }) {
   return openCalendarTimePicker({
     anchorEl,
@@ -280,6 +284,7 @@ function openEventTimePicker({
     onChange,
     allowEmpty,
     ariaLabel: '일정 시간 선택',
+    clearLabel,
   });
 }
 
@@ -288,8 +293,8 @@ function getTodoDisplayText(todo) {
 }
 
 function compareTodosByTime(a, b) {
-  const aTime = normalizeEventTime(a?.eventTime);
-  const bTime = normalizeEventTime(b?.eventTime);
+  const aTime = normalizeEventTime(a?.eventTime) || '24:00';
+  const bTime = normalizeEventTime(b?.eventTime) || '24:00';
 
   return aTime.localeCompare(bTime);
 }
@@ -602,7 +607,7 @@ async function createTodoRange({
     p_category_id: safeCategory?.id || null,
     p_event_text: String(text || '').trim(),
     p_memo: String(memo || ''),
-    p_event_time: normalizeEventTime(eventTime),
+    p_event_time: normalizeEventTime(eventTime) || null,
     p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
   });
 
@@ -628,7 +633,7 @@ async function saveTodoRange({
     p_todo_id: todoId,
     p_event_text: String(text || '').trim(),
     p_memo: String(memo || ''),
-    p_event_time: normalizeEventTime(eventTime),
+    p_event_time: normalizeEventTime(eventTime) || null,
     p_event_end_time: normalizeOptionalEventTime(eventEndTime) || null,
     p_start_date: startDateKey,
     p_end_date: endDateKey || startDateKey,
@@ -1215,7 +1220,7 @@ async function initPageCalendar(loadingController) {
     return;
   }
 
-  setTimeInputValue(timeInput, '00:00');
+  setTimeInputValue(timeInput, '');
   setOptionalTimeInputValue(endTimeInput, '');
 
   function formatEntrySheetDate(dateKey) {
@@ -1238,6 +1243,8 @@ async function initPageCalendar(loadingController) {
     openEventTimePicker({
       anchorEl: timeInput,
       initialTime: timeInput.dataset.time,
+      allowEmpty: true,
+      clearLabel: '시작시간 해제',
       onChange: (nextTime) => {
         setTimeInputValue(timeInput, nextTime);
       },
@@ -1249,6 +1256,7 @@ async function initPageCalendar(loadingController) {
       anchorEl: endTimeInput,
       initialTime: endTimeInput.dataset.time || timeInput.dataset.time,
       allowEmpty: true,
+      clearLabel: '종료시간 해제',
       onChange: (nextTime) => {
         setOptionalTimeInputValue(endTimeInput, nextTime);
       },
@@ -1462,6 +1470,7 @@ async function initPageCalendar(loadingController) {
 
     if (
       nextStartDate === nextEndDate &&
+      nextTime &&
       nextEndTime &&
       nextEndTime < nextTime
     ) {
@@ -1508,7 +1517,7 @@ async function initPageCalendar(loadingController) {
         ? todoDateRange[todoDateRange.length - 1].dateKey
         : startDate
       : startDate;
-    const startTime = normalizeEventTime(isEdit ? todo.eventTime : '00:00');
+    const startTime = normalizeEventTime(isEdit ? todo.eventTime : '');
     const endTime = normalizeOptionalEventTime(
       isEdit ? todo.eventEndTime : '',
     );
@@ -1539,17 +1548,18 @@ async function initPageCalendar(loadingController) {
           label: '시작',
           type: 'calendar-datetime',
           value: joinLocalDateTimeValue(startDate, startTime),
+          required: true,
+          allowEmptyTime: true,
+          timePlaceholder: '시작시간 지정',
         },
         {
           key: 'eventEnd',
           label: '종료',
           type: 'calendar-datetime',
-          value: endTime ? joinLocalDateTimeValue(endDate, endTime) : '',
-          optional: true,
-          optionalLabel: '종료시간 지정',
-          clearLabel: '취소',
-          getDefaultValue: ({ getValue }) =>
-            getValue('eventStart') || joinLocalDateTimeValue(startDate, startTime),
+          value: joinLocalDateTimeValue(endDate, endTime),
+          required: true,
+          allowEmptyTime: true,
+          timePlaceholder: '종료시간 지정',
         },
         { key: 'memo', label: '메모', type: 'textarea', value: isEdit ? todo.memo || '' : '' },
       ],
@@ -1566,7 +1576,6 @@ async function initPageCalendar(loadingController) {
         const nextEnd = rawEnd
           ? splitLocalDateTimeValue(rawEnd, {
               date: nextStart.date,
-              time: nextStart.time,
             })
           : { date: nextStart.date, time: '' };
         const nextText = String(values.title || '').trim();
@@ -1584,6 +1593,7 @@ async function initPageCalendar(loadingController) {
 
         if (
           nextStart.date === nextEnd.date &&
+          nextStart.time &&
           nextEnd.time &&
           nextEnd.time < nextStart.time
         ) {
@@ -1937,6 +1947,7 @@ async function initPageCalendar(loadingController) {
 
     if (
       startDateKey === endDateKey &&
+      eventTime &&
       eventEndTime &&
       eventEndTime < eventTime
     ) {
@@ -1960,7 +1971,7 @@ async function initPageCalendar(loadingController) {
       await reloadStoreForMode();
 
       input.value = '';
-      setTimeInputValue(timeInput, '00:00');
+      setTimeInputValue(timeInput, '');
       setOptionalTimeInputValue(endTimeInput, '');
       memoInput.value = '';
       startDateInput.value = state.selectedDateKey;

@@ -236,7 +236,11 @@ test("CSS와 지급 연결은 독립 노드, 포인터 비간섭, reduced motion
 
   assert.match(
     css,
-    /\.crop-transition-layer,\s*\.xp-gain-layer,\s*\.touch-effects\s*\{[^}]*position:\s*absolute[^}]*overflow:\s*hidden[^}]*pointer-events:\s*none/s
+    /\.crop-transition-layer,\s*\.xp-gain-layer\s*\{[^}]*position:\s*absolute[^}]*overflow:\s*hidden[^}]*pointer-events:\s*none/s
+  );
+  assert.match(
+    css,
+    /\.touch-effects\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0[^}]*overflow:\s*hidden[^}]*pointer-events:\s*none/s
   );
   assert.match(
     css,

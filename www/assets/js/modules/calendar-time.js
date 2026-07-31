@@ -42,11 +42,15 @@ export function isOvernightTimeRange(startTime, endTime) {
 }
 
 export function splitLocalDateTimeValue(value, fallback = {}) {
-  const [rawDate = '', rawTime = ''] = String(value || '').trim().split('T');
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+  const rawValue = String(value || '').trim();
+  const [rawDate = '', rawTime = ''] = rawValue.split('T');
+  const hasValidDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate);
+  const date = hasValidDate
     ? rawDate
     : String(fallback.date || '');
-  const time = normalizeCalendarTime(rawTime, normalizeCalendarTime(fallback.time));
+  const time = hasValidDate
+    ? normalizeCalendarTime(rawTime)
+    : normalizeCalendarTime(fallback.time);
 
   return { date, time };
 }

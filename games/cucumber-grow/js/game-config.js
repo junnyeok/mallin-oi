@@ -20,7 +20,10 @@ export const GAME_CONFIG = deepFreeze({
   touchExperience: 1,
   harvestExperience: 50,
   harvestReward: 1,
-  additionalGardenPrice: null,
+  gardenPurchase: {
+    listPrice: 100,
+    temporaryFree: true,
+  },
   facilities: [
     {
       id: "small-garden",
@@ -78,7 +81,7 @@ export const GAME_CONFIG = deepFreeze({
       level: 3,
       name: "어른오이",
       minimumExperience: 35,
-      characterAsset: "./assets/images/cucumber.png",
+      characterAsset: "./assets/images/cucumber-adult.png",
     },
   ],
 });

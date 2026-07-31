@@ -1030,6 +1030,7 @@
 ./games/cucumber-grow/assets/images/README.md
 ./games/cucumber-grow/assets/images/cucumber-baby.png
 ./games/cucumber-grow/assets/images/cucumber-boy.png
+./games/cucumber-grow/assets/images/cucumber-adult.png
 ./games/cucumber-grow/assets/images/cucumber.png
 ./games/cucumber-grow/assets/images/water-gun.png
 ./games/cucumber-grow/assets/images/water.png
@@ -1100,3 +1101,12 @@
 ./ios/App/App/public/images/calendar/logo-event.png
 ./ios/App/App/public/images/calendar/logo-study.png
 ./ios/App/App/public/images/calendar/logo-work.png
+./supabase-SQLEditor/20260731-event-calendar-optional-start-time.sql
+./supabase/migrations/20260731000000_event_calendar_optional_start_time.sql
+./supabase-SQLEditor/20260731-calendar-category-merge-paste.sql
+./supabase/migrations/20260731010000_calendar_category_merge_paste.sql
+./supabase-SQLEditor/20260731-calendar-category-merge-paste-lint-fix.sql
+./supabase/migrations/20260731020000_calendar_category_merge_paste_lint_fix.sql
+./android/app/src/main/java/com/mallinoi/calendar/StoreUpdatePlugin.java
+./tests/app-update-popup.test.mjs
+./tests/fixtures/app-update-popup-browser.html

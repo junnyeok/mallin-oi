@@ -1,9 +1,11 @@
 export const CALENDAR_COPY_BUFFER_KEY = 'mallin_calendar_copy_buffer';
-export const CALENDAR_COPY_BUFFER_VERSION = 2;
+export const CALENDAR_COPY_BUFFER_VERSION = 3;
 export const CALENDAR_COPY_BUFFER_TTL_MS = 24 * 60 * 60 * 1000;
 
 const CALENDAR_TYPES = new Set(['study', 'work', 'event']);
 const COPY_MODES = new Set(['all', 'range']);
+const SUPPORTED_BUFFER_VERSIONS = new Set([2, CALENDAR_COPY_BUFFER_VERSION]);
+const CATEGORY_RESOLUTION_ACTIONS = new Set(['overwrite', 'keep']);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const FUTURE_CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
@@ -43,6 +45,112 @@ function makeOperationId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+function normalizeOptionalTime(value) {
+  const time = String(value || '').trim();
+  if (!time) return null;
+  if (!/^([01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9](?:\.[0-9]{1,6})?)?$/.test(time)) {
+    throw new TypeError('category time is invalid');
+  }
+  return time;
+}
+
+function normalizeCategoryRow(input = {}) {
+  const sourceCategoryKey = String(
+    input.sourceCategoryKey || input.source_category_key || '',
+  ).trim();
+  const name = String(input.name || input.category_name || '').trim();
+  const color = String(input.color || '').trim();
+  const sourceSortOrder = Number(
+    input.sourceSortOrder ?? input.source_sort_order ?? 100,
+  );
+
+  if (!sourceCategoryKey) throw new TypeError('source category key is required');
+  if (!name || name.length > 20) throw new TypeError('category name is invalid');
+  if (!/^#[0-9A-Fa-f]{6}$/.test(color)) throw new TypeError('category color is invalid');
+  if (!Number.isInteger(sourceSortOrder)) {
+    throw new TypeError('category sort order is invalid');
+  }
+
+  const targetCategoryId = String(
+    input.targetCategoryId || input.target_category_id || '',
+  ).trim() || null;
+  const targetColor = String(
+    input.targetColor || input.target_color || '',
+  ).trim() || null;
+
+  if (targetColor && !/^#[0-9A-Fa-f]{6}$/.test(targetColor)) {
+    throw new TypeError('target category color is invalid');
+  }
+
+  return {
+    sourceCategoryKey,
+    sourceCategoryId: String(
+      input.sourceCategoryId || input.source_category_id || '',
+    ).trim() || null,
+    name,
+    color: color.toLowerCase(),
+    startTime: normalizeOptionalTime(input.startTime ?? input.start_time),
+    endTime: normalizeOptionalTime(input.endTime ?? input.end_time),
+    endsNextDay: Boolean(input.endsNextDay ?? input.ends_next_day),
+    sourceIsDefault: Boolean(
+      input.sourceIsDefault ?? input.source_is_default,
+    ),
+    sourceSortOrder,
+    targetCategoryId,
+    targetColor: targetColor?.toLowerCase() || null,
+    targetStartTime: normalizeOptionalTime(
+      input.targetStartTime ?? input.target_start_time,
+    ),
+    targetEndTime: normalizeOptionalTime(
+      input.targetEndTime ?? input.target_end_time,
+    ),
+    targetEndsNextDay: Boolean(
+      input.targetEndsNextDay ?? input.target_ends_next_day,
+    ),
+    hasNameConflict: Boolean(
+      input.hasNameConflict ?? input.has_name_conflict ?? targetCategoryId,
+    ),
+  };
+}
+
+export function normalizeCalendarPasteCategories(rows) {
+  if (!Array.isArray(rows)) throw new TypeError('calendar categories are invalid');
+
+  const seen = new Set();
+  return rows.map(normalizeCategoryRow).filter((category) => {
+    if (seen.has(category.sourceCategoryKey)) return false;
+    seen.add(category.sourceCategoryKey);
+    return true;
+  });
+}
+
+export function getCalendarCategoryConflicts(categories = []) {
+  return normalizeCalendarPasteCategories(categories)
+    .filter((category) => category.hasNameConflict && category.targetCategoryId);
+}
+
+export function normalizeCalendarCategoryResolutions(resolutions = []) {
+  if (!Array.isArray(resolutions)) {
+    throw new TypeError('category resolutions are invalid');
+  }
+
+  const seen = new Set();
+  return resolutions.map((resolution) => {
+    const sourceCategoryKey = String(
+      resolution?.sourceCategoryKey || resolution?.source_category_key || '',
+    ).trim();
+    const action = String(resolution?.action || '').trim();
+    if (!sourceCategoryKey || seen.has(sourceCategoryKey)) {
+      throw new TypeError('category resolution key is invalid');
+    }
+    if (!CATEGORY_RESOLUTION_ACTIONS.has(action)) {
+      throw new TypeError('category resolution action is invalid');
+    }
+    seen.add(sourceCategoryKey);
+    return { sourceCategoryKey, action };
+  });
+}
+
 function normalizeCopyBuffer(input = {}, { generateDefaults = false } = {}) {
   const calendarType = String(input.calendarType || '').trim();
   if (!CALENDAR_TYPES.has(calendarType)) {
@@ -76,8 +184,13 @@ function normalizeCopyBuffer(input = {}, { generateDefaults = false } = {}) {
   ).trim();
   if (!Number.isFinite(Date.parse(copiedAt))) throw new TypeError('copiedAt is invalid');
 
+  const inputVersion = Number(input.version || CALENDAR_COPY_BUFFER_VERSION);
+  if (!SUPPORTED_BUFFER_VERSIONS.has(inputVersion)) {
+    throw new TypeError('calendar copy buffer version is invalid');
+  }
+
   const buffer = {
-    version: CALENDAR_COPY_BUFFER_VERSION,
+    version: generateDefaults ? CALENDAR_COPY_BUFFER_VERSION : inputVersion,
     mode,
     calendarType,
     groupId,
@@ -88,6 +201,12 @@ function normalizeCopyBuffer(input = {}, { generateDefaults = false } = {}) {
     operationId,
     copiedAt,
   };
+
+  if (buffer.version >= 3) {
+    buffer.categories = normalizeCalendarPasteCategories(input.categories || [])
+      .map(({ targetCategoryId, targetColor, targetStartTime, targetEndTime,
+        targetEndsNextDay, hasNameConflict, ...category }) => category);
+  }
 
   if (mode === 'range') {
     const startDate = String(input.startDate || '').trim();
@@ -123,7 +242,7 @@ export function parseCalendarCopyBuffer(
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { buffer: null, reason: 'corrupt' };
   }
-  if (parsed.version !== CALENDAR_COPY_BUFFER_VERSION) {
+  if (!SUPPORTED_BUFFER_VERSIONS.has(parsed.version)) {
     return { buffer: null, reason: 'unsupported' };
   }
 
@@ -149,7 +268,7 @@ export function parseCalendarCopyBuffer(
   return { buffer, reason: null };
 }
 
-export function buildCalendarPasteRpcArgs(buffer, calendarType) {
+export function buildCalendarCategoryPreviewRpcArgs(buffer, calendarType) {
   const normalized = normalizeCopyBuffer(buffer);
   if (normalized.calendarType !== calendarType) {
     throw new TypeError('calendarType does not match the copy buffer');
@@ -162,7 +281,21 @@ export function buildCalendarPasteRpcArgs(buffer, calendarType) {
     p_source_user_id: normalized.sourceUserId,
     p_start_date: isRange ? normalized.startDate : null,
     p_end_date: isRange ? normalized.endDate : null,
+  };
+}
+
+export function buildCalendarPasteRpcArgs(
+  buffer,
+  calendarType,
+  categoryResolutions = [],
+) {
+  const normalized = normalizeCopyBuffer(buffer);
+  return {
+    ...buildCalendarCategoryPreviewRpcArgs(normalized, calendarType),
     p_operation_id: normalized.operationId,
+    p_category_resolutions: normalizeCalendarCategoryResolutions(
+      categoryResolutions,
+    ),
   };
 }
 
@@ -189,6 +322,7 @@ export function classifyCalendarPasteError(error = {}) {
   const code = String(error?.code || '').toUpperCase();
   const status = Number(error?.status || error?.statusCode || 0);
   const message = String(error?.message || '').toLowerCase();
+  const details = String(error?.details || '').toLowerCase();
 
   if (
     status === 401 ||
@@ -226,10 +360,27 @@ export function classifyCalendarPasteError(error = {}) {
     };
   }
 
+  if (
+    code === '23505' &&
+    `${message} ${details}`.includes('work_calendar_todos_user_date_uidx')
+  ) {
+    return {
+      kind: 'duplicate-schedule',
+      message: '같은 날짜에 이미 업무 일정이 있어 붙여넣지 못했어. 기존 일정을 확인해줘.',
+    };
+  }
+
   if (code === '23505') {
     return {
       kind: 'conflict',
-      message: '같은 이름의 카테고리가 겹쳐서 붙여넣지 못했어. 다시 복사해줘.',
+      message: '카테고리 상태가 바뀌어 병합하지 못했어. 붙여넣기를 다시 시도해줘.',
+    };
+  }
+
+  if (message.includes('카테고리 충돌 선택')) {
+    return {
+      kind: 'category-resolution',
+      message: '카테고리 상태가 바뀌었어. 덮어쓰기 여부를 다시 선택해줘.',
     };
   }
 

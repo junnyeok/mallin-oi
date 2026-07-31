@@ -426,32 +426,91 @@ export function harvestCucumber(state, plotId, slotId) {
   };
 }
 
-export function purchaseFirstGarden(state) {
-  if (state.hasClaimedFreeGarden || state.plots.length > 0) {
-    state.hasClaimedFreeGarden = true;
+export function getGardenPurchasePricing({ temporaryFree } = {}) {
+  const listPrice = GAME_CONFIG.gardenPurchase.listPrice;
+  const isTemporaryFree =
+    temporaryFree ?? GAME_CONFIG.gardenPurchase.temporaryFree;
+
+  return {
+    listPrice,
+    isTemporaryFree,
+    price: isTemporaryFree ? 0 : listPrice,
+  };
+}
+
+function getNextGardenPlot(state) {
+  let sequence = Math.max(1, toSafeCount(state.nextPlotSequence) || 1);
+  const usedPlotIds = new Set(state.plots.map((plot) => plot.plotId));
+  const usedSlotIds = new Set(
+    state.plots.flatMap((plot) => plot.slots.map((slot) => slot.slotId))
+  );
+
+  while (true) {
+    const plot = createGardenPlot(sequence);
+    const hasCollision =
+      usedPlotIds.has(plot.plotId) ||
+      plot.slots.some((slot) => usedSlotIds.has(slot.slotId));
+
+    if (!hasCollision) return { plot, sequence };
+    sequence += 1;
+  }
+}
+
+export function purchaseGarden(
+  state,
+  { temporaryFree, persist = null } = {}
+) {
+  const pricing = getGardenPurchasePricing({ temporaryFree });
+  const balance = toSafeNonNegativeNumber(state.cucumbers);
+
+  if (balance < pricing.price) {
     return {
       purchased: false,
-      reason: "already-claimed",
+      reason: "insufficient",
       plot: null,
+      ...pricing,
     };
   }
 
-  let sequence = Math.max(1, toSafeCount(state.nextPlotSequence) || 1);
-  const usedIds = new Set(state.plots.map((plot) => plot.plotId));
+  const previous = {
+    cucumbers: state.cucumbers,
+    plots: [...state.plots],
+    hasClaimedFreeGarden: state.hasClaimedFreeGarden,
+    nextPlotSequence: state.nextPlotSequence,
+  };
+  const { plot, sequence } = getNextGardenPlot(state);
 
-  while (usedIds.has(`garden-${sequence}`)) {
-    sequence += 1;
-  }
-
-  const plot = createGardenPlot(sequence);
+  state.cucumbers = Math.max(0, balance - pricing.price);
   state.plots.push(plot);
   state.hasClaimedFreeGarden = true;
   state.nextPlotSequence = sequence + 1;
+
+  if (typeof persist === "function") {
+    let saveResult;
+
+    try {
+      saveResult = persist(state);
+    } catch {
+      saveResult = { ok: false, reason: "write-failed" };
+    }
+
+    if (!saveResult?.ok) {
+      Object.assign(state, previous);
+      return {
+        purchased: false,
+        reason: "save-failed",
+        saveReason: saveResult?.reason ?? "write-failed",
+        plot: null,
+        ...pricing,
+      };
+    }
+  }
 
   return {
     purchased: true,
     reason: "purchased",
     plot,
+    ...pricing,
   };
 }
 

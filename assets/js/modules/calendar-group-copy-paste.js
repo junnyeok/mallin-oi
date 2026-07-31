@@ -2,10 +2,13 @@ import { supabase } from './supabase-client.js';
 import { refreshCalendarWidgets } from './calendar-native-widgets.js';
 import {
   CALENDAR_COPY_BUFFER_KEY,
+  buildCalendarCategoryPreviewRpcArgs,
   buildCalendarPasteRpcArgs,
   classifyCalendarPasteError,
   createCalendarCopyBuffer,
   createSingleFlight,
+  getCalendarCategoryConflicts,
+  normalizeCalendarPasteCategories,
   parseCalendarCopyBuffer,
   validateCalendarPasteResult,
 } from './calendar-copy-buffer.js';
@@ -138,8 +141,76 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
     });
   }
 
-  function storeCopy(source, mode, dates = {}) {
-    const buffer = createCalendarCopyBuffer({
+  function chooseCategoryResolutions(categories) {
+    const conflicts = getCalendarCategoryConflicts(categories);
+    if (conflicts.length === 0) return Promise.resolve([]);
+
+    return new Promise((resolve) => {
+      const dialog = makeDialog();
+      const conflictRows = conflicts.map((category, index) => `
+        <fieldset class="calendar-copy-dialog__conflict" data-conflict="${index}">
+          <legend>‘${escapeHtml(category.name)}’</legend>
+          <div class="calendar-copy-dialog__color-compare" aria-label="카테고리 색상 비교">
+            <span><i style="--category-color: ${category.targetColor}"></i>기존 설정</span>
+            <span><i style="--category-color: ${category.color}"></i>복사한 설정</span>
+          </div>
+          <label><input type="radio" name="category-resolution-${index}" value="overwrite"> 복사한 카테고리 설정으로 덮어쓰기</label>
+          <label><input type="radio" name="category-resolution-${index}" value="keep"> 기존 카테고리 유지</label>
+        </fieldset>
+      `).join('');
+      dialog.innerHTML = `
+        <div class="calendar-copy-dialog__card">
+          <h2>카테고리 덮어쓰기</h2>
+          <p>같은 이름의 카테고리가 있습니다. 카테고리마다 적용할 설정을 선택해줘.</p>
+          <div class="calendar-copy-dialog__conflicts">${conflictRows}</div>
+          <div class="calendar-copy-dialog__actions">
+            <button type="button" data-cancel>취소</button>
+            <button type="button" data-resolve disabled>선택 완료</button>
+          </div>
+        </div>
+      `;
+      const resolveButton = dialog.querySelector('[data-resolve]');
+      const updateResolveButton = () => {
+        resolveButton.disabled = conflicts.some((_, index) =>
+          !dialog.querySelector(`input[name="category-resolution-${index}"]:checked`));
+      };
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        dialog.querySelectorAll('button, input').forEach((item) => {
+          item.disabled = true;
+        });
+        closeDialog(dialog);
+        resolve(value);
+      };
+      dialog.addEventListener('change', updateResolveButton);
+      dialog.querySelector('[data-cancel]').onclick = () => finish(null);
+      resolveButton.onclick = () => finish(conflicts.map((category, index) => ({
+        sourceCategoryKey: category.sourceCategoryKey,
+        action: dialog.querySelector(
+          `input[name="category-resolution-${index}"]:checked`,
+        ).value,
+      })));
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        finish(null);
+      }, { once: true });
+      dialog.showModal();
+      dialog.querySelector('input[type="radio"]')?.focus();
+    });
+  }
+
+  async function loadPasteCategories(buffer) {
+    const rows = await rpc(
+      'get_group_calendar_paste_categories',
+      buildCalendarCategoryPreviewRpcArgs(buffer, calendarType),
+    );
+    return normalizeCalendarPasteCategories(rows);
+  }
+
+  async function storeCopy(source, mode, dates = {}) {
+    const initialBuffer = createCalendarCopyBuffer({
       mode,
       calendarType,
       groupId: selectedGroup.id,
@@ -150,6 +221,8 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
       ...dates,
       copiedAt: new Date().toISOString(),
     });
+    const categories = await loadPasteCategories(initialBuffer);
+    const buffer = createCalendarCopyBuffer({ ...initialBuffer, categories });
     saveBuffer(buffer);
     render();
     return buffer;
@@ -167,14 +240,20 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
       <div class="calendar-copy-dialog__actions"><button type="button" data-cancel>취소</button></div>
     `;
     card.querySelector('[data-cancel]').onclick = () => closeDialog(dialog);
-    card.querySelector('[data-copy-all]').onclick = () => {
+    card.querySelector('[data-copy-all]').onclick = async () => {
+      const actionButtons = card.querySelectorAll('button');
+      actionButtons.forEach((item) => { item.disabled = true; });
       try {
-        storeCopy(source, 'all');
+        await storeCopy(source, 'all');
         window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 전체를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
         closeDialog(dialog);
       } catch (error) {
-        console.error('[calendar-copy-paste] copy buffer save failed');
-        window.alert('복사본을 보관하지 못했어. 저장소 설정을 확인해줘.');
+        console.error('[calendar-copy-paste] copy buffer save failed', {
+          code: error?.code || null,
+          status: error?.status || null,
+        });
+        window.alert(classifyCalendarPasteError(error).message);
+        actionButtons.forEach((item) => { item.disabled = false; });
       }
     };
     card.querySelector('[data-copy-range]').onclick = () => renderDateRange(dialog, source);
@@ -202,7 +281,7 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
     endInput.min = startInput.value;
     startInput.addEventListener('change', () => { endInput.min = startInput.value; });
     card.querySelector('[data-back]').onclick = () => renderCopyMode(dialog, source);
-    card.querySelector('[data-range-copy]').onclick = () => {
+    card.querySelector('[data-range-copy]').onclick = async () => {
       const startDate = startInput.value;
       const endDate = endInput.value;
       let message = '';
@@ -213,14 +292,20 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
         error.hidden = false;
         return;
       }
+      const actionButtons = card.querySelectorAll('button');
+      actionButtons.forEach((item) => { item.disabled = true; });
       try {
-        storeCopy(source, 'range', { startDate, endDate });
+        await storeCopy(source, 'range', { startDate, endDate });
         window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 중 ${formatDate(startDate)} ~ ${formatDate(endDate)} 범위를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
         closeDialog(dialog);
       } catch (saveError) {
-        console.error('[calendar-copy-paste] copy buffer save failed');
-        error.textContent = '복사본을 보관하지 못했어. 저장소 설정을 확인해줘.';
+        console.error('[calendar-copy-paste] copy buffer save failed', {
+          code: saveError?.code || null,
+          status: saveError?.status || null,
+        });
+        error.textContent = classifyCalendarPasteError(saveError).message;
         error.hidden = false;
+        actionButtons.forEach((item) => { item.disabled = false; });
       }
     };
   }
@@ -278,9 +363,17 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
       if (!confirmed) return;
 
       try {
+        const categories = await loadPasteCategories(buffer);
+        const categoryResolutions = await chooseCategoryResolutions(categories);
+        if (categoryResolutions === null) return;
+
         const data = await rpc(
           'paste_group_calendar_backup_to_my_calendar',
-          buildCalendarPasteRpcArgs(buffer, calendarType),
+          buildCalendarPasteRpcArgs(
+            buffer,
+            calendarType,
+            categoryResolutions,
+          ),
         );
         const { insertedCount } = validateCalendarPasteResult(data);
         clearBuffer();

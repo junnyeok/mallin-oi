@@ -1192,17 +1192,12 @@ async function initPageCalendar(loadingController) {
     startTime,
     endDate,
     endTime,
-    requireStartTime = false,
   }) {
     if (!isValidDateKey(startDate)) {
       alert('올바른 시작 날짜를 선택해줘.');
       return false;
     }
-    if (requireStartTime && !startTime) {
-      alert('시작시간을 지정해줘.');
-      return false;
-    }
-    if (!endDate && !endTime) return true;
+    if (!endTime) return true;
     if (!startTime) {
       alert('종료시간을 지정하려면 시작시간을 먼저 지정해줘.');
       return false;
@@ -1320,13 +1315,10 @@ async function initPageCalendar(loadingController) {
           key: 'studyEnd',
           label: '종료',
           type: 'calendar-datetime',
-          value: endDate && endTime
-            ? joinLocalDateTimeValue(endDate, endTime)
-            : '',
-          optional: true,
-          optionalLabel: '종료시간 지정',
-          clearLabel: '해제',
-          getDefaultValue: ({ getValue }) => getValue('studyStart'),
+          value: joinLocalDateTimeValue(endDate || startDate, endTime),
+          required: true,
+          allowEmptyTime: true,
+          timePlaceholder: '종료시간 지정',
         },
         {
           key: 'memo',
@@ -1357,7 +1349,6 @@ async function initPageCalendar(loadingController) {
             startTime: nextStart.time,
             endDate: nextEnd.date,
             endTime: nextEnd.time,
-            requireStartTime: !isEdit,
           })
         ) {
           throw new Error('Invalid study calendar time range.');
@@ -1370,7 +1361,7 @@ async function initPageCalendar(loadingController) {
             category: nextCategory,
             dateKey: nextStart.date,
             todoTime: nextStart.time,
-            todoEndDate: nextEnd.date || null,
+            todoEndDate: nextEnd.time ? nextEnd.date : null,
             todoEndTime: nextEnd.time,
           });
           return;
@@ -1386,7 +1377,7 @@ async function initPageCalendar(loadingController) {
             text: nextText,
             memo: String(values.memo || ''),
             todoTime: nextStart.time,
-            todoEndDate: nextEnd.date || null,
+            todoEndDate: nextEnd.time ? nextEnd.date : null,
             todoEndTime: nextEnd.time,
             category: latestCategory,
           });

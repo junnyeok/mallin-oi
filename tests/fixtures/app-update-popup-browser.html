@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>앱 업데이트 팝업 브라우저 테스트</title>
+    <link rel="stylesheet" href="../../assets/css/01-tokens.css" />
+  </head>
+  <body>
+    <button id="before-popup" type="button">기존 화면 버튼</button>
+    <script type="module">
+      import { showPopup } from '../../assets/js/modules/app-update-popup.js';
+
+      const params = new URLSearchParams(window.location.search);
+      const platform = params.get('platform') === 'android' ? 'android' : 'ios';
+      const shouldFail = params.get('store') === 'fail';
+      const previousButton = document.getElementById('before-popup');
+      previousButton.focus();
+
+      window.Capacitor = {
+        Plugins: {
+          AppLauncher: {
+            async openUrl({ url }) {
+              document.body.dataset.lastStoreUrl = url;
+              return { completed: !shouldFail };
+            },
+          },
+        },
+      };
+
+      const installed = { version: '1.0.14', build: platform === 'android' ? 18 : 20 };
+      const decision = {
+        hasUpdate: true,
+        required: false,
+        target: platform === 'android' ? 'build:19' : 'version:1.0.15',
+        latestLabel:
+          platform === 'android' ? '1.0.15 (빌드 19)' : '1.0.15',
+      };
+      const platformConfig = {
+        storeUrl:
+          platform === 'android'
+            ? 'https://play.google.com/store/apps/details?id=com.mallinoi.calendar'
+            : 'https://apps.apple.com/kr/app/id6774468038',
+      };
+
+      document.body.dataset.firstPopupCreated = String(
+        showPopup({ platform, installed, decision, platformConfig }),
+      );
+      document.body.dataset.secondPopupCreated = String(
+        showPopup({ platform, installed, decision, platformConfig }),
+      );
+    </script>
+  </body>
+</html>

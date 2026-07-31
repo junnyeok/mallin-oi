@@ -25,6 +25,16 @@ test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 �
   });
   assert.equal(joinLocalDateTimeValue('2026-07-30', ''), '2026-07-30');
   assert.equal(joinLocalDateTimeValue('2026-07-30', '06:30'), '2026-07-30T06:30');
+  assert.deepEqual(
+    splitLocalDateTimeValue('2026-07-30', {
+      date: '2026-07-29',
+      time: '06:30',
+    }),
+    {
+      date: '2026-07-30',
+      time: '',
+    },
+  );
 });
 
 test('업무 야간 범위는 종료가 시작보다 이르면 익일 종료로 해석한다', () => {
@@ -40,9 +50,62 @@ test('자기개발 생성·조회·수정은 nullable 시작/종료 필드를 �
   assert.match(source, /p_todo_time:/);
   assert.match(source, /p_todo_end_date:/);
   assert.match(source, /p_todo_end_time:/);
-  assert.match(source, /requireStartTime:\s*!isEdit/);
+  assert.doesNotMatch(source, /requireStartTime/);
+  assert.match(source, /allowEmptyTime:\s*true/);
+  assert.match(
+    source,
+    /todoEndDate:\s*nextEnd\.time\s*\?\s*nextEnd\.date\s*:\s*null/,
+  );
   assert.match(source, /type:\s*'calendar-datetime'/);
   assert.doesNotMatch(source, /new Date\([^\n]*studyStart/);
+});
+
+test('이벤트 생성·수정은 빈 시작시간을 null로 전달하고 00:00을 만들지 않는다', () => {
+  const source = read('assets/js/modules/event-calendar.js');
+  assert.doesNotMatch(source, /normalizeRequiredCalendarTime/);
+  assert.match(
+    source,
+    /p_event_time:\s*normalizeEventTime\(eventTime\)\s*\|\|\s*null/,
+  );
+  assert.match(source, /allowEmptyTime:\s*true/);
+  assert.match(source, /timePlaceholder:\s*'시작시간 지정'/);
+  assert.match(source, /timePlaceholder:\s*'종료시간 지정'/);
+  assert.doesNotMatch(source, /setTimeInputValue\(timeInput,\s*'00:00'\)/);
+});
+
+test('시작·종료 행은 한 줄 공통 컨트롤을 사용하고 시간 해제는 선택창 안에만 둔다', () => {
+  const sheetSource = read('assets/js/modules/calendar-entry-sheet.js');
+  const studySource = read('assets/js/modules/study-calendar.js');
+  const eventSource = read('assets/js/modules/event-calendar.js');
+  const css = read('assets/css/components/calendar-entry-sheet.css');
+
+  assert.match(sheetSource, /clearLabel:\s*`\$\{field\.label\}시간 해제`/);
+  assert.match(
+    studySource,
+    /value:\s*joinLocalDateTimeValue\(endDate \|\| startDate, endTime\)/,
+  );
+  assert.match(
+    eventSource,
+    /value:\s*joinLocalDateTimeValue\(endDate, endTime\)/,
+  );
+  assert.doesNotMatch(studySource, /optionalLabel:\s*'종료시간 지정'/);
+  assert.doesNotMatch(eventSource, /optionalLabel:\s*'종료시간 지정'/);
+  assert.match(
+    css,
+    /\.calendar-entry-sheet__datetime\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(104px,\s*0\.82fr\)/s,
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__field\s*\{[^}]*grid-template-columns:\s*52px\s+minmax\(0,\s*1fr\)/s,
+  );
+  assert.doesNotMatch(
+    css,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__datetime\s*\{[^}]*grid-template-columns:\s*1fr/s,
+  );
+  assert.match(
+    css,
+    /\.calendar-entry-sheet__textarea-field\s*\{[^}]*padding-top:\s*var\(--space-12\)/s,
+  );
 });
 
 test('업무 시간은 일정이 아니라 카테고리를 단일 기준으로 저장한다', () => {
@@ -96,6 +159,18 @@ test('운영 마이그레이션은 기존 데이터를 채우지 않고 검증�
   assert.match(sql, /to authenticated/);
 });
 
+test('이벤트 시작시간 마이그레이션은 기존 함수의 00:00 강제값만 제거한다', () => {
+  const sql = read(
+    'supabase-SQLEditor/20260731-event-calendar-optional-start-time.sql',
+  );
+  assert.match(sql, /pg_get_functiondef/);
+  assert.match(sql, /create_event_calendar_todo_range/);
+  assert.match(sql, /save_event_calendar_todo_range/);
+  assert.match(sql, /DEFAULT NULL::time without time zone/);
+  assert.match(sql, /'p_event_time'/);
+  assert.doesNotMatch(sql, /update\s+public\.event_calendar_todos/i);
+});
+
 test('그룹 백업·붙여넣기는 자기개발 및 업무 카테고리 시간 정보를 포함한다', () => {
   const sql = read('supabase-SQLEditor/20260730-calendar-copy-paste-fix.sql');
   for (const key of [
@@ -116,6 +191,7 @@ test('루트·www·Android·iOS 시간 기능 자산은 바이트 단위로 일�
   const syncedFiles = [
     'calendar-work.html',
     'assets/css/components/calendar-entry-sheet.css',
+    'assets/css/components/calendar-loading.css',
     'assets/css/main/calendar-event-main.css',
     'assets/css/main/calendar-work-main.css',
     'assets/js/modules/calendar-time.js',

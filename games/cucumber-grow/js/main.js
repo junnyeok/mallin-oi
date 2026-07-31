@@ -6,13 +6,13 @@ import {
   getGrowthProgress,
   harvestCucumber,
   plantCucumber,
-  purchaseFirstGarden,
+  purchaseGarden,
   synchronizeDerivedState,
 } from "./game-engine.js";
 import { applyOfflineReward } from "./offline-reward.js";
 import { loadGameSave, saveGame } from "./save-manager.js";
 import { formatExactNumber } from "./number-format.js";
-import { UIRenderer } from "./ui-renderer.js?v=20260730-05";
+import { UIRenderer } from "./ui-renderer.js?v=20260731-01";
 
 const loadResult = loadGameSave();
 const state = loadResult.state;
@@ -31,7 +31,7 @@ function getSlotKey(plotId, slotId) {
 function persistNow() {
   window.clearTimeout(deferredSaveTimer);
   deferredSaveTimer = null;
-  saveGame(state);
+  return saveGame(state);
 }
 
 function scheduleSave() {
@@ -233,22 +233,28 @@ ui.elements.shopBackButton.addEventListener("click", (event) => {
   ui.showMenuPanel();
   ui.elements.shopMenuButton.focus();
 });
-ui.elements.gardenPurchaseButton.addEventListener("click", (event) => {
+ui.elements.gardenPurchaseButton.addEventListener("click", async (event) => {
   event.stopPropagation();
   if (purchasePending) return;
 
   purchasePending = true;
   ui.setPurchasePending(true);
-  const result = purchaseFirstGarden(state);
+  try {
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    const result = purchaseGarden(state, { persist: persistNow });
 
-  if (result.purchased) {
-    persistNow();
     ui.render(state);
-    ui.announce("첫 텃밭을 구매했습니다.");
+    if (result.purchased) {
+      ui.announce("텃밭을 구매했습니다.");
+    } else if (result.reason === "insufficient") {
+      ui.announce("보유 오이가 부족합니다.");
+    } else if (result.reason === "save-failed") {
+      ui.announce("저장하지 못해 텃밭 구매를 취소했습니다.");
+    }
+  } finally {
+    purchasePending = false;
+    ui.setPurchasePending(false);
   }
-
-  purchasePending = false;
-  ui.setPurchasePending(false);
 });
 
 document.addEventListener("keydown", (event) => {

@@ -60,6 +60,8 @@ const BACKUP_SOURCE_CONFIG = {
   study: {
     table: 'study_calendar_todos',
     categoryRelation: 'study_calendar_categories',
+    categoryTable: 'study_calendar_categories',
+    categorySelect: 'id, name, slug, color, is_default, sort_order, is_shared_copy_category',
     select: `
       id, todo_date, todo_type, todo_text, memo, todo_time, todo_end_date, todo_end_time, is_done,
       study_calendar_categories (name, slug, color)
@@ -68,6 +70,8 @@ const BACKUP_SOURCE_CONFIG = {
   work: {
     table: 'work_calendar_todos',
     categoryRelation: 'work_calendar_categories',
+    categoryTable: 'work_calendar_categories',
+    categorySelect: 'id, name, slug, color, start_time, end_time, ends_next_day, is_default, sort_order, is_shared_copy_category',
     select: `
       id, work_date, work_type, work_text, memo, is_done,
       work_calendar_categories (name, slug, color, start_time, end_time, ends_next_day)
@@ -76,6 +80,8 @@ const BACKUP_SOURCE_CONFIG = {
   event: {
     table: 'event_calendar_todos',
     categoryRelation: 'event_calendar_categories',
+    categoryTable: 'event_calendar_categories',
+    categorySelect: 'id, name, slug, color, is_default, sort_order, is_shared_copy_category',
     select: `
       id, event_date, event_type, event_text, memo, event_time, event_end_time, event_range_id, is_done,
       shared_group_id, shared_origin_todo_id, shared_origin_user_id,
@@ -616,11 +622,59 @@ function serializeBackupEvents(events = []) {
   );
 }
 
+function makeSourceBackupCategory(row, calendarType) {
+  return {
+    sourceCategoryId: String(row.id || ''),
+    name: String(row.name || '').trim(),
+    sourceSlug: String(row.slug || ''),
+    color: normalizeColor(row.color, calendarType === 'work' ? '#e7f6ff' : calendarType === 'event' ? '#ffe0ef' : '#eaffd7'),
+    sourceIsDefault: Boolean(row.is_default),
+    sourceSortOrder: Number(row.sort_order || 100),
+    settings: calendarType === 'work' ? {
+      startTime: row.start_time || null,
+      endTime: row.end_time || null,
+      endsNextDay: Boolean(row.ends_next_day),
+    } : {},
+  };
+}
+
+function makeStoredBackupCategory(row) {
+  const settings = row?.settings && typeof row.settings === 'object'
+    ? row.settings
+    : {};
+  return {
+    sourceCategoryId: String(row.source_category_id || ''),
+    name: String(row.name || '').trim(),
+    sourceSlug: String(row.source_slug || ''),
+    color: normalizeColor(row.color, '#eaffd7'),
+    sourceIsDefault: Boolean(row.source_is_default),
+    sourceSortOrder: Number(row.source_sort_order || 100),
+    settings: Object.keys(settings).sort().reduce((result, key) => {
+      result[key] = settings[key] ?? null;
+      return result;
+    }, {}),
+  };
+}
+
+function serializeBackupCategories(categories = []) {
+  return JSON.stringify(
+    [...categories]
+      .map((category) => ({
+        ...category,
+        settings: Object.keys(category.settings || {}).sort().reduce((result, key) => {
+          result[key] = category.settings[key] ?? null;
+          return result;
+        }, {}),
+      }))
+      .sort((a, b) => a.sourceCategoryId.localeCompare(b.sourceCategoryId)),
+  );
+}
+
 async function checkBackupNeeded({ userId, groupId, calendarType }) {
   const config = BACKUP_SOURCE_CONFIG[calendarType];
   if (!config || !userId || !groupId) return false;
 
-  const [sourceResult, backupResult] = await Promise.all([
+  const [sourceResult, backupResult, sourceCategoryResult, backupCategoryResult] = await Promise.all([
     supabase
       .from(config.table)
       .select(config.select)
@@ -633,10 +687,24 @@ async function checkBackupNeeded({ userId, groupId, calendarType }) {
       .eq('group_id', groupId)
       .eq('user_id', userId)
       .eq('calendar_type', calendarType),
+    supabase
+      .from(config.categoryTable)
+      .select(config.categorySelect)
+      .eq('user_id', userId),
+    supabase
+      .from('calendar_group_shared_categories')
+      .select(
+        'source_category_id, name, source_slug, color, source_is_default, source_sort_order, settings',
+      )
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('calendar_type', calendarType),
   ]);
 
   if (sourceResult.error) throw sourceResult.error;
   if (backupResult.error) throw backupResult.error;
+  if (sourceCategoryResult.error) throw sourceCategoryResult.error;
+  if (backupCategoryResult.error) throw backupCategoryResult.error;
 
   const sourceEvents = (sourceResult.data || [])
     .filter(
@@ -649,8 +717,16 @@ async function checkBackupNeeded({ userId, groupId, calendarType }) {
   const backupEvents = (backupResult.data || []).map((row) =>
     makeStoredBackupEvent(row, calendarType),
   );
+  const sourceCategories = (sourceCategoryResult.data || [])
+    .filter((row) => !row.is_shared_copy_category)
+    .map((row) => makeSourceBackupCategory(row, calendarType));
+  const backupCategories = (backupCategoryResult.data || [])
+    .map(makeStoredBackupCategory);
 
-  return serializeBackupEvents(sourceEvents) !== serializeBackupEvents(backupEvents);
+  return (
+    serializeBackupEvents(sourceEvents) !== serializeBackupEvents(backupEvents) ||
+    serializeBackupCategories(sourceCategories) !== serializeBackupCategories(backupCategories)
+  );
 }
 
 export function isCalendarGroupActive(groupState) {

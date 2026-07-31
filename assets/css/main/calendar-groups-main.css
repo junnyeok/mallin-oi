@@ -56,9 +56,17 @@ body.calendar-group-modal-open {
 .calendar-copy-dialog__dates label { display: grid; gap: var(--space-4); color: var(--color-text-sub); font-size: var(--text-small); font-weight: 800; }
 .calendar-copy-dialog__dates input { min-width: 0; min-height: 42px; padding: 0 var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-btn); background: var(--color-bg); color: var(--color-text); font: inherit; }
 .calendar-copy-dialog__error { color: var(--color-text); font-weight: 800; }
+.calendar-copy-dialog__conflicts { display: grid; gap: var(--space-8); max-height: min(52vh, 420px); overflow-y: auto; }
+.calendar-copy-dialog__conflict { display: grid; gap: var(--space-8); min-width: 0; margin: 0; padding: var(--space-12); border: 1px solid var(--color-border); border-radius: var(--radius-btn); }
+.calendar-copy-dialog__conflict legend { padding: 0 var(--space-4); font-weight: 900; }
+.calendar-copy-dialog__conflict label { display: flex; align-items: flex-start; gap: var(--space-8); color: var(--color-text); font-size: var(--text-small); font-weight: 800; line-height: 1.45; cursor: pointer; }
+.calendar-copy-dialog__conflict input { flex: 0 0 auto; width: 20px; height: 20px; margin: 0; accent-color: var(--color-primary); }
+.calendar-copy-dialog__color-compare { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-12); color: var(--color-text-sub); font-size: var(--text-small); }
+.calendar-copy-dialog__color-compare span { display: inline-flex; align-items: center; gap: var(--space-4); }
+.calendar-copy-dialog__color-compare i { width: 16px; height: 16px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--category-color); }
 .calendar-copy-dialog__actions { display: flex; justify-content: flex-end; gap: var(--space-8); }
 .calendar-copy-dialog__actions button { min-height: 40px; padding: 0 var(--space-16); border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: transparent; color: var(--color-text); font: inherit; font-weight: 900; cursor: pointer; }
-.calendar-copy-dialog__actions [data-copy], .calendar-copy-dialog__actions [data-range-copy], .calendar-copy-dialog__actions [data-confirm] { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-surface); }
+.calendar-copy-dialog__actions [data-copy], .calendar-copy-dialog__actions [data-range-copy], .calendar-copy-dialog__actions [data-confirm], .calendar-copy-dialog__actions [data-resolve] { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-surface); }
 .calendar-copy-dialog__actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 480px) {

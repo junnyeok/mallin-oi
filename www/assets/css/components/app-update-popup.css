@@ -1,18 +1,30 @@
 .app-update-popup {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 10100;
   display: grid;
   place-items: center;
+  overflow-y: auto;
   padding: calc(var(--space-24) + env(safe-area-inset-top))
     calc(var(--space-16) + env(safe-area-inset-right))
     calc(var(--space-24) + env(safe-area-inset-bottom))
     calc(var(--space-16) + env(safe-area-inset-left));
   background: rgba(17, 17, 17, 0.48);
+  overscroll-behavior: contain;
 }
 
 .app-update-popup__card {
+  box-sizing: border-box;
   width: min(100%, 360px);
+  max-height: calc(
+    100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) -
+      (var(--space-24) * 2)
+  );
+  max-height: calc(
+    100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) -
+      (var(--space-24) * 2)
+  );
+  overflow-y: auto;
   padding: var(--space-24);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -40,6 +52,41 @@
   line-height: var(--line-body);
 }
 
+.app-update-popup__versions {
+  display: grid;
+  gap: var(--space-8);
+  margin: var(--space-16) 0;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  text-align: left;
+}
+
+.app-update-popup__versions > div {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: baseline;
+}
+
+.app-update-popup__versions dt,
+.app-update-popup__versions dd {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
+.app-update-popup__versions dt {
+  color: var(--color-text-sub);
+}
+
+.app-update-popup__versions dd {
+  color: var(--color-text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .app-update-popup__card .app-update-popup__error {
   margin-top: var(--space-12);
   color: #b42318;
@@ -52,12 +99,23 @@
 }
 
 .app-update-popup__actions button {
+  box-sizing: border-box;
   min-height: 44px;
   padding: var(--space-12) var(--space-16);
   border-radius: var(--radius-btn);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.app-update-popup__actions button:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.app-update-popup__actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .app-update-popup__update {
@@ -73,6 +131,11 @@
 }
 
 @media (max-width: 360px) {
+  .app-update-popup {
+    padding-right: calc(var(--space-8) + env(safe-area-inset-right));
+    padding-left: calc(var(--space-8) + env(safe-area-inset-left));
+  }
+
   .app-update-popup__card {
     padding: var(--space-16);
   }

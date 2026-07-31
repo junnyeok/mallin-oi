@@ -219,7 +219,7 @@ button:focus-visible {
   min-width: 48px;
   min-height: 48px;
   padding: 0 8px;
-  border: 2px solid rgba(244, 198, 78, 0.72);
+  border: 0;
   border-radius: 14px;
   background: rgba(255, 253, 243, 0.38);
   color: var(--color-forest-950);
@@ -231,6 +231,11 @@ button:focus-visible {
   touch-action: manipulation;
 }
 
+.menu-button:focus-visible {
+  outline-color: var(--color-leaf-700);
+  box-shadow: 0 0 0 4px rgba(85, 169, 104, 0.24);
+}
+
 .menu-button:active {
   transform: translateY(1px);
 }
@@ -239,9 +244,9 @@ button:focus-visible {
   position: relative;
   min-height: calc(100dvh - 94px - env(safe-area-inset-top));
   overflow: hidden;
-  padding: 24px max(14px, env(safe-area-inset-right))
-    max(38px, calc(env(safe-area-inset-bottom) + 28px))
-    max(14px, env(safe-area-inset-left));
+  padding: clamp(90px, 27vw, 110px) max(10px, env(safe-area-inset-right))
+    max(54px, calc(env(safe-area-inset-bottom) + 44px))
+    max(10px, env(safe-area-inset-left));
   background:
     radial-gradient(
       circle at 17px 22px,
@@ -295,51 +300,135 @@ button:focus-visible {
   z-index: 1;
   display: grid;
   width: min(100%, 620px);
-  gap: clamp(26px, 7vw, 42px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
   margin: 0 auto;
-}
-
-.garden-plot {
-  position: relative;
-  width: 100%;
-  padding: 12px;
-  border: 3px solid rgba(32, 90, 60, 0.34);
-  border-radius: 34px;
-  background:
-    radial-gradient(circle at 10px 8px, #a8d57e 0 2px, transparent 2.5px),
-    #91c86d;
-  background-size: 26px 25px;
-  box-shadow: 0 12px 0 rgba(43, 117, 75, 0.28),
-    0 18px 28px rgba(16, 43, 30, 0.14);
+  filter: drop-shadow(0 7px 0 rgba(43, 117, 75, 0.28))
+    drop-shadow(0 11px 18px rgba(16, 43, 30, 0.14));
   isolation: isolate;
 }
 
-.garden-plot__label {
+.garden-plot {
+  --plot-edge-top: 0px;
+  --plot-edge-right: 0px;
+  --plot-edge-bottom: 0px;
+  --plot-edge-left: 0px;
+  --plot-outline-top: 0px;
+  --plot-outline-right: 0px;
+  --plot-outline-bottom: 0px;
+  --plot-outline-left: 0px;
+  --plot-join-right: transparent;
+  --plot-join-bottom: transparent;
+  --plot-surface-radius: 20px;
+
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  isolation: isolate;
+}
+
+.garden-plot[data-edge-top="true"] {
+  --plot-edge-top: 9px;
+  --plot-outline-top: 2px;
+}
+
+.garden-plot[data-edge-right="true"] {
+  --plot-edge-right: 9px;
+  --plot-outline-right: 2px;
+}
+
+.garden-plot[data-edge-bottom="true"] {
+  --plot-edge-bottom: 9px;
+  --plot-outline-bottom: 2px;
+}
+
+.garden-plot[data-edge-left="true"] {
+  --plot-edge-left: 9px;
+  --plot-outline-left: 2px;
+}
+
+.garden-plot[data-edge-right="false"] {
+  --plot-join-right: rgba(104, 67, 41, 0.3);
+}
+
+.garden-plot[data-edge-bottom="false"] {
+  --plot-join-bottom: rgba(104, 67, 41, 0.3);
+}
+
+.garden-plot[data-corner-top-left="true"] {
+  border-top-left-radius: var(--plot-surface-radius);
+}
+
+.garden-plot[data-corner-top-right="true"] {
+  border-top-right-radius: var(--plot-surface-radius);
+}
+
+.garden-plot[data-corner-bottom-right="true"] {
+  border-bottom-right-radius: var(--plot-surface-radius);
+}
+
+.garden-plot[data-corner-bottom-left="true"] {
+  border-bottom-left-radius: var(--plot-surface-radius);
+}
+
+.garden-plot::before,
+.garden-plot::after {
   position: absolute;
-  top: -15px;
-  left: 50%;
-  z-index: 6;
-  min-width: 84px;
-  padding: 6px 13px 7px;
-  border: 2px solid #684329;
-  border-radius: 9px;
-  background: linear-gradient(180deg, #d6a466, #bd824a);
-  box-shadow: 0 3px 0 rgba(104, 67, 41, 0.48);
-  color: var(--color-cream-50);
-  font-size: 0.72rem;
-  font-weight: 950;
-  letter-spacing: -0.02em;
-  text-align: center;
-  text-shadow: 0 1px 0 rgba(104, 67, 41, 0.55);
-  transform: translateX(-50%);
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.garden-plot::before {
+  background:
+    linear-gradient(
+        to bottom,
+        #91c86d 0 6px,
+        var(--color-earth-800) 6px 9px
+      )
+      top / 100% var(--plot-edge-top) no-repeat,
+    linear-gradient(
+        to left,
+        #91c86d 0 6px,
+        var(--color-earth-800) 6px 9px
+      )
+      right / var(--plot-edge-right) 100% no-repeat,
+    linear-gradient(
+        to top,
+        #91c86d 0 6px,
+        var(--color-earth-800) 6px 9px
+      )
+      bottom / 100% var(--plot-edge-bottom) no-repeat,
+    linear-gradient(
+        to right,
+        #91c86d 0 6px,
+        var(--color-earth-800) 6px 9px
+      )
+      left / var(--plot-edge-left) 100% no-repeat;
+}
+
+.garden-plot::after {
+  border-style: solid;
+  border-color: rgba(32, 90, 60, 0.34);
+  border-width: var(--plot-outline-top) var(--plot-outline-right)
+    var(--plot-outline-bottom) var(--plot-outline-left);
 }
 
 .garden-plot__bed {
   position: relative;
+  height: 100%;
   overflow: hidden;
-  padding: 14px;
-  border: 5px solid var(--color-earth-800);
-  border-radius: 26px;
+  padding: 4px;
+  border: 0;
+  border-radius: 0;
   background:
     radial-gradient(
       ellipse at 18% 24%,
@@ -358,8 +447,8 @@ button:focus-visible {
     ),
     var(--color-earth-500);
   background-size: 41px 38px, 53px 47px, auto, auto;
-  box-shadow: inset 0 0 0 4px var(--color-earth-300),
-    inset 0 12px 18px rgba(104, 67, 41, 0.22);
+  box-shadow: inset -1px 0 var(--plot-join-right),
+    inset 0 -1px var(--plot-join-bottom);
 }
 
 .garden-plot__bed::before,
@@ -373,16 +462,16 @@ button:focus-visible {
 
 .garden-plot__bed::before {
   top: 50%;
-  right: 12px;
-  left: 12px;
-  height: 2px;
+  right: 5px;
+  left: 5px;
+  height: 1px;
 }
 
 .garden-plot__bed::after {
-  top: 12px;
-  bottom: 12px;
+  top: 5px;
+  bottom: 5px;
   left: 50%;
-  width: 2px;
+  width: 1px;
 }
 
 .crop-slot-grid {
@@ -390,19 +479,19 @@ button:focus-visible {
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(132px, 1fr));
-  gap: 4px;
+  grid-template-rows: repeat(2, clamp(58px, 16vw, 74px));
+  gap: 2px;
 }
 
 .crop-slot {
   position: relative;
   display: grid;
   min-width: 0;
-  min-height: 132px;
+  min-height: clamp(58px, 16vw, 74px);
   overflow: hidden;
   padding: 0;
   place-items: center;
-  border-radius: 20px;
+  border-radius: 10px;
   background: transparent;
   cursor: pointer;
   isolation: isolate;
@@ -417,11 +506,11 @@ button:focus-visible {
 
 .crop-slot__soil-mark {
   position: absolute;
-  right: 23%;
-  bottom: 15px;
-  left: 23%;
+  right: 18%;
+  bottom: 5px;
+  left: 18%;
   z-index: -1;
-  height: 15px;
+  height: 8px;
   border-radius: 50%;
   background: rgba(104, 67, 41, 0.36);
   filter: blur(1px);
@@ -431,11 +520,11 @@ button:focus-visible {
 
 .crop-slot__empty-cue {
   position: absolute;
-  bottom: 17px;
+  bottom: 6px;
   left: 50%;
-  width: 42px;
-  height: 18px;
-  border: 2px solid rgba(255, 232, 157, 0.74);
+  width: clamp(24px, 8vw, 34px);
+  height: clamp(10px, 3.4vw, 14px);
+  border: 1px solid rgba(255, 232, 157, 0.74);
   border-radius: 50%;
   box-shadow: 0 0 0 0 rgba(255, 232, 157, 0.34);
   opacity: 0;
@@ -455,17 +544,17 @@ button:focus-visible {
 
 .crop-xp-bar {
   position: absolute;
-  top: 10px;
+  top: 4px;
   left: 50%;
   z-index: 6;
   display: block;
-  width: clamp(48px, 16vw, 68px);
-  height: 7px;
+  width: clamp(34px, 12vw, 48px);
+  height: 5px;
   overflow: hidden;
   border: 1px solid rgba(104, 67, 41, 0.58);
   border-radius: 999px;
   background: rgba(255, 253, 243, 0.72);
-  box-shadow: 0 2px 4px rgba(104, 67, 41, 0.2);
+  box-shadow: 0 1px 3px rgba(104, 67, 41, 0.2);
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -482,13 +571,14 @@ button:focus-visible {
 
 .cucumber-character {
   position: absolute;
-  bottom: 5px;
+  bottom: 1px;
   left: 50%;
   z-index: 2;
   display: block;
   width: auto;
-  height: 72px;
-  max-width: 82%;
+  height: clamp(40px, 12vw, 54px);
+  max-width: 92%;
+  max-height: 92%;
   object-fit: contain;
   pointer-events: none;
   transform: translateX(-50%);
@@ -499,11 +589,11 @@ button:focus-visible {
 }
 
 .crop-slot[data-stage-id="young"] .cucumber-character {
-  height: 82px;
+  height: clamp(43px, 13.5vw, 60px);
 }
 
 .crop-slot[data-stage-id="adult"] .cucumber-character {
-  height: 96px;
+  height: clamp(48px, 15vw, 68px);
 }
 
 .cucumber-character[hidden] {
@@ -540,8 +630,7 @@ button:focus-visible {
 }
 
 .crop-transition-layer,
-.xp-gain-layer,
-.touch-effects {
+.xp-gain-layer {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -557,15 +646,19 @@ button:focus-visible {
 }
 
 .touch-effects {
+  position: absolute;
+  inset: 0;
   z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .crop-transition-effect {
   position: absolute;
   top: 57%;
   left: 50%;
-  width: 100px;
-  height: 100px;
+  width: clamp(64px, 18vw, 90px);
+  height: clamp(64px, 18vw, 90px);
   pointer-events: none;
   transform: translate(-50%, -50%);
 }
@@ -638,7 +731,7 @@ button:focus-visible {
   top: var(--xp-origin-y, 26%);
   left: var(--xp-origin-x, 50%);
   color: var(--color-cream-100);
-  font-size: clamp(0.72rem, 3vw, 0.92rem);
+  font-size: clamp(0.62rem, 2.3vw, 0.8rem);
   font-variant-numeric: tabular-nums;
   font-weight: 950;
   letter-spacing: -0.035em;
@@ -1044,10 +1137,6 @@ button:focus-visible {
   grid-column: 1 / -1;
 }
 
-.shop-item[data-mode="pending"] {
-  filter: saturate(0.72);
-}
-
 .offline-summary {
   display: grid;
   gap: 8px;
@@ -1141,7 +1230,7 @@ button:focus-visible {
   }
 
   48% {
-    transform: translateX(-50%) translateY(-4px) scale(1.025);
+    transform: translateX(-50%) translateY(-2px) scale(1.015);
   }
 }
 
@@ -1601,36 +1690,37 @@ button:focus-visible {
 
 @media (min-width: 600px) {
   .garden-world {
-    padding-top: 34px;
+    padding-top: 110px;
   }
 
   .garden-plot {
-    padding: 16px;
-    border-radius: 40px;
+    --plot-surface-radius: 26px;
   }
 
   .garden-plot__bed {
-    padding: 18px;
+    padding: 6px;
   }
 
   .crop-slot-grid {
-    grid-template-rows: repeat(2, 168px);
+    grid-template-rows: repeat(2, 96px);
+    gap: 3px;
   }
 
   .crop-slot {
-    min-height: 168px;
+    min-height: 96px;
+    border-radius: 14px;
   }
 
   .cucumber-character {
-    height: 88px;
+    height: 64px;
   }
 
   .crop-slot[data-stage-id="young"] .cucumber-character {
-    height: 102px;
+    height: 72px;
   }
 
   .crop-slot[data-stage-id="adult"] .cucumber-character {
-    height: 118px;
+    height: 82px;
   }
 }
 
@@ -1672,41 +1762,37 @@ button:focus-visible {
 
   .garden-world {
     min-height: calc(100dvh - 70px - env(safe-area-inset-top));
-    padding-top: 24px;
+    padding-top: 90px;
   }
 
   .plot-list {
-    width: min(100%, 540px);
-  }
-
-  .garden-plot {
-    padding: 10px;
+    width: min(100%, 620px);
   }
 
   .garden-plot__bed {
-    padding: 10px;
+    padding: 4px;
   }
 
   .crop-slot-grid {
-    grid-template-rows: repeat(2, 102px);
+    grid-template-rows: repeat(2, 62px);
   }
 
   .crop-slot {
-    min-height: 102px;
+    min-height: 62px;
   }
 
   .crop-xp-bar {
-    top: 6px;
-    height: 6px;
+    top: 4px;
+    height: 5px;
   }
 
   .cucumber-character,
   .crop-slot[data-stage-id="young"] .cucumber-character {
-    height: 62px;
+    height: 44px;
   }
 
   .crop-slot[data-stage-id="adult"] .cucumber-character {
-    height: 74px;
+    height: 52px;
   }
 
   .modal-card {

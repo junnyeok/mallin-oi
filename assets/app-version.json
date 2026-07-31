@@ -1,24 +1,32 @@
 {
-  "configVersion": 1,
+  "configVersion": 2,
   "remoteConfigUrl": "https://mallin-oi.com/assets/app-version.json",
   "checkIntervalHours": 24,
+  "failureRetryMinutes": 15,
+  "requestTimeoutMs": 8000,
   "platforms": {
     "android": {
+      "packageId": "com.mallinoi.calendar",
       "latestVersion": "1.0.14",
       "minimumVersion": "1.0.7",
       "latestBuild": 18,
       "minimumBuild": 12,
       "forceUpdate": false,
+      "storeDeepLink": "market://details?id=com.mallinoi.calendar",
       "storeUrl": "https://play.google.com/store/apps/details?id=com.mallinoi.calendar"
     },
     "ios": {
+      "bundleId": "com.mallinoi.calendar",
+      "appStoreId": "6774468038",
+      "storeCountry": "kr",
       "latestVersion": "1.0.14",
       "minimumVersion": "1.0.7",
       "latestBuild": 20,
       "minimumBuild": 14,
       "forceUpdate": false,
+      "storeDeepLink": "itms-apps://itunes.apple.com/app/id6774468038",
       "storeUrl": "https://apps.apple.com/kr/app/id6774468038"
     }
   },
-  "updatedAt": "2026-07-30T16:24:07+09:00"
+  "updatedAt": "2026-07-31T19:50:00+09:00"
 }

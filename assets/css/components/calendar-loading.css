@@ -50,14 +50,15 @@
   width: 100%;
   max-width: 100%;
   max-height: 100%;
-  gap: var(--space-8);
+  gap: var(--space-12);
   color: var(--color-text);
   text-align: center;
+  transform: translateY(-8vh);
 }
 
 .calendar-loading-overlay__image {
   display: block;
-  width: clamp(184px, 26%, 208px);
+  width: clamp(108px, 18%, 132px);
   aspect-ratio: 1;
   max-width: 100%;
   flex: 0 1 auto;
@@ -75,7 +76,7 @@
   justify-content: center;
   min-height: 1.5em;
   font-family: inherit;
-  font-size: var(--text-body);
+  font-size: var(--text-h2);
   font-weight: 700;
   line-height: 1.5;
   color: var(--color-text);
@@ -137,7 +138,11 @@
   }
 
   .calendar-loading-overlay__image {
-    width: clamp(176px, 52%, 184px);
+    width: clamp(96px, 30vw, 120px);
+  }
+
+  .calendar-loading-overlay__content {
+    transform: translateY(-7vh);
   }
 }
 

@@ -683,6 +683,7 @@ export function openCalendarDetailSheet({
       } else if (field.type === 'calendar-datetime') {
         control = createCalendarDateTimeControl(field);
       } else if (field.type === 'textarea') {
+        row.classList.add('calendar-entry-sheet__textarea-field');
         control = document.createElement('textarea');
         control.rows = 3;
         control.value = field.value || '';

@@ -4,9 +4,12 @@
 
 ## 공통 준비
 
-1. 스토어에 실제 공개된 버전만 `assets/app-version.json`의 플랫폼별
-   `latestVersion`/`latestBuild`에 기록합니다. 심사 또는 단계적 출시 중인
-   빌드는 공개가 확인되기 전에 올리지 않습니다. 강제 업데이트 하한은
+1. 앱의 업데이트 안내는 Android에서 Google Play In-App Updates API의
+   사용자별 제공 상태를, iOS에서 Apple Lookup API의 대한민국 스토어 공개
+   버전을 우선 사용합니다. `assets/app-version.json`의
+   `latestVersion`/`latestBuild`는 표시용 보조 메타데이터이며 스토어 조회를
+   대신하지 않습니다. 심사 또는 단계적 출시 중인 빌드는 공개가 확인되기
+   전에 기록하지 않습니다. 강제 업데이트 하한은
    `minimumVersion`/`minimumBuild`로 별도 관리합니다.
 2. 루트에서 웹 자산을 Capacitor용 `www` 폴더로 동기화합니다.
 
@@ -39,6 +42,10 @@
 10. 내부 테스트 또는 비공개 테스트에 `.aab` 업로드
 11. 새 개인 개발자 계정은 비공개 테스트에 최소 12명 테스터가 14일 연속 참여해야 프로덕션 신청이 가능할 수 있음
 12. 테스트 후 프로덕션 출시 신청
+13. 업데이트 안내의 최종 검증은 Google Play에서 설치한 이전 빌드와 같은
+    계정·서명·applicationId를 사용해 내부 또는 비공개 테스트 트랙에서
+    수행합니다. 디버그 또는 직접 설치 APK에서는 Play API가
+    `APP_NOT_OWNED`/업데이트 확인 불가 상태를 반환할 수 있습니다.
 
 ## iOS App Store 출시 흐름
 
@@ -61,6 +68,9 @@
 11. 스크린샷, 설명, 개인정보처리방침, 앱 개인정보, 연령 등급, 카테고리 등 입력
 12. TestFlight 테스트
 13. 심사 제출
+14. Apple Lookup API가 공개 버전을 반환하는지와 App Store 딥링크가 열리는지
+    실제 iPhone에서 확인합니다. 심사 중이거나 TestFlight에만 있는 버전은
+    공개 버전으로 판단하지 않습니다.
 
 ## 출시 전 체크리스트
 

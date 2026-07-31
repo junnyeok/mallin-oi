@@ -10,11 +10,12 @@ import {
   distributeAutomaticExperience,
   findCropSlot,
   getAllSlots,
+  getGardenPurchasePricing,
   getGrowthProgress,
   getGrowthStage,
   harvestCucumber,
   plantCucumber,
-  purchaseFirstGarden,
+  purchaseGarden,
   synchronizeDerivedState,
 } from "../js/game-engine.js";
 import {
@@ -29,9 +30,13 @@ import {
 } from "../js/offline-reward.js";
 import { clearGameSave, loadGameSave, saveGame } from "../js/save-manager.js";
 import {
+  calculateCropWateringTarget,
   calculateWateringLayout,
+  CROP_WATER_TARGETS,
+  getPlotSurfaceJoin,
   getWateringSide,
   WATERING_CAN_CONFIG,
+  WATERING_LAYOUT_CONFIG,
   WATER_SPRITE_CONFIG,
 } from "../js/ui-renderer.js";
 
@@ -64,7 +69,7 @@ function test(name, callback) {
 
 function createOwnedState(now = 1_000) {
   const state = createInitialGameState(now);
-  const purchase = purchaseFirstGarden(state);
+  const purchase = purchaseGarden(state);
 
   assert.equal(purchase.purchased, true);
   return state;
@@ -110,7 +115,7 @@ function legacyState(overrides = {}) {
   };
 }
 
-test("신규 이용자는 텃밭 0개와 무료 구매 가능 상태로 시작한다", () => {
+test("신규 이용자는 텃밭 0개와 반복 무료 구매 가능 상태로 시작한다", () => {
   const state = createInitialGameState(1_000);
 
   assert.equal(state.saveVersion, 2);
@@ -129,31 +134,112 @@ test("저장 데이터가 없으면 텃밭을 자동 지급하지 않는다", ()
   assert.equal(result.state.hasClaimedFreeGarden, false);
 });
 
-test("첫 무료 구매는 텃밭 하나와 정확히 4개 슬롯을 만든다", () => {
-  const state = createInitialGameState(1_000);
-  const result = purchaseFirstGarden(state);
-
-  assert.equal(result.purchased, true);
-  assert.equal(state.plots.length, 1);
-  assert.equal(state.plots[0].type, "garden");
-  assert.equal(state.plots[0].slots.length, 4);
-  assert.equal(new Set(state.plots[0].slots.map((slot) => slot.slotId)).size, 4);
-  assert.ok(state.plots[0].slots.every((slot) => !slot.isPlanted));
+test("텃밭 정가 100오이와 현재 0오이 차감 정책을 한 설정에서 계산한다", () => {
+  assert.equal(GAME_CONFIG.gardenPurchase.listPrice, 100);
+  assert.equal(GAME_CONFIG.gardenPurchase.temporaryFree, true);
+  assert.deepEqual(getGardenPurchasePricing(), {
+    listPrice: 100,
+    isTemporaryFree: true,
+    price: 0,
+  });
+  assert.deepEqual(getGardenPurchasePricing({ temporaryFree: false }), {
+    listPrice: 100,
+    isTemporaryFree: false,
+    price: 100,
+  });
 });
 
-test("무료 구매는 연속 호출과 새로고침 뒤에도 중복되지 않는다", () => {
+for (const balance of [0, 56]) {
+  test(`무료 모드는 보유 오이 ${balance}개를 유지하며 텃밭을 반복 구매한다`, () => {
+    const state = createInitialGameState(1_000);
+    state.cucumbers = balance;
+
+    for (let expectedCount = 1; expectedCount <= 5; expectedCount += 1) {
+      const result = purchaseGarden(state);
+
+      assert.equal(result.purchased, true);
+      assert.equal(result.price, 0);
+      assert.equal(state.cucumbers, balance);
+      assert.equal(state.plots.length, expectedCount);
+      assert.equal(result.plot.type, "garden");
+      assert.equal(result.plot.slots.length, 4);
+      assert.ok(result.plot.slots.every((slot) => !slot.isPlanted));
+    }
+
+    const plotIds = state.plots.map((plot) => plot.plotId);
+    const slotIds = getAllSlots(state).map(({ slotId }) => slotId);
+
+    assert.equal(new Set(plotIds).size, 5);
+    assert.equal(new Set(slotIds).size, 20);
+  });
+}
+
+test("hasClaimedFreeGarden 이전 값은 두 번째 이후 구매를 막지 않는다", () => {
+  const state = createInitialGameState(1_000);
+
+  state.hasClaimedFreeGarden = true;
+  assert.equal(purchaseGarden(state).purchased, true);
+  assert.equal(purchaseGarden(state).purchased, true);
+  assert.equal(state.plots.length, 2);
+});
+
+test("무료 구매한 다섯 텃밭은 저장·새로고침 후 유지되고 계속 구매된다", () => {
   const storage = new MemoryStorage();
   const state = createInitialGameState(1_000);
 
-  assert.equal(purchaseFirstGarden(state).purchased, true);
-  assert.equal(purchaseFirstGarden(state).purchased, false);
-  assert.equal(state.plots.length, 1);
+  for (let index = 0; index < 5; index += 1) {
+    assert.equal(purchaseGarden(state).purchased, true);
+  }
   saveGame(state, storage, 2_000);
   const reloaded = loadGameSave(storage, 3_000);
 
-  assert.equal(reloaded.state.plots.length, 1);
-  assert.equal(purchaseFirstGarden(reloaded.state).purchased, false);
-  assert.equal(reloaded.state.plots.length, 1);
+  assert.equal(reloaded.state.plots.length, 5);
+  assert.equal(purchaseGarden(reloaded.state).purchased, true);
+  assert.equal(reloaded.state.plots.length, 6);
+});
+
+test("유료 모드는 99오이 구매를 거절하고 상태를 바꾸지 않는다", () => {
+  const state = createInitialGameState(1_000);
+  state.cucumbers = 99;
+  const result = purchaseGarden(state, { temporaryFree: false });
+
+  assert.equal(result.purchased, false);
+  assert.equal(result.reason, "insufficient");
+  assert.equal(state.cucumbers, 99);
+  assert.equal(state.plots.length, 0);
+  assert.equal(state.nextPlotSequence, 1);
+});
+
+test("유료 모드는 100오이를 정확히 차감하고 텃밭 하나를 추가한다", () => {
+  const state = createInitialGameState(1_000);
+  state.cucumbers = 100;
+  const result = purchaseGarden(state, { temporaryFree: false });
+
+  assert.equal(result.purchased, true);
+  assert.equal(result.price, 100);
+  assert.equal(state.cucumbers, 0);
+  assert.equal(state.plots.length, 1);
+});
+
+test("구매 저장 실패는 오이·텃밭·순번을 모두 원래대로 되돌린다", () => {
+  const state = createOwnedState();
+  state.cucumbers = 100;
+  const beforePlot = state.plots[0];
+  const failingStorage = {
+    setItem() {
+      throw new Error("quota exceeded");
+    },
+  };
+  const result = purchaseGarden(state, {
+    temporaryFree: false,
+    persist: () => saveGame(state, failingStorage, 2_000),
+  });
+
+  assert.equal(result.purchased, false);
+  assert.equal(result.reason, "save-failed");
+  assert.equal(state.cucumbers, 100);
+  assert.deepEqual(state.plots, [beforePlot]);
+  assert.equal(state.nextPlotSequence, 2);
 });
 
 test("여러 텃밭의 ID·순서·4슬롯 상태를 저장하고 복원한다", () => {
@@ -563,52 +649,146 @@ test("게임 엔진 tick도 총 XP 한 번만 적용하고 콜백에 슬롯 배�
   }
 });
 
-test("물 효과 배치는 슬롯 장면의 포인터 위치와 좌우를 사용한다", () => {
-  const sceneRect = { left: 100, top: 50, width: 170, height: 140 };
-  const left = calculateWateringLayout(sceneRect, {
-    clientX: 135,
-    clientY: 120,
-  });
-  const right = calculateWateringLayout(sceneRect, {
-    clientX: 235,
-    clientY: 120,
+test("성장 단계별 물 도착점은 실제 캐릭터 표시 영역의 머리·잎을 따른다", () => {
+  const sceneRect = { left: 100, top: 500, width: 320, height: 520 };
+  const scrolledSceneRect = { ...sceneRect, top: 120 };
+
+  for (const [stageId, anchor] of Object.entries(CROP_WATER_TARGETS)) {
+    const characterRect = {
+      left: 145,
+      top: 600,
+      width: 44,
+      height: 44,
+    };
+    const scrolledCharacterRect = { ...characterRect, top: 220 };
+    const target = calculateCropWateringTarget(
+      sceneRect,
+      characterRect,
+      stageId
+    );
+    const scrolledTarget = calculateCropWateringTarget(
+      scrolledSceneRect,
+      scrolledCharacterRect,
+      stageId
+    );
+
+    assert.equal(target.targetX, 45 + 44 * anchor.x);
+    assert.equal(target.targetY, 100 + 44 * anchor.y);
+    assert.equal(target.cropSize, 44);
+    assert.deepEqual(scrolledTarget, target);
+
+    const layout = calculateWateringLayout(sceneRect, target);
+
+    assert.ok(layout.canY < layout.targetY);
+    assert.ok(layout.targetErrorDistance < 0.001);
+  }
+});
+
+test("320px·390px·430px에서 물뿌리개는 새싹 표시 크기를 직접 따른다", () => {
+  for (const viewportWidth of [320, 390, 430]) {
+    const cropSize = Math.min(54, Math.max(40, viewportWidth * 0.12));
+    const sceneRect = {
+      left: 0,
+      top: 0,
+      width: viewportWidth,
+      height: 620,
+    };
+    const layout = calculateWateringLayout(sceneRect, {
+      targetX: viewportWidth * 0.25,
+      targetY: 130,
+      cropSize,
+    });
+
+    assert.equal(layout.canSize, cropSize);
+    assert.ok(layout.canSize >= 40 && layout.canSize <= 54);
+    assert.ok(layout.canSize > 38);
+    assert.equal(
+      layout.spriteWidth,
+      layout.canSize * WATERING_LAYOUT_CONFIG.spriteToCanScale
+    );
+    assert.equal(layout.spriteHeight, layout.spriteWidth);
+    assert.ok(layout.targetErrorDistance < 0.001);
+  }
+
+  assert.equal(WATERING_LAYOUT_CONFIG.minimumCanSize, 40);
+  assert.equal(WATERING_LAYOUT_CONFIG.maximumCanSize, 64);
+});
+
+test("확대된 물뿌리개 출구와 물줄기 시작점은 연결되고 마지막 물방울은 작물에 닿는다", () => {
+  const sceneRect = { left: 100, top: 50, width: 320, height: 520 };
+  const layout = calculateWateringLayout(sceneRect, {
+    targetX: 92,
+    targetY: 130,
+    cropSize: 48,
   });
 
-  assert.equal(getWateringSide(135, sceneRect), "left");
-  assert.equal(getWateringSide(235, sceneRect), "right");
-  assert.equal(left.side, "left");
-  assert.equal(right.side, "right");
-  assert.ok(left.canSize >= 36 && left.canSize <= 54);
-  assert.ok(right.canSize >= 36 && right.canSize <= 54);
-  assert.ok(left.splashY > left.nozzleY);
-  assert.ok(right.splashY > right.nozzleY);
+  assert.equal(getWateringSide(180, sceneRect), "left");
+  assert.equal(getWateringSide(300, sceneRect), "right");
+  assert.ok(layout.canY < layout.targetY);
+  assert.ok(layout.directionY > 0);
+  assert.ok(Math.abs(layout.directionX) > 0);
+  assert.ok(layout.targetErrorDistance < 0.001);
+  assert.ok(Math.abs(layout.spriteStartX - layout.nozzleX) < 0.001);
+  assert.ok(Math.abs(layout.spriteStartY - layout.nozzleY) < 0.001);
+  assert.equal(layout.splashX, layout.spriteImpactX);
+  assert.equal(layout.splashY, layout.spriteImpactY);
   assert.equal(WATERING_CAN_CONFIG.tiltDegrees, 16);
   assert.equal(WATER_SPRITE_CONFIG.frameCount, 8);
 });
 
-test("슬롯 안 가장자리 물 효과는 가능한 범위에서 잘리지 않게 보정한다", () => {
-  const sceneRect = { left: 0, top: 0, width: 190, height: 170 };
-
-  for (const [x, y] of [
-    [0, 0],
-    [190, 0],
-    [0, 170],
-    [190, 170],
+test("네 슬롯과 좌우 가장자리에서는 방향을 반전하며 확대 효과 전체를 안전 범위에 둔다", () => {
+  for (const sceneRect of [
+    { left: 0, top: 0, width: 320, height: 520 },
+    { left: 0, top: 0, width: 430, height: 720 },
   ]) {
-    const layout = calculateWateringLayout(sceneRect, {
-      clientX: x,
-      clientY: y,
-    });
+    for (const [targetX, preferredSide] of [
+      [sceneRect.width * 0.2, "right"],
+      [sceneRect.width * 0.42, "left"],
+      [sceneRect.width * 0.58, "right"],
+      [sceneRect.width * 0.82, "left"],
+    ]) {
+      const layout = calculateWateringLayout(sceneRect, {
+        targetX,
+        targetY: 135,
+        cropSize: 48,
+        preferredSide,
+      });
 
-    assert.ok(layout.effectBounds.left >= layout.safeMargin - 0.001);
-    assert.ok(layout.effectBounds.top >= layout.safeMargin - 0.001);
-    assert.ok(
-      layout.effectBounds.right <= sceneRect.width - layout.safeMargin + 0.001
-    );
-    assert.ok(
-      layout.effectBounds.bottom <= sceneRect.height - layout.safeMargin + 0.001
-    );
+      assert.equal(layout.side, preferredSide);
+      assert.ok(layout.effectBounds.left >= layout.safeMargin - 0.001);
+      assert.ok(layout.effectBounds.top >= layout.safeMargin - 0.001);
+      assert.ok(
+        layout.effectBounds.right <= sceneRect.width - layout.safeMargin + 0.001
+      );
+      assert.ok(
+        layout.effectBounds.bottom <= sceneRect.height - layout.safeMargin + 0.001
+      );
+      assert.ok(layout.targetErrorDistance < 0.001);
+    }
   }
+});
+
+test("텃밭 접합 정보는 홀수 세 번째·다섯 번째를 다음 행 왼쪽에 유지한다", () => {
+  const threePlots = Array.from({ length: 3 }, (_, index) =>
+    getPlotSurfaceJoin(index, 3)
+  );
+  const fivePlots = Array.from({ length: 5 }, (_, index) =>
+    getPlotSurfaceJoin(index, 5)
+  );
+
+  assert.deepEqual(
+    threePlots.map(({ row, column }) => [row, column]),
+    [[0, 0], [0, 1], [1, 0]]
+  );
+  assert.deepEqual(
+    fivePlots.map(({ row, column }) => [row, column]),
+    [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0]]
+  );
+  assert.equal(threePlots[0].edges.right, false);
+  assert.equal(threePlots[0].edges.bottom, false);
+  assert.equal(threePlots[1].corners.bottomRight, true);
+  assert.equal(threePlots[2].corners.bottomLeft, true);
+  assert.equal(fivePlots[4].edges.right, true);
 });
 
 test("HTML에는 제거 대상 안내·알림·수확 버튼이 없고 HUD와 메뉴만 유지된다", async () => {
@@ -627,7 +807,7 @@ test("HTML에는 제거 대상 안내·알림·수확 버튼이 없고 HUD와 �
   assert.equal(body.match(/id="menuButton"/g)?.length, 1);
 });
 
-test("상점에는 첫 무료 텃밭 진입점과 가격 미정 후속 상태가 연결된다", async () => {
+test("상점은 100오이 정가와 현재 무료 상태를 구분하고 반복 구매를 유지한다", async () => {
   const [html, renderer, main] = await Promise.all([
     readFile(new URL("../index.html", import.meta.url), "utf8"),
     readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
@@ -636,14 +816,19 @@ test("상점에는 첫 무료 텃밭 진입점과 가격 미정 후속 상태가
 
   assert.match(html, /id="shopMenuButton"[\s\S]*상점/);
   assert.match(html, /id="gardenPurchaseButton"[\s\S]*무료 구매/);
-  assert.match(renderer, /가격 확정 후 이용 가능/);
-  assert.match(renderer, /freeAvailable[\s\S]*gardenPurchaseButton\.disabled/);
-  assert.match(main, /purchasePending[\s\S]*purchaseFirstGarden\(state\)/);
+  assert.match(renderer, /GAME_CONFIG\.gardenPurchase/);
+  assert.match(renderer, /정가 \$\{formattedListPrice\}오이 · 현재 무료/);
+  assert.doesNotMatch(renderer, /가격 확정 후 이용 가능|구매 준비 중/);
+  assert.match(renderer, /gardenPurchaseButton\.disabled = this\.purchasePending/);
+  assert.match(main, /purchasePending[\s\S]*purchaseGarden\(state, \{ persist: persistNow \}\)/);
+  assert.match(main, /requestAnimationFrame/);
+  assert.match(main, /save-failed/);
   assert.match(main, /menuModal\.addEventListener\("pointerdown", stopModalInput\)/);
-  assert.equal(GAME_CONFIG.additionalGardenPrice, null);
+  assert.equal(GAME_CONFIG.gardenPurchase.listPrice, 100);
+  assert.equal(GAME_CONFIG.gardenPurchase.temporaryFree, true);
 });
 
-test("탑다운 밭·2×2 슬롯·세로 스크롤·고정 HUD 구조가 적용된다", async () => {
+test("탑다운 밭은 2×2 슬롯 단위를 빈틈 없는 연속 표면으로 왼쪽부터 배치한다", async () => {
   const [html, css, renderer] = await Promise.all([
     readFile(new URL("../index.html", import.meta.url), "utf8"),
     readFile(new URL("../css/game.css", import.meta.url), "utf8"),
@@ -655,9 +840,60 @@ test("탑다운 밭·2×2 슬롯·세로 스크롤·고정 HUD 구조가 적용�
   assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /\.sky-header\s*\{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.crop-slot-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,/);
-  assert.match(css, /\.plot-list\s*\{[\s\S]*display:\s*grid;[\s\S]*gap:/);
+  assert.match(
+    css,
+    /\.plot-list\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,[^}]*gap:\s*0;/s
+  );
+  assert.doesNotMatch(css, /\.garden-plot:last-child:nth-child\(odd\)/);
+  assert.doesNotMatch(
+    css,
+    /\.garden-plot\s*\{[^}]*(?:justify-self|grid-column):/s
+  );
+  assert.match(css, /\.garden-plot\[data-edge-right="false"\]/);
+  assert.match(css, /\.garden-plot\[data-corner-top-left="true"\]/);
+  assert.match(css, /drop-shadow\(/);
+  assert.match(renderer, /getPlotSurfaceJoin\(\s*plotIndex,\s*state\.plots\.length/s);
+  assert.match(
+    css,
+    /\.garden-world\s*\{[^}]*env\(safe-area-inset-bottom\)\s*\+\s*44px/s
+  );
   assert.match(renderer, /GAME_CONFIG\.slotsPerPlot|plot\.slots\.forEach/);
+  assert.doesNotMatch(renderer, /garden-plot__label/);
+  assert.doesNotMatch(css, /\.garden-plot__label\s*\{/);
+  assert.match(renderer, /article\.setAttribute\("aria-label", `텃밭/);
   assert.doesNotMatch(css, /\.game-shell\s*\{[^}]*overflow:\s*hidden;/s);
+  assert.doesNotMatch(css, /\.garden-plot\s*\{[^}]*transform:\s*scale/s);
+  assert.doesNotMatch(css, /\.garden-plot\s*\{[^}]*margin:\s*-/s);
+});
+
+test("메뉴 버튼의 평상시 보더는 없고 비노란색 키보드 포커스는 유지된다", async () => {
+  const css = await readFile(new URL("../css/game.css", import.meta.url), "utf8");
+  const menuRule = css.match(/\.menu-button\s*\{([^}]*)\}/)?.[1] ?? "";
+  const focusRule =
+    css.match(/\.menu-button:focus-visible\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  assert.match(menuRule, /border:\s*0;/);
+  assert.match(menuRule, /min-width:\s*48px;/);
+  assert.match(menuRule, /min-height:\s*48px;/);
+  assert.doesNotMatch(menuRule, /color-sun|244,\s*198,\s*78/);
+  assert.match(focusRule, /outline-color:\s*var\(--color-leaf-700\);/);
+});
+
+test("성체 단계는 투명 정사각형 cucumber-adult 전용 자산을 사용한다", async () => {
+  const [configSource, adultAsset] = await Promise.all([
+    readFile(new URL("../js/game-config.js", import.meta.url), "utf8"),
+    readFile(new URL("../assets/images/cucumber-adult.png", import.meta.url)),
+  ]);
+  const adultStage = GAME_CONFIG.growthStages.find(
+    (stage) => stage.id === "adult"
+  );
+
+  assert.equal(adultStage.characterAsset, "./assets/images/cucumber-adult.png");
+  assert.doesNotMatch(
+    configSource,
+    /id:\s*"adult"[\s\S]*?characterAsset:\s*"\.\/assets\/images\/cucumber\.png"/
+  );
+  assert.ok(adultAsset.byteLength > 0);
 });
 
 test("슬롯별 XP 막대는 심어진 슬롯만 표시하고 전체 성장 XP를 접근성 값으로 제공한다", async () => {
@@ -671,7 +907,7 @@ test("슬롯별 XP 막대는 심어진 슬롯만 표시하고 전체 성장 XP�
   assert.match(renderer, /progress\.progressPercent/);
   assert.match(renderer, /aria-valuenow/);
   assert.match(renderer, /aria-valuetext/);
-  assert.match(css, /\.crop-xp-bar\s*\{[\s\S]*height:\s*7px;/);
+  assert.match(css, /\.crop-xp-bar\s*\{[\s\S]*height:\s*5px;/);
   assert.match(css, /\.crop-xp-bar__fill\s*\{[\s\S]*#f2b935[\s\S]*#ffe47c/);
 });
 
@@ -687,6 +923,8 @@ test("빈 슬롯·수확 슬롯 유도 효과와 화면 밖·reduced-motion 완�
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /animation:\s*none !important/);
   assert.match(renderer, /IntersectionObserver/);
+  assert.match(renderer, /addEventListener\(\s*"resize",\s*this\.handleWateringResize/s);
+  assert.match(renderer, /addEventListener\(\s*"scroll",\s*this\.handleWateringResize/s);
 });
 
 test("슬롯별 컨트롤러·효과 레이어·전환 Promise를 재사용하고 제거 시 정리한다", async () => {
@@ -698,8 +936,12 @@ test("슬롯별 컨트롤러·효과 레이어·전환 Promise를 재사용하�
   assert.match(renderer, /this\.slotViews = new Map\(\)/);
   assert.match(renderer, /new CropTransitionController\(/);
   assert.match(renderer, /buildWateringEffect\(touchEffects\)/);
+  assert.match(renderer, /gardenWorld\.append\(slotView\.touchEffects\)/);
   assert.match(renderer, /productionAccumulator: createWholeXpGainAccumulator\(\)/);
   assert.match(renderer, /view\.controller\.suspend\(\)/);
+  assert.match(renderer, /view\.touchEffects\.remove\(\)/);
+  assert.match(renderer, /root\.style\.removeProperty\(property\)/);
+  assert.match(renderer, /if \(key !== "state"\) delete root\.dataset\[key\]/);
   assert.match(renderer, /this\.slotViews\.delete\(view\.key\)/);
   assert.doesNotMatch(renderer, /#characterButton|#characterImage|#harvestButton/);
 });

@@ -286,7 +286,7 @@ body.calendar-entry-sheet-open {
 
 .calendar-entry-sheet__datetime {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(124px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(104px, 0.82fr);
   align-items: center;
   gap: var(--space-8);
   min-width: 0;
@@ -307,6 +307,14 @@ body.calendar-entry-sheet-open {
 }
 
 .calendar-entry-sheet__datetime > input[readonly] {
+  min-height: 44px;
+  padding: 0 var(--space-8);
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -446,6 +454,11 @@ body.calendar-entry-sheet-open {
   line-height: var(--line-body);
 }
 
+.calendar-entry-sheet__textarea-field {
+  row-gap: var(--space-8);
+  padding-top: var(--space-12);
+}
+
 .calendar-entry-sheet[data-calendar-type='study']
   .calendar-entry-sheet__field
   > textarea {
@@ -463,14 +476,12 @@ body.calendar-entry-sheet-open {
     font-size: var(--text-body);
   }
 
-  .calendar-entry-sheet__datetime {
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: var(--space-4) 0;
+  .calendar-entry-sheet__field {
+    grid-template-columns: 52px minmax(0, 1fr);
   }
 
   .calendar-entry-sheet__datetime > input {
-    font-size: var(--text-body);
+    font-size: var(--text-small);
   }
 
   .calendar-entry-sheet__field > input::placeholder,

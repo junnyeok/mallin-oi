@@ -285,6 +285,8 @@ test('로딩 오버레이는 캘린더 본문을 반투명하게 덮고 세 점�
   const contentRule =
     css.match(/\.calendar-loading-overlay__content\s*\{[^}]+\}/s)?.[0] || '';
   assert.doesNotMatch(contentRule, /opacity/);
+  assert.match(contentRule, /gap:\s*var\(--space-12\)/);
+  assert.match(contentRule, /transform:\s*translateY\(-8vh\)/);
 
   const imageRule =
     css.match(/\.calendar-loading-overlay__image\s*\{[^}]+\}/s)?.[0] || '';
@@ -296,7 +298,12 @@ test('로딩 오버레이는 캘린더 본문을 반투명하게 덮고 세 점�
     css,
     /calendar-cucumber-dance|dancing-cucumber|calendar-loading-overlay__sprite/,
   );
-  assert.match(css, /width:\s*clamp\(176px, 52%, 184px\)/);
+  assert.match(css, /width:\s*clamp\(108px, 18%, 132px\)/);
+  assert.match(css, /width:\s*clamp\(96px, 30vw, 120px\)/);
+  assert.match(
+    css,
+    /\.calendar-loading-overlay__label\s*\{[^}]*font-size:\s*var\(--text-h2\)/s,
+  );
   assert.match(css, /animation:\s*calendar-loading-dot-bounce 1\.2s ease-in-out infinite/);
   assert.match(css, /animation-delay:\s*0s/);
   assert.match(css, /animation-delay:\s*0\.16s/);
