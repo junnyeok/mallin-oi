@@ -425,6 +425,61 @@ test("슬롯별 새싹→애기오이→어른오이 두 단계 진화 기준이
   assert.equal(getGrowthProgress(50).isHarvestReady, true);
 });
 
+test("성장 막대는 각 단계 시작점에서 0으로 초기화되고 해당 단계 요구량만 사용한다", () => {
+  const scenarios = [
+    [0, "sprout", 0, 15, 0, false],
+    [14, "sprout", 14, 15, (14 / 15) * 100, false],
+    [15, "young", 0, 20, 0, false],
+    [34, "young", 19, 20, 95, false],
+    [35, "adult", 0, 15, 0, false],
+    [50, "adult", 15, 15, 100, true],
+  ];
+
+  scenarios.forEach(
+    ([xp, stageId, stageExperience, stageRequirement, percent, ready]) => {
+      const progress = getGrowthProgress(xp);
+
+      assert.equal(progress.stage.id, stageId);
+      assert.equal(progress.stageExperience, stageExperience);
+      assert.equal(progress.stageRequirement, stageRequirement);
+      assert.equal(progress.progressPercent, percent);
+      assert.equal(progress.isHarvestReady, ready);
+    }
+  );
+});
+
+test("한 번에 단계 기준을 초과한 XP는 다음 단계 경험치로 안전하게 이월한다", () => {
+  const state = createOwnedState();
+  const address = plantAt(state);
+
+  addGrowthExperience(state, address.plotId, address.slotId, 14);
+  const result = addGrowthExperience(state, address.plotId, address.slotId, 22);
+  const progress = getGrowthProgress(address.slot.xp);
+
+  assert.equal(result.gained, 22);
+  assert.equal(address.slot.xp, 36);
+  assert.equal(address.slot.growthStageId, "adult");
+  assert.equal(progress.stageExperience, 1);
+  assert.equal(progress.stageRequirement, 15);
+});
+
+test("기존 누적 XP 저장값은 재접속 후 단계와 단계별 표시 경험치를 함께 보존한다", () => {
+  const state = createOwnedState(1_000);
+  const address = plantAt(state);
+  const storage = new MemoryStorage();
+
+  addGrowthExperience(state, address.plotId, address.slotId, 18);
+  assert.equal(saveGame(state, storage, 2_000).ok, true);
+  const loaded = loadGameSave(storage, 3_000).state;
+  const loadedSlot = loaded.plots[0].slots[0];
+  const progress = getGrowthProgress(loadedSlot.xp);
+
+  assert.equal(loadedSlot.xp, 18);
+  assert.equal(loadedSlot.growthStageId, "young");
+  assert.equal(progress.stageExperience, 3);
+  assert.equal(progress.stageRequirement, 20);
+});
+
 test("다 자란 슬롯 수확은 그 슬롯만 비우고 보유 오이를 정확히 1 늘린다", () => {
   const state = createOwnedState();
   const first = plantAt(state, 0, 0);
@@ -842,8 +897,14 @@ test("탑다운 밭은 2×2 슬롯 단위를 빈틈 없는 연속 표면으로 �
   assert.match(css, /\.crop-slot-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,/);
   assert.match(
     css,
+    /\.crop-slot-grid\s*\{[^}]*grid-template-rows:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*height:\s*100%;/s
+  );
+  assert.match(
+    css,
     /\.plot-list\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,[^}]*gap:\s*0;/s
   );
+  assert.match(css, /\.plot-list\s*\{[^}]*overflow:\s*hidden;[^}]*border-radius:/s);
+  assert.match(css, /\.garden-plot\s*\{[^}]*aspect-ratio:\s*1;/s);
   assert.doesNotMatch(css, /\.garden-plot:last-child:nth-child\(odd\)/);
   assert.doesNotMatch(
     css,
@@ -856,6 +917,10 @@ test("탑다운 밭은 2×2 슬롯 단위를 빈틈 없는 연속 표면으로 �
   assert.match(
     css,
     /\.garden-world\s*\{[^}]*env\(safe-area-inset-bottom\)\s*\+\s*44px/s
+  );
+  assert.match(
+    css,
+    /\.garden-world\s*\{[^}]*padding:\s*clamp\(16px,\s*5dvh,\s*36px\)/s
   );
   assert.match(renderer, /GAME_CONFIG\.slotsPerPlot|plot\.slots\.forEach/);
   assert.doesNotMatch(renderer, /garden-plot__label/);
@@ -896,7 +961,7 @@ test("성체 단계는 투명 정사각형 cucumber-adult 전용 자산을 사�
   assert.ok(adultAsset.byteLength > 0);
 });
 
-test("슬롯별 XP 막대는 심어진 슬롯만 표시하고 전체 성장 XP를 접근성 값으로 제공한다", async () => {
+test("슬롯별 XP 막대는 심어진 슬롯의 현재 단계 XP만 표시하고 접근성 값도 같은 기준을 쓴다", async () => {
   const [renderer, css] = await Promise.all([
     readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
     readFile(new URL("../css/game.css", import.meta.url), "utf8"),
@@ -905,9 +970,12 @@ test("슬롯별 XP 막대는 심어진 슬롯만 표시하고 전체 성장 XP�
   assert.match(renderer, /progress\.setAttribute\("role", "progressbar"\)/);
   assert.match(renderer, /view\.progress\.hidden = !isPlanted/);
   assert.match(renderer, /progress\.progressPercent/);
+  assert.match(renderer, /progress\.stageExperience/);
+  assert.match(renderer, /progress\.stageRequirement/);
   assert.match(renderer, /aria-valuenow/);
   assert.match(renderer, /aria-valuetext/);
   assert.match(css, /\.crop-xp-bar\s*\{[\s\S]*height:\s*5px;/);
+  assert.match(css, /bottom:\s*calc\(var\(--crop-visible-top\)/);
   assert.match(css, /\.crop-xp-bar__fill\s*\{[\s\S]*#f2b935[\s\S]*#ffe47c/);
 });
 

@@ -10,6 +10,7 @@ import {
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
+import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
 import {
   formatCalendarTimeLabel,
   joinLocalDateTimeValue,
@@ -1131,7 +1132,12 @@ async function initPageCalendar(loadingController) {
     state.viewDate = new Date(year, month - 1, 1);
 
     renderAll();
-
+    scheduleCalendarSelectionScroll({
+      target: document.querySelector('.study-calendar-todo-panel'),
+      hasRenderedItems: () => Boolean(
+        document.getElementById('studyTodoList')?.children.length,
+      ),
+    });
   }
 
   function selectGroupEvent(event) {
@@ -1355,15 +1361,20 @@ async function initPageCalendar(loadingController) {
         }
 
         if (isEdit) {
-          await saveTodoEdit(todo.id, {
-            text: nextText,
-            memo: values.memo,
-            category: nextCategory,
-            dateKey: nextStart.date,
-            todoTime: nextStart.time,
-            todoEndDate: nextEnd.time ? nextEnd.date : null,
-            todoEndTime: nextEnd.time,
-          });
+          try {
+            await saveTodoEdit(todo.id, {
+              text: nextText,
+              memo: values.memo,
+              category: nextCategory,
+              dateKey: nextStart.date,
+              todoTime: nextStart.time,
+              todoEndDate: nextEnd.time ? nextEnd.date : null,
+              todoEndTime: nextEnd.time,
+            });
+          } catch (error) {
+            alert('할 일 저장에 실패했어. 잠시 후 다시 시도해줘.');
+            throw error;
+          }
           return;
         }
 

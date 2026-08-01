@@ -70,7 +70,7 @@ export function getGrowthProgress(growthExperience) {
   );
   const progressPercent = Math.min(
     100,
-    Math.max(0, (experience / GAME_CONFIG.harvestExperience) * 100)
+    Math.max(0, (stageExperience / stageRequirement) * 100)
   );
 
   return {

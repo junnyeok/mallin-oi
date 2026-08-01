@@ -1,4 +1,5 @@
 import {
+  closeActiveCalendarTimePicker,
   joinLocalDateTimeValue,
   openCalendarTimePicker,
   setCalendarTimeInputValue,
@@ -18,6 +19,17 @@ let activeSheet = null;
 let activeDeleteConfirmation = null;
 let lockCount = 0;
 let lockedScrollY = 0;
+
+function blurFocusedControl(root) {
+  const activeElement = document.activeElement;
+  if (
+    activeElement instanceof HTMLElement &&
+    root?.contains(activeElement) &&
+    typeof activeElement.blur === 'function'
+  ) {
+    activeElement.blur();
+  }
+}
 
 function lockBodyScroll() {
   lockCount += 1;
@@ -227,6 +239,10 @@ function createCalendarDateTimeControl(field) {
   dateInput.type = 'date';
   dateInput.required = Boolean(field.required);
   dateInput.setAttribute('aria-label', `${field.label} 날짜`);
+  if (field.dateReadonly) {
+    dateInput.readOnly = true;
+    dateInput.setAttribute('aria-readonly', 'true');
+  }
 
   const timeInput = document.createElement('input');
   timeInput.type = 'text';
@@ -265,7 +281,23 @@ function createCalendarDateTimeControl(field) {
         setCalendarTimeInputValue(timeInput, nextTime, {
           emptyLabel: field.timePlaceholder || `${field.label}시간 지정`,
         });
+        field.onChange?.({
+          date: dateInput.value,
+          time: timeInput.dataset.time || '',
+          control,
+          dateInput,
+          timeInput,
+        });
       },
+    });
+  });
+  dateInput.addEventListener('change', () => {
+    field.onChange?.({
+      date: dateInput.value,
+      time: timeInput.dataset.time || '',
+      control,
+      dateInput,
+      timeInput,
     });
   });
 
@@ -384,6 +416,7 @@ export function initCalendarEntrySheet({
   submitButton.type = 'button';
   submitButton.className = 'calendar-entry-sheet__submit';
   submitButton.textContent = submitLabel;
+  submitButton.setAttribute('aria-disabled', 'false');
 
   const body = document.createElement('div');
   body.className = 'calendar-entry-sheet__body';
@@ -460,6 +493,7 @@ export function initCalendarEntrySheet({
   function setSubmitState() {
     if (syncSubmitButton) {
       submitButton.disabled = Boolean(syncSubmitButton.disabled);
+      submitButton.setAttribute('aria-disabled', String(submitButton.disabled));
       submitButton.textContent = syncSubmitButton.disabled
         ? syncSubmitButton.textContent || submitLabel
         : submitLabel;
@@ -514,6 +548,8 @@ export function initCalendarEntrySheet({
   function close({ restoreFocus = true } = {}) {
     if (!isOpen) return;
 
+    closeActiveCalendarTimePicker({ restoreFocus: false });
+    blurFocusedControl(dialog);
     isOpen = false;
     overlay.classList.remove('is-open');
     overlay.classList.add('is-closing');
@@ -526,7 +562,7 @@ export function initCalendarEntrySheet({
       if (activeSheet === api) activeSheet = null;
       onAfterClose?.();
       if (restoreFocus) {
-        (opener || openButton).focus?.();
+        (opener || openButton).focus?.({ preventScroll: true });
       }
     }, 220);
   }
@@ -639,6 +675,7 @@ export function openCalendarDetailSheet({
   submitButton.className = 'calendar-entry-sheet__submit';
   submitButton.textContent = isReadonly ? '닫기' : submitLabel;
   submitButton.disabled = !isReadonly && Boolean(submitDisabled);
+  submitButton.setAttribute('aria-disabled', String(submitButton.disabled));
   if (isReadonly) {
     submitButton.hidden = true;
   }
@@ -802,6 +839,21 @@ export function openCalendarDetailSheet({
       } else {
         row.append(label, control);
       }
+      if (!isReadonly && field.type === 'select' && field.onChange) {
+        control.addEventListener('change', () => {
+          field.onChange?.(control.value, { field, control, fields });
+        });
+      }
+      if (
+        !isReadonly &&
+        field.onChange &&
+        field.type !== 'select' &&
+        field.type !== 'calendar-datetime'
+      ) {
+        control.addEventListener('change', () => {
+          field.onChange?.(control.value, { field, control, fields });
+        });
+      }
       body.append(row);
     });
 
@@ -853,9 +905,29 @@ export function openCalendarDetailSheet({
 
   let isOpen = false;
   let closeTimer = 0;
+  let isSubmitting = false;
+
+  function setSubmitting(nextSubmitting) {
+    isSubmitting = Boolean(nextSubmitting);
+    submitButton.disabled = isSubmitting || Boolean(submitDisabled);
+    submitButton.setAttribute('aria-disabled', String(submitButton.disabled));
+
+    if (isSubmitting) {
+      submitButton.setAttribute('aria-busy', 'true');
+      dialog.setAttribute('aria-busy', 'true');
+      submitButton.textContent = '저장 중';
+      return;
+    }
+
+    submitButton.removeAttribute('aria-busy');
+    dialog.removeAttribute('aria-busy');
+    submitButton.textContent = submitLabel;
+  }
 
   function close({ restoreFocus = true } = {}) {
     if (!isOpen) return;
+    closeActiveCalendarTimePicker({ restoreFocus: false });
+    blurFocusedControl(dialog);
     isOpen = false;
     deleteConfirmation?.close?.({ restoreFocus: false, force: true });
     deleteConfirmation = null;
@@ -869,7 +941,7 @@ export function openCalendarDetailSheet({
     closeTimer = window.setTimeout(() => {
       overlay.remove();
       if (activeSheet === api) activeSheet = null;
-      if (restoreFocus) opener?.focus?.();
+      if (restoreFocus) opener?.focus?.({ preventScroll: true });
     }, 220);
   }
 
@@ -883,19 +955,19 @@ export function openCalendarDetailSheet({
       return;
     }
 
+    if (isSubmitting || submitButton.disabled) return;
+    setSubmitting(true);
+
     const values = fields.reduce((acc, field) => {
       acc[field.key] = field.input ? field.input.value : field.value;
       return acc;
     }, {});
 
-    submitButton.disabled = true;
-    submitButton.textContent = '저장 중';
     try {
       await onSave?.(values);
       close();
     } catch {
-      submitButton.disabled = false;
-      submitButton.textContent = submitLabel;
+      setSubmitting(false);
     }
   });
 

@@ -9,6 +9,7 @@ import {
   isOvernightTimeRange,
   joinLocalDateTimeValue,
   normalizeCalendarTime,
+  resolveWorkCalendarTimeRange,
   splitLocalDateTimeValue,
 } from '../assets/js/modules/calendar-time.js';
 
@@ -41,6 +42,42 @@ test('업무 야간 범위는 종료가 시작보다 이르면 익일 종료로 
   assert.equal(isOvernightTimeRange('22:00', '06:00'), true);
   assert.equal(isOvernightTimeRange('09:00', '18:00'), false);
   assert.equal(isOvernightTimeRange('', '06:00'), false);
+});
+
+test('업무 일정별 시간이 있으면 카테고리 기본 시간보다 우선한다', () => {
+  const category = { start_time: '09:00:00', end_time: '18:00:00' };
+
+  assert.deepEqual(resolveWorkCalendarTimeRange({
+    todo: { has_time_override: false },
+    category,
+  }), {
+    startTime: '09:00',
+    endTime: '18:00',
+    endsNextDay: false,
+    hasTimeOverride: false,
+  });
+  assert.deepEqual(resolveWorkCalendarTimeRange({
+    todo: {
+      has_time_override: true,
+      start_time: '22:00:00',
+      end_time: '06:00:00',
+    },
+    category,
+  }), {
+    startTime: '22:00',
+    endTime: '06:00',
+    endsNextDay: true,
+    hasTimeOverride: true,
+  });
+  assert.deepEqual(resolveWorkCalendarTimeRange({
+    todo: { has_time_override: true, start_time: null, end_time: null },
+    category,
+  }), {
+    startTime: '',
+    endTime: '',
+    endsNextDay: false,
+    hasTimeOverride: true,
+  });
 });
 
 test('자기개발 생성·조회·수정은 nullable 시작/종료 필드를 모두 전달한다', () => {
@@ -108,15 +145,20 @@ test('시작·종료 행은 한 줄 공통 컨트롤을 사용하고 시간 해�
   );
 });
 
-test('업무 시간은 일정이 아니라 카테고리를 단일 기준으로 저장한다', () => {
+test('업무 시간은 새 일정과 개별 수정 일정에 스냅샷으로 저장한다', () => {
   const source = read('assets/js/modules/work-calendar.js');
   assert.match(source, /start_time:\s*times\.startTime\s*\|\|\s*null/);
   assert.match(source, /end_time:\s*times\.endTime\s*\|\|\s*null/);
   assert.match(source, /ends_next_day:\s*times\.endsNextDay/);
   assert.match(source, /isOvernightTimeRange\(start, end\)/);
-
-  const todoInsert = source.match(/\.from\(TABLE_NAME\)\s*\.insert\(\{([\s\S]*?)\}\)/)?.[1] || '';
-  assert.doesNotMatch(todoInsert, /start_time|end_time|ends_next_day/);
+  assert.match(source, /start_time:\s*times\.startTime\s*\|\|\s*null/);
+  assert.match(source, /end_time:\s*times\.endTime\s*\|\|\s*null/);
+  assert.match(source, /has_time_override:\s*true/);
+  assert.match(source, /p_start_time:/);
+  assert.match(source, /p_end_time:/);
+  assert.match(source, /key:\s*'workStart'[\s\S]*?type:\s*'calendar-datetime'/);
+  assert.match(source, /key:\s*'workEnd'[\s\S]*?type:\s*'calendar-datetime'/);
+  assert.match(source, /useCategoryTimeDefaults:\s*true/);
 });
 
 test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 UI를 유지한다', () => {
@@ -126,8 +168,10 @@ test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 U
 
   assert.match(
     sheetSource,
-    /submitButton\.disabled = true;[\s\S]*?await onSave\?\.\(values\);[\s\S]*?close\(\);[\s\S]*?catch \{[\s\S]*?submitButton\.disabled = false;/,
+    /if \(isSubmitting \|\| submitButton\.disabled\) return;[\s\S]*?setSubmitting\(true\);[\s\S]*?await onSave\?\.\(values\);[\s\S]*?catch \{[\s\S]*?setSubmitting\(false\);/,
   );
+  assert.match(sheetSource, /aria-busy/);
+  assert.match(sheetSource, /aria-disabled/);
   assert.match(studySource, /if \(state\.isAddingTodo\) throw new Error/);
   assert.match(
     studySource,
@@ -145,6 +189,43 @@ test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 U
   );
 });
 
+test('날짜 직접 선택만 렌더 후 일정 목록 스크롤을 예약한다', () => {
+  const scrollSource = read('assets/js/modules/calendar-selection-scroll.js');
+
+  assert.match(scrollSource, /requestAnimationFrame[\s\S]*requestAnimationFrame/);
+  assert.match(scrollSource, /hasRenderedItems\?\.\(\)/);
+  assert.match(scrollSource, /prefers-reduced-motion:\s*reduce/);
+  assert.match(scrollSource, /scrollIntoView/);
+
+  for (const calendarType of ['study', 'work', 'event']) {
+    const source = read(`assets/js/modules/${calendarType}-calendar.js`);
+    const selectDateBody = source.match(
+      /function selectDate\(dateKey\) \{([\s\S]*?)\n  \}/,
+    )?.[1] || '';
+    assert.match(selectDateBody, /renderAll\(\)/);
+    assert.match(selectDateBody, /scheduleCalendarSelectionScroll/);
+  }
+});
+
+test('시간 선택기는 닫기 전에 포커스를 해제하고 iOS 자동 확대를 피한다', () => {
+  const timeSource = read('assets/js/modules/calendar-time.js');
+  const sheetSource = read('assets/js/modules/calendar-entry-sheet.js');
+  const css = read('assets/css/components/calendar-entry-sheet.css');
+
+  assert.match(timeSource, /popover\.contains\(activeElement\)[\s\S]*activeElement\.blur\(\)/);
+  assert.match(timeSource, /activeCalendarTimePicker\?\.close/);
+  assert.match(sheetSource, /closeActiveCalendarTimePicker\(\{ restoreFocus: false \}\)/);
+  assert.match(sheetSource, /blurFocusedControl\(dialog\)/);
+  assert.match(
+    css,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__datetime > input\[readonly\] \{[^}]*font-size:\s*var\(--text-body\)/s,
+  );
+  assert.match(
+    css,
+    /\.calendar-time-picker__select \{[^}]*font-size:\s*16px/s,
+  );
+});
+
 test('운영 마이그레이션은 기존 데이터를 채우지 않고 검증된 nullable 시간 필드를 추가한다', () => {
   const sql = read('supabase-SQLEditor/20260730-study-work-calendar-times.sql');
   assert.match(sql, /todo_time time without time zone/);
@@ -155,6 +236,21 @@ test('운영 마이그레이션은 기존 데이터를 채우지 않고 검증�
   assert.match(sql, /ends_next_day = \(end_time < start_time\)/);
   assert.doesNotMatch(sql, /update\s+public\.study_calendar_todos\s+set\s+todo_time\s*=\s*['"]?00:00/i);
   assert.doesNotMatch(sql, /update\s+public\.work_calendar_categories\s+set\s+start_time/i);
+  assert.match(sql, /from public, anon/);
+  assert.match(sql, /to authenticated/);
+});
+
+test('업무 일정별 시간 마이그레이션은 기존 행을 수정하지 않고 재정의 우선순위를 저장한다', () => {
+  const sql = read('supabase-SQLEditor/20260801-work-calendar-todo-times.sql');
+  assert.match(sql, /start_time time without time zone/);
+  assert.match(sql, /end_time time without time zone/);
+  assert.match(sql, /has_time_override boolean not null default false/);
+  assert.match(sql, /has_time_override = false[\s\S]*start_time is null/);
+  assert.match(sql, /has_time_override = true/);
+  assert.match(sql, /p_start_time time without time zone/);
+  assert.match(sql, /p_end_time time without time zone/);
+  assert.match(sql, /has_time_override = true/);
+  assert.doesNotMatch(sql, /update\s+public\.work_calendar_todos\s+set\s+start_time\s*=\s*[^p]/i);
   assert.match(sql, /from public, anon/);
   assert.match(sql, /to authenticated/);
 });
@@ -195,6 +291,7 @@ test('루트·www·Android·iOS 시간 기능 자산은 바이트 단위로 일�
     'assets/css/main/calendar-event-main.css',
     'assets/css/main/calendar-work-main.css',
     'assets/js/modules/calendar-time.js',
+    'assets/js/modules/calendar-selection-scroll.js',
     'assets/js/modules/calendar-entry-sheet.js',
     'assets/js/modules/event-calendar.js',
     'assets/js/modules/study-calendar.js',

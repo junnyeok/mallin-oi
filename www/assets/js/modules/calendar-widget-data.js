@@ -1,6 +1,7 @@
 // assets/js/modules/calendar-widget-data.js
 
 import { supabase } from './supabase-client.js';
+import { resolveWorkCalendarTimeRange } from './calendar-time.js';
 
 export const CALENDAR_WIDGET_TYPES = ['study', 'work', 'event'];
 export const CALENDAR_WIDGET_RANGES = ['fourDays', 'twoWeeks', 'month'];
@@ -117,6 +118,7 @@ function normalizeStudyWidgetRow(row = {}) {
 
 function normalizeWorkWidgetRow(row = {}) {
   const category = getRelatedCategory(row, 'work_calendar_categories');
+  const times = resolveWorkCalendarTimeRange({ todo: row, category });
 
   return normalizeWidgetItem({
     calendar_type: 'work',
@@ -127,7 +129,7 @@ function normalizeWorkWidgetRow(row = {}) {
     category_color: category.color || '',
     title: row.work_text || '',
     memo: row.memo || row.note || '',
-    event_time: category.start_time || null,
+    event_time: times.startTime || null,
     sort_order: category.sort_order || 100,
     created_at: row.created_at || null,
     type: row.work_type || category.slug || '',
@@ -411,6 +413,10 @@ export async function fetchCalendarWidgetItems(options = {}) {
         category_id,
         work_text,
         memo,
+        start_time,
+        end_time,
+        ends_next_day,
+        has_time_override,
         is_done,
         created_at,
         ${sharedColumns},

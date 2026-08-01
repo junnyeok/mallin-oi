@@ -244,7 +244,7 @@ button:focus-visible {
   position: relative;
   min-height: calc(100dvh - 94px - env(safe-area-inset-top));
   overflow: hidden;
-  padding: clamp(90px, 27vw, 110px) max(10px, env(safe-area-inset-right))
+  padding: clamp(16px, 5dvh, 36px) max(10px, env(safe-area-inset-right))
     max(54px, calc(env(safe-area-inset-bottom) + 44px))
     max(10px, env(safe-area-inset-left));
   background:
@@ -303,12 +303,17 @@ button:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   margin: 0 auto;
+  overflow: hidden;
+  border-radius: 20px;
   filter: drop-shadow(0 7px 0 rgba(43, 117, 75, 0.28))
     drop-shadow(0 11px 18px rgba(16, 43, 30, 0.14));
   isolation: isolate;
 }
 
 .garden-plot {
+  /* 1254px 원본 이미지의 투명 상단 여백을 제외한 실제 캐릭터 상단 거리. */
+  --crop-character-height: clamp(40px, 12vw, 54px);
+  --crop-visible-top: clamp(28px, 8.34vw, 37.5px);
   --plot-edge-top: 0px;
   --plot-edge-right: 0px;
   --plot-edge-bottom: 0px;
@@ -325,6 +330,7 @@ button:focus-visible {
   overflow: hidden;
   width: 100%;
   min-width: 0;
+  aspect-ratio: 1;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -400,7 +406,8 @@ button:focus-visible {
         #91c86d 0 6px,
         var(--color-earth-800) 6px 9px
       )
-      right / var(--plot-edge-right) 100% no-repeat,
+      right var(--plot-edge-top) / var(--plot-edge-right)
+        calc(100% - var(--plot-edge-top) - var(--plot-edge-bottom)) no-repeat,
     linear-gradient(
         to top,
         #91c86d 0 6px,
@@ -412,7 +419,8 @@ button:focus-visible {
         #91c86d 0 6px,
         var(--color-earth-800) 6px 9px
       )
-      left / var(--plot-edge-left) 100% no-repeat;
+      left var(--plot-edge-top) / var(--plot-edge-left)
+        calc(100% - var(--plot-edge-top) - var(--plot-edge-bottom)) no-repeat;
 }
 
 .garden-plot::after {
@@ -479,15 +487,16 @@ button:focus-visible {
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, clamp(58px, 16vw, 74px));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 2px;
+  height: 100%;
 }
 
 .crop-slot {
   position: relative;
   display: grid;
   min-width: 0;
-  min-height: clamp(58px, 16vw, 74px);
+  min-height: 0;
   overflow: hidden;
   padding: 0;
   place-items: center;
@@ -544,7 +553,7 @@ button:focus-visible {
 
 .crop-xp-bar {
   position: absolute;
-  top: 4px;
+  bottom: calc(var(--crop-visible-top) + clamp(3px, 1vw, 5px));
   left: 50%;
   z-index: 6;
   display: block;
@@ -576,7 +585,7 @@ button:focus-visible {
   z-index: 2;
   display: block;
   width: auto;
-  height: clamp(40px, 12vw, 54px);
+  height: var(--crop-character-height);
   max-width: 92%;
   max-height: 92%;
   object-fit: contain;
@@ -588,12 +597,14 @@ button:focus-visible {
   -webkit-user-drag: none;
 }
 
-.crop-slot[data-stage-id="young"] .cucumber-character {
-  height: clamp(43px, 13.5vw, 60px);
+.crop-slot[data-stage-id="young"] {
+  --crop-character-height: clamp(43px, 13.5vw, 60px);
+  --crop-visible-top: clamp(33.6px, 10.54vw, 46.9px);
 }
 
-.crop-slot[data-stage-id="adult"] .cucumber-character {
-  height: clamp(48px, 15vw, 68px);
+.crop-slot[data-stage-id="adult"] {
+  --crop-character-height: clamp(48px, 15vw, 68px);
+  --crop-visible-top: clamp(40.8px, 12.76vw, 57.9px);
 }
 
 .cucumber-character[hidden] {
@@ -1690,7 +1701,11 @@ button:focus-visible {
 
 @media (min-width: 600px) {
   .garden-world {
-    padding-top: 110px;
+    padding-top: clamp(24px, 5dvh, 44px);
+  }
+
+  .plot-list {
+    border-radius: 26px;
   }
 
   .garden-plot {
@@ -1702,25 +1717,23 @@ button:focus-visible {
   }
 
   .crop-slot-grid {
-    grid-template-rows: repeat(2, 96px);
     gap: 3px;
   }
 
   .crop-slot {
-    min-height: 96px;
+    --crop-character-height: 64px;
+    --crop-visible-top: 44.5px;
     border-radius: 14px;
   }
 
-  .cucumber-character {
-    height: 64px;
+  .crop-slot[data-stage-id="young"] {
+    --crop-character-height: 72px;
+    --crop-visible-top: 56.2px;
   }
 
-  .crop-slot[data-stage-id="young"] .cucumber-character {
-    height: 72px;
-  }
-
-  .crop-slot[data-stage-id="adult"] .cucumber-character {
-    height: 82px;
+  .crop-slot[data-stage-id="adult"] {
+    --crop-character-height: 82px;
+    --crop-visible-top: 69.8px;
   }
 }
 
@@ -1762,7 +1775,7 @@ button:focus-visible {
 
   .garden-world {
     min-height: calc(100dvh - 70px - env(safe-area-inset-top));
-    padding-top: 90px;
+    padding-top: clamp(10px, 3dvh, 18px);
   }
 
   .plot-list {
@@ -1774,25 +1787,22 @@ button:focus-visible {
   }
 
   .crop-slot-grid {
-    grid-template-rows: repeat(2, 62px);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 
   .crop-slot {
-    min-height: 62px;
+    --crop-character-height: 44px;
+    --crop-visible-top: 30.6px;
   }
 
-  .crop-xp-bar {
-    top: 4px;
-    height: 5px;
+  .crop-slot[data-stage-id="young"] {
+    --crop-character-height: 44px;
+    --crop-visible-top: 34.4px;
   }
 
-  .cucumber-character,
-  .crop-slot[data-stage-id="young"] .cucumber-character {
-    height: 44px;
-  }
-
-  .crop-slot[data-stage-id="adult"] .cucumber-character {
-    height: 52px;
+  .crop-slot[data-stage-id="adult"] {
+    --crop-character-height: 52px;
+    --crop-visible-top: 44.3px;
   }
 
   .modal-card {

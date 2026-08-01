@@ -133,13 +133,61 @@ create table if not exists public.work_calendar_todos (
   category_id uuid references public.work_calendar_categories(id) on delete set null,
   work_text text not null,
   memo text not null default '',
+  start_time time without time zone,
+  end_time time without time zone,
+  ends_next_day boolean not null default false,
+  has_time_override boolean not null default false,
   is_done boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
   constraint work_calendar_todos_text_check
-    check (char_length(trim(work_text)) between 1 and 100)
+    check (char_length(trim(work_text)) between 1 and 100),
+
+  constraint work_calendar_todos_time_range_check
+    check (
+      (
+        has_time_override = false
+        and start_time is null
+        and end_time is null
+        and ends_next_day = false
+      )
+      or
+      (
+        has_time_override = true
+        and (end_time is null or start_time is not null)
+        and (end_time is not null or ends_next_day = false)
+        and (end_time is null or ends_next_day = (end_time < start_time))
+      )
+    )
 );
+
+alter table public.work_calendar_todos
+  add column if not exists start_time time without time zone,
+  add column if not exists end_time time without time zone,
+  add column if not exists ends_next_day boolean not null default false,
+  add column if not exists has_time_override boolean not null default false;
+
+alter table public.work_calendar_todos
+  drop constraint if exists work_calendar_todos_time_range_check;
+
+alter table public.work_calendar_todos
+  add constraint work_calendar_todos_time_range_check
+  check (
+    (
+      has_time_override = false
+      and start_time is null
+      and end_time is null
+      and ends_next_day = false
+    )
+    or
+    (
+      has_time_override = true
+      and (end_time is null or start_time is not null)
+      and (end_time is not null or ends_next_day = false)
+      and (end_time is null or ends_next_day = (end_time < start_time))
+    )
+  );
 
 create index if not exists work_calendar_todos_user_date_idx
   on public.work_calendar_todos (user_id, work_date);

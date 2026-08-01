@@ -12,7 +12,7 @@ import {
 import { applyOfflineReward } from "./offline-reward.js";
 import { loadGameSave, saveGame } from "./save-manager.js";
 import { formatExactNumber } from "./number-format.js";
-import { UIRenderer } from "./ui-renderer.js?v=20260731-01";
+import { UIRenderer } from "./ui-renderer.js?v=20260801-01";
 
 const loadResult = loadGameSave();
 const state = loadResult.state;

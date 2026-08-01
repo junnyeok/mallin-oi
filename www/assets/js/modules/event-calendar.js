@@ -20,6 +20,7 @@ import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
+import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
 import {
   formatCalendarTimeLabel,
   joinLocalDateTimeValue,
@@ -1308,6 +1309,7 @@ async function initPageCalendar(loadingController) {
     sharedGroups: await fetchSharedPersonalGroups('event'),
     store: await fetchUserTodos(user.id),
     personalStore: null,
+    isAddingTodo: false,
     onSelect: null,
     onSelectGroupEvent: null,
     group: null,
@@ -1389,7 +1391,12 @@ async function initPageCalendar(loadingController) {
     state.viewDate = new Date(year, month - 1, 1);
 
     renderAll();
-
+    scheduleCalendarSelectionScroll({
+      target: document.querySelector('.event-calendar-todo-panel'),
+      hasRenderedItems: () => Boolean(
+        document.getElementById('eventTodoList')?.children.length,
+      ),
+    });
   }
 
   function selectGroupEvent(event) {
@@ -1602,28 +1609,44 @@ async function initPageCalendar(loadingController) {
         }
 
         if (isEdit) {
-          await saveTodoEdit(todo.id, {
-            text: nextText,
-            memo: values.memo,
-            category: nextCategory,
-            eventStartDate: nextStart.date,
-            eventEndDate: nextEnd.date,
-            eventTime: nextStart.time,
-            eventEndTime: nextEnd.time,
-          });
+          try {
+            await saveTodoEdit(todo.id, {
+              text: nextText,
+              memo: values.memo,
+              category: nextCategory,
+              eventStartDate: nextStart.date,
+              eventEndDate: nextEnd.date,
+              eventTime: nextStart.time,
+              eventEndTime: nextEnd.time,
+            });
+          } catch (error) {
+            alert('일정 저장에 실패했어. 잠시 후 다시 시도해줘.');
+            throw error;
+          }
           return;
         }
 
-        await createTodoRange({
-          startDateKey: nextStart.date,
-          endDateKey: nextEnd.date,
-          text: nextText,
-          memo: String(values.memo || ''),
-          eventTime: nextStart.time,
-          eventEndTime: normalizeOptionalEventTime(nextEnd.time),
-          category: nextCategory,
-        });
-        await reloadStoreForMode();
+        if (state.isAddingTodo) {
+          throw new Error('Event todo save in progress.');
+        }
+        state.isAddingTodo = true;
+        try {
+          await createTodoRange({
+            startDateKey: nextStart.date,
+            endDateKey: nextEnd.date,
+            text: nextText,
+            memo: String(values.memo || ''),
+            eventTime: nextStart.time,
+            eventEndTime: normalizeOptionalEventTime(nextEnd.time),
+            category: nextCategory,
+          });
+          await reloadStoreForMode();
+        } catch (error) {
+          alert('일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
+          throw error;
+        } finally {
+          state.isAddingTodo = false;
+        }
 
         if (!dateKeys.includes(state.selectedDateKey)) {
           state.selectedDateKey = nextStart.date;
@@ -1956,6 +1979,16 @@ async function initPageCalendar(loadingController) {
       return;
     }
 
+    if (state.isAddingTodo) return;
+    const submitButton = form.querySelector('[type="submit"]');
+    state.isAddingTodo = true;
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.setAttribute('aria-disabled', 'true');
+      submitButton.setAttribute('aria-busy', 'true');
+      submitButton.textContent = '저장 중';
+    }
+
     try {
       const category = await refreshCategories(selectedCategoryId);
 
@@ -1985,6 +2018,14 @@ async function initPageCalendar(loadingController) {
 
     } catch (error) {
       alert('일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
+    } finally {
+      state.isAddingTodo = false;
+      if (submitButton?.isConnected) {
+        submitButton.disabled = false;
+        submitButton.setAttribute('aria-disabled', 'false');
+        submitButton.removeAttribute('aria-busy');
+        submitButton.textContent = '추가';
+      }
     }
   });
 

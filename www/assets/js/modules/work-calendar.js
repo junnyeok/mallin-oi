@@ -12,11 +12,16 @@ import {
   openCalendarDetailSheet,
 } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
+import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
 import {
+  formatCalendarTimeLabel,
   isOvernightTimeRange,
+  joinLocalDateTimeValue,
   normalizeCalendarTime,
   openCalendarTimePicker,
+  resolveWorkCalendarTimeRange,
   setCalendarTimeInputValue,
+  splitLocalDateTimeValue,
 } from './calendar-time.js';
 
 let appendCalendarGroupBoard;
@@ -130,6 +135,10 @@ function isWorkDateConflict(error) {
     getCalendarErrorText(error).includes('WORK_DATE_CONFLICT') ||
     isWorkDateUniqueConflict(error)
   );
+}
+
+function isWorkDateForeignConflict(error) {
+  return getCalendarErrorText(error).includes('WORK_DATE_FOREIGN_CONFLICT');
 }
 
 function createHandledCalendarError(message) {
@@ -270,6 +279,19 @@ function validateWorkCategoryTimes(startTime, endTime) {
   };
 }
 
+function formatWorkTimeRange(todo, category) {
+  const { startTime, endTime, endsNextDay } = resolveWorkCalendarTimeRange({
+    todo,
+    category,
+  });
+  if (!startTime) return '시간 미지정';
+
+  const endLabel = endTime
+    ? ` ~ ${formatCalendarTimeLabel(endTime)}${endsNextDay ? ' (익일)' : ''}`
+    : '';
+  return `${formatCalendarTimeLabel(startTime)}${endLabel}`;
+}
+
 function bindWorkCategoryTimeInput({
   input,
   getStartTime,
@@ -346,6 +368,10 @@ function normalizeTodo(row) {
     type: row.work_type || row.work_calendar_categories?.slug || 'etc',
     categoryId: row.category_id || row.work_calendar_categories?.id || null,
     date: row.work_date,
+    startTime: normalizeCalendarTime(row.start_time),
+    endTime: normalizeCalendarTime(row.end_time),
+    endsNextDay: Boolean(row.ends_next_day),
+    hasTimeOverride: Boolean(row.has_time_override),
   };
 }
 
@@ -525,13 +551,20 @@ async function fetchUserTodos(userId) {
       category_id,
       work_text,
       memo,
+      start_time,
+      end_time,
+      ends_next_day,
+      has_time_override,
       is_done,
       created_at,
       work_calendar_categories (
         id,
         name,
         slug,
-        color
+        color,
+        start_time,
+        end_time,
+        ends_next_day
       )
     `,
     )
@@ -563,13 +596,20 @@ async function fetchUserTodosInMonth(userId, viewDate) {
       category_id,
       work_text,
       memo,
+      start_time,
+      end_time,
+      ends_next_day,
+      has_time_override,
       is_done,
       created_at,
       work_calendar_categories (
         id,
         name,
         slug,
-        color
+        color,
+        start_time,
+        end_time,
+        ends_next_day
       )
     `,
     )
@@ -590,7 +630,16 @@ async function fetchUserTodosInMonth(userId, viewDate) {
   return groupTodosByDate(data || []);
 }
 
-async function insertTodo({ userId, dateKey, memo, category }) {
+async function insertTodo({
+  userId,
+  dateKey,
+  memo,
+  startTime,
+  endTime,
+  category,
+}) {
+  const times = validateWorkCategoryTimes(startTime, endTime);
+  if (!times) throw createHandledCalendarError('Invalid work todo times.');
   const latestCategory = category?.id
     ? await fetchCategoryById(userId, category.id)
     : null;
@@ -605,6 +654,10 @@ async function insertTodo({ userId, dateKey, memo, category }) {
       category_id: safeCategory.id || null,
       work_text: workText,
       memo: memo || '',
+      start_time: times.startTime || null,
+      end_time: times.endTime || null,
+      ends_next_day: times.endsNextDay,
+      has_time_override: true,
       is_done: false,
     })
     .select(
@@ -616,13 +669,20 @@ async function insertTodo({ userId, dateKey, memo, category }) {
       category_id,
       work_text,
       memo,
+      start_time,
+      end_time,
+      ends_next_day,
+      has_time_override,
       is_done,
       created_at,
       work_calendar_categories (
         id,
         name,
         slug,
-        color
+        color,
+        start_time,
+        end_time,
+        ends_next_day
       )
     `,
     )
@@ -660,13 +720,20 @@ async function insertRepeatTodos(rows = []) {
       category_id,
       work_text,
       memo,
+      start_time,
+      end_time,
+      ends_next_day,
+      has_time_override,
       is_done,
       created_at,
       work_calendar_categories (
         id,
         name,
         slug,
-        color
+        color,
+        start_time,
+        end_time,
+        ends_next_day
       )
     `,
     );
@@ -702,14 +769,21 @@ async function saveTodoAtomic({
   workText,
   memo,
   dateKey,
+  startTime,
+  endTime,
   categoryId,
   overwrite = false,
 }) {
+  const times = validateWorkCategoryTimes(startTime, endTime);
+  if (!times) throw createHandledCalendarError('Invalid work todo times.');
+
   const { error } = await supabase.rpc('save_work_calendar_todo', {
     p_todo_id: todoId,
     p_work_text: workText,
     p_memo: memo || '',
     p_work_date: dateKey,
+    p_start_time: times.startTime || null,
+    p_end_time: times.endTime || null,
     p_category_id: categoryId,
     p_overwrite: overwrite,
   });
@@ -1115,7 +1189,9 @@ function renderTodoList({
     const summary = makeEl(
       'p',
       'work-todo-item__summary',
-      memo || '메모 없음',
+      memo
+        ? `${formatWorkTimeRange(todo, category)} · ${memo}`
+        : formatWorkTimeRange(todo, category),
     );
     categoryChip.style.setProperty('--todo-category-color', category.color);
     categoryChip.style.setProperty('--todo-category-text', getCategoryTextColor(category.color));
@@ -1378,7 +1454,12 @@ async function initPageCalendar(loadingController) {
     state.viewDate = new Date(year, month - 1, 1);
 
     renderAll();
-
+    scheduleCalendarSelectionScroll({
+      target: document.querySelector('.work-calendar-todo-panel'),
+      hasRenderedItems: () => Boolean(
+        document.getElementById('workTodoList')?.children.length,
+      ),
+    });
   }
 
   function selectGroupEvent(event) {
@@ -1451,6 +1532,7 @@ async function initPageCalendar(loadingController) {
 
       const todo = patternDay.todos[0];
       const category = getCategoryByTodo(todo, state.categories);
+      const times = resolveWorkCalendarTimeRange({ todo, category });
 
       rowsToInsert.push({
         user_id: state.userId,
@@ -1459,6 +1541,10 @@ async function initPageCalendar(loadingController) {
         category_id: todo.categoryId || category?.id || null,
         work_text: String(category?.name || todo.text || '기타').trim(),
         memo: String(todo.memo || '').trim(),
+        start_time: times.startTime || null,
+        end_time: times.endTime || null,
+        ends_next_day: times.endsNextDay,
+        has_time_override: true,
         is_done: false,
       });
     });
@@ -1523,7 +1609,10 @@ async function initPageCalendar(loadingController) {
     }
   }
 
-  async function saveTodoEdit(todoId, { memo, category, dateKey }) {
+  async function saveTodoEdit(
+    todoId,
+    { memo, category, dateKey, startTime, endTime },
+  ) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
     const fallback = getFallbackCategory(state.categories);
@@ -1537,12 +1626,18 @@ async function initPageCalendar(loadingController) {
       alert('올바른 날짜를 선택해줘.');
       throw new Error('Invalid work calendar date.');
     }
+    const times = validateWorkCategoryTimes(startTime, endTime);
+    if (!times) {
+      throw createHandledCalendarError('Invalid work todo times.');
+    }
 
     const payload = {
       todoId,
       workText: nextCategory.name || target.text || '',
       memo: nextMemo,
       dateKey: nextDateKey,
+      startTime: times.startTime,
+      endTime: times.endTime,
       categoryId: nextCategory.id,
     };
     try {
@@ -1581,6 +1676,7 @@ async function initPageCalendar(loadingController) {
 
   function openTodoDetail(todo, opener) {
     const category = getCategoryByTodo(todo, state.categories);
+    const times = resolveWorkCalendarTimeRange({ todo, category });
     openCalendarDetailSheet({
       calendarType: 'work',
       mode: 'edit',
@@ -1590,6 +1686,8 @@ async function initPageCalendar(loadingController) {
         categoryId: getTodoCategorySelectValue(todo, state.categories),
         memo: todo.memo || '',
         dateKey: todo.date || state.selectedDateKey,
+        startTime: times.startTime,
+        endTime: times.endTime,
       }),
       onSave: async (values) => {
         const nextCategory =
@@ -1600,6 +1698,8 @@ async function initPageCalendar(loadingController) {
           memo: values.memo,
           category: nextCategory,
           dateKey: values.date,
+          startTime: splitLocalDateTimeValue(values.workStart).time,
+          endTime: splitLocalDateTimeValue(values.workEnd).time,
         });
       },
       onDelete: async () => {
@@ -1609,8 +1709,45 @@ async function initPageCalendar(loadingController) {
     });
   }
 
-  function getWorkEntryFields({ categoryId = '', memo = '', dateKey = state.selectedDateKey } = {}) {
-    return [
+  function getWorkEntryFields({
+    categoryId = '',
+    memo = '',
+    dateKey = state.selectedDateKey,
+    startTime = '',
+    endTime = '',
+    useCategoryTimeDefaults = false,
+  } = {}) {
+    const normalizedStartTime = normalizeCalendarTime(startTime);
+    const normalizedEndTime = normalizeCalendarTime(endTime);
+    const fields = [];
+
+    function syncTimeDates(nextDateKey = '') {
+      const dateField = fields.find((field) => field.key === 'date');
+      const startField = fields.find((field) => field.key === 'workStart');
+      const endField = fields.find((field) => field.key === 'workEnd');
+      const effectiveDateKey = String(
+        nextDateKey || dateField?.input?.value || dateKey,
+      );
+      const nextStartTime = splitLocalDateTimeValue(
+        startField?.input?.value,
+      ).time;
+      const nextEndTime = splitLocalDateTimeValue(endField?.input?.value).time;
+
+      if (startField?.input) {
+        startField.input.value = joinLocalDateTimeValue(
+          effectiveDateKey,
+          nextStartTime,
+        );
+      }
+      if (endField?.input) {
+        const endDateKey = isOvernightTimeRange(nextStartTime, nextEndTime)
+          ? addDays(effectiveDateKey, 1)
+          : effectiveDateKey;
+        endField.input.value = joinLocalDateTimeValue(endDateKey, nextEndTime);
+      }
+    }
+
+    fields.push(
       {
         key: 'categoryId',
         label: '카테고리',
@@ -1621,12 +1758,68 @@ async function initPageCalendar(loadingController) {
           label: item.name,
         })),
         onSettings: openCategoryModal,
+        onChange: (nextCategoryId) => {
+          if (!useCategoryTimeDefaults) return;
+
+          const nextCategory = state.categories.find(
+            (item) => item.id === nextCategoryId,
+          );
+          const startField = fields.find((field) => field.key === 'workStart');
+          const endField = fields.find((field) => field.key === 'workEnd');
+          const nextStartTime = normalizeCalendarTime(nextCategory?.start_time);
+          const nextEndTime = normalizeCalendarTime(nextCategory?.end_time);
+          const effectiveDateKey =
+            fields.find((field) => field.key === 'date')?.input?.value || dateKey;
+
+          if (startField?.input) {
+            startField.input.value = joinLocalDateTimeValue(
+              effectiveDateKey,
+              nextStartTime,
+            );
+          }
+          if (endField?.input) {
+            endField.input.value = joinLocalDateTimeValue(
+              isOvernightTimeRange(nextStartTime, nextEndTime)
+                ? addDays(effectiveDateKey, 1)
+                : effectiveDateKey,
+              nextEndTime,
+            );
+          }
+        },
       },
       {
         key: 'date',
         label: '날짜',
         type: 'date',
         value: dateKey,
+        onChange: (nextDateKey) => syncTimeDates(nextDateKey),
+      },
+      {
+        key: 'workStart',
+        label: '시작',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(dateKey, normalizedStartTime),
+        required: true,
+        dateReadonly: true,
+        allowEmptyTime: true,
+        timePlaceholder: '시작시간 지정',
+        onChange: () => syncTimeDates(),
+      },
+      {
+        key: 'workEnd',
+        label: '종료',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(
+          isOvernightTimeRange(normalizedStartTime, normalizedEndTime)
+            ? addDays(dateKey, 1)
+            : dateKey,
+          normalizedEndTime,
+        ),
+        required: true,
+        dateReadonly: true,
+        allowEmptyTime: true,
+        timePlaceholder: '종료시간 지정',
+        onChange: () => syncTimeDates(),
       },
       {
         key: 'memo',
@@ -1634,11 +1827,16 @@ async function initPageCalendar(loadingController) {
         type: 'textarea',
         value: memo,
       },
-    ];
+    );
+
+    return fields;
   }
 
   function openTodoCreate(opener) {
     const defaultCategory = getFallbackCategory(state.categories);
+    const defaultTimes = resolveWorkCalendarTimeRange({
+      category: defaultCategory,
+    });
 
     openCalendarDetailSheet({
       calendarType: 'work',
@@ -1647,7 +1845,12 @@ async function initPageCalendar(loadingController) {
       submitLabel: '추가',
       submitDisabled: !defaultCategory?.id,
       opener,
-      fields: getWorkEntryFields({ categoryId: defaultCategory?.id || '' }),
+      fields: getWorkEntryFields({
+        categoryId: defaultCategory?.id || '',
+        startTime: defaultTimes.startTime,
+        endTime: defaultTimes.endTime,
+        useCategoryTimeDefaults: true,
+      }),
       helpText: '업무 캘린더에는 날짜별로 하나의 근무형태만 추가할 수 있습니다.',
       characterImage: document.getElementById('cukeBuddy')?.src || '',
       onSave: async (values) => {
@@ -1655,6 +1858,8 @@ async function initPageCalendar(loadingController) {
           categoryId: values.categoryId,
           memo: values.memo,
           dateKey: values.date,
+          startTime: splitLocalDateTimeValue(values.workStart).time,
+          endTime: splitLocalDateTimeValue(values.workEnd).time,
         });
       },
     });
@@ -1864,10 +2069,26 @@ async function initPageCalendar(loadingController) {
     void changeMonth(1);
   });
 
-  async function addTodo({ categoryId = '', memo = '', dateKey = state.selectedDateKey } = {}) {
+  async function addTodo({
+    categoryId = '',
+    memo = '',
+    dateKey = state.selectedDateKey,
+    startTime,
+    endTime,
+  } = {}) {
     if (!isValidDateKey(dateKey)) {
       alert('올바른 날짜를 선택해줘.');
       throw new Error('Invalid work calendar date.');
+    }
+    const requestedTimes =
+      typeof startTime === 'undefined' && typeof endTime === 'undefined'
+        ? null
+        : validateWorkCategoryTimes(startTime, endTime);
+    if (
+      (typeof startTime !== 'undefined' || typeof endTime !== 'undefined') &&
+      !requestedTimes
+    ) {
+      throw createHandledCalendarError('Invalid work todo times.');
     }
     if (
       state.isAddingTodo ||
@@ -1893,11 +2114,14 @@ async function initPageCalendar(loadingController) {
         alert('근무형태를 선택해줘.');
         throw new Error('A work category is required.');
       }
+      const times = requestedTimes || resolveWorkCalendarTimeRange({ category });
 
       const nextTodo = await insertTodo({
         userId: state.userId,
         dateKey,
         memo: safeMemo,
+        startTime: times.startTime,
+        endTime: times.endTime,
         category,
       });
 

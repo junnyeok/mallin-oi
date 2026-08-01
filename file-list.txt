@@ -939,6 +939,10 @@
 ./www/assets/js/modules/calendar-time.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-time.js
 ./ios/App/App/public/assets/js/modules/calendar-time.js
+./assets/js/modules/calendar-selection-scroll.js
+./www/assets/js/modules/calendar-selection-scroll.js
+./android/app/src/main/assets/public/assets/js/modules/calendar-selection-scroll.js
+./ios/App/App/public/assets/js/modules/calendar-selection-scroll.js
 ./supabase-SQLEditor/20260730-study-work-calendar-times.sql
 ./assets/app-version.json
 ./assets/css/components/app-update-popup.css
@@ -1107,6 +1111,8 @@
 ./supabase/migrations/20260731010000_calendar_category_merge_paste.sql
 ./supabase-SQLEditor/20260731-calendar-category-merge-paste-lint-fix.sql
 ./supabase/migrations/20260731020000_calendar_category_merge_paste_lint_fix.sql
+./supabase-SQLEditor/20260801-work-calendar-todo-times.sql
+./supabase/migrations/20260801000000_work_calendar_todo_times.sql
 ./android/app/src/main/java/com/mallinoi/calendar/StoreUpdatePlugin.java
 ./tests/app-update-popup.test.mjs
 ./tests/fixtures/app-update-popup-browser.html

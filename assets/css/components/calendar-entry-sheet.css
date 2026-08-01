@@ -6,6 +6,12 @@ body.calendar-entry-sheet-open {
   overflow: hidden;
 }
 
+.study-calendar-todo-panel,
+.work-calendar-todo-panel,
+.event-calendar-todo-panel {
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + var(--space-12));
+}
+
 .calendar-entry-sheet {
   position: fixed;
   inset: 0;
@@ -480,8 +486,9 @@ body.calendar-entry-sheet-open {
     grid-template-columns: 52px minmax(0, 1fr);
   }
 
-  .calendar-entry-sheet__datetime > input {
-    font-size: var(--text-small);
+  .calendar-entry-sheet__datetime > input,
+  .calendar-entry-sheet__datetime > input[readonly] {
+    font-size: var(--text-body);
   }
 
   .calendar-entry-sheet__field > input::placeholder,

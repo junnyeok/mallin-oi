@@ -631,10 +631,7 @@ export class UIRenderer {
     progress.className = "crop-xp-bar";
     progress.setAttribute("role", "progressbar");
     progress.setAttribute("aria-valuemin", "0");
-    progress.setAttribute(
-      "aria-valuemax",
-      String(GAME_CONFIG.harvestExperience)
-    );
+    progress.setAttribute("aria-valuemax", "1");
     progressFill.className = "crop-xp-bar__fill";
     progress.append(progressFill);
     characterImage.className = "cucumber-character";
@@ -838,13 +835,17 @@ export class UIRenderer {
     view.progressFill.style.width = `${progress.progressPercent}%`;
     view.progress.setAttribute(
       "aria-valuenow",
-      String(progress.experience)
+      String(progress.stageExperience)
+    );
+    view.progress.setAttribute(
+      "aria-valuemax",
+      String(progress.stageRequirement)
     );
     view.progress.setAttribute(
       "aria-valuetext",
-      `${formatExactNumber(progress.experience)} / ${formatExactNumber(
-        GAME_CONFIG.harvestExperience
-      )} 경험치`
+      `${stage.name} 단계 ${formatExactNumber(
+        progress.stageExperience
+      )} / ${formatExactNumber(progress.stageRequirement)} 경험치`
     );
     view.progress.setAttribute(
       "aria-label",
@@ -855,14 +856,14 @@ export class UIRenderer {
     const actionLabel = !isPlanted
       ? `${location}, 빈 슬롯, 새싹 심기`
       : isHarvestReady
-        ? `${location}, 어른오이, 경험치 ${formatExactNumber(
-            progress.experience
-          )}/${GAME_CONFIG.harvestExperience}, 수확하기`
+        ? `${location}, 어른오이, 현재 단계 경험치 ${formatExactNumber(
+            progress.stageExperience
+          )}/${formatExactNumber(progress.stageRequirement)}, 수확하기`
         : `${location}, ${stage.name}, 경험치 ${formatExactNumber(
-            progress.experience
-          )}/${GAME_CONFIG.harvestExperience}, 물주기 ${formatExactNumber(
-            state.touchYield
-          )} 경험치`;
+            progress.stageExperience
+          )}/${formatExactNumber(
+            progress.stageRequirement
+          )}, 물주기 ${formatExactNumber(state.touchYield)} 경험치`;
 
     view.button.setAttribute("aria-label", actionLabel);
   }

@@ -2,6 +2,8 @@ function pad(value) {
   return String(value).padStart(2, '0');
 }
 
+let activeCalendarTimePicker = null;
+
 export function normalizeCalendarTime(value, fallback = '') {
   const matched = String(value || '')
     .trim()
@@ -39,6 +41,29 @@ export function isOvernightTimeRange(startTime, endTime) {
   const start = normalizeCalendarTime(startTime);
   const end = normalizeCalendarTime(endTime);
   return Boolean(start && end && end < start);
+}
+
+export function resolveWorkCalendarTimeRange({ todo = {}, category = {} } = {}) {
+  const hasTimeOverride = Boolean(
+    todo.hasTimeOverride ?? todo.has_time_override,
+  );
+  const startTime = normalizeCalendarTime(
+    hasTimeOverride
+      ? todo.startTime ?? todo.start_time
+      : category.start_time ?? category.startTime,
+  );
+  const endTime = normalizeCalendarTime(
+    hasTimeOverride
+      ? todo.endTime ?? todo.end_time
+      : category.end_time ?? category.endTime,
+  );
+
+  return {
+    startTime,
+    endTime: startTime ? endTime : '',
+    endsNextDay: isOvernightTimeRange(startTime, endTime),
+    hasTimeOverride,
+  };
 }
 
 export function splitLocalDateTimeValue(value, fallback = {}) {
@@ -122,7 +147,7 @@ export function openCalendarTimePicker({
 } = {}) {
   if (!anchorEl) return null;
 
-  document.querySelector('.calendar-time-picker')?.remove();
+  activeCalendarTimePicker?.close({ restoreFocus: false });
   const state = getPickerStateFromTime(initialTime);
   const popover = document.createElement('div');
   popover.className = 'calendar-time-picker';
@@ -171,6 +196,8 @@ export function openCalendarTimePicker({
   closeButton.className = 'calendar-time-picker__close';
   closeButton.textContent = '닫기';
   let isSaving = false;
+  let isOpen = true;
+  let api = null;
 
   function positionPicker() {
     const rect = anchorEl.getBoundingClientRect();
@@ -192,12 +219,29 @@ export function openCalendarTimePicker({
   }
 
   function closePicker({ restoreFocus = false } = {}) {
-    popover.remove();
+    if (!isOpen) return;
+    isOpen = false;
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && popover.contains(activeElement)) {
+      activeElement.blur();
+    }
+
     document.removeEventListener('keydown', handleKeydown);
     document.removeEventListener('pointerdown', handlePointerDown);
     window.removeEventListener('resize', positionPicker);
     window.removeEventListener('scroll', positionPicker, true);
-    if (restoreFocus) anchorEl.focus();
+    popover.remove();
+
+    if (activeCalendarTimePicker === api) {
+      activeCalendarTimePicker = null;
+    }
+
+    if (restoreFocus && anchorEl.isConnected) {
+      window.requestAnimationFrame(() => {
+        anchorEl.focus({ preventScroll: true });
+      });
+    }
   }
 
   function handleKeydown(event) {
@@ -272,13 +316,25 @@ export function openCalendarTimePicker({
   document.body.append(popover);
   positionPicker();
 
+  api = {
+    close: closePicker,
+    isOpen: () => isOpen,
+  };
+  activeCalendarTimePicker = api;
+
   window.setTimeout(() => {
+    if (!isOpen) return;
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeydown);
     window.addEventListener('resize', positionPicker);
     window.addEventListener('scroll', positionPicker, true);
-    periodField.select.focus();
+    anchorEl.blur();
+    periodField.select.focus({ preventScroll: true });
   }, 0);
 
-  return { close: closePicker };
+  return api;
+}
+
+export function closeActiveCalendarTimePicker(options = {}) {
+  activeCalendarTimePicker?.close(options);
 }
