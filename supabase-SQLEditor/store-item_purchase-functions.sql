@@ -328,6 +328,11 @@ begin
     v_name := 'Burning Soul';
     v_category := 'bgm';
 
+  elsif p_item_id = 'bgm-potato-02' then
+    v_price := 698;
+    v_name := '텅 빈 거리';
+    v_category := 'bgm';
+
   elsif p_item_id = 'emo-eat-01' then
     v_price := 220;
     v_name := '먹방오이 이모티콘팩';
@@ -405,6 +410,7 @@ begin
         'skin-cucumber-03',
         'cha-effects-fire-01',
         'bgm-tetocarrto-02',
+        'bgm-potato-02',
         'BF-02'
       )
       and exists (
@@ -424,6 +430,7 @@ begin
            'skin-cucumber-03',
            'cha-effects-fire-01',
            'bgm-tetocarrto-02',
+           'bgm-potato-02',
            'BF-02'
          ) then
         perform public.ensure_user_pickles(
@@ -1034,6 +1041,9 @@ begin
   elsif p_item_id = 'bgm-tetocarrto-02' then
     null;
 
+  elsif p_item_id = 'bgm-potato-02' then
+    null;
+
   elsif p_item_id = 'cha-effects-cucumberheart-01' then
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -1216,6 +1226,8 @@ begin
         then '늦은 밤 멜로디 구매가 완료됐어. 621피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-tetocarrto-02'
         then 'Burning Soul 구매가 완료됐어. 665피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-potato-02'
+        then '텅 빈 거리 구매가 완료됐어. 698피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'cha-effects-fire-01'

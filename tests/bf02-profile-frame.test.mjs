@@ -57,8 +57,8 @@ test('BF-02 상품과 프로필테두리 카탈로그가 정확히 한 번 연�
   assert.equal(getProfileFrameByItemId(ITEM_ID)?.itemId, ITEM_ID);
 });
 
-test('BF-02가 New 상품 목록과 최신순 전체 상품의 첫 번째다', async () => {
-  assert.equal(getFeaturedStoreItems(1)[0].id, ITEM_ID);
+test('BF-02가 텅 빈 거리 다음 New 상품과 최신순 두 번째다', async () => {
+  assert.equal(getFeaturedStoreItems(2)[1].id, ITEM_ID);
 
   const homeHtml = await readFile('index.html', 'utf8');
   assert.match(
@@ -73,7 +73,8 @@ test('BF-02가 New 상품 목록과 최신순 전체 상품의 첫 번째다', a
     return difference;
   });
 
-  assert.equal(newest[0].id, ITEM_ID);
+  assert.equal(newest[0].id, 'bgm-potato-02');
+  assert.equal(newest[1].id, ITEM_ID);
 });
 
 test('PC·모바일 PNG가 요청한 RGBA 크기와 종횡비를 유지한다', async () => {

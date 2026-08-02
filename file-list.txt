@@ -1116,3 +1116,6 @@
 ./android/app/src/main/java/com/mallinoi/calendar/StoreUpdatePlugin.java
 ./tests/app-update-popup.test.mjs
 ./tests/fixtures/app-update-popup-browser.html
+./supabase-SQLEditor/20260802-empty-road-bgm.sql
+./supabase/migrations/20260802000000_empty_road_bgm.sql
+./tests/empty-road-bgm.test.mjs

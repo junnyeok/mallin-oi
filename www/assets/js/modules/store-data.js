@@ -108,6 +108,15 @@ export const BURNING_SOUL_BGM_PREVIEW = [
   },
 ];
 
+export const EMPTY_ROAD_BGM_PREVIEW = [
+  {
+    code: 'bgm-empty-road',
+    label: '텅 빈 거리 LP',
+    imagePath: withAssetVersion('./images/BGM/Empty-road_LP.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -230,6 +239,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/Burning-Soul_LP.png'),
     isDefault: false,
     displayOrder: 12,
+  },
+  {
+    id: 'mallin-oi-empty-road',
+    storeItemId: 'bgm-potato-02',
+    title: '텅 빈 거리',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/Empty-road.mp3'),
+    coverPath: withAssetVersion('./images/BGM/Empty-road_LP.png'),
+    isDefault: false,
+    displayOrder: 13,
   },
 ];
 
@@ -1605,6 +1624,23 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'bgm-potato-02',
+    name: '텅 빈 거리',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥔🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/Empty-road_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/Empty-road.mp3'),
+    price: 698,
+    state: '판매 중',
+    description: '감자교수님의 두 번째 락 발라드야.',
+    detailDescription:
+      '감자교수님의 두 번째 락 발라드야.<br>(구매하면 내 프로필의 BGM 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있으며 대표 BGM으로 설정할 수 있어.)',
+    previewImages: EMPTY_ROAD_BGM_PREVIEW,
+    releaseDate: '2026-08-02',
+    isPurchasable: true,
+  },
+  {
     id: 'BG-03',
     name: '냉장고 프로필배경',
     category: 'profile',
@@ -1701,6 +1737,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'bgm-potato-02',
   'BF-02',
   'bgm-tetocarrto-02',
   'cha-effects-fire-01',
