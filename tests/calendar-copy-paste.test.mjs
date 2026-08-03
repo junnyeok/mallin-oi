@@ -9,12 +9,16 @@ import {
   CALENDAR_COPY_BUFFER_VERSION,
   buildCalendarCategoryPreviewRpcArgs,
   buildCalendarPasteRpcArgs,
+  buildCalendarScheduleConflictPreviewRpcArgs,
   classifyCalendarPasteError,
   createCalendarCopyBuffer,
   createSingleFlight,
   getCalendarCategoryConflicts,
+  getCalendarScheduleConflictDialogCopy,
   normalizeCalendarCategoryResolutions,
   normalizeCalendarPasteCategories,
+  normalizeCalendarScheduleConflictAction,
+  normalizeCalendarScheduleConflictSummary,
   parseCalendarCopyBuffer,
   validateCalendarPasteResult,
 } from '../assets/js/modules/calendar-copy-buffer.js';
@@ -159,7 +163,12 @@ test('붙여넣기 RPC 인자는 서버가 소유자를 auth.uid()로 정하도�
   const resolutions = [
     { sourceCategoryKey: categoryRows[0].source_category_key, action: 'keep' },
   ];
-  const args = buildCalendarPasteRpcArgs(makeBuffer(), 'study', resolutions);
+  const args = buildCalendarPasteRpcArgs(
+    makeBuffer(),
+    'study',
+    resolutions,
+    'merge',
+  );
   assert.deepEqual(args, {
     p_group_id: ids.group,
     p_calendar_type: 'study',
@@ -168,9 +177,58 @@ test('붙여넣기 RPC 인자는 서버가 소유자를 auth.uid()로 정하도�
     p_end_date: '2026-07-19',
     p_operation_id: ids.operation,
     p_category_resolutions: resolutions,
+    p_schedule_conflict_action: 'merge',
   });
   assert.equal('user_id' in args, false);
   assert.equal('owner_id' in args, false);
+});
+
+test('일정 충돌 미리보기와 최종 정책은 같은 복사 범위를 사용한다', () => {
+  assert.deepEqual(
+    buildCalendarScheduleConflictPreviewRpcArgs(makeBuffer(), 'study'),
+    buildCalendarCategoryPreviewRpcArgs(makeBuffer(), 'study'),
+  );
+  assert.equal(normalizeCalendarScheduleConflictAction('study', 'merge'), 'merge');
+  assert.equal(normalizeCalendarScheduleConflictAction('event', 'overwrite'), 'overwrite');
+  assert.equal(normalizeCalendarScheduleConflictAction('work', 'overwrite'), 'overwrite');
+  assert.throws(
+    () => normalizeCalendarScheduleConflictAction('work', 'merge'),
+    /cannot merge/i,
+  );
+});
+
+test('일정 충돌 미리보기 결과는 날짜·기존·복사 일정 개수를 검증한다', () => {
+  assert.deepEqual(normalizeCalendarScheduleConflictSummary([{
+    conflict_date_count: 2,
+    existing_schedule_count: 3,
+    incoming_schedule_count: 4,
+  }]), {
+    conflictDateCount: 2,
+    existingScheduleCount: 3,
+    incomingScheduleCount: 4,
+  });
+  assert.throws(
+    () => normalizeCalendarScheduleConflictSummary([{
+      conflict_date_count: -1,
+    }]),
+    /preview/i,
+  );
+});
+
+test('캘린더별 충돌 팝업 선택지는 자기개발·이벤트 병합과 업무 전체 취소를 구분한다', () => {
+  for (const calendarType of ['study', 'event']) {
+    const copy = getCalendarScheduleConflictDialogCopy(calendarType, 3);
+    assert.equal(copy.overwriteLabel, '예, 기존 일정 덮어쓰기');
+    assert.equal(copy.secondaryLabel, '아니오, 함께 추가');
+    assert.equal(copy.secondaryAction, 'merge');
+    assert.match(copy.message, /3일/);
+  }
+
+  const work = getCalendarScheduleConflictDialogCopy('work', 2);
+  assert.equal(work.overwriteLabel, '예, 덮어쓰기');
+  assert.equal(work.secondaryLabel, '아니오, 붙여넣지 않기');
+  assert.equal(work.secondaryAction, null);
+  assert.doesNotMatch(work.secondaryLabel, /함께/);
 });
 
 test('카테고리 미리보기 인자는 저장 소유자나 원본 설정을 클라이언트에서 보내지 않는다', () => {
@@ -212,12 +270,34 @@ test('그룹 연동 OFF 여부는 붙여넣기 RPC 인자나 버퍼 유효성에
 });
 
 test('성공 응답의 저장 개수를 검증하고 실패·부분 성공 모양을 거부한다', () => {
-  assert.equal(
-    validateCalendarPasteResult([{ success: true, inserted_count: 2 }]).insertedCount,
-    2,
+  assert.deepEqual(
+    validateCalendarPasteResult([{
+      success: true,
+      inserted_count: 2,
+      overwritten_count: 1,
+      retained_count: 3,
+      conflict_date_count: 1,
+    }]),
+    {
+      insertedCount: 2,
+      overwrittenCount: 1,
+      retainedCount: 3,
+      conflictDateCount: 1,
+      message: '',
+    },
   );
   assert.throws(
-    () => validateCalendarPasteResult([{ success: false, inserted_count: 1 }]),
+    () => validateCalendarPasteResult([{
+      success: false,
+      inserted_count: 1,
+      overwritten_count: 0,
+      retained_count: 0,
+      conflict_date_count: 0,
+    }]),
+    /result/i,
+  );
+  assert.throws(
+    () => validateCalendarPasteResult([{ success: true, inserted_count: 1 }]),
     /result/i,
   );
   assert.throws(() => validateCalendarPasteResult([]), /result/i);
@@ -255,6 +335,107 @@ test('인증·권한·네트워크·카테고리 충돌 오류를 사용자용 �
   }).kind, 'duplicate-schedule');
   assert.equal(classifyCalendarPasteError({ code: '23505' }).kind, 'conflict');
   assert.equal(classifyCalendarPasteError({ code: 'PGRST202' }).kind, 'schema');
+  assert.equal(classifyCalendarPasteError({
+    message: '일정 충돌 선택이 필요해요.',
+  }).kind, 'schedule-resolution');
+});
+
+test('일정 충돌 UI는 브라우저 기본 alert·confirm을 사용하지 않는다', () => {
+  const source = fs.readFileSync(
+    path.join(rootDir, 'assets/js/modules/calendar-group-copy-paste.js'),
+    'utf8',
+  );
+  assert.doesNotMatch(source, /window\.(?:alert|confirm)\s*\(/);
+  assert.doesNotMatch(source, /\bconfirm\s*\(/);
+  assert.match(source, /calendar-copy-dialog__schedule-summary/);
+  assert.match(source, /data-overwrite/);
+  assert.match(source, /data-secondary/);
+  const fixture = fs.readFileSync(
+    path.join(rootDir, 'tests/fixtures/calendar-copy-paste-conflict-browser.html'),
+    'utf8',
+  );
+  assert.match(fixture, /DB 변경 0건 · 복사 버퍼 유지/);
+  assert.match(fixture, /getCalendarScheduleConflictDialogCopy/);
+});
+
+test('새 SQL은 서버에서 충돌을 재검사하고 카테고리·일정을 한 트랜잭션으로 적용한다', () => {
+  const sql = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql'),
+    'utf8',
+  );
+  assert.match(sql, /get_group_calendar_paste_schedule_conflicts/i);
+  assert.match(sql, /p_schedule_conflict_action text/i);
+  assert.match(sql, /v_action not in \('reject', 'overwrite', 'merge'\)/i);
+  assert.match(sql, /select[\s\S]*from public\.get_group_calendar_paste_schedule_conflicts/i);
+  assert.match(sql, /from public\.paste_group_calendar_backup_to_my_calendar\([\s\S]*p_category_resolutions/i);
+  assert.doesNotMatch(sql, /exception[\s\S]*commit/i);
+});
+
+test('새 SQL은 현재 사용자 일정만 복사 날짜에 한정해 덮어쓰고 그룹 원본은 건드리지 않는다', () => {
+  const sql = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql'),
+    'utf8',
+  );
+  assert.match(sql, /delete from public\.study_calendar_todos t[\s\S]*t\.user_id = v_user_id[\s\S]*e\.event_date = t\.todo_date/i);
+  assert.match(sql, /delete from public\.work_calendar_todos t[\s\S]*t\.user_id = v_user_id[\s\S]*e\.event_date = t\.work_date/i);
+  assert.match(sql, /delete from public\.event_calendar_todos t[\s\S]*t\.user_id = v_user_id[\s\S]*e\.event_date = t\.event_date/i);
+  assert.doesNotMatch(sql, /(update|delete from) public\.calendar_group_shared_events/i);
+  assert.match(sql, /p_source_user_id = v_user_id[\s\S]*다른 그룹원의 백업 일정만/i);
+});
+
+test('이벤트 덮어쓰기는 충돌 날짜만 제거하고 남은 기간 일정을 연속 구간별로 다시 묶는다', () => {
+  const sql = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql'),
+    'utf8',
+  );
+  assert.match(sql, /v_affected_event_ranges uuid\[\]/i);
+  assert.match(sql, /lag\(t\.event_date\)/i);
+  assert.match(sql, /starts_new_segment/i);
+  assert.match(sql, /segment_number/i);
+  assert.match(sql, /set event_range_id = ids\.new_range_id/i);
+});
+
+test('업무 충돌은 함께 추가를 서버에서도 거부하고 날짜별 한 개 규칙을 보존한다', () => {
+  const sql = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql'),
+    'utf8',
+  );
+  assert.match(sql, /p_calendar_type = 'work' and v_action = 'merge'/i);
+  assert.match(sql, /group by e\.event_date[\s\S]*having count\(\*\) > 1/i);
+  const schema = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260718-study-work-calendar-date-edit.sql'),
+    'utf8',
+  );
+  assert.match(schema, /work_calendar_todos_user_date_uidx/i);
+});
+
+test('operation ID 잠금과 결과 영수증은 재시도·동시 실행의 개수까지 보존한다', () => {
+  const sql = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql'),
+    'utf8',
+  );
+  assert.match(sql, /pg_advisory_xact_lock/i);
+  assert.match(sql, /v_previous\.inserted_count/i);
+  assert.match(sql, /v_previous\.overwritten_count/i);
+  assert.match(sql, /v_previous\.retained_count/i);
+  assert.match(sql, /v_previous\.conflict_date_count/i);
+  assert.match(sql, /update public\.calendar_paste_operations/i);
+});
+
+test('전용 SQL과 migration은 바이트 단위로 같고 누적본에 포함된다', () => {
+  const dedicated = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql'),
+  );
+  const migration = fs.readFileSync(
+    path.join(rootDir, 'supabase/migrations/20260803000000_calendar_paste_schedule_conflicts.sql'),
+  );
+  const allBackup = fs.readFileSync(
+    path.join(rootDir, 'supabase-SQLEditor/99_all_backup.sql'),
+    'utf8',
+  );
+  assert.deepEqual(dedicated, migration);
+  assert.match(allBackup, /2026-08-03 그룹 캘린더 붙여넣기 일정 충돌 정책/);
+  assert.match(allBackup, /get_group_calendar_paste_schedule_conflicts/);
 });
 
 test('SQL은 새 카테고리를 새 ID로 만들고 원본 상대 순서대로 기존 목록 뒤에 추가한다', () => {

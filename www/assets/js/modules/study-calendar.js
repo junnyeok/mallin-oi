@@ -4,11 +4,25 @@ import { supabase } from './supabase-client.js';
 import {
   getCurrentUser,
   loginHref,
+  resolveSitePath,
   saveRedirect,
   showLoginRequiredPopup,
 } from './auth-store.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
+import {
+  pauseBgmForExternalAudio,
+  restoreBgmAfterExternalAudio,
+} from './bgm-player.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
+import {
+  createCalendarScheduleListContent,
+  formatCalendarScheduleListTime,
+  getEditableCalendarScheduleSource,
+  isReadonlySharedPersonalDetail,
+  renderSharedPersonalReadonlyDetail,
+} from './calendar-shared-personal-readonly.js';
+import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
+import { createStudyCompletionCelebration } from './study-completion-celebration.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
 import {
@@ -743,6 +757,9 @@ function renderTodoList({
   onDelete,
   onSaveEdit,
   onOpenDetail,
+  readonlyDetails = [],
+  groupActive = false,
+  selectedGroupId = '',
 }) {
   const list = document.getElementById('studyTodoList');
   const empty = document.getElementById('studyTodoEmpty');
@@ -755,7 +772,7 @@ function renderTodoList({
   selectedDate.textContent = getReadableDate(selectedDateKey);
   list.innerHTML = '';
 
-  empty.hidden = todos.length > 0;
+  empty.hidden = todos.length > 0 || readonlyDetails.length > 0;
 
   todos.forEach((todo) => {
     const item = document.createElement('li');
@@ -779,39 +796,44 @@ function renderTodoList({
     openButton.type = 'button';
     openButton.className = 'study-todo-item__open';
     openButton.setAttribute('aria-label', `${todo.text} 상세보기`);
-    const body = document.createElement('div');
-    body.className = 'study-todo-item__body';
     const category = getCategoryByTodo(todo, categories);
-
-    const type = document.createElement('span');
-    type.className = 'study-todo-item__type';
-    type.textContent = category.name || todo.type || '기타';
-    type.style.setProperty('--todo-category-color', category.color);
-    type.style.setProperty('--todo-category-text', getCategoryTextColor(category.color));
-
-    const text = document.createElement('strong');
-    text.className = 'study-todo-item__text';
-    text.textContent = todo.text || '할 일';
-
-    const memo = document.createElement('p');
-    memo.className = 'study-todo-item__summary';
-    const timeSummary = todo.todoTime
-      ? `${formatCalendarTimeLabel(todo.todoTime)}${
-          todo.todoEndTime
-            ? ` ~ ${formatCalendarTimeLabel(todo.todoEndTime)}`
-            : ''
-        }`
-      : '시간 미지정';
-    const memoText = String(todo.memo || '').trim();
-    memo.textContent = memoText ? `${timeSummary} · ${memoText}` : timeSummary;
+    const body = createCalendarScheduleListContent({
+      bodyClass: 'study-todo-item__body',
+      categoryClass: 'study-todo-item__type',
+      categoryName: category.name || todo.type || '기타',
+      categoryColor: category.color,
+      categoryTextColor: getCategoryTextColor(category.color),
+      source: getEditableCalendarScheduleSource({
+        todo,
+        category,
+        groupActive,
+        selectedGroupId,
+      }),
+      timeLabel: formatCalendarScheduleListTime({
+        calendarType: 'study',
+        startTime: todo.todoTime,
+        endTime: todo.todoEndTime,
+        date: todo.date || selectedDateKey,
+        endDate: todo.todoEndDate || '',
+        isAllDay: Boolean(todo.isAllDay),
+      }),
+      title: todo.text || '할 일',
+      memo: todo.memo,
+    });
 
     openButton.addEventListener('click', () => onOpenDetail?.(todo, openButton));
-    body.append(type, text, memo);
     openButton.append(body);
     item.append(checkbox, openButton);
     list.append(item);
   });
 
+  readonlyDetails.forEach((detail) => {
+    renderSharedPersonalReadonlyDetail({
+      list,
+      detail,
+      itemClass: 'study-todo-item',
+    });
+  });
 }
 
 function renderCategorySelect(select, categories = [], preferredValue = '') {
@@ -1074,6 +1096,29 @@ async function initPageCalendar(loadingController) {
     onSelectGroupEvent: null,
     group: null,
   };
+  const completionCelebration = createStudyCompletionCelebration({
+    pathResolver: resolveSitePath,
+    pauseBgm: pauseBgmForExternalAudio,
+    restoreBgm: restoreBgmAfterExternalAudio,
+  });
+  const pendingCompletionTodoIds = new Set();
+  const cleanupCompletionCelebration = () => {
+    window.removeEventListener(
+      'mallin:before-pjax-swap',
+      cleanupCompletionCelebration,
+    );
+    window.removeEventListener('pagehide', cleanupCompletionCelebration);
+    completionCelebration.destroy();
+  };
+  window.addEventListener(
+    'mallin:before-pjax-swap',
+    cleanupCompletionCelebration,
+    { once: true },
+  );
+  window.addEventListener('pagehide', cleanupCompletionCelebration, {
+    once: true,
+  });
+  completionCelebration.prepare();
   state.personalStore = state.store;
   async function handleGroupModeChange() {
     state.personalStore = await fetchUserTodos(state.userId); state.store = state.personalStore;
@@ -1100,6 +1145,16 @@ async function initPageCalendar(loadingController) {
   }
 
   function renderAll() {
+    const groupActive = isCalendarGroupActive(state.group?.state);
+    const readonlyDetails = groupActive
+      ? collectSharedPersonalReadonlyDetails({
+          groupState: state.group.state,
+          dateKey: state.selectedDateKey,
+          calendarType: 'study',
+          currentUserId: state.userId,
+        })
+      : [];
+
     form.hidden = false;
     renderCategorySelect(typeSelect, state.categories);
 
@@ -1113,6 +1168,9 @@ async function initPageCalendar(loadingController) {
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
       onOpenDetail: openTodoDetail,
+      readonlyDetails,
+      groupActive,
+      selectedGroupId: state.group?.state?.selectedGroup?.id || '',
     });
 
     renderCategoryList({
@@ -1149,9 +1207,16 @@ async function initPageCalendar(loadingController) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
 
-    if (!target) return;
+    if (
+      !target ||
+      isReadonlySharedPersonalDetail(target, state.userId) ||
+      pendingCompletionTodoIds.has(todoId)
+    ) {
+      return;
+    }
 
     const nextDone = !target.done;
+    pendingCompletionTodoIds.add(todoId);
 
     try {
       await updateTodoDone({
@@ -1162,8 +1227,12 @@ async function initPageCalendar(loadingController) {
       target.done = nextDone;
       renderAll();
       refreshGroupBackupNeeded();
+      if (nextDone) completionCelebration.celebrate();
     } catch (error) {
+      renderAll();
       alert('완료 상태 변경에 실패했어. 잠시 후 다시 시도해줘.');
+    } finally {
+      pendingCompletionTodoIds.delete(todoId);
     }
   }
 
@@ -1171,7 +1240,9 @@ async function initPageCalendar(loadingController) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
 
-    if (!target) return false;
+    if (!target || isReadonlySharedPersonalDetail(target, state.userId)) {
+      return false;
+    }
 
     try {
       await deleteTodoById(todoId);
@@ -1232,7 +1303,7 @@ async function initPageCalendar(loadingController) {
     const fallback = getFallbackCategory(state.categories);
     const nextCategory = category || fallback;
 
-    if (!target) return;
+    if (!target || isReadonlySharedPersonalDetail(target, state.userId)) return;
 
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
@@ -1276,6 +1347,7 @@ async function initPageCalendar(loadingController) {
   }
 
   function openStudyDetailSheet({ todo = null, opener = entrySheetOpen } = {}) {
+    if (todo && isReadonlySharedPersonalDetail(todo, state.userId)) return;
     const isEdit = Boolean(todo?.id);
     const category = isEdit
       ? getCategoryByTodo(todo, state.categories)
@@ -1415,6 +1487,7 @@ async function initPageCalendar(loadingController) {
   }
 
   function openTodoDetail(todo, opener) {
+    if (isReadonlySharedPersonalDetail(todo, state.userId)) return;
     openStudyDetailSheet({ todo, opener });
   }
 

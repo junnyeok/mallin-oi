@@ -16,70 +16,48 @@ function getBrowserStorage() {
 
 export function loadGameSave(storage = getBrowserStorage(), now = Date.now()) {
   if (!storage) {
-    return {
-      state: createInitialGameState(now),
-      status: "unavailable",
-    };
+    return { state: createInitialGameState(now), status: "unavailable" };
   }
 
   try {
     const storedValue = storage.getItem(GAME_CONFIG.storageKey);
-
     if (!storedValue) {
-      return {
-        state: createInitialGameState(now),
-        status: "empty",
-      };
+      return { state: createInitialGameState(now), status: "empty" };
     }
 
     const parsed = JSON.parse(storedValue);
     const schema = detectGameStateSchema(parsed);
     const state = normalizeGameState(parsed, now);
     synchronizeDerivedState(state);
-
     return {
       state,
       status:
-        schema === "v2"
+        schema === "v4"
           ? "loaded"
-          : schema === "legacy"
+          : schema === "v3" || schema === "v2" || schema === "legacy"
             ? "migrated"
             : "recovered",
+      sourceSchema: schema,
     };
   } catch {
     return {
       state: createInitialGameState(now),
       status: "recovered",
+      sourceSchema: "invalid-json",
     };
   }
 }
 
-export function saveGame(
-  state,
-  storage = getBrowserStorage(),
-  now = Date.now()
-) {
-  if (!storage) {
-    return { ok: false, reason: "unavailable" };
-  }
-
-  const snapshot = normalizeGameState(
-    {
-      ...state,
-      facilities: { ...state.facilities },
-      plots: state.plots.map((plot) => ({
-        ...plot,
-        slots: plot.slots.map((slot) => ({ ...slot })),
-      })),
-      settings: { ...state.settings },
-      saveVersion: GAME_CONFIG.saveVersion,
-      lastSavedAt: now,
-    },
-    now
-  );
-  synchronizeDerivedState(snapshot);
+export function saveGame(state, storage = getBrowserStorage(), now = Date.now()) {
+  if (!storage) return { ok: false, reason: "unavailable" };
 
   try {
+    const source = JSON.parse(JSON.stringify(state));
+    source.schemaVersion = GAME_CONFIG.schemaVersion;
+    source.saveVersion = GAME_CONFIG.schemaVersion;
+    source.lastSavedAt = now;
+    const snapshot = normalizeGameState(source, now);
+    synchronizeDerivedState(snapshot);
     storage.setItem(GAME_CONFIG.storageKey, JSON.stringify(snapshot));
     Object.assign(state, snapshot);
     return { ok: true, savedAt: snapshot.lastSavedAt };
@@ -90,7 +68,6 @@ export function saveGame(
 
 export function clearGameSave(storage = getBrowserStorage()) {
   if (!storage) return false;
-
   try {
     storage.removeItem(GAME_CONFIG.storageKey);
     return true;

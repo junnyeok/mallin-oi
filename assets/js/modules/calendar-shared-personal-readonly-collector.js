@@ -54,8 +54,16 @@ export function collectSharedPersonalReadonlyDetails({
 }) {
   const selectedGroupId = String(groupState?.selectedGroup?.id || '').trim();
   const safeCurrentUserId = String(currentUserId || '').trim();
+  const safeCalendarType = String(calendarType || '').trim();
 
-  if (!selectedGroupId || !dateKey || !safeCurrentUserId) return [];
+  if (
+    !selectedGroupId ||
+    !dateKey ||
+    !safeCurrentUserId ||
+    !['event', 'study', 'work'].includes(safeCalendarType)
+  ) {
+    return [];
+  }
 
   const seen = new Set();
   const readonlyDetails = [];
@@ -65,6 +73,13 @@ export function collectSharedPersonalReadonlyDetails({
     if (!memberUserId || memberUserId === safeCurrentUserId) return;
 
     (member.events || []).forEach((event) => {
+      const eventGroupId = String(event?.group_id || '').trim();
+      const eventCalendarType = String(event?.calendar_type || '').trim();
+      const eventOwnerUserId = String(event?.user_id || memberUserId).trim();
+
+      if (eventGroupId && eventGroupId !== selectedGroupId) return;
+      if (eventCalendarType && eventCalendarType !== safeCalendarType) return;
+      if (!eventOwnerUserId || eventOwnerUserId !== memberUserId) return;
       if (String(event?.event_date || '').slice(0, 10) !== dateKey) return;
       if (isExplicitSharedEvent(event, selectedGroupId)) return;
 
@@ -73,7 +88,7 @@ export function collectSharedPersonalReadonlyDetails({
         user_id: event?.user_id || memberUserId,
       };
       const detail = normalizeSharedPersonalDetail(normalizedEvent, {
-        calendarType,
+        calendarType: safeCalendarType,
         currentUserId: safeCurrentUserId,
         ownerName: member.name,
         groupId: selectedGroupId,
@@ -83,7 +98,7 @@ export function collectSharedPersonalReadonlyDetails({
 
       const dedupeKey = [
         detail.ownerUserId,
-        detail.sourceEventId || detail.id,
+        detail.sourceEventId || detail.id || `${detail.type}|${detail.title}`,
         detail.date,
       ].join('|');
 

@@ -11,6 +11,13 @@ import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import {
   openCalendarDetailSheet,
 } from './calendar-entry-sheet.js';
+import {
+  createCalendarScheduleListContent,
+  getEditableCalendarScheduleSource,
+  isReadonlySharedPersonalDetail,
+  renderSharedPersonalReadonlyDetail,
+} from './calendar-shared-personal-readonly.js';
+import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
 import {
@@ -1168,40 +1175,52 @@ function renderTodoList({
   onDelete,
   onSaveEdit,
   onOpenDetail,
+  readonlyDetails = [],
+  groupActive = false,
+  selectedGroupId = '',
 }) {
   if (!root) return;
 
   const todos = store[selectedDateKey] || [];
   root.innerHTML = '';
 
-  if (empty) empty.hidden = todos.length > 0;
+  if (empty) empty.hidden = todos.length > 0 || readonlyDetails.length > 0;
 
   todos.forEach((todo) => {
     const category = getCategoryByTodo(todo, categories);
-    const memo = String(todo.memo || '').trim();
-
     const item = makeEl('li', 'work-todo-item');
     const openButton = makeEl('button', 'work-todo-item__open');
     openButton.type = 'button';
     openButton.setAttribute('aria-label', `${category.name || '업무 일정'} 상세보기`);
-    const top = makeEl('div', 'work-todo-item__top');
-    const categoryChip = makeEl('span', 'work-todo-item__type', category.name || todo.text || '업무');
-    const summary = makeEl(
-      'p',
-      'work-todo-item__summary',
-      memo
-        ? `${formatWorkTimeRange(todo, category)} · ${memo}`
-        : formatWorkTimeRange(todo, category),
-    );
-    categoryChip.style.setProperty('--todo-category-color', category.color);
-    categoryChip.style.setProperty('--todo-category-text', getCategoryTextColor(category.color));
-    top.append(categoryChip);
-    openButton.append(top, summary);
+    const body = createCalendarScheduleListContent({
+      bodyClass: 'work-todo-item__body',
+      categoryClass: 'work-todo-item__type',
+      categoryName: category.name || todo.text || '업무',
+      categoryColor: category.color,
+      categoryTextColor: getCategoryTextColor(category.color),
+      source: getEditableCalendarScheduleSource({
+        todo,
+        category,
+        groupActive,
+        selectedGroupId,
+      }),
+      timeLabel: formatWorkTimeRange(todo, category),
+      title: todo.text || category.name || '업무',
+      memo: todo.memo || todo.note,
+    });
+    openButton.append(body);
     openButton.addEventListener('click', () => onOpenDetail?.(todo, openButton));
     item.append(openButton);
     root.append(item);
   });
 
+  readonlyDetails.forEach((detail) => {
+    renderSharedPersonalReadonlyDetail({
+      list: root,
+      detail,
+      itemClass: 'work-todo-item',
+    });
+  });
 }
 
 function renderPageCalendar(state) {
@@ -1408,6 +1427,16 @@ async function initPageCalendar(loadingController) {
   }
 
   function renderAll() {
+    const groupActive = isCalendarGroupActive(state.group?.state);
+    const readonlyDetails = groupActive
+      ? collectSharedPersonalReadonlyDetails({
+          groupState: state.group.state,
+          dateKey: state.selectedDateKey,
+          calendarType: 'work',
+          currentUserId: state.userId,
+        })
+      : [];
+
     form.hidden = false;
     const hasTodoForSelectedDate =
       (state.store[state.selectedDateKey] || []).length > 0;
@@ -1427,6 +1456,9 @@ async function initPageCalendar(loadingController) {
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
       onOpenDetail: openTodoDetail,
+      readonlyDetails,
+      groupActive,
+      selectedGroupId: state.group?.state?.selectedGroup?.id || '',
     });
 
     renderCategoryList({
@@ -1587,7 +1619,9 @@ async function initPageCalendar(loadingController) {
     const todos = state.store[state.selectedDateKey] || [];
     const target = todos.find((todo) => todo.id === todoId);
 
-    if (!target) return false;
+    if (!target || isReadonlySharedPersonalDetail(target, state.userId)) {
+      return false;
+    }
 
     try {
       await deleteTodoById(todoId);
@@ -1618,7 +1652,13 @@ async function initPageCalendar(loadingController) {
     const fallback = getFallbackCategory(state.categories);
     const nextCategory = category || fallback;
 
-    if (!target || !nextCategory?.id) return;
+    if (
+      !target ||
+      isReadonlySharedPersonalDetail(target, state.userId) ||
+      !nextCategory?.id
+    ) {
+      return;
+    }
 
     const nextMemo = String(memo || '').trim();
     const nextDateKey = String(dateKey || target.date || state.selectedDateKey);
@@ -1675,6 +1715,7 @@ async function initPageCalendar(loadingController) {
   }
 
   function openTodoDetail(todo, opener) {
+    if (isReadonlySharedPersonalDetail(todo, state.userId)) return;
     const category = getCategoryByTodo(todo, state.categories);
     const times = resolveWorkCalendarTimeRange({ todo, category });
     openCalendarDetailSheet({

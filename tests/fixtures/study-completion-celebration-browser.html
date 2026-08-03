@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>자기개발 완료 축하 효과 fixture</title>
+    <link rel="stylesheet" href="../../assets/css/01-tokens.css" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/components/study-completion-celebration.css?fixture=audio-ended"
+    />
+    <style>
+      body { margin: 0; color: var(--color-text); background: var(--color-bg); font-family: var(--font-base); }
+      main { box-sizing: border-box; min-height: 100vh; padding: var(--space-16); overflow-x: hidden; }
+      .fixture-controls { position: relative; z-index: 2700; display: flex; flex-wrap: wrap; gap: var(--space-8); }
+      button { min-height: 42px; padding: 0 var(--space-12); border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface); font: inherit; font-weight: 800; }
+      .fixture-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-4); max-width: 720px; margin: var(--space-24) auto 0; }
+      .fixture-calendar span { aspect-ratio: 1; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-btn); }
+      #fixtureStatus { position: relative; z-index: 2700; margin-top: var(--space-16); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="fixture-controls">
+        <button type="button" data-action="success">완료 성공</button>
+        <button type="button" data-action="hold">3초 유지 확인</button>
+        <button type="button" data-action="failure">저장 실패</button>
+        <button type="button" data-action="rapid">빠른 연속 완료</button>
+        <button type="button" data-action="reduced">reduced motion</button>
+        <button type="button" data-action="audio-failure">사운드 실패</button>
+        <button type="button" data-action="audio-ended">사운드 종료</button>
+        <button type="button" data-action="cleanup">PJAX 정리</button>
+      </div>
+      <p id="fixtureStatus" role="status">대기 중</p>
+      <div class="fixture-calendar" aria-hidden="true"></div>
+    </main>
+    <script type="module">
+      import { createStudyCompletionCelebration } from '../../assets/js/modules/study-completion-celebration.js';
+
+      const status = document.getElementById('fixtureStatus');
+      const calendar = document.querySelector('.fixture-calendar');
+      for (let day = 1; day <= 35; day += 1) {
+        const cell = document.createElement('span');
+        cell.textContent = day;
+        calendar.append(cell);
+      }
+
+      let reducedMotion = false;
+      let audioFailure = false;
+      let autoEndMs = 4224;
+      let currentAudio = null;
+      const metrics = { playCalls: 0, endedCalls: 0, overlayCalls: 0 };
+      class MockAudio {
+        constructor() {
+          this.currentTime = 0;
+          this.endTimer = 0;
+          this.listeners = new Map();
+          currentAudio = this;
+        }
+        addEventListener(name, listener) { this.listeners.set(name, listener); }
+        load() {}
+        pause() {
+          if (!this.endTimer) return;
+          window.clearTimeout(this.endTimer);
+          this.endTimer = 0;
+        }
+        finish() {
+          if (this.endTimer) window.clearTimeout(this.endTimer);
+          this.endTimer = 0;
+          metrics.endedCalls += 1;
+          document.documentElement.dataset.celebrationEndedCalls = String(metrics.endedCalls);
+          this.listeners.get('ended')?.();
+        }
+        play() {
+          metrics.playCalls += 1;
+          document.documentElement.dataset.celebrationPlayCalls = String(metrics.playCalls);
+          if (audioFailure) return Promise.reject(new Error('fixture audio failure'));
+          this.endTimer = window.setTimeout(() => this.finish(), autoEndMs);
+          return Promise.resolve();
+        }
+      }
+
+      const originalMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = (query) => query.includes('prefers-reduced-motion')
+        ? { matches: reducedMotion, media: query, addEventListener() {}, removeEventListener() {} }
+        : originalMatchMedia(query);
+
+      let controller = makeController();
+      function makeController() {
+        return createStudyCompletionCelebration({
+          soundFactory: () => new MockAudio(),
+          pathResolver: (value) => new URL(`../../${value.replace(/^\.\//, '')}`, import.meta.url).href,
+          durationMs: 3000,
+          audioEndFallbackMs: 7000,
+        });
+      }
+      function celebrate(label) {
+        metrics.overlayCalls += 1;
+        controller.celebrate();
+        status.textContent = `${label} · 효과 ${metrics.overlayCalls}회 · 재생 ${metrics.playCalls}회`;
+      }
+
+      document.querySelector('[data-action="success"]').onclick = () => {
+        reducedMotion = false;
+        audioFailure = false;
+        autoEndMs = 4224;
+        celebrate('완료 저장 성공');
+      };
+      document.querySelector('[data-action="hold"]').onclick = () => {
+        reducedMotion = false;
+        audioFailure = false;
+        autoEndMs = 20000;
+        celebrate('3초 이후 유지 확인');
+      };
+      document.querySelector('[data-action="failure"]').onclick = () => {
+        status.textContent = '저장 실패 · 효과 없음';
+      };
+      document.querySelector('[data-action="rapid"]').onclick = () => {
+        reducedMotion = false;
+        audioFailure = false;
+        celebrate('빠른 완료 1');
+        celebrate('빠른 완료 2');
+        celebrate('빠른 완료 3');
+      };
+      document.querySelector('[data-action="reduced"]').onclick = () => {
+        reducedMotion = true;
+        audioFailure = false;
+        celebrate('reduced motion');
+      };
+      document.querySelector('[data-action="audio-failure"]').onclick = () => {
+        reducedMotion = false;
+        audioFailure = true;
+        celebrate('사운드 실패에도 완료 성공');
+      };
+      document.querySelector('[data-action="audio-ended"]').onclick = () => {
+        currentAudio?.finish();
+        status.textContent = '사운드 종료 이벤트 · 효과 정리';
+      };
+      document.querySelector('[data-action="cleanup"]').onclick = () => {
+        controller.destroy();
+        controller = makeController();
+        status.textContent = 'PJAX 정리 완료';
+      };
+
+      window.__celebrationFixture = {
+        metrics,
+        finishAudio: () => currentAudio?.finish(),
+        setAutoEndMs: (value) => { autoEndMs = Number(value) || 4224; },
+        get controller() { return controller; },
+      };
+    </script>
+  </body>
+</html>

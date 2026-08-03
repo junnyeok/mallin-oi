@@ -52,7 +52,11 @@ const nativeProfileFrameImageFiles = [
   'images/profile-frame/mallin-shiny.png',
   'images/profile-frame/mallin-shiny-mobile.png',
 ];
-const nativeSkinImageFiles = ['images/skins/ozyo.png'];
+const nativeSkinImageFiles = [
+  'images/skins/ozyo.png',
+  'images/skins/spioi.png',
+  'images/skins/inomske.png',
+];
 const nativeCharacterEffectImageFiles = [
   'images/character-effects/cucumber-heart.png',
   'images/character-effects/fire-effect-01.png',

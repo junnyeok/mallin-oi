@@ -6,9 +6,11 @@ const CALENDAR_TYPES = new Set(['study', 'work', 'event']);
 const COPY_MODES = new Set(['all', 'range']);
 const SUPPORTED_BUFFER_VERSIONS = new Set([2, CALENDAR_COPY_BUFFER_VERSION]);
 const CATEGORY_RESOLUTION_ACTIONS = new Set(['overwrite', 'keep']);
+const SCHEDULE_CONFLICT_ACTIONS = new Set(['reject', 'overwrite', 'merge']);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const FUTURE_CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
+const CALENDAR_LABELS = { study: '자기개발', work: '업무', event: '이벤트' };
 
 function isUuid(value) {
   return UUID_PATTERN.test(String(value || '').trim());
@@ -284,10 +286,86 @@ export function buildCalendarCategoryPreviewRpcArgs(buffer, calendarType) {
   };
 }
 
+export function buildCalendarScheduleConflictPreviewRpcArgs(
+  buffer,
+  calendarType,
+) {
+  return buildCalendarCategoryPreviewRpcArgs(buffer, calendarType);
+}
+
+export function normalizeCalendarScheduleConflictSummary(data) {
+  const row = Array.isArray(data) && data.length === 1 ? data[0] : null;
+  const conflictDateCount = Number(row?.conflict_date_count ?? 0);
+  const existingScheduleCount = Number(row?.existing_schedule_count ?? 0);
+  const incomingScheduleCount = Number(row?.incoming_schedule_count ?? 0);
+
+  for (const value of [
+    conflictDateCount,
+    existingScheduleCount,
+    incomingScheduleCount,
+  ]) {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new TypeError('calendar schedule conflict preview is invalid');
+    }
+  }
+
+  return {
+    conflictDateCount,
+    existingScheduleCount,
+    incomingScheduleCount,
+  };
+}
+
+export function normalizeCalendarScheduleConflictAction(
+  calendarType,
+  action = 'reject',
+) {
+  const type = String(calendarType || '').trim();
+  const normalizedAction = String(action || '').trim();
+  if (!CALENDAR_TYPES.has(type) || !SCHEDULE_CONFLICT_ACTIONS.has(normalizedAction)) {
+    throw new TypeError('schedule conflict action is invalid');
+  }
+  if (type === 'work' && normalizedAction === 'merge') {
+    throw new TypeError('work calendar cannot merge schedule conflicts');
+  }
+  return normalizedAction;
+}
+
+export function getCalendarScheduleConflictDialogCopy(
+  calendarType,
+  conflictDateCount,
+) {
+  const count = Math.max(0, Number(conflictDateCount) || 0);
+  const countText = count > 0 ? ` 충돌 날짜는 ${count}일이야.` : '';
+
+  if (calendarType === 'work') {
+    return {
+      title: '기존 업무 일정이 있어',
+      message: `같은 날짜의 기존 업무 일정이 복사한 일정으로 교체돼.${countText} 계속 붙여넣을까?`,
+      overwriteLabel: '예, 덮어쓰기',
+      secondaryLabel: '아니오, 붙여넣지 않기',
+      secondaryAction: null,
+    };
+  }
+
+  if (!CALENDAR_TYPES.has(calendarType)) {
+    throw new TypeError('calendarType is invalid');
+  }
+
+  return {
+    title: `기존 ${CALENDAR_LABELS[calendarType]} 일정이 있어`,
+    message: `복사할 일정이 있는 날짜에 기존 일정이 있어.${countText} 모든 충돌 날짜에 같은 방법을 적용해.`,
+    overwriteLabel: '예, 기존 일정 덮어쓰기',
+    secondaryLabel: '아니오, 함께 추가',
+    secondaryAction: 'merge',
+  };
+}
+
 export function buildCalendarPasteRpcArgs(
   buffer,
   calendarType,
   categoryResolutions = [],
+  scheduleConflictAction = 'reject',
 ) {
   const normalized = normalizeCopyBuffer(buffer);
   return {
@@ -296,16 +374,29 @@ export function buildCalendarPasteRpcArgs(
     p_category_resolutions: normalizeCalendarCategoryResolutions(
       categoryResolutions,
     ),
+    p_schedule_conflict_action: normalizeCalendarScheduleConflictAction(
+      calendarType,
+      scheduleConflictAction,
+    ),
   };
 }
 
 export function validateCalendarPasteResult(data) {
   const row = Array.isArray(data) && data.length === 1 ? data[0] : null;
   const insertedCount = Number(row?.inserted_count);
+  const overwrittenCount = Number(row?.overwritten_count);
+  const retainedCount = Number(row?.retained_count);
+  const conflictDateCount = Number(row?.conflict_date_count);
   if (
     row?.success !== true ||
     !Number.isInteger(insertedCount) ||
-    insertedCount < 0
+    insertedCount < 0 ||
+    !Number.isInteger(overwrittenCount) ||
+    overwrittenCount < 0 ||
+    !Number.isInteger(retainedCount) ||
+    retainedCount < 0 ||
+    !Number.isInteger(conflictDateCount) ||
+    conflictDateCount < 0
   ) {
     const error = new Error('calendar paste result is invalid');
     error.code = 'INVALID_PASTE_RESULT';
@@ -314,6 +405,9 @@ export function validateCalendarPasteResult(data) {
 
   return {
     insertedCount,
+    overwrittenCount,
+    retainedCount,
+    conflictDateCount,
     message: String(row.message || ''),
   };
 }
@@ -381,6 +475,13 @@ export function classifyCalendarPasteError(error = {}) {
     return {
       kind: 'category-resolution',
       message: '카테고리 상태가 바뀌었어. 덮어쓰기 여부를 다시 선택해줘.',
+    };
+  }
+
+  if (message.includes('일정 충돌 선택') || message.includes('일정 상태가 바뀌')) {
+    return {
+      kind: 'schedule-resolution',
+      message: '같은 날짜의 일정 상태가 바뀌었어. 붙여넣기를 다시 시도해줘.',
     };
   }
 

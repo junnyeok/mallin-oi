@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>캘린더 붙여넣기 충돌 fixture</title>
+    <link rel="stylesheet" href="../../assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="../../assets/css/main/calendar-groups-main.css" />
+    <style>
+      body { margin: 0; color: var(--color-text); background: var(--color-bg); font-family: var(--font-base); }
+      main { box-sizing: border-box; width: min(100%, 760px); min-height: 100vh; margin: auto; padding: var(--space-16); overflow-x: hidden; }
+      .fixture-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+      .fixture-actions button { min-height: 44px; padding: 0 var(--space-12); border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface); font: inherit; font-weight: 800; }
+      pre { padding: var(--space-12); overflow-wrap: anywhere; white-space: pre-wrap; border: 1px solid var(--color-border); border-radius: var(--radius-card); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>붙여넣기 충돌 처리 fixture</h1>
+      <div class="fixture-actions">
+        <button type="button" data-calendar="study">자기개발 충돌</button>
+        <button type="button" data-calendar="event">이벤트 충돌</button>
+        <button type="button" data-calendar="work">업무 충돌</button>
+      </div>
+      <pre id="fixtureResult" role="status">대기 중 · 복사 버퍼 유지</pre>
+    </main>
+    <script type="module">
+      import { getCalendarScheduleConflictDialogCopy } from '../../assets/js/modules/calendar-copy-buffer.js';
+
+      const result = document.getElementById('fixtureResult');
+      const state = {
+        buffer: { active: true },
+        existing: {
+          '2026-08-03': ['기존 A'],
+          '2026-08-04': ['기존 B'],
+          '2026-08-09': ['비충돌 일정'],
+        },
+        incoming: {
+          '2026-08-03': ['복사 1'],
+          '2026-08-04': ['복사 2'],
+        },
+      };
+
+      function snapshot() {
+        return JSON.parse(JSON.stringify(state));
+      }
+      function applyPolicy(calendarType, action) {
+        if (!action) {
+          result.textContent = `${calendarType}: 취소 · DB 변경 0건 · 복사 버퍼 유지`;
+          return;
+        }
+        for (const [date, incoming] of Object.entries(state.incoming)) {
+          if (action === 'overwrite') state.existing[date] = [...incoming];
+          else state.existing[date] = [...(state.existing[date] || []), ...incoming];
+        }
+        state.buffer.active = false;
+        result.textContent = JSON.stringify({ calendarType, action, state }, null, 2);
+      }
+      function openConflict(calendarType) {
+        const before = snapshot();
+        const copy = getCalendarScheduleConflictDialogCopy(calendarType, 2);
+        const dialog = document.createElement('dialog');
+        dialog.className = 'calendar-copy-dialog';
+        dialog.innerHTML = `
+          <div class="calendar-copy-dialog__card">
+            <h2>${copy.title}</h2>
+            <p>${copy.message}</p>
+            <div class="calendar-copy-dialog__schedule-summary">
+              <strong>2일</strong><span>기존 일정 2개 · 복사 일정 2개</span>
+            </div>
+            <div class="calendar-copy-dialog__actions">
+              <button type="button" data-secondary>${copy.secondaryLabel}</button>
+              <button type="button" data-overwrite>${copy.overwriteLabel}</button>
+              <button type="button" data-cancel>취소</button>
+            </div>
+          </div>`;
+        document.body.append(dialog);
+        const finish = (action) => {
+          if (!action) Object.assign(state, before);
+          dialog.close();
+          dialog.remove();
+          applyPolicy(calendarType, action);
+        };
+        dialog.querySelector('[data-overwrite]').onclick = () => finish('overwrite');
+        dialog.querySelector('[data-secondary]').onclick = () => finish(copy.secondaryAction);
+        dialog.querySelector('[data-cancel]').onclick = () => finish(null);
+        dialog.addEventListener('cancel', (event) => {
+          event.preventDefault();
+          finish(null);
+        }, { once: true });
+        dialog.showModal();
+      }
+
+      document.querySelectorAll('[data-calendar]').forEach((button) => {
+        button.onclick = () => openConflict(button.dataset.calendar);
+      });
+      window.__pasteConflictFixture = { state, openConflict, snapshot };
+    </script>
+  </body>
+</html>

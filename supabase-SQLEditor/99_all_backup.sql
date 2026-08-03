@@ -33593,6 +33593,1019 @@ grant execute on function public.paste_group_calendar_backup_to_my_calendar(uuid
   to authenticated;
 
 -- =========================================================
+-- 2026-08-03 신규 캐릭터 전용 스킨 2종 판매 지원
+-- - skin-cucumber-04: 당신의 친절한 오이, 기본오이 전용, 621피클
+-- - skin-grilled-egg-02: 이놈스케, 구운계란 전용, 689피클
+-- - 서버 고정 가격 차감, 스킨 지급, 피클 원장 기록을 기존 원자적 구매 RPC에 추가한다.
+-- - 테스트 잔액 우회와 관리자 자동충전을 차단한다.
+-- - 기존 분기나 보유 데이터가 예상 값과 다르면 전체 작업을 중단한다.
+-- =========================================================
+
+begin;
+
+do $validate_new_character_skin_dependencies$
+begin
+  if to_regclass('public.profiles') is null
+     or to_regclass('public.user_store_items') is null
+     or to_regclass('public.user_characters') is null
+     or to_regclass('public.user_character_skins') is null
+     or to_regclass('public.pickle_ledger') is null
+     or to_regclass('public.store_purchase_test_permissions') is null then
+    raise exception 'NEW_CHARACTER_SKINS_PURCHASE_TABLE_MISSING';
+  end if;
+
+  if to_regprocedure('public.purchase_store_item(text)') is null
+     or to_regprocedure('public.ensure_user_pickles(uuid,integer,text,text,text)') is null
+     or to_regprocedure('public.is_auto_topup_admin_user(uuid)') is null
+     or to_regprocedure('public.seoul_today()') is null
+     or to_regprocedure('public.enforce_equipped_character_ownership()') is null then
+    raise exception 'NEW_CHARACTER_SKINS_PURCHASE_DEPENDENCY_MISSING';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.profiles'::regclass
+      and trigger_row.tgname = 'trg_enforce_equipped_character_ownership'
+      and not trigger_row.tgisinternal
+  ) then
+    raise exception 'NEW_CHARACTER_SKINS_EQUIP_TRIGGER_MISSING';
+  end if;
+
+  if position(
+       'join public.user_characters c'
+       in pg_get_functiondef(
+         'public.enforce_equipped_character_ownership()'::regprocedure
+       )
+     ) = 0
+     or position(
+       'c.character_code = s.character_code'
+       in pg_get_functiondef(
+         'public.enforce_equipped_character_ownership()'::regprocedure
+       )
+     ) = 0
+     or position(
+       's.image_path = new.equipped_character_image_url'
+       in pg_get_functiondef(
+         'public.enforce_equipped_character_ownership()'::regprocedure
+       )
+     ) = 0 then
+    raise exception 'NEW_CHARACTER_SKINS_EQUIP_TRIGGER_MISMATCH';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint constraint_row
+    where constraint_row.conrelid = 'public.user_store_items'::regclass
+      and constraint_row.contype = 'u'
+      and pg_get_constraintdef(constraint_row.oid) = 'UNIQUE (user_id, item_id)'
+  ) then
+    raise exception 'NEW_CHARACTER_SKINS_OWNERSHIP_UNIQUE_CONSTRAINT_MISSING';
+  end if;
+
+  if exists (
+    select 1
+    from public.user_store_items item
+    where (
+      item.item_id = 'skin-cucumber-04'
+      and (
+        item.item_name is distinct from '당신의 친절한 오이'
+        or item.item_category is distinct from 'skin'
+        or item.purchase_price is distinct from 621
+      )
+    ) or (
+      item.item_id = 'skin-grilled-egg-02'
+      and (
+        item.item_name is distinct from '이놈스케'
+        or item.item_category is distinct from 'skin'
+        or item.purchase_price is distinct from 689
+      )
+    )
+  ) then
+    raise exception 'NEW_CHARACTER_SKINS_ITEM_ID_CONFLICT';
+  end if;
+
+  if exists (
+    select 1
+    from public.user_character_skins skin
+    where (
+      skin.skin_code = 'char-cucumber-kind'
+      and (
+        skin.character_code is distinct from 'char-cucumber'
+        or skin.skin_name is distinct from '당신의 친절한 오이'
+        or skin.image_path is distinct from './images/skins/spioi.png'
+        or skin.display_order is distinct from 4
+      )
+    ) or (
+      skin.skin_code = 'char-grilled-egg-inomske'
+      and (
+        skin.character_code is distinct from 'char-grilled-egg'
+        or skin.skin_name is distinct from '이놈스케'
+        or skin.image_path is distinct from './images/skins/inomske.png'
+        or skin.display_order is distinct from 403
+      )
+    )
+  ) then
+    raise exception 'NEW_CHARACTER_SKINS_SKIN_CODE_CONFLICT';
+  end if;
+end;
+$validate_new_character_skin_dependencies$;
+
+do $add_new_character_skins_to_purchase_store_item$
+declare
+  v_function_sql text;
+  v_price_anchor text := $price_anchor$
+  elsif p_item_id = 'skin-cucumber-03' then
+    v_price := 775;
+    v_name := '오죠 이토루';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
+  elsif p_item_id = 'skin-avocado-01' then
+$price_anchor$;
+  v_price_replacement text := $price_replacement$
+  elsif p_item_id = 'skin-cucumber-03' then
+    v_price := 775;
+    v_name := '오죠 이토루';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
+  elsif p_item_id = 'skin-cucumber-04' then
+    v_price := 621;
+    v_name := '당신의 친절한 오이';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
+  elsif p_item_id = 'skin-grilled-egg-02' then
+    v_price := 689;
+    v_name := '이놈스케';
+    v_category := 'skin';
+    v_required_character_code := 'char-grilled-egg';
+    v_required_character_name := '구운계란 캐릭터';
+
+  elsif p_item_id = 'skin-avocado-01' then
+$price_replacement$;
+  v_inventory_anchor text := $inventory_anchor$
+  elsif p_item_id = 'skin-avocado-01' then
+    insert into public.user_character_skins (
+$inventory_anchor$;
+  v_inventory_replacement text := $inventory_replacement$
+  elsif p_item_id = 'skin-cucumber-04' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'default_grant'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-kind',
+      '당신의 친절한 오이',
+      './images/skins/spioi.png',
+      4,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-grilled-egg-02' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-grilled-egg',
+      'char-grilled-egg-inomske',
+      '이놈스케',
+      './images/skins/inomske.png',
+      403,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-avocado-01' then
+    insert into public.user_character_skins (
+$inventory_replacement$;
+  v_message_anchor text := $message_anchor$
+      when p_item_id = 'skin-cucumber-03'
+        then '오죠 이토루 구매가 완료됐어. 775피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-avocado-01'
+$message_anchor$;
+  v_message_replacement text := $message_replacement$
+      when p_item_id = 'skin-cucumber-03'
+        then '오죠 이토루 구매가 완료됐어. 775피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumber-04'
+        then '당신의 친절한 오이 구매가 완료됐어. 621피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-grilled-egg-02'
+        then '이놈스케 구매가 완료됐어. 689피클이 차감됐고 구운계란 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-avocado-01'
+$message_replacement$;
+  v_strict_balance_anchor text := $strict_balance_anchor$'skin-cucumber-03',$strict_balance_anchor$;
+  v_strict_balance_replacement text := $strict_balance_replacement$'skin-cucumber-03',
+        'skin-cucumber-04',
+        'skin-grilled-egg-02',$strict_balance_replacement$;
+  v_strict_balance_count integer := 0;
+  v_kind_count integer := 0;
+  v_inomske_count integer := 0;
+begin
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+  into v_function_sql;
+
+  v_kind_count := (
+    length(v_function_sql) - length(replace(v_function_sql, 'skin-cucumber-04', ''))
+  ) / length('skin-cucumber-04');
+  v_inomske_count := (
+    length(v_function_sql) - length(replace(v_function_sql, 'skin-grilled-egg-02', ''))
+  ) / length('skin-grilled-egg-02');
+
+  if v_kind_count > 0 or v_inomske_count > 0 then
+    v_strict_balance_count := (
+      length(v_function_sql) - length(
+        replace(v_function_sql, v_strict_balance_replacement, '')
+      )
+    ) / length(v_strict_balance_replacement);
+
+    if v_kind_count <> 5
+       or v_inomske_count <> 5
+       or v_strict_balance_count <> 2
+       or position($kind_price$p_item_id = 'skin-cucumber-04' then
+    v_price := 621;
+    v_name := '당신의 친절한 오이';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';$kind_price$ in v_function_sql) = 0
+       or position($inomske_price$p_item_id = 'skin-grilled-egg-02' then
+    v_price := 689;
+    v_name := '이놈스케';
+    v_category := 'skin';
+    v_required_character_code := 'char-grilled-egg';
+    v_required_character_name := '구운계란 캐릭터';$inomske_price$ in v_function_sql) = 0
+       or position($kind_inventory$'char-cucumber-kind',
+      '당신의 친절한 오이',
+      './images/skins/spioi.png',
+      4,
+      'store_purchase'$kind_inventory$ in v_function_sql) = 0
+       or position($inomske_inventory$'char-grilled-egg-inomske',
+      '이놈스케',
+      './images/skins/inomske.png',
+      403,
+      'store_purchase'$inomske_inventory$ in v_function_sql) = 0
+       or position($kind_message$then '당신의 친절한 오이 구매가 완료됐어. 621피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'$kind_message$ in v_function_sql) = 0
+       or position($inomske_message$then '이놈스케 구매가 완료됐어. 689피클이 차감됐고 구운계란 스킨 인벤토리에서 착용할 수 있어.'$inomske_message$ in v_function_sql) = 0 then
+      raise exception 'NEW_CHARACTER_SKINS_EXISTING_BRANCH_MISMATCH kind=%, inomske=%',
+        v_kind_count,
+        v_inomske_count;
+    end if;
+
+    return;
+  end if;
+
+  if position(v_price_anchor in v_function_sql) = 0 then
+    raise exception 'NEW_CHARACTER_SKINS_PRICE_ANCHOR_NOT_FOUND';
+  end if;
+
+  if position(v_inventory_anchor in v_function_sql) = 0 then
+    raise exception 'NEW_CHARACTER_SKINS_INVENTORY_ANCHOR_NOT_FOUND';
+  end if;
+
+  if position(v_message_anchor in v_function_sql) = 0 then
+    raise exception 'NEW_CHARACTER_SKINS_MESSAGE_ANCHOR_NOT_FOUND';
+  end if;
+
+  v_strict_balance_count := (
+    length(v_function_sql) - length(
+      replace(v_function_sql, v_strict_balance_anchor, '')
+    )
+  ) / length(v_strict_balance_anchor);
+
+  if v_strict_balance_count <> 2 then
+    raise exception 'NEW_CHARACTER_SKINS_STRICT_BALANCE_ANCHOR_COUNT_INVALID: %',
+      v_strict_balance_count;
+  end if;
+
+  v_function_sql := replace(v_function_sql, v_price_anchor, v_price_replacement);
+  v_function_sql := replace(
+    v_function_sql,
+    v_inventory_anchor,
+    v_inventory_replacement
+  );
+  v_function_sql := replace(
+    v_function_sql,
+    v_message_anchor,
+    v_message_replacement
+  );
+  v_function_sql := replace(
+    v_function_sql,
+    v_strict_balance_anchor,
+    v_strict_balance_replacement
+  );
+
+  execute v_function_sql;
+end;
+$add_new_character_skins_to_purchase_store_item$;
+
+revoke all on function public.purchase_store_item(text) from public, anon;
+grant execute on function public.purchase_store_item(text) to authenticated;
+
+do $verify_new_character_skins_purchase_store_item$
+declare
+  v_function_sql text;
+  v_strict_balance_pattern text := $strict_balance_pattern$'skin-cucumber-03',
+        'skin-cucumber-04',
+        'skin-grilled-egg-02',$strict_balance_pattern$;
+  v_strict_balance_count integer := 0;
+begin
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+  into v_function_sql;
+
+  v_strict_balance_count := (
+    length(v_function_sql) - length(
+      replace(v_function_sql, v_strict_balance_pattern, '')
+    )
+  ) / length(v_strict_balance_pattern);
+
+  if position($kind_price$p_item_id = 'skin-cucumber-04' then
+    v_price := 621;
+    v_name := '당신의 친절한 오이';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';$kind_price$ in v_function_sql) = 0
+     or position($inomske_price$p_item_id = 'skin-grilled-egg-02' then
+    v_price := 689;
+    v_name := '이놈스케';
+    v_category := 'skin';
+    v_required_character_code := 'char-grilled-egg';
+    v_required_character_name := '구운계란 캐릭터';$inomske_price$ in v_function_sql) = 0
+     or position($kind_inventory$'char-cucumber-kind',
+      '당신의 친절한 오이',
+      './images/skins/spioi.png',
+      4,
+      'store_purchase'$kind_inventory$ in v_function_sql) = 0
+     or position($inomske_inventory$'char-grilled-egg-inomske',
+      '이놈스케',
+      './images/skins/inomske.png',
+      403,
+      'store_purchase'$inomske_inventory$ in v_function_sql) = 0
+     or position($kind_message$then '당신의 친절한 오이 구매가 완료됐어. 621피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'$kind_message$ in v_function_sql) = 0
+     or position($inomske_message$then '이놈스케 구매가 완료됐어. 689피클이 차감됐고 구운계란 스킨 인벤토리에서 착용할 수 있어.'$inomske_message$ in v_function_sql) = 0
+     or v_strict_balance_count <> 2
+     or position($parent_check$v_category = 'skin'
+     and coalesce(trim(v_required_character_code), '') <> ''
+     and v_required_character_code <> 'char-cucumber'
+     and not exists ($parent_check$ in v_function_sql) = 0
+     or position('from public.user_characters' in v_function_sql) = 0
+     or position('for update' in lower(v_function_sql)) = 0
+     or position('and coalesce(pickles, 0) >= v_price' in v_function_sql) = 0
+     or position('set pickles = coalesce(pickles, 0) - v_price' in v_function_sql) = 0
+     or position('insert into public.user_store_items' in v_function_sql) = 0
+     or position('insert into public.user_character_skins' in v_function_sql) = 0
+     or position('insert into public.pickle_ledger' in v_function_sql) = 0
+     or position($charged$-v_charged_amount$charged$ in v_function_sql) = 0
+     or position($reason$'store_purchase'$reason$ in v_function_sql) = 0
+     or position('public.seoul_today()' in v_function_sql) = 0 then
+    raise exception 'NEW_CHARACTER_SKINS_PURCHASE_FUNCTION_VERIFY_FAILED';
+  end if;
+
+  if has_function_privilege('anon', 'public.purchase_store_item(text)', 'execute')
+     or not has_function_privilege(
+       'authenticated',
+       'public.purchase_store_item(text)',
+       'execute'
+     )
+     or exists (
+       select 1
+       from pg_proc procedure_row
+       cross join lateral aclexplode(
+         coalesce(
+           procedure_row.proacl,
+           acldefault('f', procedure_row.proowner)
+         )
+       ) acl_row
+       where procedure_row.oid = 'public.purchase_store_item(text)'::regprocedure
+         and acl_row.grantee = 0
+         and acl_row.privilege_type = 'EXECUTE'
+     )
+     or not (
+       select procedure_row.prosecdef
+       from pg_proc procedure_row
+       where procedure_row.oid = 'public.purchase_store_item(text)'::regprocedure
+     ) then
+    raise exception 'NEW_CHARACTER_SKINS_PURCHASE_FUNCTION_PERMISSION_VERIFY_FAILED';
+  end if;
+end;
+$verify_new_character_skins_purchase_store_item$;
+
+commit;
+
+select json_build_object(
+  'items', json_build_array(
+    json_build_object(
+      'item_id', 'skin-cucumber-04',
+      'server_price', 621,
+      'item_name', '당신의 친절한 오이',
+      'required_character_code', 'char-cucumber',
+      'skin_code', 'char-cucumber-kind',
+      'image_path', './images/skins/spioi.png'
+    ),
+    json_build_object(
+      'item_id', 'skin-grilled-egg-02',
+      'server_price', 689,
+      'item_name', '이놈스케',
+      'required_character_code', 'char-grilled-egg',
+      'skin_code', 'char-grilled-egg-inomske',
+      'image_path', './images/skins/inomske.png'
+    )
+  ),
+  'purchase_function_updated',
+    position(
+      $verify$p_item_id = 'skin-cucumber-04'$verify$
+      in pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+    ) > 0
+    and position(
+      $verify$p_item_id = 'skin-grilled-egg-02'$verify$
+      in pg_get_functiondef('public.purchase_store_item(text)'::regprocedure)
+    ) > 0,
+  'strict_balance_list_occurrences', (
+    length(pg_get_functiondef('public.purchase_store_item(text)'::regprocedure))
+      - length(replace(
+        pg_get_functiondef('public.purchase_store_item(text)'::regprocedure),
+        $verify$'skin-cucumber-03',
+        'skin-cucumber-04',
+        'skin-grilled-egg-02',$verify$,
+        ''
+      ))
+  ) / length($verify$'skin-cucumber-03',
+        'skin-cucumber-04',
+        'skin-grilled-egg-02',$verify$),
+  'conflicting_owned_rows', (
+    select count(*)
+    from public.user_store_items item
+    where (
+      item.item_id = 'skin-cucumber-04'
+      and (
+        item.item_name is distinct from '당신의 친절한 오이'
+        or item.item_category is distinct from 'skin'
+        or item.purchase_price is distinct from 621
+      )
+    ) or (
+      item.item_id = 'skin-grilled-egg-02'
+      and (
+        item.item_name is distinct from '이놈스케'
+        or item.item_category is distinct from 'skin'
+        or item.purchase_price is distinct from 689
+      )
+    )
+  ),
+  'public_execute', exists (
+    select 1
+    from pg_proc procedure_row
+    cross join lateral aclexplode(
+      coalesce(procedure_row.proacl, acldefault('f', procedure_row.proowner))
+    ) acl_row
+    where procedure_row.oid = 'public.purchase_store_item(text)'::regprocedure
+      and acl_row.grantee = 0
+      and acl_row.privilege_type = 'EXECUTE'
+  ),
+  'anon_execute', has_function_privilege(
+    'anon',
+    'public.purchase_store_item(text)',
+    'execute'
+  ),
+  'authenticated_execute', has_function_privilege(
+    'authenticated',
+    'public.purchase_store_item(text)',
+    'execute'
+  )
+) as new_character_skins_result;
+
+-- 2026-08-03 그룹 캘린더 붙여넣기 일정 충돌 정책
+-- 카테고리 결정과 일정 덮어쓰기/함께 추가를 한 RPC 트랜잭션에서 처리한다.
+
+alter table public.calendar_paste_operations
+  add column if not exists overwritten_count integer not null default 0,
+  add column if not exists retained_count integer not null default 0,
+  add column if not exists conflict_date_count integer not null default 0,
+  add column if not exists schedule_conflict_action text;
+
+alter table public.calendar_paste_operations
+  drop constraint if exists calendar_paste_operations_schedule_counts_check;
+
+alter table public.calendar_paste_operations
+  add constraint calendar_paste_operations_schedule_counts_check
+  check (
+    overwritten_count >= 0
+    and retained_count >= 0
+    and conflict_date_count >= 0
+    and (
+      schedule_conflict_action is null
+      or schedule_conflict_action in ('reject', 'overwrite', 'merge')
+    )
+  );
+
+drop function if exists public.get_group_calendar_paste_schedule_conflicts(
+  uuid, text, uuid, date, date
+);
+
+create function public.get_group_calendar_paste_schedule_conflicts(
+  p_group_id uuid,
+  p_calendar_type text,
+  p_source_user_id uuid,
+  p_start_date date default null,
+  p_end_date date default null
+)
+returns table (
+  conflict_date_count integer,
+  existing_schedule_count integer,
+  incoming_schedule_count integer
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_is_range boolean := p_start_date is not null and p_end_date is not null;
+begin
+  if v_user_id is null then
+    raise exception '로그인이 필요해요.' using errcode = '42501';
+  end if;
+  if p_calendar_type not in ('study', 'work', 'event') then
+    raise exception '지원하지 않는 캘린더 타입이에요.' using errcode = '22023';
+  end if;
+  if (p_start_date is null) <> (p_end_date is null) then
+    raise exception '시작일과 종료일을 모두 입력해줘.' using errcode = '22023';
+  end if;
+  if v_is_range and p_start_date > p_end_date then
+    raise exception '시작일은 종료일보다 늦을 수 없어요.' using errcode = '22023';
+  end if;
+  if p_source_user_id = v_user_id then
+    raise exception '다른 그룹원의 백업 일정만 복사할 수 있어요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_group_members m
+    where m.group_id = p_group_id
+      and m.user_id = v_user_id
+      and m.status = 'active'
+  ) then
+    raise exception '이 그룹의 참여자가 아니에요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_groups g
+    where g.id = p_group_id
+      and case p_calendar_type
+        when 'study' then g.allow_study
+        when 'work' then g.allow_work
+        else g.allow_event
+      end
+  ) then
+    raise exception '이 그룹에서 사용할 수 없는 캘린더 타입이에요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_group_members m
+    where m.group_id = p_group_id
+      and m.user_id = p_source_user_id
+      and m.status = 'active'
+  ) then
+    raise exception '복사할 그룹원이 현재 참여 중이 아니에요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_group_shared_events e
+    where e.group_id = p_group_id
+      and e.user_id = p_source_user_id
+      and e.calendar_type = p_calendar_type
+      and (not v_is_range or e.event_date between p_start_date and p_end_date)
+  ) then
+    if v_is_range then
+      raise exception '해당 날짜 범위에 복사할 일정이 없어요.';
+    end if;
+    raise exception '복사할 백업 일정이 없어요.';
+  end if;
+
+  if p_calendar_type = 'study' then
+    return query
+    with source_dates as (
+      select e.event_date, count(*)::integer as incoming_count
+      from public.calendar_group_shared_events e
+      where e.group_id = p_group_id
+        and e.user_id = p_source_user_id
+        and e.calendar_type = 'study'
+        and (not v_is_range or e.event_date between p_start_date and p_end_date)
+      group by e.event_date
+    ), conflicts as (
+      select
+        s.event_date,
+        s.incoming_count,
+        count(t.id)::integer as existing_count
+      from source_dates s
+      left join public.study_calendar_todos t
+        on t.user_id = v_user_id and t.todo_date = s.event_date
+      group by s.event_date, s.incoming_count
+    )
+    select
+      count(*) filter (where c.existing_count > 0)::integer,
+      coalesce(sum(c.existing_count), 0)::integer,
+      coalesce(sum(c.incoming_count), 0)::integer
+    from conflicts c;
+  elsif p_calendar_type = 'work' then
+    return query
+    with source_dates as (
+      select e.event_date, count(*)::integer as incoming_count
+      from public.calendar_group_shared_events e
+      where e.group_id = p_group_id
+        and e.user_id = p_source_user_id
+        and e.calendar_type = 'work'
+        and (not v_is_range or e.event_date between p_start_date and p_end_date)
+      group by e.event_date
+    ), conflicts as (
+      select
+        s.event_date,
+        s.incoming_count,
+        count(t.id)::integer as existing_count
+      from source_dates s
+      left join public.work_calendar_todos t
+        on t.user_id = v_user_id and t.work_date = s.event_date
+      group by s.event_date, s.incoming_count
+    )
+    select
+      count(*) filter (where c.existing_count > 0)::integer,
+      coalesce(sum(c.existing_count), 0)::integer,
+      coalesce(sum(c.incoming_count), 0)::integer
+    from conflicts c;
+  else
+    return query
+    with source_dates as (
+      select e.event_date, count(*)::integer as incoming_count
+      from public.calendar_group_shared_events e
+      where e.group_id = p_group_id
+        and e.user_id = p_source_user_id
+        and e.calendar_type = 'event'
+        and (not v_is_range or e.event_date between p_start_date and p_end_date)
+      group by e.event_date
+    ), conflicts as (
+      select
+        s.event_date,
+        s.incoming_count,
+        count(t.id)::integer as existing_count
+      from source_dates s
+      left join public.event_calendar_todos t
+        on t.user_id = v_user_id and t.event_date = s.event_date
+      group by s.event_date, s.incoming_count
+    )
+    select
+      count(*) filter (where c.existing_count > 0)::integer,
+      coalesce(sum(c.existing_count), 0)::integer,
+      coalesce(sum(c.incoming_count), 0)::integer
+    from conflicts c;
+  end if;
+end;
+$$;
+
+revoke all on function public.get_group_calendar_paste_schedule_conflicts(
+  uuid, text, uuid, date, date
+) from public, anon;
+
+grant execute on function public.get_group_calendar_paste_schedule_conflicts(
+  uuid, text, uuid, date, date
+) to authenticated;
+
+drop function if exists public.paste_group_calendar_backup_to_my_calendar(
+  uuid, text, uuid, text, date, date, uuid, jsonb
+);
+
+create function public.paste_group_calendar_backup_to_my_calendar(
+  p_group_id uuid,
+  p_calendar_type text,
+  p_source_user_id uuid,
+  p_schedule_conflict_action text,
+  p_start_date date default null,
+  p_end_date date default null,
+  p_operation_id uuid default null,
+  p_category_resolutions jsonb default '[]'::jsonb
+)
+returns table (
+  success boolean,
+  message text,
+  inserted_count integer,
+  overwritten_count integer,
+  retained_count integer,
+  conflict_date_count integer
+)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_action text := lower(trim(coalesce(p_schedule_conflict_action, '')));
+  v_is_range boolean := p_start_date is not null and p_end_date is not null;
+  v_previous public.calendar_paste_operations%rowtype;
+  v_conflict_date_count integer := 0;
+  v_existing_schedule_count integer := 0;
+  v_incoming_schedule_count integer := 0;
+  v_inserted_count integer := 0;
+  v_overwritten_count integer := 0;
+  v_retained_count integer := 0;
+  v_affected_event_ranges uuid[] := '{}'::uuid[];
+begin
+  if v_user_id is null then
+    raise exception '로그인이 필요해요.' using errcode = '42501';
+  end if;
+  if p_calendar_type not in ('study', 'work', 'event') then
+    raise exception '지원하지 않는 캘린더 타입이에요.' using errcode = '22023';
+  end if;
+  if v_action not in ('reject', 'overwrite', 'merge') then
+    raise exception '일정 충돌 선택 형식이 올바르지 않아요.' using errcode = '22023';
+  end if;
+  if p_calendar_type = 'work' and v_action = 'merge' then
+    raise exception '업무 일정은 기존 일정과 함께 추가할 수 없어요.' using errcode = '22023';
+  end if;
+  if p_operation_id is null then
+    raise exception '붙여넣기 요청 식별자가 필요해요.' using errcode = '22023';
+  end if;
+  if (p_start_date is null) <> (p_end_date is null) then
+    raise exception '시작일과 종료일을 모두 입력해줘.' using errcode = '22023';
+  end if;
+  if v_is_range and p_start_date > p_end_date then
+    raise exception '시작일은 종료일보다 늦을 수 없어요.' using errcode = '22023';
+  end if;
+  if p_source_user_id = v_user_id then
+    raise exception '다른 그룹원의 백업 일정만 복사할 수 있어요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_group_members m
+    where m.group_id = p_group_id
+      and m.user_id = v_user_id
+      and m.status = 'active'
+  ) then
+    raise exception '이 그룹의 참여자가 아니에요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_groups g
+    where g.id = p_group_id
+      and case p_calendar_type
+        when 'study' then g.allow_study
+        when 'work' then g.allow_work
+        else g.allow_event
+      end
+  ) then
+    raise exception '이 그룹에서 사용할 수 없는 캘린더 타입이에요.' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.calendar_group_members m
+    where m.group_id = p_group_id
+      and m.user_id = p_source_user_id
+      and m.status = 'active'
+  ) then
+    raise exception '복사할 그룹원이 현재 참여 중이 아니에요.' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended('calendar-paste:' || v_user_id::text || ':' || p_calendar_type, 0)
+  );
+  perform pg_advisory_xact_lock(
+    hashtextextended(v_user_id::text || ':' || p_operation_id::text, 0)
+  );
+
+  delete from public.calendar_paste_operations
+  where completed_at < now() - interval '90 days';
+
+  select *
+  into v_previous
+  from public.calendar_paste_operations o
+  where o.user_id = v_user_id and o.operation_id = p_operation_id;
+
+  if found then
+    if v_previous.group_id is distinct from p_group_id
+      or v_previous.calendar_type is distinct from p_calendar_type
+      or v_previous.source_user_id is distinct from p_source_user_id
+      or v_previous.start_date is distinct from p_start_date
+      or v_previous.end_date is distinct from p_end_date
+    then
+      raise exception '이미 사용한 붙여넣기 요청 식별자예요.';
+    end if;
+
+    return query
+    select
+      true,
+      '이미 완료한 붙여넣기 요청이에요.',
+      v_previous.inserted_count,
+      v_previous.overwritten_count,
+      v_previous.retained_count,
+      v_previous.conflict_date_count;
+    return;
+  end if;
+
+  if p_calendar_type = 'work' and exists (
+    select 1
+    from public.calendar_group_shared_events e
+    where e.group_id = p_group_id
+      and e.user_id = p_source_user_id
+      and e.calendar_type = 'work'
+      and (not v_is_range or e.event_date between p_start_date and p_end_date)
+    group by e.event_date
+    having count(*) > 1
+  ) then
+    raise exception '복사본에 같은 날짜의 업무 일정이 여러 개 있어요.' using errcode = '23505';
+  end if;
+
+  select
+    preview.conflict_date_count,
+    preview.existing_schedule_count,
+    preview.incoming_schedule_count
+  into
+    v_conflict_date_count,
+    v_existing_schedule_count,
+    v_incoming_schedule_count
+  from public.get_group_calendar_paste_schedule_conflicts(
+    p_group_id,
+    p_calendar_type,
+    p_source_user_id,
+    p_start_date,
+    p_end_date
+  ) preview;
+
+  if v_incoming_schedule_count <= 0 then
+    raise exception '복사할 백업 일정이 없어요.';
+  end if;
+  if v_conflict_date_count > 0 and v_action = 'reject' then
+    raise exception '일정 충돌 선택이 필요해요.' using errcode = 'P0001';
+  end if;
+
+  if v_conflict_date_count > 0 and v_action = 'merge' then
+    v_retained_count := v_existing_schedule_count;
+  end if;
+
+  if v_conflict_date_count > 0 and v_action = 'overwrite' then
+    if p_calendar_type = 'study' then
+      delete from public.study_calendar_todos t
+      where t.user_id = v_user_id
+        and exists (
+          select 1
+          from public.calendar_group_shared_events e
+          where e.group_id = p_group_id
+            and e.user_id = p_source_user_id
+            and e.calendar_type = 'study'
+            and e.event_date = t.todo_date
+            and (not v_is_range or e.event_date between p_start_date and p_end_date)
+        );
+      get diagnostics v_overwritten_count = row_count;
+    elsif p_calendar_type = 'work' then
+      delete from public.work_calendar_todos t
+      where t.user_id = v_user_id
+        and exists (
+          select 1
+          from public.calendar_group_shared_events e
+          where e.group_id = p_group_id
+            and e.user_id = p_source_user_id
+            and e.calendar_type = 'work'
+            and e.event_date = t.work_date
+            and (not v_is_range or e.event_date between p_start_date and p_end_date)
+        );
+      get diagnostics v_overwritten_count = row_count;
+    else
+      select coalesce(array_agg(distinct t.event_range_id), '{}'::uuid[])
+      into v_affected_event_ranges
+      from public.event_calendar_todos t
+      where t.user_id = v_user_id
+        and t.event_range_id is not null
+        and exists (
+          select 1
+          from public.calendar_group_shared_events e
+          where e.group_id = p_group_id
+            and e.user_id = p_source_user_id
+            and e.calendar_type = 'event'
+            and e.event_date = t.event_date
+            and (not v_is_range or e.event_date between p_start_date and p_end_date)
+        );
+
+      delete from public.event_calendar_todos t
+      where t.user_id = v_user_id
+        and exists (
+          select 1
+          from public.calendar_group_shared_events e
+          where e.group_id = p_group_id
+            and e.user_id = p_source_user_id
+            and e.calendar_type = 'event'
+            and e.event_date = t.event_date
+            and (not v_is_range or e.event_date between p_start_date and p_end_date)
+        );
+      get diagnostics v_overwritten_count = row_count;
+
+      if cardinality(v_affected_event_ranges) > 0 then
+        with ordered as (
+          select
+            t.id,
+            t.event_range_id,
+            t.event_date,
+            lag(t.event_date) over (
+              partition by t.event_range_id order by t.event_date, t.id
+            ) as previous_date
+          from public.event_calendar_todos t
+          where t.user_id = v_user_id
+            and t.event_range_id = any(v_affected_event_ranges)
+        ), marked as (
+          select
+            o.*,
+            case
+              when o.previous_date = o.event_date - 1 then 0
+              else 1
+            end as starts_new_segment
+          from ordered o
+        ), segments as (
+          select
+            m.*,
+            sum(m.starts_new_segment) over (
+              partition by m.event_range_id order by m.event_date, m.id
+            ) as segment_number
+          from marked m
+        ), segment_ids as (
+          select
+            s.event_range_id,
+            s.segment_number,
+            gen_random_uuid() as new_range_id
+          from segments s
+          group by s.event_range_id, s.segment_number
+        )
+        update public.event_calendar_todos t
+        set event_range_id = ids.new_range_id
+        from segments s
+        join segment_ids ids
+          on ids.event_range_id = s.event_range_id
+         and ids.segment_number = s.segment_number
+        where t.id = s.id and t.user_id = v_user_id;
+      end if;
+    end if;
+  end if;
+
+  select result.inserted_count
+  into v_inserted_count
+  from public.paste_group_calendar_backup_to_my_calendar(
+    p_group_id,
+    p_calendar_type,
+    p_source_user_id,
+    p_start_date,
+    p_end_date,
+    p_operation_id,
+    p_category_resolutions
+  ) result;
+
+  if v_inserted_count is null then
+    raise exception '붙여넣기 결과를 확인하지 못했어요.';
+  end if;
+
+  update public.calendar_paste_operations o
+  set overwritten_count = v_overwritten_count,
+      retained_count = v_retained_count,
+      conflict_date_count = v_conflict_date_count,
+      schedule_conflict_action = v_action
+  where o.user_id = v_user_id and o.operation_id = p_operation_id;
+
+  if not found then
+    raise exception '붙여넣기 작업 영수증을 저장하지 못했어요.';
+  end if;
+
+  return query
+  select
+    true,
+    '캘린더 붙여넣기를 완료했어요.',
+    v_inserted_count,
+    v_overwritten_count,
+    v_retained_count,
+    v_conflict_date_count;
+end;
+$$;
+
+revoke all on function public.paste_group_calendar_backup_to_my_calendar(
+  uuid, text, uuid, text, date, date, uuid, jsonb
+) from public, anon;
+
+grant execute on function public.paste_group_calendar_backup_to_my_calendar(
+  uuid, text, uuid, text, date, date, uuid, jsonb
+) to authenticated;
+
+-- =========================================================
 -- 2026-08-02 신규 BGM 「텅 빈 거리」 판매 지원
 -- 698피클 차감, BGM 인벤토리 지급, 피클 내역 기록
 -- - 기존 원자적 구매 함수에 서버 고정 상품 정보를 추가한다.

@@ -4,11 +4,14 @@ import {
   CALENDAR_COPY_BUFFER_KEY,
   buildCalendarCategoryPreviewRpcArgs,
   buildCalendarPasteRpcArgs,
+  buildCalendarScheduleConflictPreviewRpcArgs,
   classifyCalendarPasteError,
   createCalendarCopyBuffer,
   createSingleFlight,
   getCalendarCategoryConflicts,
+  getCalendarScheduleConflictDialogCopy,
   normalizeCalendarPasteCategories,
+  normalizeCalendarScheduleConflictSummary,
   parseCalendarCopyBuffer,
   validateCalendarPasteResult,
 } from './calendar-copy-buffer.js';
@@ -141,6 +144,80 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
     });
   }
 
+  function showNotice({ title, message, closeText = '확인' }) {
+    return new Promise((resolve) => {
+      const dialog = makeDialog();
+      dialog.innerHTML = `
+        <div class="calendar-copy-dialog__card">
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(message)}</p>
+          <div class="calendar-copy-dialog__actions">
+            <button type="button" data-notice-close>${escapeHtml(closeText)}</button>
+          </div>
+        </div>
+      `;
+      const finish = () => {
+        closeDialog(dialog);
+        resolve();
+      };
+      dialog.querySelector('[data-notice-close]').onclick = finish;
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        finish();
+      }, { once: true });
+      dialog.showModal();
+      dialog.querySelector('[data-notice-close]')?.focus();
+    });
+  }
+
+  function chooseScheduleConflictAction(summary) {
+    if (summary.conflictDateCount === 0) return Promise.resolve('reject');
+    const copy = getCalendarScheduleConflictDialogCopy(
+      calendarType,
+      summary.conflictDateCount,
+    );
+
+    return new Promise((resolve) => {
+      const dialog = makeDialog();
+      dialog.innerHTML = `
+        <div class="calendar-copy-dialog__card">
+          <h2>${escapeHtml(copy.title)}</h2>
+          <p>${escapeHtml(copy.message)}</p>
+          <div class="calendar-copy-dialog__schedule-summary">
+            <strong>${summary.conflictDateCount}일</strong>
+            <span>기존 일정 ${summary.existingScheduleCount}개 · 복사 일정 ${summary.incomingScheduleCount}개</span>
+          </div>
+          <div class="calendar-copy-dialog__actions">
+            <button type="button" data-secondary>${escapeHtml(copy.secondaryLabel)}</button>
+            <button type="button" data-overwrite>${escapeHtml(copy.overwriteLabel)}</button>
+            <button type="button" data-cancel>취소</button>
+          </div>
+        </div>
+      `;
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        dialog.querySelectorAll('button').forEach((item) => {
+          item.disabled = true;
+        });
+        closeDialog(dialog);
+        resolve(value);
+      };
+      dialog.querySelector('[data-overwrite]').onclick = () => finish('overwrite');
+      dialog.querySelector('[data-secondary]').onclick = () => finish(
+        copy.secondaryAction,
+      );
+      dialog.querySelector('[data-cancel]').onclick = () => finish(null);
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        finish(null);
+      }, { once: true });
+      dialog.showModal();
+      dialog.querySelector('[data-overwrite]')?.focus();
+    });
+  }
+
   function chooseCategoryResolutions(categories) {
     const conflicts = getCalendarCategoryConflicts(categories);
     if (conflicts.length === 0) return Promise.resolve([]);
@@ -209,6 +286,14 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
     return normalizeCalendarPasteCategories(rows);
   }
 
+  async function loadScheduleConflictSummary(buffer) {
+    const rows = await rpc(
+      'get_group_calendar_paste_schedule_conflicts',
+      buildCalendarScheduleConflictPreviewRpcArgs(buffer, calendarType),
+    );
+    return normalizeCalendarScheduleConflictSummary(rows);
+  }
+
   async function storeCopy(source, mode, dates = {}) {
     const initialBuffer = createCalendarCopyBuffer({
       mode,
@@ -237,6 +322,7 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
         <button type="button" data-copy-all>전체복사</button>
         <button type="button" data-copy-range>날짜지정복사</button>
       </div>
+      <p class="calendar-copy-dialog__error" data-error hidden></p>
       <div class="calendar-copy-dialog__actions"><button type="button" data-cancel>취소</button></div>
     `;
     card.querySelector('[data-cancel]').onclick = () => closeDialog(dialog);
@@ -245,14 +331,19 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
       actionButtons.forEach((item) => { item.disabled = true; });
       try {
         await storeCopy(source, 'all');
-        window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 전체를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
         closeDialog(dialog);
+        await showNotice({
+          title: '캘린더 복사 완료',
+          message: `${source.nickname}님의 ${LABELS[calendarType]} 캘린더 전체를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`,
+        });
       } catch (error) {
         console.error('[calendar-copy-paste] copy buffer save failed', {
           code: error?.code || null,
           status: error?.status || null,
         });
-        window.alert(classifyCalendarPasteError(error).message);
+        const errorEl = card.querySelector('[data-error]');
+        errorEl.textContent = classifyCalendarPasteError(error).message;
+        errorEl.hidden = false;
         actionButtons.forEach((item) => { item.disabled = false; });
       }
     };
@@ -296,8 +387,11 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
       actionButtons.forEach((item) => { item.disabled = true; });
       try {
         await storeCopy(source, 'range', { startDate, endDate });
-        window.alert(`${source.nickname}님의 ${LABELS[calendarType]} 캘린더 중 ${formatDate(startDate)} ~ ${formatDate(endDate)} 범위를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`);
         closeDialog(dialog);
+        await showNotice({
+          title: '캘린더 복사 완료',
+          message: `${source.nickname}님의 ${LABELS[calendarType]} 캘린더 중 ${formatDate(startDate)} ~ ${formatDate(endDate)} 범위를 복사했어. 개인 ${LABELS[calendarType]} 캘린더에서 붙여넣을 수 있어.`,
+        });
       } catch (saveError) {
         console.error('[calendar-copy-paste] copy buffer save failed', {
           code: saveError?.code || null,
@@ -346,24 +440,36 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
           : reason === 'storage'
             ? '복사본 저장소를 사용할 수 없어. 앱이나 브라우저 설정을 확인해줘.'
             : '붙여넣을 복사본이 없어. 그룹 캘린더에서 먼저 복사해줘.';
-        window.alert(message);
+        await showNotice({ title: '붙여넣을 수 없어', message });
         return;
       }
 
       const isRange = buffer.mode === 'range';
-      const confirmed = await confirmPaste(isRange
-        ? {
-          title: '캘린더 범위 붙여넣기',
-          message: `'${buffer.sourceNickname}'님의 ${formatDate(buffer.startDate)} ~ ${formatDate(buffer.endDate)} 일정을 내 ${LABELS[calendarType]} 캘린더에 새 일정으로 추가해. 계속할까?`,
-        }
-        : {
-          title: '캘린더 붙여넣기',
-          message: `'${buffer.sourceNickname}'님의 ${LABELS[calendarType]} 일정 ${buffer.backupCount}개를 내 캘린더에 새 일정으로 추가해. 계속할까?`,
-        });
-      if (!confirmed) return;
 
       try {
-        const categories = await loadPasteCategories(buffer);
+        const [categories, scheduleConflictSummary] = await Promise.all([
+          loadPasteCategories(buffer),
+          loadScheduleConflictSummary(buffer),
+        ]);
+        let scheduleConflictAction = 'reject';
+        if (scheduleConflictSummary.conflictDateCount > 0) {
+          scheduleConflictAction = await chooseScheduleConflictAction(
+            scheduleConflictSummary,
+          );
+          if (!scheduleConflictAction) return;
+        } else {
+          const confirmed = await confirmPaste(isRange
+            ? {
+              title: '캘린더 범위 붙여넣기',
+              message: `'${buffer.sourceNickname}'님의 ${formatDate(buffer.startDate)} ~ ${formatDate(buffer.endDate)} 일정을 내 ${LABELS[calendarType]} 캘린더에 새 일정으로 추가해. 계속할까?`,
+            }
+            : {
+              title: '캘린더 붙여넣기',
+              message: `'${buffer.sourceNickname}'님의 ${LABELS[calendarType]} 일정 ${buffer.backupCount}개를 내 캘린더에 새 일정으로 추가해. 계속할까?`,
+            });
+          if (!confirmed) return;
+        }
+
         const categoryResolutions = await chooseCategoryResolutions(categories);
         if (categoryResolutions === null) return;
 
@@ -373,26 +479,45 @@ export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
             buffer,
             calendarType,
             categoryResolutions,
+            scheduleConflictAction,
           ),
         );
-        const { insertedCount } = validateCalendarPasteResult(data);
+        const result = validateCalendarPasteResult(data);
         clearBuffer();
         await refreshCalendarWidgets({ force: true });
 
-        try {
-          await onPasted?.();
-        } catch (refreshError) {
-          console.warn('[calendar-copy-paste] calendar refresh callback failed');
-        }
+        const details = [
+          `새 일정 ${result.insertedCount}개`,
+          result.overwrittenCount > 0
+            ? `기존 일정 ${result.overwrittenCount}개 교체`
+            : '',
+          result.retainedCount > 0
+            ? `기존 일정 ${result.retainedCount}개 유지`
+            : '',
+        ].filter(Boolean).join(' · ');
+        await showNotice({
+          title: '붙여넣기 완료',
+          message: `내 ${LABELS[calendarType]} 캘린더에 ${details}.`,
+        });
 
-        window.alert(`붙여넣기 완료. 내 ${LABELS[calendarType]} 캘린더에 새 일정 ${insertedCount}개를 추가했어.`);
-        window.location.reload();
+        if (typeof onPasted === 'function') {
+          try {
+            await onPasted();
+          } catch {
+            console.warn('[calendar-copy-paste] calendar refresh callback failed');
+          }
+        } else {
+          window.location.reload();
+        }
       } catch (error) {
         console.error('[calendar-copy-paste] paste failed:', {
           code: error?.code || null,
           status: error?.status || null,
         });
-        window.alert(classifyCalendarPasteError(error).message);
+        await showNotice({
+          title: '붙여넣지 못했어',
+          message: classifyCalendarPasteError(error).message,
+        });
       }
     });
 

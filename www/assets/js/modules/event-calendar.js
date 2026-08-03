@@ -14,6 +14,10 @@ import {
   getSharedPersonalGroupName,
 } from './calendar-shared-personal.js';
 import {
+  createCalendarScheduleListContent,
+  formatCalendarScheduleListTime,
+  getEditableCalendarScheduleSource,
+  isReadonlySharedPersonalDetail,
   renderSharedPersonalReadonlyDetail,
 } from './calendar-shared-personal-readonly.js';
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
@@ -877,6 +881,8 @@ function renderTodoList({
   onSaveEdit,
   onOpenDetail,
   readonlyDetails = [],
+  groupActive = false,
+  selectedGroupId = '',
 }) {
   const list = document.getElementById('eventTodoList');
   const empty = document.getElementById('eventTodoEmpty');
@@ -899,25 +905,29 @@ function renderTodoList({
     openButton.type = 'button';
     openButton.className = 'event-todo-item__open';
     openButton.setAttribute('aria-label', `${todo.text} 상세보기`);
-    const body = document.createElement('div');
-    body.className = 'event-todo-item__body';
-
     const category = getCategoryByTodo(todo, categories);
-    const type = document.createElement('span');
-    type.className = 'event-todo-item__type';
-    type.textContent = category.name || todo.type || '일정';
-    type.style.setProperty('--todo-category-color', category.color);
-    type.style.setProperty('--todo-category-text', getCategoryTextColor(category.color));
-
-    const text = document.createElement('strong');
-    text.className = 'event-todo-item__text';
-    text.textContent = todo.text || '일정';
-
-    const memo = document.createElement('p');
-    memo.className = 'event-todo-item__summary';
-    memo.textContent = String(todo.memo || '').trim() || '메모 없음';
-
-    body.append(type, text, memo);
+    const body = createCalendarScheduleListContent({
+      bodyClass: 'event-todo-item__body',
+      categoryClass: 'event-todo-item__type',
+      categoryName: category.name || todo.type || '일정',
+      categoryColor: category.color,
+      categoryTextColor: getCategoryTextColor(category.color),
+      source: getEditableCalendarScheduleSource({
+        todo,
+        category,
+        groupActive,
+        selectedGroupId,
+      }),
+      timeLabel: formatCalendarScheduleListTime({
+        calendarType: 'event',
+        startTime: todo.eventTime,
+        endTime: todo.eventEndTime,
+        date: todo.date || selectedDateKey,
+        isAllDay: Boolean(todo.isAllDay),
+      }),
+      title: todo.text || '일정',
+      memo: todo.memo,
+    });
     openButton.append(body);
     openButton.addEventListener('click', () => onOpenDetail?.(todo, openButton));
     item.append(openButton);
@@ -1345,7 +1355,8 @@ async function initPageCalendar(loadingController) {
   }
 
   function renderAll() {
-    const readonlyDetails = isCalendarGroupActive(state.group?.state)
+    const groupActive = isCalendarGroupActive(state.group?.state);
+    const readonlyDetails = groupActive
       ? collectSharedPersonalReadonlyDetails({
           groupState: state.group.state,
           dateKey: state.selectedDateKey,
@@ -1367,6 +1378,8 @@ async function initPageCalendar(loadingController) {
       onSaveEdit: saveTodoEdit,
       onOpenDetail: openTodoDetail,
       readonlyDetails,
+      groupActive,
+      selectedGroupId: state.group?.state?.selectedGroup?.id || '',
     });
 
     renderCategoryList({
@@ -1427,7 +1440,9 @@ async function initPageCalendar(loadingController) {
       (todo) => todo.id === todoId,
     );
 
-    if (!target) return false;
+    if (!target || isReadonlySharedPersonalDetail(target, state.userId)) {
+      return false;
+    }
 
     try {
       await deleteTodoRange(todoId);
@@ -1458,7 +1473,7 @@ async function initPageCalendar(loadingController) {
     const fallback = getFallbackCategory(state.categories);
     const nextCategory = category || fallback;
 
-    if (!target) return;
+    if (!target || isReadonlySharedPersonalDetail(target, state.userId)) return;
 
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
@@ -1509,10 +1524,12 @@ async function initPageCalendar(loadingController) {
   }
 
   function openTodoDetail(todo, opener) {
+    if (isReadonlySharedPersonalDetail(todo, state.userId)) return;
     openEventDetailSheet({ todo, opener });
   }
 
   function openEventDetailSheet({ todo = null, opener = entrySheetOpen } = {}) {
+    if (todo && isReadonlySharedPersonalDetail(todo, state.userId)) return;
     const isEdit = Boolean(todo?.id);
     const category = isEdit ? getCategoryByTodo(todo, state.categories) : getFallbackCategory(state.categories);
     const todoDateRange = isEdit ? getTodoDateRange(todo, state.store) : [];

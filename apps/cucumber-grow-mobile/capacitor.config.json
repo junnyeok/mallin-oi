@@ -1,0 +1,39 @@
+{
+  "appId": "com.mallinoi.cucumbergrow.dev",
+  "appName": "말린오이: 오이키우기",
+  "webDir": "dist",
+  "loggingBehavior": "none",
+  "backgroundColor": "#dff3dc",
+  "android": {
+    "backgroundColor": "#dff3dc",
+    "allowMixedContent": false
+  },
+  "ios": {
+    "backgroundColor": "#dff3dc",
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  },
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchFadeOutDuration": 220,
+      "backgroundColor": "#dff3dc",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP",
+      "splashFullScreen": true,
+      "splashImmersive": false
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK",
+      "backgroundColor": "#00000000"
+    },
+    "ScreenOrientation": {
+      "orientation": "portrait"
+    }
+  }
+}

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>일정 목록 출처 배지 브라우저 검증</title>
+    <link rel="stylesheet" href="../../assets/css/00-reset.css" />
+    <link rel="stylesheet" href="../../assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="../../assets/css/02-base.css" />
+    <link rel="stylesheet" href="../../assets/css/main/calendar-event-main.css" />
+    <link rel="stylesheet" href="../../assets/css/main/calendar-study-main.css" />
+    <link rel="stylesheet" href="../../assets/css/main/calendar-work-main.css" />
+    <link rel="stylesheet" href="../../assets/css/components/calendar-entry-sheet.css" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/main/calendar-groups-main.css?v=badge-time-ui"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: var(--space-24);
+        background: #f7f7f7;
+      }
+
+      .fixture-panel {
+        width: min(100%, 480px);
+        margin: 0 auto;
+        padding: var(--space-16);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-panel);
+        background: var(--color-surface);
+      }
+
+      .fixture-panel h1 {
+        margin: 0 0 var(--space-16);
+        font-size: var(--text-h2);
+      }
+
+      .fixture-mobile-frame {
+        display: block;
+        width: 360px;
+        height: 780px;
+        margin: 0 auto;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="fixture-panel">
+      <h1 id="fixtureTitle"></h1>
+      <ul id="fixtureList"></ul>
+    </main>
+    <iframe
+      id="fixtureMobileFrame"
+      class="fixture-mobile-frame"
+      title="360px 모바일 일정 목록"
+      hidden
+    ></iframe>
+
+    <script>
+      window.__calendarMutationRequests = [];
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = (input, init = {}) => {
+        const method = String(init.method || 'GET').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+          window.__calendarMutationRequests.push({
+            method,
+            url: String(input?.url || input || ''),
+          });
+        }
+        return originalFetch(input, init);
+      };
+    </script>
+
+    <script type="module">
+      import {
+        createCalendarScheduleListContent,
+        getEditableCalendarScheduleSource,
+        normalizeSharedPersonalDetail,
+        renderSharedPersonalReadonlyDetail,
+      } from '../../assets/js/modules/calendar-shared-personal-readonly.js';
+
+      const fixtures = {
+        event: {
+          itemClass: 'event-todo-item',
+          listClass: 'event-todo-list',
+          title: '이벤트 캘린더',
+          event: {
+            id: 'event-backup',
+            group_id: 'group-a',
+            user_id: 'other-user',
+            calendar_type: 'event',
+            source_event_id: 'event-source',
+            event_date: '2026-08-08',
+            event_type: 'schedule',
+            title: '주간상시',
+            memo: '',
+            color: '#eadfff',
+            payload: {
+              categoryName: '일정',
+              eventTime: '20:00',
+              eventEndTime: '22:00',
+            },
+          },
+        },
+        study: {
+          itemClass: 'study-todo-item',
+          listClass: 'study-todo-list',
+          title: '자기개발 캘린더',
+          event: {
+            id: 'study-backup',
+            group_id: 'group-a',
+            user_id: 'other-user',
+            calendar_type: 'study',
+            source_event_id: 'study-source',
+            event_date: '2026-08-03',
+            event_type: 'study',
+            title: '영어 단어 공부',
+            memo: '단어 20개 복습',
+            color: '#e7f6ff',
+            payload: {
+              categoryName: '공부',
+              todoTime: '21:00',
+              todoEndDate: '2026-08-03',
+              todoEndTime: '22:00',
+              isDone: true,
+            },
+          },
+        },
+        work: {
+          itemClass: 'work-todo-item',
+          listClass: 'work-todo-list',
+          title: '업무 캘린더',
+          event: {
+            id: 'work-backup',
+            group_id: 'group-a',
+            user_id: 'other-user',
+            calendar_type: 'work',
+            source_event_id: 'work-source',
+            event_date: '2026-08-04',
+            event_type: 'night',
+            title: '야간',
+            memo: '인수인계 확인',
+            color: '#eeeeee',
+            payload: {
+              categoryName: '야간',
+              workText: '야간 근무',
+              categoryStartTime: '22:00',
+              categoryEndTime: '06:00',
+              categoryEndsNextDay: true,
+            },
+          },
+        },
+      };
+
+      const requestedType = new URLSearchParams(location.search).get('type');
+      const calendarType = fixtures[requestedType] ? requestedType : 'event';
+      const fixture = fixtures[calendarType];
+
+      document.body.className = `theme-${calendarType}`;
+      document.body.dataset.page = `calendar-${calendarType}`;
+      document.querySelector('main').id = `${calendarType}CalendarPage`;
+      document.getElementById('fixtureTitle').textContent = fixture.title;
+
+      const list = document.getElementById('fixtureList');
+      list.className = fixture.listClass;
+      const detail = normalizeSharedPersonalDetail(fixture.event, {
+        calendarType,
+        currentUserId: 'current-user',
+        ownerName: '아주 긴 닉네임을 사용하는 다른 회원',
+        groupId: 'group-a',
+      });
+      renderSharedPersonalReadonlyDetail({
+        list,
+        detail,
+        itemClass: fixture.itemClass,
+      });
+
+      const categoryClass = `${calendarType}-todo-item__type`;
+
+      function appendEditableCard({ shared = false } = {}) {
+        const item = document.createElement('li');
+        item.className = fixture.itemClass;
+        item.dataset.fixtureSource = shared ? 'group' : 'own';
+
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.className = `${calendarType}-todo-item__open`;
+        openButton.setAttribute(
+          'aria-label',
+          `${shared ? '우리' : '내'} ${detail.title} 상세보기`,
+        );
+        openButton.append(createCalendarScheduleListContent({
+          bodyClass: `${calendarType}-todo-item__body`,
+          categoryClass,
+          categoryName: detail.categoryName,
+          categoryColor: detail.color,
+          source: getEditableCalendarScheduleSource({
+            todo: shared
+              ? { sharedGroupId: 'group-a', isSharedCopy: true }
+              : { id: 'personal-item' },
+            groupActive: true,
+            selectedGroupId: 'group-a',
+          }),
+          timeLabel: shared ? detail.timeLabel : '시간 미지정',
+          title: detail.title,
+          memo: shared ? '함께 보는 일정' : '',
+        }));
+        item.append(openButton);
+        list.append(item);
+      }
+
+      appendEditableCard();
+      appendEditableCard({ shared: true });
+
+      const mobileFrame = document.getElementById('fixtureMobileFrame');
+      const isMobileShell = new URLSearchParams(location.search).get('shell') === 'mobile';
+      if (isMobileShell) {
+        document.querySelector('main').hidden = true;
+        mobileFrame.hidden = false;
+        mobileFrame.addEventListener('load', () => {
+          document.body.dataset.ready = 'true';
+        }, { once: true });
+        mobileFrame.src = `?type=${calendarType}&v=badge-time-ui`;
+      } else {
+        document.body.dataset.ready = 'true';
+      }
+    </script>
+  </body>
+</html>

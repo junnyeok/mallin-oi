@@ -442,6 +442,24 @@ export const OZYO_CUCUMBER_SKIN_PREVIEW = [
   },
 ];
 
+export const KIND_CUCUMBER_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-kind',
+    label: '당신의 친절한 오이',
+    imagePath: withAssetVersion('./images/skins/spioi.png'),
+    displayOrder: 1,
+  },
+];
+
+export const INOMSKE_GRILLED_EGG_SKIN_PREVIEW = [
+  {
+    code: 'char-grilled-egg-inomske',
+    label: '이놈스케',
+    imagePath: withAssetVersion('./images/skins/inomske.png'),
+    displayOrder: 1,
+  },
+];
+
 export const AVOCADO_CAFE_SKIN_PREVIEW = [
   {
     code: 'char-fat-avocado-cafe',
@@ -1616,7 +1634,7 @@ export const STORE_ITEMS = [
     previewAudioPath: withAssetVersion('./assets/mp3/Burning-Soul.mp3'),
     price: 665,
     state: '판매 중',
-    description: "단다단 OST 'Hunting Soul'을 참고해봤어.",
+    description: 'X-Japan을 사랑하는 테토당근의 리메이크 강렬한 록 사운드 곡이야.',
     detailDescription:
       '강렬한 록 사운드가 돋보이는 BGM이야.<br>(구매하면 내 프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.)',
     previewImages: BURNING_SOUL_BGM_PREVIEW,
@@ -1728,6 +1746,38 @@ export const STORE_ITEMS = [
     releaseDate: '2026-07-28',
     isPurchasable: true,
   },
+  {
+    id: 'skin-cucumber-04',
+    name: '당신의 친절한 오이',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥒🤝',
+    thumbImagePath: withAssetVersion('./images/skins/spioi.png'),
+    price: 621,
+    state: '판매 중',
+    description: '냉장고의 안전을 지키는 다정한 오이야.',
+    detailDescription:
+      '구매하면 내 프로필의 기본오이 스킨 인벤토리에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: KIND_CUCUMBER_SKIN_PREVIEW,
+    releaseDate: '2026-08-03',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-grilled-egg-02',
+    name: '이놈스케',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥚⚔️',
+    thumbImagePath: withAssetVersion('./images/skins/inomske.png'),
+    price: 689,
+    state: '판매 중',
+    description: '오늘 헬스를 완료하지 않았다면 이놈스케가 가만히 두지 않을 거야.',
+    detailDescription:
+      '구매하면 내 프로필의 구운계란 스킨 인벤토리에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: INOMSKE_GRILLED_EGG_SKIN_PREVIEW,
+    releaseDate: '2026-08-03',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -1737,6 +1787,8 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'skin-cucumber-04',
+  'skin-grilled-egg-02',
   'bgm-potato-02',
   'BF-02',
   'bgm-tetocarrto-02',
@@ -1863,6 +1915,14 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: 'skin-cucumber-03',
   },
   {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-kind',
+    skin_name: '당신의 친절한 오이',
+    image_path: withAssetVersion('./images/skins/spioi.png'),
+    display_order: 4,
+    store_item_id: 'skin-cucumber-04',
+  },
+  {
     character_code: 'char-cucumber-girl',
     skin_code: 'char-cucumber-girl-basic',
     skin_name: '오이소녀 캐릭터',
@@ -1933,6 +1993,14 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/skins/grilledegg-PT.png'),
     display_order: 402,
     store_item_id: 'skin-grilledegg-01',
+  },
+  {
+    character_code: 'char-grilled-egg',
+    skin_code: 'char-grilled-egg-inomske',
+    skin_name: '이놈스케',
+    image_path: withAssetVersion('./images/skins/inomske.png'),
+    display_order: 403,
+    store_item_id: 'skin-grilled-egg-02',
   },
   {
     character_code: 'char-cucumber',

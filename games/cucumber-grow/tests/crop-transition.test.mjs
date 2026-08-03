@@ -360,57 +360,41 @@ test("심기 또는 화면 이탈은 안내 문구와 대기 타이머를 즉시
   );
 });
 
-test("다중 슬롯 이벤트 연결과 CSS는 별도 심기 입력, 중복 방지, 비간섭, reduced motion을 보장한다", async () => {
-  const [mainSource, css, html] = await Promise.all([
+test("단일 작물 입력은 포인터 카메라에서 탭·드래그를 구분하고 reduced motion을 보장한다", async () => {
+  const [mainSource, cameraSource, css, html] = await Promise.all([
     readFile(new URL("../js/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../js/world-camera.js", import.meta.url), "utf8"),
     readFile(new URL("../css/game.css", import.meta.url), "utf8"),
     readFile(new URL("../index.html", import.meta.url), "utf8"),
   ]);
-  const interactionSource = mainSource.slice(
-    mainSource.indexOf("function interactWithSlot"),
-    mainSource.indexOf(
-      'ui.elements.plotList.addEventListener("pointerdown"'
-    )
-  );
-
-  assert.match(
-    interactionSource,
-    /!target\.slot\.isPlanted[\s\S]*plantSlot\(plotId, slotId\)[\s\S]*return;[\s\S]*isHarvestReady[\s\S]*harvestSlot\(plotId, slotId\)[\s\S]*return;[\s\S]*waterSlot\(event, plotId, slotId\)/
-  );
-  assert.match(mainSource, /lastPointerInteractionAtBySlot/);
-  assert.match(mainSource, /< 700/);
-  assert.match(
-    mainSource,
-    /const slotLocks = new Set\(\)/
-  );
-  assert.match(
-    mainSource,
-    /event\.detail !== 0/
-  );
-  assert.match(
-    mainSource,
-    /async function harvestSlot\(plotId, slotId\)[\s\S]*await transition/
-  );
-  assert.doesNotMatch(mainSource, /addEventListener\("touchstart"/);
+  assert.match(mainSource, /onTap:\s*handleWorldTap/);
+  assert.match(mainSource, /plantCrop\(state, plotId\)/);
+  assert.match(mainSource, /harvestCrop\(state, plotId\)/);
+  assert.match(mainSource, /useWateringCan\(state, plotId\)/);
+  assert.match(cameraSource, /addEventListener\("pointerdown"/);
+  assert.match(cameraSource, /addEventListener\("pointermove"/);
+  assert.match(cameraSource, /addEventListener\("pointercancel"/);
+  assert.doesNotMatch(cameraSource, /addEventListener\("touchstart"/);
+  assert.match(cameraSource, /event\.preventDefault\(\)/);
   assert.match(
     css,
-    /\.crop-slot__empty-cue\s*\{[^}]*pointer-events:\s*none/s
+    /\.empty-marker\s*\{[^}]*pointer-events:\s*none/s
   );
   assert.match(
     css,
-    /\.crop-transition-layer,\s*\.xp-gain-layer\s*\{[^}]*pointer-events:\s*none/s
+    /\.crop-image,\s*\.crop-fallback\s*\{[^}]*pointer-events:\s*none/s
   );
   assert.match(
     css,
-    /\.touch-effects\s*\{[^}]*pointer-events:\s*none/s
+    /\.crop-button\s*\{[^}]*touch-action:\s*none/s
   );
   assert.match(
     css,
-    /\.crop-slot-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s
+    /\.plot-list\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s
   );
   assert.match(
     css,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.crop-transition-effect\s*\{[^}]*display:\s*none/s
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation-duration:\s*0\.01ms/s
   );
   assert.doesNotMatch(html, /id="plantingGuide"/);
   assert.doesNotMatch(html, /빈 밭을 톡! 새싹을 심어주세요/);

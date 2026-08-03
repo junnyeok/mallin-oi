@@ -1,0 +1,14 @@
+node_modules/
+dist/
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+ios/App/App/public/
+ios/App/DerivedData/
+ios/App/*.xcworkspace/xcuserdata/
+ios/App/*.xcodeproj/xcuserdata/
+*.xcuserstate
+local.properties
+.DS_Store

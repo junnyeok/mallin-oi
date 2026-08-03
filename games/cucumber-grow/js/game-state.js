@@ -1,63 +1,36 @@
-import { GAME_CONFIG } from "./game-config.js";
+import { GAME_CONFIG, getThreatDefinitionById } from "./game-config.js";
+import { getCoordinatesForIndex } from "./board-geometry.js";
 import { toSafeCount, toSafeNonNegativeNumber } from "./number-format.js";
 
-const LEGACY_CROP_FIELDS = Object.freeze([
-  "growthExperience",
-  "growthStageId",
-  "isPlanted",
-]);
+const LEGACY_V2_SLOTS_PER_PLOT = 4;
+const LEGACY_CROP_FIELDS = ["growthExperience", "growthStageId", "isPlanted"];
 
-function sanitizeTimestamp(value, fallback, now) {
-  const timestamp = toSafeNonNegativeNumber(value, fallback);
+const DEFAULT_SETTINGS = Object.freeze({
+  bgmEnabled: true,
+  bgmVolume: 0.45,
+  sfxEnabled: true,
+  sfxVolume: 0.72,
+  hapticsEnabled: true,
+  reducedMotion: false,
+});
 
-  if (timestamp <= 0 || timestamp > now) {
-    return fallback;
-  }
-
-  return Math.floor(timestamp);
+function safeTimestamp(value, fallback, now) {
+  const timestamp = Math.floor(toSafeNonNegativeNumber(value, fallback));
+  if (timestamp <= 0 || timestamp > now) return fallback;
+  return timestamp;
 }
 
-function createEmptyFacilities() {
-  return Object.fromEntries(
-    GAME_CONFIG.facilities.map((facility) => [facility.id, 0])
-  );
-}
-
-function normalizeStableId(value, fallback) {
-  if (
+function normalizeId(value, fallback, usedIds) {
+  const preferred =
     typeof value === "string" &&
     /^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,127}$/.test(value)
-  ) {
-    return value;
-  }
-
-  return fallback;
-}
-
-function getStageIdForExperience(experience) {
-  return (
-    [...GAME_CONFIG.growthStages]
-      .reverse()
-      .find((stage) => experience >= stage.minimumExperience)?.id ??
-    GAME_CONFIG.growthStages[0].id
-  );
-}
-
-function normalizeFacilities(rawFacilities) {
-  return Object.fromEntries(
-    GAME_CONFIG.facilities.map((facility) => [
-      facility.id,
-      toSafeCount(rawFacilities?.[facility.id]),
-    ])
-  );
-}
-
-function createUniqueId(preferredId, fallbackPrefix, usedIds) {
-  let candidate = normalizeStableId(preferredId, fallbackPrefix);
+      ? value
+      : fallback;
+  let candidate = preferred;
   let suffix = 2;
 
   while (usedIds.has(candidate)) {
-    candidate = `${fallbackPrefix}-${suffix}`;
+    candidate = `${fallback}-${suffix}`;
     suffix += 1;
   }
 
@@ -65,25 +38,112 @@ function createUniqueId(preferredId, fallbackPrefix, usedIds) {
   return candidate;
 }
 
-export function createEmptySlot(plotId, slotNumber) {
+function stageIdForCropXp(cropXp) {
+  return (
+    [...GAME_CONFIG.crops.growthStages]
+      .reverse()
+      .find((stage) => cropXp >= stage.minimumExperience)?.id ??
+    GAME_CONFIG.crops.growthStages[0].id
+  );
+}
+
+export function createEmptyCrop() {
   return {
-    slotId: `${plotId}-slot-${slotNumber}`,
     isPlanted: false,
-    xp: 0,
-    growthStageId: GAME_CONFIG.growthStages[0].id,
+    cropXp: 0,
+    growthStageId: GAME_CONFIG.crops.growthStages[0].id,
+    yieldPenalty: 0,
   };
 }
 
-export function createGardenPlot(plotNumber = 1) {
-  const safePlotNumber = Math.max(1, toSafeCount(plotNumber) || 1);
-  const plotId = `garden-${safePlotNumber}`;
+function normalizeCrop(rawCrop) {
+  const isPlanted = rawCrop?.isPlanted === true;
+  const cropXp = isPlanted
+    ? Math.min(
+        toSafeNonNegativeNumber(
+          rawCrop?.cropXp,
+          toSafeNonNegativeNumber(
+            rawCrop?.xp,
+            toSafeNonNegativeNumber(rawCrop?.growthExperience)
+          )
+        ),
+        GAME_CONFIG.crops.harvestExperience
+      )
+    : 0;
 
   return {
-    plotId,
-    type: "garden",
-    slots: Array.from({ length: GAME_CONFIG.slotsPerPlot }, (_, index) =>
-      createEmptySlot(plotId, index + 1)
-    ),
+    isPlanted,
+    cropXp,
+    growthStageId: stageIdForCropXp(cropXp),
+    yieldPenalty: isPlanted
+      ? Math.floor(toSafeNonNegativeNumber(rawCrop?.yieldPenalty))
+      : 0,
+  };
+}
+
+export function createGardenPlot(plotNumber = 1, rawCrop = null) {
+  const order = Math.max(1, toSafeCount(plotNumber) || 1);
+  const coordinate = getCoordinatesForIndex(order - 1);
+
+  return {
+    plotId: `garden-${order}`,
+    order,
+    row: coordinate.row,
+    column: coordinate.column,
+    crop: rawCrop ? normalizeCrop(rawCrop) : createEmptyCrop(),
+  };
+}
+
+function createInventory() {
+  return {
+    wateringCan: 1,
+    hammer: 1,
+    sprinkler: 0,
+    rainBarrel: 0,
+    scarecrow: 0,
+    generator: 0,
+    greenhouse: 0,
+  };
+}
+
+function normalizeInventory(rawInventory) {
+  const initial = createInventory();
+
+  Object.keys(initial).forEach((key) => {
+    initial[key] = toSafeCount(rawInventory?.[key]);
+  });
+  initial.wateringCan = Math.max(1, initial.wateringCan);
+  initial.hammer = Math.max(1, initial.hammer);
+  return initial;
+}
+
+function normalizeSettings(rawSettings) {
+  const source =
+    rawSettings && typeof rawSettings === "object" && !Array.isArray(rawSettings)
+      ? rawSettings
+      : {};
+  const volume = (value, fallback) =>
+    Math.min(1, Math.max(0, toSafeNonNegativeNumber(value, fallback)));
+
+  return {
+    bgmEnabled: source.bgmEnabled !== false,
+    bgmVolume: volume(source.bgmVolume, DEFAULT_SETTINGS.bgmVolume),
+    sfxEnabled: source.sfxEnabled !== false,
+    sfxVolume: volume(source.sfxVolume, DEFAULT_SETTINGS.sfxVolume),
+    hapticsEnabled: source.hapticsEnabled !== false,
+    reducedMotion: source.reducedMotion === true,
+  };
+}
+
+function createTurn(now) {
+  return {
+    day: 1,
+    phase: "day",
+    phaseStartedAt: now,
+    phaseEndsAt: now + GAME_CONFIG.turn.dayDurationMs,
+    lastEffectAt: now,
+    nextThreatAt: now + GAME_CONFIG.threats.dayIntervalMs,
+    preparationCollectedDay: 0,
   };
 }
 
@@ -91,21 +151,30 @@ export function createInitialGameState(now = Date.now()) {
   const safeNow = Math.floor(toSafeNonNegativeNumber(now, Date.now()));
 
   return {
-    saveVersion: GAME_CONFIG.saveVersion,
+    schemaVersion: GAME_CONFIG.schemaVersion,
+    saveVersion: GAME_CONFIG.schemaVersion,
     cucumbers: 0,
+    coins: GAME_CONFIG.economy.startingCoins,
     totalEarned: 0,
-    touchYield: GAME_CONFIG.touchExperience,
+    playerXp: 0,
+    playerLevel: 1,
     harvestCount: 0,
-    facilities: createEmptyFacilities(),
-    perSecond: 0,
-    plots: [],
-    hasClaimedFreeGarden: false,
-    nextPlotSequence: 1,
-    autoXpCursor: 0,
-    automaticXpRemainder: 0,
+    plots: [createGardenPlot(1)],
+    nextPlotSequence: 2,
+    inventory: createInventory(),
+    baseItemsGranted: true,
+    facilities: [],
+    legacyFacilities: {},
+    resources: {
+      water: GAME_CONFIG.resources.startingWater,
+      fuel: GAME_CONFIG.resources.startingFuel,
+      energy: GAME_CONFIG.resources.startingEnergy,
+    },
+    turn: createTurn(safeNow),
+    threats: [],
     lastSavedAt: safeNow,
     startedAt: safeNow,
-    settings: {},
+    settings: { ...DEFAULT_SETTINGS },
   };
 }
 
@@ -115,162 +184,367 @@ export function detectGameStateSchema(rawState) {
   }
 
   if (
-    rawState.saveVersion === GAME_CONFIG.saveVersion &&
+    (rawState.schemaVersion === GAME_CONFIG.schemaVersion ||
+      rawState.saveVersion === GAME_CONFIG.schemaVersion) &&
     Array.isArray(rawState.plots)
+  ) {
+    return "v4";
+  }
+
+  if (
+    (rawState.schemaVersion === 3 || rawState.saveVersion === 3) &&
+    Array.isArray(rawState.plots)
+  ) {
+    return "v3";
+  }
+
+  if (
+    rawState.saveVersion === 2 ||
+    rawState.plots?.some?.((plot) => Array.isArray(plot?.slots))
   ) {
     return "v2";
   }
 
   if (
     rawState.saveVersion === 1 ||
-    (!("plots" in rawState) &&
-      LEGACY_CROP_FIELDS.some((field) => field in rawState))
+    LEGACY_CROP_FIELDS.some((field) => field in rawState)
   ) {
     return "legacy";
   }
 
-  return "unsupported";
+  return "partial";
 }
 
-function normalizeSlot(rawSlot, plotId, slotNumber, usedSlotIds) {
-  const fallbackId = `${plotId}-slot-${slotNumber}`;
-  const slotId = createUniqueId(
-    rawSlot?.slotId,
-    fallbackId,
-    usedSlotIds
-  );
-  const isPlanted = rawSlot?.isPlanted === true;
-  const xp = isPlanted
-    ? Math.min(
-        toSafeNonNegativeNumber(rawSlot?.xp),
-        GAME_CONFIG.harvestExperience
-      )
-    : 0;
+function normalizePlots(rawPlots) {
+  const source = Array.isArray(rawPlots) && rawPlots.length > 0
+    ? rawPlots
+    : [createGardenPlot(1)];
+  const usedIds = new Set();
+  const usedCoordinates = new Set();
 
-  return {
-    slotId,
-    isPlanted,
-    xp,
-    growthStageId: getStageIdForExperience(xp),
-  };
-}
+  return source.map((rawPlot, index) => {
+    const fallback = createGardenPlot(index + 1);
+    const requestedRow = toSafeCount(rawPlot?.row);
+    const requestedColumn = toSafeCount(rawPlot?.column);
+    const coordinateKey = `${requestedRow}:${requestedColumn}`;
+    const coordinateIsValid =
+      requestedColumn < GAME_CONFIG.board.columns &&
+      !usedCoordinates.has(coordinateKey);
+    const coordinate = coordinateIsValid
+      ? { row: requestedRow, column: requestedColumn }
+      : getCoordinatesForIndex(index);
+    const stableCoordinateKey = `${coordinate.row}:${coordinate.column}`;
 
-function normalizeV2State(rawState, safeNow) {
-  const initial = createInitialGameState(safeNow);
-  const usedPlotIds = new Set();
-  const usedSlotIds = new Set();
-  const plots = rawState.plots.map((rawPlot, plotIndex) => {
-    const fallbackId = `garden-${plotIndex + 1}`;
-    const plotId = createUniqueId(
-      rawPlot?.plotId,
-      fallbackId,
-      usedPlotIds
-    );
-    const rawSlots = Array.isArray(rawPlot?.slots) ? rawPlot.slots : [];
-    const slots = Array.from(
-      { length: GAME_CONFIG.slotsPerPlot },
-      (_, slotIndex) =>
-        normalizeSlot(
-          rawSlots[slotIndex],
-          plotId,
-          slotIndex + 1,
-          usedSlotIds
-        )
-    );
-
+    usedCoordinates.add(stableCoordinateKey);
     return {
-      plotId,
-      type:
-        typeof rawPlot?.type === "string" && rawPlot.type
-          ? rawPlot.type
-          : "garden",
-      slots,
+      plotId: normalizeId(rawPlot?.plotId, fallback.plotId, usedIds),
+      order: index + 1,
+      row: coordinate.row,
+      column: coordinate.column,
+      crop: normalizeCrop(rawPlot?.crop ?? rawPlot?.slots?.[0]),
     };
   });
-  let nextPlotSequence = Math.max(
-    1,
-    toSafeCount(rawState.nextPlotSequence)
-  );
+}
 
-  while (usedPlotIds.has(`garden-${nextPlotSequence}`)) {
-    nextPlotSequence += 1;
-  }
+function normalizeFacilities(rawFacilities, plots) {
+  if (!Array.isArray(rawFacilities)) return [];
+  const usedIds = new Set();
 
-  const startedAt = sanitizeTimestamp(rawState.startedAt, safeNow, safeNow);
-  const remainder = toSafeNonNegativeNumber(
-    rawState.automaticXpRemainder
+  return rawFacilities
+    .map((facility, index) => {
+      const definition = GAME_CONFIG.facilities.find(
+        (candidate) => candidate.id === facility?.type
+      );
+      const row = toSafeCount(facility?.row ?? facility?.anchor?.row);
+      const column = toSafeCount(
+        facility?.column ?? facility?.anchor?.column
+      );
+      const anchorExists = plots.some(
+        (plot) => plot.row === row && plot.column === column
+      );
+
+      if (!definition || !anchorExists) return null;
+      return {
+        facilityId: normalizeId(
+          facility?.facilityId,
+          `facility-${index + 1}`,
+          usedIds
+        ),
+        type: definition.id,
+        row,
+        column,
+        active: facility?.active !== false,
+        installedAt: toSafeNonNegativeNumber(facility?.installedAt),
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeTurn(rawTurn, now) {
+  const fallback = createTurn(now);
+  const phase = GAME_CONFIG.turn.phases.includes(rawTurn?.phase)
+    ? rawTurn.phase
+    : fallback.phase;
+  const phaseStartedAt = safeTimestamp(
+    rawTurn?.phaseStartedAt,
+    fallback.phaseStartedAt,
+    now
   );
+  const duration =
+    phase === "day"
+      ? GAME_CONFIG.turn.dayDurationMs
+      : phase === "night"
+        ? GAME_CONFIG.turn.nightDurationMs
+        : null;
+  const rawEnd = toSafeNonNegativeNumber(rawTurn?.phaseEndsAt);
+  const phaseEndsAt = duration === null
+    ? null
+    : Math.max(phaseStartedAt, rawEnd || phaseStartedAt + duration);
 
   return {
-    saveVersion: GAME_CONFIG.saveVersion,
-    cucumbers: toSafeNonNegativeNumber(rawState.cucumbers),
-    totalEarned: toSafeNonNegativeNumber(rawState.totalEarned),
-    touchYield: Math.max(
-      GAME_CONFIG.touchExperience,
-      toSafeNonNegativeNumber(
-        rawState.touchYield,
-        GAME_CONFIG.touchExperience
+    day: Math.max(1, toSafeCount(rawTurn?.day) || 1),
+    phase,
+    phaseStartedAt,
+    phaseEndsAt,
+    lastEffectAt: Math.min(
+      now,
+      Math.max(
+        phaseStartedAt,
+        toSafeNonNegativeNumber(rawTurn?.lastEffectAt, phaseStartedAt)
       )
     ),
-    harvestCount: Math.floor(
-      toSafeNonNegativeNumber(rawState.harvestCount)
+    nextThreatAt:
+      phase === "preparation"
+        ? null
+        : Math.max(
+            phaseStartedAt,
+            toSafeNonNegativeNumber(
+              rawTurn?.nextThreatAt,
+              phaseStartedAt +
+                (phase === "day"
+                  ? GAME_CONFIG.threats.dayIntervalMs
+                  : GAME_CONFIG.threats.nightIntervalMs)
+            )
+          ),
+    preparationCollectedDay: toSafeCount(
+      rawTurn?.preparationCollectedDay
     ),
-    facilities: normalizeFacilities(rawState.facilities),
-    perSecond: toSafeNonNegativeNumber(rawState.perSecond),
-    plots,
-    hasClaimedFreeGarden:
-      rawState.hasClaimedFreeGarden === true || plots.length > 0,
-    nextPlotSequence,
-    autoXpCursor: toSafeCount(rawState.autoXpCursor),
-    automaticXpRemainder: remainder % 1,
-    lastSavedAt: sanitizeTimestamp(
-      rawState.lastSavedAt,
-      safeNow,
-      safeNow
-    ),
-    startedAt,
-    settings:
-      rawState.settings && typeof rawState.settings === "object"
-        ? { ...rawState.settings }
-        : { ...initial.settings },
   };
 }
 
-function migrateLegacyState(rawState, safeNow) {
-  const initial = createInitialGameState(safeNow);
-  const plot = createGardenPlot(1);
-  const isPlanted = rawState.isPlanted !== false;
-  const xp = isPlanted
-    ? Math.min(
-        toSafeNonNegativeNumber(rawState.growthExperience),
-        GAME_CONFIG.harvestExperience
-      )
-    : 0;
+function normalizeThreats(rawThreats, plots, now) {
+  if (!Array.isArray(rawThreats)) return [];
+  const validPlotIds = new Set(plots.map((plot) => plot.plotId));
+  const usedIds = new Set();
 
-  plot.slots[0] = {
-    ...plot.slots[0],
-    isPlanted,
-    xp,
-    growthStageId: getStageIdForExperience(xp),
+  return rawThreats
+    .map((threat, index) => {
+      if (!validPlotIds.has(threat?.targetPlotId)) return null;
+      const legacyType = threat?.type === "small-animal" ? "squirrel" : threat?.type;
+      const definition = getThreatDefinitionById(legacyType);
+      if (!definition) return null;
+
+      const phase = definition.spawnPhase;
+      const spawnedAt = toSafeNonNegativeNumber(threat?.spawnedAt, now);
+      const isLegacyThreat = typeof threat?.state !== "string";
+      const allowedStates = new Set([
+        "approaching",
+        "eating",
+        "stealing",
+        "hit",
+        "defeated",
+        "despawning",
+      ]);
+      const state = allowedStates.has(threat?.state)
+        ? threat.state
+        : isLegacyThreat
+          ? definition.id === "thief" ? "stealing" : "eating"
+          : "approaching";
+      const approachEndsAt = toSafeNonNegativeNumber(
+        threat?.approachEndsAt,
+        isLegacyThreat ? spawnedAt : spawnedAt + definition.approachDurationMs
+      );
+      const actionEndsAt = toSafeNonNegativeNumber(
+        threat?.actionEndsAt,
+        toSafeNonNegativeNumber(
+          threat?.expiresAt,
+          spawnedAt + GAME_CONFIG.threats.responseWindowMs
+        )
+      );
+      const health = Math.min(
+        definition.maxHealth,
+        toSafeCount(threat?.health, definition.maxHealth)
+      );
+      const spawnEdges = ["top", "right", "bottom", "left"];
+      const spawnEdge = spawnEdges.includes(threat?.spawnEdge)
+        ? threat.spawnEdge
+        : spawnEdges[index % spawnEdges.length];
+
+      return {
+        threatId: normalizeId(
+          threat?.threatId,
+          `threat-${index + 1}`,
+          usedIds
+        ),
+        type: definition.id,
+        phase,
+        targetPlotId: threat.targetPlotId,
+        state,
+        resumeState: ["approaching", "eating", "stealing"].includes(threat?.resumeState)
+          ? threat.resumeState
+          : null,
+        health: state === "defeated" ? health : Math.max(1, health),
+        maxHealth: definition.maxHealth,
+        spawnedAt,
+        approachEndsAt,
+        actionEndsAt,
+        hitEndsAt: toSafeNonNegativeNumber(threat?.hitEndsAt),
+        defeatedAt: toSafeNonNegativeNumber(threat?.defeatedAt),
+        despawnAt: toSafeNonNegativeNumber(threat?.despawnAt),
+        spawnEdge,
+        spawnLane: Math.min(
+          0.92,
+          Math.max(0.08, toSafeNonNegativeNumber(threat?.spawnLane, 0.2 + (index % 4) * 0.2))
+        ),
+        rewardGranted: threat?.rewardGranted === true,
+        resolved: threat?.resolved === true,
+      };
+    })
+    .filter(Boolean);
+}
+
+function getLevelForXp(playerXp) {
+  let level = 1;
+  GAME_CONFIG.player.levelThresholds.forEach((threshold, index) => {
+    if (playerXp >= threshold) level = index + 1;
+  });
+  return Math.min(level, GAME_CONFIG.player.maximumLevel);
+}
+
+function normalizeV3State(rawState, now) {
+  const initial = createInitialGameState(now);
+  const plots = normalizePlots(rawState?.plots);
+  const playerXp = toSafeNonNegativeNumber(rawState?.playerXp);
+  const facilities = normalizeFacilities(rawState?.facilities, plots);
+
+  return {
+    schemaVersion: GAME_CONFIG.schemaVersion,
+    saveVersion: GAME_CONFIG.schemaVersion,
+    cucumbers: toSafeNonNegativeNumber(rawState?.cucumbers),
+    coins: toSafeNonNegativeNumber(
+      rawState?.coins,
+      GAME_CONFIG.economy.startingCoins
+    ),
+    totalEarned: toSafeNonNegativeNumber(rawState?.totalEarned),
+    playerXp,
+    playerLevel: getLevelForXp(playerXp),
+    harvestCount: toSafeCount(rawState?.harvestCount),
+    plots,
+    nextPlotSequence: plots.length + 1,
+    inventory: normalizeInventory(rawState?.inventory),
+    baseItemsGranted: true,
+    facilities,
+    legacyFacilities:
+      rawState?.legacyFacilities &&
+      typeof rawState.legacyFacilities === "object" &&
+      !Array.isArray(rawState.legacyFacilities)
+        ? { ...rawState.legacyFacilities }
+        : {},
+    resources: {
+      water: toSafeNonNegativeNumber(
+        rawState?.resources?.water,
+        GAME_CONFIG.resources.startingWater
+      ),
+      fuel: toSafeNonNegativeNumber(
+        rawState?.resources?.fuel,
+        GAME_CONFIG.resources.startingFuel
+      ),
+      energy: Math.min(
+        GAME_CONFIG.resources.maximumEnergy,
+        toSafeNonNegativeNumber(
+          rawState?.resources?.energy,
+          GAME_CONFIG.resources.startingEnergy
+        )
+      ),
+    },
+    turn: normalizeTurn(rawState?.turn, now),
+    threats: normalizeThreats(rawState?.threats, plots, now),
+    lastSavedAt: safeTimestamp(rawState?.lastSavedAt, now, now),
+    startedAt: safeTimestamp(rawState?.startedAt, now, now),
+    settings: normalizeSettings(rawState?.settings ?? initial.settings),
+  };
+}
+
+function migrateV2State(rawState, now) {
+  const migratedPlots = [];
+
+  (Array.isArray(rawState.plots) ? rawState.plots : []).forEach(
+    (legacyPlot, plotIndex) => {
+      const slots = Array.isArray(legacyPlot?.slots)
+        ? legacyPlot.slots
+        : [];
+      for (let slotIndex = 0; slotIndex < LEGACY_V2_SLOTS_PER_PLOT; slotIndex += 1) {
+        const order = migratedPlots.length + 1;
+        const plot = createGardenPlot(order, slots[slotIndex]);
+        plot.plotId = `${legacyPlot?.plotId || `legacy-${plotIndex + 1}`}-plot-${
+          slotIndex + 1
+        }`;
+        migratedPlots.push(plot);
+      }
+    }
+  );
+
+  if (migratedPlots.length === 0) migratedPlots.push(createGardenPlot(1));
+  return normalizeV3State(
+    {
+      ...rawState,
+      schemaVersion: GAME_CONFIG.schemaVersion,
+      saveVersion: GAME_CONFIG.schemaVersion,
+      plots: migratedPlots,
+      playerXp:
+        toSafeNonNegativeNumber(rawState.playerXp) ||
+        toSafeCount(rawState.harvestCount) * GAME_CONFIG.player.harvestXp,
+      coins:
+        rawState.coins ?? GAME_CONFIG.economy.startingCoins,
+      inventory: rawState.inventory,
+      legacyFacilities:
+        rawState.facilities && !Array.isArray(rawState.facilities)
+          ? { ...rawState.facilities }
+          : rawState.legacyFacilities,
+      facilities: [],
+      turn: createTurn(now),
+      threats: [],
+    },
+    now
+  );
+}
+
+function migrateLegacyState(rawState, now) {
+  const crop = {
+    isPlanted: rawState.isPlanted !== false,
+    cropXp: rawState.growthExperience,
+    yieldPenalty: 0,
   };
 
-  return normalizeV2State(
+  return normalizeV3State(
     {
-      ...initial,
-      cucumbers: rawState.cucumbers,
-      totalEarned: rawState.totalEarned,
-      touchYield: rawState.touchYield,
-      harvestCount: rawState.harvestCount,
-      facilities: rawState.facilities,
-      perSecond: rawState.perSecond,
-      plots: [plot],
-      hasClaimedFreeGarden: true,
-      nextPlotSequence: 2,
-      lastSavedAt: rawState.lastSavedAt,
-      startedAt: rawState.startedAt,
-      settings: rawState.settings,
+      ...rawState,
+      schemaVersion: GAME_CONFIG.schemaVersion,
+      saveVersion: GAME_CONFIG.schemaVersion,
+      plots: [createGardenPlot(1, crop)],
+      playerXp:
+        toSafeCount(rawState.harvestCount) * GAME_CONFIG.player.harvestXp,
+      coins: rawState.coins ?? GAME_CONFIG.economy.startingCoins,
+      inventory: rawState.inventory,
+      legacyFacilities:
+        rawState.facilities && typeof rawState.facilities === "object"
+          ? { ...rawState.facilities }
+          : {},
+      facilities: [],
+      turn: createTurn(now),
+      threats: [],
     },
-    safeNow
+    now
   );
 }
 
@@ -278,13 +552,9 @@ export function normalizeGameState(rawState, now = Date.now()) {
   const safeNow = Math.floor(toSafeNonNegativeNumber(now, Date.now()));
   const schema = detectGameStateSchema(rawState);
 
-  if (schema === "v2") {
-    return normalizeV2State(rawState, safeNow);
-  }
-
-  if (schema === "legacy") {
-    return migrateLegacyState(rawState, safeNow);
-  }
-
+  if (schema === "v4" || schema === "v3") return normalizeV3State(rawState, safeNow);
+  if (schema === "v2") return migrateV2State(rawState, safeNow);
+  if (schema === "legacy") return migrateLegacyState(rawState, safeNow);
+  if (schema === "partial") return normalizeV3State(rawState, safeNow);
   return createInitialGameState(safeNow);
 }

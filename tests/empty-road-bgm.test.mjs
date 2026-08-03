@@ -50,14 +50,16 @@ test('텅 빈 거리 상품과 BGM 카탈로그가 정확히 한 번 연결된�
   assert.equal(tracks[0].coverPath, products[0].thumbImagePath);
 });
 
-test('텅 빈 거리가 New 상품과 출시일 정렬의 첫 번째다', () => {
-  assert.equal(getFeaturedStoreItems(1)[0].id, ITEM_ID);
+test('텅 빈 거리가 신규 스킨 2종 다음 New 상품과 최신순 세 번째다', () => {
+  assert.equal(getFeaturedStoreItems(3)[2].id, ITEM_ID);
 
   const newest = STORE_ITEMS.toSorted((left, right) => {
     return Date.parse(right.releaseDate) - Date.parse(left.releaseDate);
   });
 
-  assert.equal(newest[0].id, ITEM_ID);
+  assert.equal(newest[0].id, 'skin-cucumber-04');
+  assert.equal(newest[1].id, 'skin-grilled-egg-02');
+  assert.equal(newest[2].id, ITEM_ID);
 });
 
 test('상품·카탈로그 ID와 BGM displayOrder에 중복이 없다', () => {

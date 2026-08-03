@@ -226,7 +226,7 @@ test("모바일과 데스크톱 원점은 컨테이너 안에서 캐릭터 중�
   });
 });
 
-test("CSS와 지급 연결은 독립 노드, 포인터 비간섭, reduced motion을 보장한다", async () => {
+test("효과 모듈은 새 단일 작물 UI와 분리되고 포인터 비간섭·reduced motion을 유지한다", async () => {
   const [css, mainSource, rendererSource, offlineSource] = await Promise.all([
     readFile(new URL("../css/game.css", import.meta.url), "utf8"),
     readFile(new URL("../js/main.js", import.meta.url), "utf8"),
@@ -234,42 +234,14 @@ test("CSS와 지급 연결은 독립 노드, 포인터 비간섭, reduced motion
     readFile(new URL("../js/offline-reward.js", import.meta.url), "utf8"),
   ]);
 
-  assert.match(
-    css,
-    /\.crop-transition-layer,\s*\.xp-gain-layer\s*\{[^}]*position:\s*absolute[^}]*overflow:\s*hidden[^}]*pointer-events:\s*none/s
-  );
-  assert.match(
-    css,
-    /\.touch-effects\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0[^}]*overflow:\s*hidden[^}]*pointer-events:\s*none/s
-  );
-  assert.match(
-    css,
-    /\.xp-gain\s*\{[^}]*pointer-events:\s*none[^}]*xp-gain-float var\(--xp-duration, 1000ms\)/s
-  );
-  assert.match(
-    css,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.xp-gain\s*\{[^}]*xp-gain-fade-reduced 420ms/s
-  );
+  assert.match(css, /\.crop-image,\s*\.crop-fallback\s*\{[^}]*pointer-events:\s*none/s);
+  assert.match(css, /\.plot-list\s*\{[^}]*touch-action:\s*none/s);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation-duration:\s*0\.01ms/s);
   assert.doesNotMatch(css, /\.touch-gain|@keyframes gain-rise/);
-  assert.doesNotMatch(
-    rendererSource,
-    /gain\.textContent|className = "touch-gain"/
-  );
-  assert.match(
-    mainSource,
-    /result\?\.reason === "production" && result\.gained > 0[\s\S]*ui\.showProductionXpGain\(result\.allocations\)/
-  );
-  assert.match(
-    mainSource,
-    /if \(result\.gained > 0\) \{[\s\S]*ui\.renderWatering\(event, plotId, slotId\);[\s\S]*ui\.showXpGain\(result\.gained, \{[\s\S]*plotId,[\s\S]*slotId,[\s\S]*source: "watering"/
-  );
-  assert.match(offlineSource, /gained:\s*distribution\.gained/);
-  assert.match(
-    rendererSource,
-    /showProductionXpGain\(allocations = \[\]\)[\s\S]*view\.productionAccumulator\.add\([\s\S]*source: "production"/
-  );
-  assert.match(
-    rendererSource,
-    /if \(showGain\) \{[\s\S]*pendingAllocations\.forEach[\s\S]*source: "offline"/
-  );
+  assert.doesNotMatch(rendererSource, /gain\.textContent|className = "touch-gain"/);
+  assert.match(mainSource, /useWateringCan\(state, plotId\)/);
+  assert.match(mainSource, /feedback:\s*"water"/);
+  assert.match(mainSource, /xp:\s*result\.gained/);
+  assert.match(offlineSource, /gained:\s*progress\.growthGained/);
+  assert.match(rendererSource, /cropImage\.src = requestedAsset/);
 });

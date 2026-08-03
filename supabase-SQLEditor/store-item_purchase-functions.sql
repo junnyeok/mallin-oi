@@ -166,6 +166,20 @@ begin
     v_required_character_code := 'char-cucumber';
     v_required_character_name := '기본오이';
 
+  elsif p_item_id = 'skin-cucumber-04' then
+    v_price := 621;
+    v_name := '당신의 친절한 오이';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
+  elsif p_item_id = 'skin-grilled-egg-02' then
+    v_price := 689;
+    v_name := '이놈스케';
+    v_category := 'skin';
+    v_required_character_code := 'char-grilled-egg';
+    v_required_character_name := '구운계란 캐릭터';
+
   elsif p_item_id = 'skin-avocado-01' then
     v_price := 423;
     v_name := '아보카도 카페사장 스킨';
@@ -408,6 +422,8 @@ begin
         'BG-03',
         'BG-04',
         'skin-cucumber-03',
+        'skin-cucumber-04',
+        'skin-grilled-egg-02',
         'cha-effects-fire-01',
         'bgm-tetocarrto-02',
         'bgm-potato-02',
@@ -428,6 +444,8 @@ begin
            'BG-03',
            'BG-04',
            'skin-cucumber-03',
+           'skin-cucumber-04',
+           'skin-grilled-egg-02',
            'cha-effects-fire-01',
            'bgm-tetocarrto-02',
            'bgm-potato-02',
@@ -948,6 +966,50 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+  elsif p_item_id = 'skin-cucumber-04' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'default_grant'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-kind',
+      '당신의 친절한 오이',
+      './images/skins/spioi.png',
+      4,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-grilled-egg-02' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-grilled-egg',
+      'char-grilled-egg-inomske',
+      '이놈스케',
+      './images/skins/inomske.png',
+      403,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
   elsif p_item_id = 'skin-avocado-01' then
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
@@ -1256,6 +1318,10 @@ begin
         then '군인오이 스킨 구매가 완료됐어. 389피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-03'
         then '오죠 이토루 구매가 완료됐어. 775피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumber-04'
+        then '당신의 친절한 오이 구매가 완료됐어. 621피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-grilled-egg-02'
+        then '이놈스케 구매가 완료됐어. 689피클이 차감됐고 구운계란 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-avocado-01'
         then '아보카도 카페사장 스킨 구매가 완료됐어. 423피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-tetocarrot-01'

@@ -26,6 +26,10 @@ test('Burning Soul 상품과 BGM 카탈로그가 한 번만 연결된다', () =>
   assert.equal(products.length, 1);
   assert.equal(tracks.length, 1);
   assert.equal(products[0].name, 'Burning Soul');
+  assert.equal(
+    products[0].description,
+    'X-Japan을 사랑하는 테토당근의 리메이크 강렬한 록 사운드 곡이야.',
+  );
   assert.equal(products[0].category, 'bgm');
   assert.equal(products[0].price, 665);
   assert.equal(products[0].previewAudioPath, '/assets/mp3/Burning-Soul.mp3?v=test');
@@ -39,8 +43,8 @@ test('Burning Soul 상품과 BGM 카탈로그가 한 번만 연결된다', () =>
   assert.equal(tracks[0].coverPath, products[0].thumbImagePath);
 });
 
-test('Burning Soul이 텅 빈 거리와 BF-02 다음 New 상품으로 유지된다', () => {
-  assert.equal(getFeaturedStoreItems(3)[2].id, ITEM_ID);
+test('Burning Soul이 신규 스킨 2종·텅 빈 거리·BF-02 다음 New 상품이다', () => {
+  assert.equal(getFeaturedStoreItems(5)[4].id, ITEM_ID);
 });
 
 test('구매 SQL은 서버 가격, 인벤토리 보유 기록, 원장 기록을 연결한다', async () => {

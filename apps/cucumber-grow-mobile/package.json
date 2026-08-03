@@ -1,0 +1,36 @@
+{
+  "name": "@mallinoi/cucumber-grow-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "말린오이 오이키우기 독립 iOS·Android 게임 앱",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "test": "npm --prefix ../../games/cucumber-grow test",
+    "check": "find ../../games/cucumber-grow/js ../../games/cucumber-grow/tests -type f \\( -name '*.js' -o -name '*.mjs' \\) -exec node --check {} \\;",
+    "cap:sync": "npm run build:web && cap sync",
+    "assets:generate": "capacitor-assets generate --assetPath assets/splash-art --android --ios --iconBackgroundColor '#9bd58d' --splashBackgroundColor '#dff3dc' --logoSplashScale 0.75 && capacitor-assets generate --assetPath assets/app-icon --android --ios",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "build:android": "npm run cap:sync && cd android && ./gradlew assembleDebug",
+    "build:ios:sim": "npm run cap:sync && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.0",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/network": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/screen-orientation": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/ios": "^8.3.4"
+  }
+}
