@@ -49,12 +49,28 @@ Work와 Codex는 위 이슈를 공통 기준으로 사용하고, 결과 요약�
 
 ## 필수 산출물
 
-- `character-registry.md`
-- `evidence-log.md`
-- `third-party-ip-exclusions.md`
-- `asset-manifest.csv`
+- [`character-registry.md`](./character-registry.md): 대표 캐릭터·로고 후보와 파생 관계
+- [`evidence-log.md`](./evidence-log.md): SHA-256, 최초·최근 Git 기록과 중복 파일 관계
+- [`third-party-ip-exclusions.md`](./third-party-ip-exclusions.md): 제3자 IP 연상 자산 분리 목록
+- [`asset-manifest.csv`](./asset-manifest.csv): 1차 조사 대상 52개 파일의 기계 판독용 목록
+- [`templates/owner-creation-evidence-questionnaire.md`](./templates/owner-creation-evidence-questionnaire.md): 소유자가 비공개로 작성할 제작 과정 확인표
 
 Work 조사 결과를 저장소 문서로 옮길 필요가 생기면 별도 검토 후 `trademark-candidates.md`를 추가할 수 있다.
+
+## 2026-08-04 자산 조사 요약
+
+- 1차 저작권 등록 대표 파일 후보: 3개
+- 오이키우기 성장 단계·레거시 파일: 4개
+- 후속 검토 고유 캐릭터: 6개
+- 캐릭터 스킨: 12개
+- 로고·워드마크: 6개
+- 모바일 원본용 이미지: 5개
+- 오이소녀 이모티콘: 10개
+- 기타 캐릭터 파생 이미지: 3개
+- 동일 바이트 배포본: 3개
+- 명시적으로 분리한 제3자 IP 연상 스킨: 3개
+
+`asset-manifest.csv`의 총 52행은 위 범주를 합산한 수치다. 생성된 Android/iOS 해상도별 아이콘과 저장소의 모든 이모티콘·배경·효과 이미지를 전수 등록 후보로 삼은 것은 아니다. 이 문서는 이슈 #43의 1차 범위에 맞춰 대표 캐릭터, 직접 파생본, 스킨, 로고와 모바일 원본용 이미지를 우선 조사했다.
 
 ## 개인정보 주의
 
