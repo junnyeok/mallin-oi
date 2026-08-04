@@ -60,4 +60,8 @@
 
 ## 관련 작업
 
-GitHub Issue #12: `[IP] 말린오이 상표·저작권 등록 준비 프로젝트`
+- Master Issue #33: `[MASTER][IP] 말린오이 상표·저작권 등록 준비 프로젝트`
+- Work Issue #41: `[IP/WORK] 말린오이 상표 선행조사·출원 전략 보고서`
+- Codex Issue #43: `[IP/CODEX] 캐릭터·로고 자산 증빙 인벤토리 구축`
+
+Work와 Codex는 위 이슈와 이 브랜치를 공통 기준으로 사용한다. 결과 요약은 Master Issue #33에 모은다.
