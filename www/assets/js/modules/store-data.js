@@ -520,6 +520,18 @@ export const FIRE_CHARACTER_EFFECT_PREVIEW = [
   },
 ];
 
+export const SPIDER_WEB_CHARACTER_EFFECT_PREVIEW = [
+  {
+    code: 'cha-effect-spider-web-01',
+    label: '거미줄 효과 애니메이션 미리보기',
+    imagePath: withAssetVersion(
+      './images/character-effects/spider-web-effect-01.png',
+    ),
+    placement: 'front',
+    displayOrder: 1,
+  },
+];
+
 export const CHARACTER_EFFECT_CATALOG = [
   {
     itemId: 'cha-effects-cucumberheart-01',
@@ -621,6 +633,53 @@ export const CHARACTER_EFFECT_CATALOG = [
       ],
     },
     displayOrder: 2,
+  },
+  {
+    itemId: 'cha-effects-web-01',
+    name: '거미줄 효과',
+    imagePath: withAssetVersion(
+      './images/character-effects/spider-web-effect-01.png',
+    ),
+    renderMode: 'spider-web-svg',
+    placement: 'front',
+    className: 'character-effect-vector--spider-web',
+    layout: {
+      x: '0px',
+      y: '0px',
+      width: '128%',
+      zIndex: '35',
+      origin: '50% 50%',
+      rotation: '0deg',
+      aspectRatio: '1 / 1',
+    },
+    contexts: {
+      profile: {
+        width: '150%',
+        groundOffset: '-8%',
+      },
+      inventory: {
+        width: '150%',
+        groundOffset: '-8%',
+      },
+      post: {
+        width: '150%',
+        groundOffset: '-8%',
+      },
+      comment: {
+        width: '150%',
+        groundOffset: '-8%',
+      },
+      store: {
+        width: '140%',
+      },
+      thumbnail: {
+        width: '118%',
+      },
+    },
+    motion: {
+      animation: 'none',
+    },
+    displayOrder: 3,
   },
 ];
 
@@ -1130,6 +1189,24 @@ export const STORE_ITEMS = [
     detailDescription:
       '중앙경찰학교로 파견간 알감자 교수님이야.<br>구매하면 인벤토리의 스킨 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
     previewImages: EGGPOTATO_POLICE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'cha-effects-web-01',
+    name: '거미줄 효과',
+    category: 'cha-effects',
+    badge: '캐릭터효과',
+    icon: '🕸️',
+    thumbImagePath: withAssetVersion(
+      './images/character-effects/spider-web-effect-01.png',
+    ),
+    price: 523,
+    state: '판매 중',
+    description: '주인장은 행당 순찰 때 얼굴에 자꾸 묻어.',
+    detailDescription:
+      '구매하면 인벤토리의 캐릭터 효과 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: SPIDER_WEB_CHARACTER_EFFECT_PREVIEW,
+    releaseDate: '2026-08-04',
     isPurchasable: true,
   },
   {
@@ -1787,6 +1864,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'cha-effects-web-01',
   'skin-cucumber-04',
   'skin-grilled-egg-02',
   'bgm-potato-02',

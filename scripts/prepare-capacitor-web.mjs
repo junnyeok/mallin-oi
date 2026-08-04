@@ -60,6 +60,7 @@ const nativeSkinImageFiles = [
 const nativeCharacterEffectImageFiles = [
   'images/character-effects/cucumber-heart.png',
   'images/character-effects/fire-effect-01.png',
+  'images/character-effects/spider-web-effect-01.png',
 ];
 const nativeCareerAwardImageFiles = [
   'images/reward/reward-career-1st.png',

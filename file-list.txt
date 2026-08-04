@@ -1295,3 +1295,11 @@
 ./supabase-SQLEditor/20260803-new-character-skins.sql
 ./supabase/migrations/20260803010000_new_character_skins.sql
 ./tests/new-character-skins.test.mjs
+./images/character-effects/spider-web-effect-01.png
+./www/images/character-effects/spider-web-effect-01.png
+./android/app/src/main/assets/public/images/character-effects/spider-web-effect-01.png
+./ios/App/App/public/images/character-effects/spider-web-effect-01.png
+./supabase-SQLEditor/20260804-spider-web-character-effect.sql
+./supabase/migrations/20260804000000_spider_web_character_effect.sql
+./supabase/migrations/20260804010000_spider_web_test_purchase_permission.sql
+./tests/character-effects-spider-web.test.mjs

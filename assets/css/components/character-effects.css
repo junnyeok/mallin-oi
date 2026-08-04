@@ -206,6 +206,548 @@
   will-change: transform;
 }
 
+.character-effect-vector {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: visible;
+  pointer-events: none;
+  user-select: none;
+  isolation: isolate;
+}
+
+.character-effect-vector--spider-web {
+  --spider-web-primary: #c8fff0;
+  --spider-web-accent: #4f9f62;
+  --spider-web-duration: 4.8s;
+  --spider-web-loop: infinite;
+}
+
+.character-effect-spider-web {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.character-effect-vector__fallback {
+  display: none;
+  width: 100%;
+  height: auto;
+}
+
+.character-effect-vector--spider-web :is(
+    .web-afterglow,
+    .web-bloom,
+    .web-halo,
+    .web-anchor,
+    .web-sweep,
+    .web-spider,
+    .web-drops
+  ) {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.character-effect-vector--spider-web .web-afterglow {
+  animation: characterEffectSpiderWebAfterglow var(--spider-web-duration)
+    ease-in-out var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-bloom {
+  animation: characterEffectSpiderWebBloom var(--spider-web-duration)
+    cubic-bezier(0.22, 0.73, 0.24, 1) var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-halo {
+  animation: characterEffectSpiderWebHalo var(--spider-web-duration) ease-in-out
+    var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web :is(
+    .web-spokes path,
+    .web-rings path,
+    .web-anchor path,
+    .web-sweep path,
+    .web-spider-line
+  ) {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.character-effect-vector--spider-web .web-spokes path {
+  animation: characterEffectSpiderWebDrawEarly var(--spider-web-duration)
+    cubic-bezier(0.18, 0.75, 0.2, 1) var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-rings-a path {
+  animation: characterEffectSpiderWebDrawMiddle var(--spider-web-duration)
+    cubic-bezier(0.18, 0.75, 0.2, 1) var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-rings-b path {
+  animation: characterEffectSpiderWebDrawLate var(--spider-web-duration)
+    cubic-bezier(0.18, 0.75, 0.2, 1) var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-knots {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: characterEffectSpiderWebKnots var(--spider-web-duration) ease-in-out
+    var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-anchor path {
+  animation: characterEffectSpiderWebAnchor var(--spider-web-duration)
+    ease-in-out var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-sweep path {
+  animation: characterEffectSpiderWebSweep var(--spider-web-duration)
+    cubic-bezier(0.2, 0.76, 0.22, 1) var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-drops circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: characterEffectSpiderWebDrop var(--spider-web-duration) ease-in-out
+    var(--spider-web-loop);
+  animation-delay: var(--spider-web-drop-delay);
+}
+
+.character-effect-vector--spider-web .web-spider-line {
+  animation: characterEffectSpiderWebSpiderLine var(--spider-web-duration)
+    ease-in-out var(--spider-web-loop);
+}
+
+.character-effect-vector--spider-web .web-spider-body {
+  transform-origin: 425px 160px;
+  animation: characterEffectSpiderWebSpider var(--spider-web-duration)
+    cubic-bezier(0.45, 0.08, 0.25, 1) var(--spider-web-loop);
+}
+
+@supports not (transform-box: fill-box) {
+  .character-effect-vector--spider-web .character-effect-spider-web {
+    display: none;
+  }
+
+  .character-effect-vector--spider-web .character-effect-vector__fallback {
+    display: block;
+  }
+}
+
+@keyframes characterEffectSpiderWebAfterglow {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: scale(0.96);
+  }
+
+  28% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+
+  62% {
+    opacity: 0.16;
+    transform: scale(1.02);
+  }
+
+  88% {
+    opacity: 0.1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes characterEffectSpiderWebBloom {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: scale(0.72) rotate(-4deg);
+  }
+
+  3% {
+    opacity: 0.16;
+    transform: scale(0.76) rotate(-3.6deg);
+  }
+
+  16% {
+    opacity: 0.92;
+    transform: scale(0.92) rotate(-1.6deg);
+  }
+
+  30% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  46% {
+    opacity: 0.96;
+    transform: scale(1.012) rotate(0.6deg);
+  }
+
+  58% {
+    opacity: 1;
+    transform: scale(1) rotate(-0.4deg);
+  }
+
+  70% {
+    opacity: 0.82;
+    transform: scale(1.025) rotate(1deg);
+  }
+
+  84% {
+    opacity: 0.42;
+    transform: scale(1.055) rotate(2.5deg);
+  }
+
+  92% {
+    opacity: 0.08;
+    transform: scale(1.07) rotate(3deg);
+  }
+}
+
+@keyframes characterEffectSpiderWebHalo {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: scale(0.68);
+  }
+
+  20% {
+    opacity: 0.45;
+    transform: scale(0.95);
+  }
+
+  45% {
+    opacity: 0.28;
+    transform: scale(1.02);
+  }
+
+  78% {
+    opacity: 0.18;
+    transform: scale(1.06);
+  }
+
+  92% {
+    opacity: 0.08;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes characterEffectSpiderWebDrawEarly {
+  0%,
+  100% {
+    opacity: 0.05;
+    stroke-dashoffset: 1;
+  }
+
+  3% {
+    opacity: 0.15;
+    stroke-dashoffset: 0.96;
+  }
+
+  24%,
+  64% {
+    opacity: 0.96;
+    stroke-dashoffset: 0;
+  }
+
+  83% {
+    opacity: 0.42;
+    stroke-dashoffset: -0.7;
+  }
+
+  90% {
+    opacity: 0.06;
+    stroke-dashoffset: -1;
+  }
+
+  92% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes characterEffectSpiderWebDrawMiddle {
+  0%,
+  8%,
+  100% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+
+  14% {
+    opacity: 0.2;
+    stroke-dashoffset: 0.9;
+  }
+
+  32%,
+  64% {
+    opacity: 0.92;
+    stroke-dashoffset: 0;
+  }
+
+  84% {
+    opacity: 0.38;
+    stroke-dashoffset: -0.72;
+  }
+
+  91% {
+    opacity: 0.05;
+    stroke-dashoffset: -1;
+  }
+
+  93% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes characterEffectSpiderWebDrawLate {
+  0%,
+  14%,
+  100% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+
+  20% {
+    opacity: 0.18;
+    stroke-dashoffset: 0.9;
+  }
+
+  38%,
+  65% {
+    opacity: 0.9;
+    stroke-dashoffset: 0;
+  }
+
+  85% {
+    opacity: 0.34;
+    stroke-dashoffset: -0.74;
+  }
+
+  92% {
+    opacity: 0.04;
+    stroke-dashoffset: -1;
+  }
+
+  94% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes characterEffectSpiderWebKnots {
+  0%,
+  24%,
+  100% {
+    opacity: 0.05;
+    transform: scale(0.45);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scale(1.22);
+  }
+
+  48% {
+    opacity: 0.82;
+    transform: scale(0.9);
+  }
+
+  65% {
+    opacity: 0.74;
+    transform: scale(1.02);
+  }
+
+  84% {
+    opacity: 0.24;
+    transform: scale(0.55);
+  }
+
+  92% {
+    opacity: 0.05;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes characterEffectSpiderWebAnchor {
+  0%,
+  100% {
+    opacity: 0.05;
+    stroke-dashoffset: 1;
+  }
+
+  3% {
+    opacity: 0.12;
+    stroke-dashoffset: 0.96;
+  }
+
+  18%,
+  55% {
+    opacity: 0.82;
+    stroke-dashoffset: 0;
+  }
+
+  79% {
+    opacity: 0.25;
+    stroke-dashoffset: -0.7;
+  }
+
+  88% {
+    opacity: 0.04;
+    stroke-dashoffset: -1;
+  }
+
+  90% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes characterEffectSpiderWebSweep {
+  0%,
+  28%,
+  100% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+
+  37% {
+    opacity: 0.18;
+    stroke-dashoffset: 0.8;
+  }
+
+  46% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+
+  64% {
+    opacity: 0.8;
+    stroke-dashoffset: 0;
+  }
+
+  84% {
+    opacity: 0.32;
+    stroke-dashoffset: -0.7;
+  }
+
+  91% {
+    opacity: 0.04;
+    stroke-dashoffset: -1;
+  }
+
+  93% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes characterEffectSpiderWebDrop {
+  0%,
+  30%,
+  100% {
+    opacity: 0.06;
+    transform: translate(0, 0) scale(0.25);
+  }
+
+  41% {
+    opacity: 0.95;
+    transform: translate(0, 0) scale(1.18);
+  }
+
+  58% {
+    opacity: 0.72;
+    transform: translate(0, -9px) scale(0.92);
+  }
+
+  82% {
+    opacity: 0.16;
+    transform: translate(
+        var(--spider-web-drift-x),
+        var(--spider-web-drift-y)
+      )
+      scale(0.12);
+  }
+
+  91% {
+    opacity: 0.04;
+    transform: translate(
+        var(--spider-web-drift-x),
+        var(--spider-web-drift-y)
+      )
+      scale(0.08);
+  }
+}
+
+@keyframes characterEffectSpiderWebSpiderLine {
+  0%,
+  9%,
+  100% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+
+  19%,
+  52% {
+    opacity: 0.78;
+    stroke-dashoffset: 0;
+  }
+
+  78% {
+    opacity: 0.18;
+    stroke-dashoffset: 0.74;
+  }
+
+  88% {
+    opacity: 0.04;
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes characterEffectSpiderWebSpider {
+  0%,
+  100% {
+    opacity: 0.05;
+    transform: translateY(-62px) scale(0.62);
+  }
+
+  15% {
+    opacity: 0.12;
+    transform: translateY(-48px) scale(0.72);
+  }
+
+  27% {
+    opacity: 0.92;
+    transform: translateY(0) scale(1);
+  }
+
+  52% {
+    opacity: 0.9;
+    transform: translateY(7px) rotate(5deg);
+  }
+
+  65% {
+    opacity: 0.75;
+    transform: translateY(-2px) rotate(-3deg);
+  }
+
+  80% {
+    opacity: 0.28;
+    transform: translateY(-40px) scale(0.8);
+  }
+
+  90% {
+    opacity: 0.05;
+    transform: translateY(-62px) scale(0.62);
+  }
+}
+
 @keyframes characterEffectFloat {
   0% {
     opacity: var(--character-effect-motion-from-opacity);
@@ -231,6 +773,52 @@
     animation: none;
     opacity: 0.8;
     transform: none;
+  }
+
+  .character-effect-vector--spider-web {
+    opacity: 0.76;
+  }
+
+  .character-effect-vector--spider-web * {
+    animation: none !important;
+  }
+
+  .character-effect-vector--spider-web :is(
+      .web-spokes path,
+      .web-rings path,
+      .web-anchor path,
+      .web-sweep path
+    ) {
+    opacity: 0.72;
+    stroke-dashoffset: 0;
+  }
+
+  .character-effect-vector--spider-web .web-bloom {
+    opacity: 0.72;
+    transform: none;
+  }
+
+  .character-effect-vector--spider-web .web-afterglow {
+    opacity: 0.18;
+    transform: none;
+  }
+
+  .character-effect-vector--spider-web .web-halo {
+    opacity: 0.2;
+    transform: none;
+  }
+
+  .character-effect-vector--spider-web .web-knots {
+    opacity: 0.68;
+    transform: none;
+  }
+
+  .character-effect-vector--spider-web .web-sweep {
+    opacity: 0.48;
+  }
+
+  .character-effect-vector--spider-web :is(.web-spider, .web-drops) {
+    display: none;
   }
 }
 
