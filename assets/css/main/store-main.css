@@ -1005,6 +1005,181 @@
 }
 
 /* =========================
+  MALLIN SHINY PROFILE FRAME MOTION
+========================= */
+@keyframes store-profile-frame-mallin-shiny-breathe {
+  0%,
+  100% {
+    opacity: 0.97;
+    filter: brightness(1) drop-shadow(0 0 4px rgba(181, 255, 0, 0.38));
+  }
+
+  50% {
+    opacity: 1;
+    filter: brightness(1.06) drop-shadow(0 0 7px rgba(181, 255, 0, 0.58));
+  }
+}
+
+@keyframes store-profile-frame-mallin-shiny-orbit {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 0.92;
+  }
+
+  24% {
+    opacity: 0.38;
+  }
+
+  34% {
+    opacity: 0.96;
+  }
+
+  53% {
+    opacity: 0.52;
+  }
+
+  72% {
+    opacity: 0.94;
+  }
+
+  91% {
+    opacity: 0.34;
+  }
+
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+.store-mallin-shiny-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius-card);
+  isolation: isolate;
+}
+
+.store-mallin-shiny-frame--thumb {
+  width: 60px;
+}
+
+.store-mallin-shiny-frame > img {
+  position: relative;
+  z-index: 1;
+  animation: store-profile-frame-mallin-shiny-breathe 5.6s ease-in-out
+    infinite;
+  will-change: filter, opacity;
+}
+
+.store-profile-frame-motion {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.store-profile-frame-motion__sparkle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.store-profile-frame-motion__sparkle::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background:
+    linear-gradient(90deg, transparent 43%, #ffffff 50%, transparent 57%),
+    linear-gradient(0deg, transparent 43%, #ffffff 50%, transparent 57%),
+    radial-gradient(
+      circle,
+      #ffffff 0 12%,
+      #efffb2 13% 27%,
+      rgba(181, 255, 0, 0.92) 28% 42%,
+      transparent 70%
+    );
+  filter: drop-shadow(0 0 3px rgba(181, 255, 0, 0.82));
+}
+
+@supports (offset-position: normal) and (offset-path: inset(1px round 1px)) {
+  .store-profile-frame-motion {
+    display: block;
+  }
+
+  .store-profile-frame-motion__sparkle {
+    offset-path: inset(3% round var(--radius-card));
+    offset-rotate: 0deg;
+    animation: store-profile-frame-mallin-shiny-orbit 9.6s linear infinite;
+    will-change: offset-distance, opacity;
+  }
+
+  .store-profile-frame-motion__sparkle:nth-child(1) {
+    animation-delay: -0.8s;
+  }
+
+  .store-profile-frame-motion__sparkle:nth-child(2) {
+    width: 8px;
+    height: 8px;
+    animation-duration: 10.8s;
+    animation-delay: -3.7s;
+  }
+
+  .store-profile-frame-motion__sparkle:nth-child(3) {
+    width: 13px;
+    height: 13px;
+    animation-duration: 11.7s;
+    animation-delay: -6.4s;
+  }
+
+  .store-profile-frame-motion__sparkle:nth-child(4) {
+    width: 9px;
+    height: 9px;
+    animation-duration: 8.9s;
+    animation-delay: -8.1s;
+  }
+
+  .store-mallin-shiny-frame--thumb .store-profile-frame-motion__sparkle {
+    width: 6px;
+    height: 6px;
+    offset-path: inset(2px round 6px);
+  }
+
+  .store-mallin-shiny-frame--thumb
+    .store-profile-frame-motion__sparkle:nth-child(2),
+  .store-mallin-shiny-frame--thumb
+    .store-profile-frame-motion__sparkle:nth-child(4) {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-mallin-shiny-frame > img {
+    animation: none;
+    opacity: 1;
+    filter: brightness(1.03) drop-shadow(0 0 5px rgba(181, 255, 0, 0.46));
+  }
+
+  .store-mallin-shiny-frame > .store-profile-frame-motion {
+    display: none;
+  }
+}
+
+/* =========================
   PROFILE BACKGROUND PREVIEW
 ========================= */
 .store-item-preview__profile-background {

@@ -96,13 +96,15 @@ test('PC·모바일 PNG가 요청한 RGBA 크기와 종횡비를 유지한다', 
   assert.equal(mobile[25], 6, 'mobile PNG must include alpha');
 });
 
-test('프로필 프레임은 이동 반짝임·정렬·모션 감소·클릭 통과를 적용한다', async () => {
-  const [profileJs, profileCss, inventoryCss, storeCss] = await Promise.all([
+test('프로필 프레임은 장착 화면과 상점에서 이동 반짝임·모션 감소를 적용한다', async () => {
+  const [profileJs, storeJs, profileCss, inventoryCss, storeCss] =
+    await Promise.all([
     readFile('assets/js/modules/profile.js', 'utf8'),
+    readFile('assets/js/modules/store.js', 'utf8'),
     readFile('assets/css/main/profile-main.css', 'utf8'),
     readFile('assets/css/main/inventory-main.css', 'utf8'),
     readFile('assets/css/main/store-main.css', 'utf8'),
-  ]);
+    ]);
 
   assert.match(profileJs, /MALLIN_SHINY_FRAME_ITEM_ID = 'BF-02'/);
   assert.match(profileJs, /MALLIN_SHINY_SPARKLE_COUNT = 4/);
@@ -133,6 +135,25 @@ test('프로필 프레임은 이동 반짝임·정렬·모션 감소·클릭 통
   assert.match(storeCss, /store-item-preview__profile-frame-img/);
   assert.match(storeCss, /max-height: 520px;/);
   assert.match(storeCss, /object-fit: contain;/);
+  assert.match(storeJs, /MALLIN_SHINY_FRAME_ITEM_ID = 'BF-02'/);
+  assert.match(storeJs, /STORE_MALLIN_SHINY_SPARKLE_COUNT = 4/);
+  assert.match(storeJs, /renderMallinShinyFrameMotion/);
+  assert.match(storeJs, /store-mallin-shiny-frame--\$\{variant\}/);
+  assert.match(storeJs, /store-profile-frame-motion__sparkle/);
+  assert.match(
+    storeCss,
+    /@keyframes store-profile-frame-mallin-shiny-breathe/,
+  );
+  assert.match(
+    storeCss,
+    /@keyframes store-profile-frame-mallin-shiny-orbit/,
+  );
+  assert.match(storeCss, /offset-distance: 100%/);
+  assert.match(storeCss, /store-mallin-shiny-frame--thumb/);
+  assert.match(
+    storeCss,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.store-mallin-shiny-frame > \.store-profile-frame-motion[\s\S]*?display: none;/,
+  );
 });
 
 test('구매 SQL은 488 서버 가격·엄격 잔액·원장·장착 보유 검증을 포함한다', async () => {

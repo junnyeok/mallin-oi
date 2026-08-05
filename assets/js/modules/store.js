@@ -54,6 +54,8 @@ const HOME_STORE_MOBILE_BREAKPOINT = 768;
 const HOME_STORE_DESKTOP_VISIBLE = 5;
 const HOME_STORE_MOBILE_VISIBLE = 1;
 const HOME_STORE_AUTOPLAY_MS = 5000;
+const MALLIN_SHINY_FRAME_ITEM_ID = 'BF-02';
+const STORE_MALLIN_SHINY_SPARKLE_COUNT = 4;
 let storeItemPreviewAudio = null;
 let storeItemPreviewCleanupController = null;
 let storeItemPreviewHasControl = false;
@@ -265,6 +267,43 @@ function getCategoryLabel(category, item = null) {
   return '기타';
 }
 
+function isMallinShinyProfileFrame(item = {}) {
+  return (
+    item?.itemType === 'profile-frame' &&
+    String(item?.id || '').trim() === MALLIN_SHINY_FRAME_ITEM_ID
+  );
+}
+
+function renderMallinShinyFrameMotion() {
+  return `
+    <span class="store-profile-frame-motion" aria-hidden="true">
+      ${Array.from(
+        { length: STORE_MALLIN_SHINY_SPARKLE_COUNT },
+        () => '<span class="store-profile-frame-motion__sparkle"></span>',
+      ).join('')}
+    </span>
+  `;
+}
+
+function renderMallinShinyFrameImage({
+  src = '',
+  alt = '',
+  imageClass = '',
+  variant = 'preview',
+} = {}) {
+  return `
+    <span class="store-mallin-shiny-frame store-mallin-shiny-frame--${variant}">
+      <img
+        class="${imageClass}"
+        src="${escapeAttribute(src)}"
+        alt="${escapeAttribute(alt)}"
+        loading="lazy"
+      />
+      ${renderMallinShinyFrameMotion()}
+    </span>
+  `;
+}
+
 function renderStoreThumb(item) {
   if (item.thumbImagePath) {
     if (item.category === 'cha-effects') {
@@ -294,6 +333,15 @@ function renderStoreThumb(item) {
           />
         </div>
       `;
+    }
+
+    if (isMallinShinyProfileFrame(item)) {
+      return renderMallinShinyFrameImage({
+        src: item.thumbImagePath,
+        alt: item.name,
+        imageClass: 'store-card__thumb-image',
+        variant: 'thumb',
+      });
     }
 
     return `
@@ -935,6 +983,7 @@ function renderStoreItemPreview(item, options = {}) {
     const previewClass = isProfileFramePreview
       ? 'store-item-preview__profile-frame'
       : 'store-item-preview__profile-background';
+    const isMallinShinyFramePreview = isMallinShinyProfileFrame(item);
 
     return `
       <div class="${previewClass}">
@@ -945,12 +994,22 @@ function renderStoreItemPreview(item, options = {}) {
                 <figcaption class="${previewClass}-label">
                   ${preview.label}
                 </figcaption>
-                <img
-                  src="${preview.imagePath}"
-                  alt="${preview.label}"
-                  class="${previewClass}-img"
-                  loading="lazy"
-                />
+                ${
+                  isMallinShinyFramePreview
+                    ? renderMallinShinyFrameImage({
+                        src: preview.imagePath,
+                        alt: preview.label,
+                        imageClass: `${previewClass}-img`,
+                      })
+                    : `
+                      <img
+                        src="${preview.imagePath}"
+                        alt="${preview.label}"
+                        class="${previewClass}-img"
+                        loading="lazy"
+                      />
+                    `
+                }
               </figure>
             `,
           )

@@ -239,8 +239,8 @@ test('인벤토리 장착값이 프로필·게시물·댓글 표시 경로로 �
 
   assert.deepEqual(mobileStoreData, rootStoreData);
   assert.equal(mobileVersion, rootVersion);
-  assert.equal(JSON.parse(rootVersion).siteVersion, '20260804-01');
-  assert.match(serviceWorker, /const SITE_VERSION = '20260804-01';/);
+  assert.equal(JSON.parse(rootVersion).siteVersion, '20260805-01');
+  assert.match(serviceWorker, /const SITE_VERSION = '20260805-01';/);
   assert.match(storeJs, /getSkinParentRequirementByStoreItemId\(item\.id\)/);
   assert.match(storeJs, /loadOwnedCharacterCodes\(\)/);
   assert.match(profileJs, /CHARACTER_SKIN_CATALOG\.map\(\(item\) =>/);
