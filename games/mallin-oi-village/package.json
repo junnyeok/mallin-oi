@@ -1,0 +1,44 @@
+{
+  "name": "mallodat-special-city",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 4311 --strictPort",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4311 --strictPort",
+    "native:doctor": "node scripts/native-doctor.mjs",
+    "native:icons": "sh scripts/generate-native-icons.sh",
+    "native:prepare": "npm run build && cap sync",
+    "native:verify": "npm run native:prepare && npm run android:assemble && npm run ios:simulator:build",
+    "android:open": "npm run native:prepare && cap open android",
+    "android:assemble": "cd android && ./gradlew assembleDebug",
+    "ios:open": "npm run native:prepare && cap open ios",
+    "ios:simulator:build": "xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build",
+    "cap:sync": "npm run native:prepare",
+    "cap:ios": "npm run ios:open",
+    "cap:android": "npm run android:open"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.0",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/ios": "8.5.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "three": "^0.179.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "^0.179.0",
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.0.13"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

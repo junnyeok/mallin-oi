@@ -11,11 +11,12 @@ import {
   createInitialGameState,
 } from "../js/game-state.js";
 import {
+  claimTownBounty,
   hitThreat,
   advanceThreatStates,
   spawnThreat,
 } from "../js/turn-engine.js";
-import { useWateringCan } from "../js/game-engine.js";
+import { reloadWateringCan, useWateringCan } from "../js/game-engine.js";
 
 function plant(state, index = 0) {
   state.plots[index].crop.isPlanted = true;
@@ -88,16 +89,22 @@ test("물주기 게임 플레이 쿨타임 설정과 분기가 제거됐다", as
 
 test("유효한 물주기 한 번은 물 1과 작물 XP 1을 사용한다", () => {
   const state = createInitialGameState(1_000);
+  state.turn.phase = "day";
   const plot = plant(state);
   const result = useWateringCan(state, plot.plotId, 2_000);
   assert.equal(result.ok, true);
   assert.equal(result.gained, 1);
   assert.equal(plot.crop.cropXp, 1);
-  assert.equal(state.resources.water, GAME_CONFIG.resources.startingWater - 1);
+  assert.equal(
+    state.toolStatus.wateringCanCharge,
+    GAME_CONFIG.tools.wateringCan.capacity - 1
+  );
+  assert.equal(state.resources.water, GAME_CONFIG.resources.startingWater);
 });
 
 test("빠른 10회 물주기는 자원 범위 안에서 10회 모두 처리된다", () => {
   const state = createInitialGameState(1_000);
+  state.turn.phase = "day";
   const plot = plant(state);
   const results = Array.from({ length: 10 }, (_, index) =>
     useWateringCan(state, plot.plotId, 2_000 + index)
@@ -114,10 +121,10 @@ test("텃밭은 3열과 0 간격·단일 경계선으로 밀착 배치된다", a
   assert.match(css, /\.garden-plot\.is-right-edge\s*\{\s*border-right-width:\s*3px/);
 });
 
-test("위협 최대 체력은 새 5·다람쥐 7·멧돼지 15·도둑 12다", () => {
+test("낮·밤 위협은 크기에 따라 5~18회의 망치 체력을 가진다", () => {
   assert.deepEqual(
     Object.fromEntries(GAME_CONFIG.threats.definitions.map(({ id, maxHealth }) => [id, maxHealth])),
-    { bird: 5, squirrel: 7, boar: 15, thief: 12 }
+    { bird: 5, squirrel: 7, rabbit: 5, boar: 18, mouse: 5, raccoon: 10, thief: 12 }
   );
 });
 
@@ -126,19 +133,28 @@ test("기본 뿅망치 한 번은 위협 체력을 정확히 1 낮춘다", () =>
   const result = hitThreat(state, "boar-1", 2_000);
   assert.equal(GAME_CONFIG.tools.hammer.damage, 1);
   assert.equal(result.damage, 1);
-  assert.equal(result.health, 14);
+  assert.equal(result.health, 17);
 });
 
-test("체력 0의 쓰러짐과 보상은 빠른 추가 입력에도 한 번뿐이다", () => {
+test("체력 0에서는 즉시 퇴치 처리되고 보상금은 마을 경찰서에서 한 번 수령한다", () => {
   const state = createThreatState("bird");
+  const startingCoins = state.coins;
   for (let index = 0; index < 5; index += 1) hitThreat(state, "bird-1", 2_000 + index);
   assert.equal(state.threats[0].state, "defeated");
   assert.equal(state.playerXp, GAME_CONFIG.player.threatRepelXp);
+  assert.equal(state.coins, startingCoins);
+  assert.equal(state.bounties.pendingCoins, getThreatDefinitionById("bird").bountyCoins);
   assert.equal(hitThreat(state, "bird-1", 2_010).reason, "already-defeated");
-  assert.equal(state.playerXp, GAME_CONFIG.player.threatRepelXp);
+  advanceThreatStates(state, state.threats[0].despawnAt);
+  assert.equal(state.threats.length, 0);
+  const claimed = claimTownBounty(state);
+  assert.equal(claimed.ok, true);
+  assert.equal(claimed.bountyCoins, getThreatDefinitionById("bird").bountyCoins);
+  assert.equal(state.coins, startingCoins + claimed.bountyCoins);
+  assert.equal(claimTownBounty(state).reason, "no-bounty");
 });
 
-test("위협은 접근·먹기·피격·쓰러짐·제거 상태를 순서대로 전환한다", () => {
+test("위협은 접근·먹기·피격 뒤 퇴치되면 짧은 쓰러짐 모션 후 사라진다", () => {
   const state = createThreatState("squirrel");
   const threat = state.threats[0];
   advanceThreatStates(state, threat.approachEndsAt);
@@ -153,16 +169,48 @@ test("위협은 접근·먹기·피격·쓰러짐·제거 상태를 순서대로
   assert.equal(state.threats.length, 0);
 });
 
+test("한 텃밭에는 동시에 한 위협만 배정해 겹침과 과도한 출몰을 막는다", () => {
+  const state = createInitialGameState(1_000);
+  state.turn.phase = "day";
+  plant(state);
+  assert.equal(spawnThreat(state, 2_000, () => 0).spawned, true);
+  const second = spawnThreat(state, 2_100, () => 0);
+  assert.equal(second.spawned, false);
+  assert.equal(second.reason, "all-targets-busy");
+  assert.equal(GAME_CONFIG.threats.dayIntervalMs >= 13_000, true);
+  assert.equal(GAME_CONFIG.threats.nightIntervalMs >= 10_000, true);
+});
+
 test("낮 위협은 장면 밖 네 방향 중 저장된 무작위 지점에서 접근한다", () => {
   const state = createInitialGameState(1_000);
+  state.turn.phase = "day";
   plant(state);
   const values = [0, 0.5, 0, 0.9, 0.4];
   const result = spawnThreat(state, 2_000, () => values.shift() ?? 0);
   assert.equal(result.spawned, true);
   assert.equal(["top", "right", "bottom", "left"].includes(result.threat.spawnEdge), true);
   assert.equal(result.threat.spawnEdge, "left");
+  assert.equal(result.threat.attackSide, -1);
   assert.equal(result.threat.spawnLane > 0 && result.threat.spawnLane < 1, true);
   assert.equal(result.threat.state, "approaching");
+});
+
+test("위협은 출발한 화면 가장자리와 가까운 오이 쪽에서 먹기 시작한다", () => {
+  const leftState = createInitialGameState(1_000);
+  leftState.turn.phase = "day";
+  plant(leftState);
+  const leftValues = [0, 0.5, 0, 0.99, 0.5];
+  const leftThreat = spawnThreat(leftState, 2_000, () => leftValues.shift() ?? 0).threat;
+  assert.equal(leftThreat.spawnEdge, "left");
+  assert.equal(leftThreat.attackSide, -1);
+
+  const rightState = createInitialGameState(1_000);
+  rightState.turn.phase = "day";
+  plant(rightState);
+  const rightValues = [0, 0.5, 0, 0.3, 0.5];
+  const rightThreat = spawnThreat(rightState, 2_000, () => rightValues.shift() ?? 0).threat;
+  assert.equal(rightThreat.spawnEdge, "right");
+  assert.equal(rightThreat.attackSide, 1);
 });
 
 test("도둑은 가장 느리고 조용하며 접근 사운드가 없다", () => {
@@ -269,8 +317,10 @@ test("원본과 독립 모바일 배포본의 전투 코드·자산은 바이트
 test("생성 효과음은 WebView 호환 22.05kHz 모노 PCM WAV다", async () => {
   const fileNames = [
     "hammer-swing.wav", "hammer-hit.wav", "bird-approach.wav",
-    "squirrel-approach.wav", "boar-approach.wav", "threat-eat.wav",
-    "bird-defeat.wav", "squirrel-defeat.wav", "boar-defeat.wav", "thief-defeat.wav",
+    "squirrel-approach.wav", "rabbit-approach.wav", "boar-approach.wav",
+    "mouse-approach.wav", "raccoon-approach.wav", "threat-eat.wav",
+    "bird-defeat.wav", "squirrel-defeat.wav", "rabbit-defeat.wav",
+    "boar-defeat.wav", "mouse-defeat.wav", "raccoon-defeat.wav", "thief-defeat.wav",
   ];
   for (const fileName of fileNames) {
     const data = await readFile(new URL(`../assets/sounds/combat/${fileName}`, import.meta.url));
@@ -280,4 +330,34 @@ test("생성 효과음은 WebView 호환 22.05kHz 모노 PCM WAV다", async () =
     assert.equal(data.readUInt32LE(24), 22_050);
     assert.equal(data.readUInt16LE(34), 16);
   }
+});
+
+test("준비 시간에는 물주기를 막고 물통을 눌러 최대 30까지 재충전한다", () => {
+  const state = createInitialGameState(1_000);
+  const plot = plant(state);
+  assert.equal(useWateringCan(state, plot.plotId).reason, "turn-not-active");
+  state.turn.phase = "day";
+  state.toolStatus.wateringCanCharge = 0;
+  assert.equal(useWateringCan(state, plot.plotId).reason, "watering-can-empty");
+  const refill = reloadWateringCan(state);
+  assert.equal(refill.ok, true);
+  assert.equal(refill.charge, 30);
+  assert.equal(state.resources.water, GAME_CONFIG.resources.startingWater - 30);
+});
+
+test("뿅망치 한 개는 정확히 30회 사용 후 소모된다", () => {
+  const state = createThreatState("boar");
+  state.threats[0].health = 100;
+  state.threats[0].maxHealth = 100;
+  for (let index = 0; index < 30; index += 1) {
+    state.threats[0].resolved = false;
+    state.threats[0].state = "approaching";
+    const result = hitThreat(state, "boar-1", 2_000 + index);
+    assert.equal(result.ok, true);
+  }
+  assert.equal(state.inventory.hammer, 0);
+  assert.equal(state.toolStatus.hammerUsesRemaining, 0);
+  state.threats[0].resolved = false;
+  state.threats[0].state = "approaching";
+  assert.equal(hitThreat(state, "boar-1", 3_000).reason, "no-hammer");
 });

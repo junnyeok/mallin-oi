@@ -227,11 +227,10 @@ test("모바일과 데스크톱 원점은 컨테이너 안에서 캐릭터 중�
 });
 
 test("효과 모듈은 새 단일 작물 UI와 분리되고 포인터 비간섭·reduced motion을 유지한다", async () => {
-  const [css, mainSource, rendererSource, offlineSource] = await Promise.all([
+  const [css, mainSource, rendererSource] = await Promise.all([
     readFile(new URL("../css/game.css", import.meta.url), "utf8"),
     readFile(new URL("../js/main.js", import.meta.url), "utf8"),
     readFile(new URL("../js/ui-renderer.js", import.meta.url), "utf8"),
-    readFile(new URL("../js/offline-reward.js", import.meta.url), "utf8"),
   ]);
 
   assert.match(css, /\.crop-image,\s*\.crop-fallback\s*\{[^}]*pointer-events:\s*none/s);
@@ -242,6 +241,6 @@ test("효과 모듈은 새 단일 작물 UI와 분리되고 포인터 비간섭�
   assert.match(mainSource, /useWateringCan\(state, plotId\)/);
   assert.match(mainSource, /feedback:\s*"water"/);
   assert.match(mainSource, /xp:\s*result\.gained/);
-  assert.match(offlineSource, /gained:\s*progress\.growthGained/);
+  assert.doesNotMatch(mainSource, /applyOfflineReward|showOfflineReward/);
   assert.match(rendererSource, /cropImage\.src = requestedAsset/);
 });

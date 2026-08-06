@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import { GAME_CONFIG } from "../js/game-config.js";
 import { createInitialGameState } from "../js/game-state.js";
-import { calculateOfflineReward } from "../js/offline-reward.js";
+import { pauseTurnClock } from "../js/turn-engine.js";
 import {
   AsyncLocalStorageBackend,
   GameSaveRepository,
@@ -86,17 +86,13 @@ test("네이티브 저장은 체크섬과 리비전이 있는 이중 슬롯으�
   assert.equal(restored.recoveredFromBackup, true);
 });
 
-test("기기 시계가 크게 뒤로 가도 오프라인 보상을 만들지 않는다", () => {
+test("음수 또는 역행한 시계 차이는 턴 시간을 이동시키지 않는다", () => {
   const state = createInitialGameState(10_000_000);
-  const result = calculateOfflineReward(
-    state,
-    10_000_000 - GAME_CONFIG.maximumClockSkewMs - 1
-  );
-  assert.equal(result.elapsedSeconds, 0);
-  assert.equal(result.clockMovedBackward, true);
+  assert.equal(pauseTurnClock(state, -GAME_CONFIG.maximumClockSkewMs - 1), 0);
+  assert.equal(state.turn.phase, "preparation");
 });
 
-test("기존 localStorage v3 저장은 진행을 유지한 채 v4 네이티브 슬롯으로 한 번 마이그레이션한다", async () => {
+test("기존 localStorage v3 저장은 진행을 유지한 채 v8 네이티브 슬롯으로 한 번 마이그레이션한다", async () => {
   const legacyStorage = new MemoryStorage();
   const nativeStorage = new MemoryStorage();
   const legacyState = createInitialGameState(1_000);
@@ -157,7 +153,8 @@ test("앱 생명주기는 타이머를 정지하고 단일 루프만 다시 시�
   const main = await readFile(new URL("../js/main.js", import.meta.url), "utf8");
   assert.match(main, /if \(!started \|\| !runtimeActive \|\| tickTimer !== null\) return/);
   assert.match(main, /function stopLoops\(\)/);
-  assert.match(main, /applyOfflineReward\(state, now\)/);
+  assert.match(main, /pauseTurnClock\(state/);
+  assert.doesNotMatch(main, /applyOfflineReward|showOfflineReward/);
   assert.match(main, /addAppStateListener/);
   assert.match(main, /audio\.setActive\(false\)/);
   assert.match(main, /flushState\(\{ announceFailure: false \}\)/);
@@ -201,4 +198,15 @@ test("모바일 래퍼는 캘린더 앱과 다른 임시 식별자·세로 방�
   assert.match(iosPrivacy, /CA92\.1/);
   assert.match(iosPrivacy, /C617\.1/);
   assert.match(iosPrivacy, /<key>NSPrivacyTracking<\/key>\s*<false\/>/);
+});
+
+test("모바일 빌드는 실행에 쓰지 않는 이미지 생성 원본과 중간 시트를 제외한다", async () => {
+  const buildScript = await readFile(
+    new URL("../../../apps/cucumber-grow-mobile/scripts/build-web.mjs", import.meta.url),
+    "utf8"
+  );
+  assert.match(buildScript, /developmentOnlyDirectories/);
+  assert.match(buildScript, /"generated-sources"/);
+  assert.match(buildScript, /"processed-sheets"/);
+  assert.match(buildScript, /filter: shouldCopyToApp/);
 });

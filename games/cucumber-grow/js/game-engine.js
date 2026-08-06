@@ -1,10 +1,16 @@
 import { GAME_CONFIG } from "./game-config.js";
-import { createGardenPlot } from "./game-state.js";
+import { createEmptyCrop, createGardenPlot } from "./game-state.js";
 import {
   addSafeNumbers,
   toSafeCount,
   toSafeNonNegativeNumber,
 } from "./number-format.js";
+
+function recordTurnStat(state, key, amount) {
+  if (!["day", "night"].includes(state?.turn?.phase)) return;
+  if (!state.turn.stats || typeof state.turn.stats !== "object") return;
+  state.turn.stats[key] = addSafeNumbers(state.turn.stats[key], amount);
+}
 
 export function getGrowthStage(cropXp) {
   const experience = Math.min(
@@ -85,6 +91,7 @@ export function grantPlayerXp(state, amount) {
   const gained = toSafeNonNegativeNumber(amount);
   const previousLevel = getPlayerLevel(state.playerXp);
   state.playerXp = addSafeNumbers(state.playerXp, gained);
+  recordTurnStat(state, "playerXp", gained);
   state.playerLevel = getPlayerLevel(state.playerXp);
   return {
     gained,
@@ -119,6 +126,22 @@ export function isCropPlanted(state, plotId) {
   return findPlot(state, plotId)?.crop?.isPlanted === true;
 }
 
+export function getCropVariety(varietyId = GAME_CONFIG.crops.defaultVarietyId) {
+  return GAME_CONFIG.crops.varieties[varietyId]
+    ?? GAME_CONFIG.crops.varieties[GAME_CONFIG.crops.defaultVarietyId];
+}
+
+export function getCropStageAsset(crop, stageId = crop?.growthStageId) {
+  return getCropVariety(crop?.varietyId).stageAssets[stageId]
+    ?? GAME_CONFIG.crops.growthStages.find((stage) => stage.id === stageId)?.characterAsset;
+}
+
+export function getSunlightMultiplier(state, now = Date.now()) {
+  return toSafeNonNegativeNumber(state?.effects?.sunlightBoostEndsAt) > now
+    ? GAME_CONFIG.crops.sunlightBoostMultiplier
+    : 1;
+}
+
 export function synchronizeDerivedState(state) {
   const plotChanges = (state.plots ?? []).map((plot) => {
     const previousStageId = plot.crop.growthStageId;
@@ -137,19 +160,25 @@ export function synchronizeDerivedState(state) {
   return { playerLevel: state.playerLevel, perSecond: state.perSecond, plotChanges };
 }
 
-export function plantCrop(state, plotId) {
+export function plantCrop(state, plotId, varietyId = GAME_CONFIG.crops.defaultVarietyId) {
   const plot = findPlot(state, plotId);
   if (!plot) return { ok: false, reason: "unknown-plot" };
   if (plot.crop.isPlanted) return { ok: false, reason: "already-planted" };
   if (state.facilities?.some((facility) => facility.row === plot.row && facility.column === plot.column && facility.type !== "greenhouse")) {
     return { ok: false, reason: "facility-occupied" };
   }
+  const variety = GAME_CONFIG.crops.varieties[varietyId];
+  if (!variety) return { ok: false, reason: "unknown-seed" };
+  if (toSafeCount(state.seeds?.[varietyId]) <= 0) {
+    return { ok: false, reason: "no-seed", variety };
+  }
 
+  state.seeds[varietyId] -= 1;
   plot.crop.isPlanted = true;
   plot.crop.cropXp = 0;
   plot.crop.growthStageId = GAME_CONFIG.crops.growthStages[0].id;
-  plot.crop.yieldPenalty = 0;
-  return { ok: true, plotId, crop: plot.crop };
+  plot.crop.varietyId = varietyId;
+  return { ok: true, plotId, crop: plot.crop, variety };
 }
 
 export function addCropExperience(state, plotId, amount, { grantEvolutionXp = true } = {}) {
@@ -171,6 +200,7 @@ export function addCropExperience(state, plotId, amount, { grantEvolutionXp = tr
     GAME_CONFIG.crops.harvestExperience,
     addSafeNumbers(previousXp, gained)
   );
+  recordTurnStat(state, "cropXp", gained);
   const stage = getGrowthStage(plot.crop.cropXp);
   plot.crop.growthStageId = stage.id;
   const crossedStages = Math.max(0, stage.level - previousStage.level);
@@ -207,8 +237,11 @@ export function addGrowthExperience(state, plotId, slotIdOrAmount, maybeAmount) 
 
 export function useWateringCan(state, plotId, now = Date.now()) {
   const tool = GAME_CONFIG.tools.wateringCan;
-  if (toSafeNonNegativeNumber(state.resources?.water) < tool.waterCost) {
-    return { ok: false, reason: "not-enough-water" };
+  if (!["day", "night"].includes(state.turn?.phase)) {
+    return { ok: false, reason: "turn-not-active" };
+  }
+  if (toSafeNonNegativeNumber(state.toolStatus?.wateringCanCharge) < tool.waterCost) {
+    return { ok: false, reason: "watering-can-empty" };
   }
   const plot = findPlot(state, plotId);
   if (!plot?.crop?.isPlanted) return { ok: false, reason: "empty-plot" };
@@ -216,8 +249,59 @@ export function useWateringCan(state, plotId, now = Date.now()) {
     return { ok: false, reason: "harvest-ready" };
   }
 
-  state.resources.water = Math.max(0, state.resources.water - tool.waterCost);
+  state.toolStatus.wateringCanCharge = Math.max(
+    0,
+    state.toolStatus.wateringCanCharge - tool.waterCost
+  );
   return { ok: true, usedAt: now, ...addCropExperience(state, plotId, tool.cropXp) };
+}
+
+export function reloadWateringCan(state) {
+  const tool = GAME_CONFIG.tools.wateringCan;
+  const current = Math.min(
+    tool.capacity,
+    toSafeNonNegativeNumber(state.toolStatus?.wateringCanCharge)
+  );
+  if (current >= tool.capacity) return { ok: false, reason: "watering-can-full" };
+  const reserve = toSafeNonNegativeNumber(state.resources?.water);
+  if (reserve <= 0) return { ok: false, reason: "water-tank-empty" };
+  const loaded = Math.min(tool.capacity - current, reserve);
+  state.toolStatus.wateringCanCharge = current + loaded;
+  state.resources.water = reserve - loaded;
+  return {
+    ok: true,
+    loaded,
+    charge: state.toolStatus.wateringCanCharge,
+    capacity: tool.capacity,
+    reserve: state.resources.water,
+  };
+}
+
+export function consumeHammerUse(state) {
+  const tool = GAME_CONFIG.tools.hammer;
+  if (toSafeCount(state.inventory?.hammer) <= 0) {
+    return { ok: false, reason: "no-hammer" };
+  }
+  const current = Math.min(
+    tool.usesPerItem,
+    Math.max(1, toSafeCount(state.toolStatus?.hammerUsesRemaining, tool.usesPerItem))
+  );
+  const remaining = current - 1;
+  if (remaining > 0) {
+    state.toolStatus.hammerUsesRemaining = remaining;
+    return { ok: true, remaining, inventory: state.inventory.hammer, replaced: false };
+  }
+  state.inventory.hammer = Math.max(0, state.inventory.hammer - 1);
+  state.toolStatus.hammerUsesRemaining = state.inventory.hammer > 0
+    ? tool.usesPerItem
+    : 0;
+  return {
+    ok: true,
+    remaining: state.toolStatus.hammerUsesRemaining,
+    inventory: state.inventory.hammer,
+    replaced: state.inventory.hammer > 0,
+    depleted: state.inventory.hammer === 0,
+  };
 }
 
 export function collectTouch(state, plotId, _slotId, now = Date.now()) {
@@ -237,7 +321,7 @@ export function getPlotHarvestYield(plotOrOrder) {
   );
 }
 
-export function harvestCrop(state, plotId) {
+export function harvestCrop(state, plotId, now = Date.now()) {
   const plot = findPlot(state, plotId);
   if (!plot?.crop?.isPlanted) return { ok: false, reason: "empty-plot" };
   if (!getGrowthProgress(plot.crop.cropXp).isHarvestReady) {
@@ -245,20 +329,22 @@ export function harvestCrop(state, plotId) {
   }
 
   const baseYield = getPlotHarvestYield(plot);
-  const penalty = Math.min(baseYield - 1, toSafeCount(plot.crop.yieldPenalty));
-  const harvested = Math.max(1, baseYield - penalty);
+  const harvested = baseYield;
+  const variety = getCropVariety(plot.crop.varietyId);
   state.cucumbers = addSafeNumbers(state.cucumbers, harvested);
   state.totalEarned = addSafeNumbers(state.totalEarned, harvested);
   state.harvestCount = toSafeCount(state.harvestCount) + 1;
+  recordTurnStat(state, "harvestedCucumbers", harvested);
   const playerResult = grantPlayerXp(state, GAME_CONFIG.player.harvestXp);
-  plot.crop = {
-    isPlanted: false,
-    cropXp: 0,
-    growthStageId: GAME_CONFIG.crops.growthStages[0].id,
-    yieldPenalty: 0,
-  };
+  let effect = null;
+  if (variety.harvestEffect === "sunlight-boost" && state.turn.phase === "day") {
+    const base = Math.max(now, toSafeNonNegativeNumber(state.effects?.sunlightBoostEndsAt));
+    state.effects.sunlightBoostEndsAt = base + GAME_CONFIG.crops.sunlightBoostDurationMs;
+    effect = { type: variety.harvestEffect, endsAt: state.effects.sunlightBoostEndsAt };
+  }
+  plot.crop = createEmptyCrop();
 
-  return { ok: true, harvested, baseYield, penalty, playerResult, plotId };
+  return { ok: true, harvested, baseYield, penalty: 0, playerResult, plotId, variety, effect };
 }
 
 export function harvestCropSlot(state, plotId) {
@@ -284,9 +370,6 @@ export function canPurchaseGarden(state) {
   const maximum = getMaximumPlotsForLevel(getPlayerLevel(state.playerXp));
   const price = getPlotPrice(nextNumber);
 
-  if (state.turn?.phase !== "preparation") {
-    return { ok: false, reason: "preparation-only", nextNumber, maximum, price };
-  }
   if (nextNumber > GAME_CONFIG.board.maximumPurchasablePlots) {
     return { ok: false, reason: "maximum-plots", nextNumber, maximum, price };
   }
@@ -311,9 +394,6 @@ export function purchaseGarden(state) {
 }
 
 export function sellCucumbers(state, amount = state.cucumbers) {
-  if (state.turn?.phase !== "preparation") {
-    return { ok: false, reason: "preparation-only" };
-  }
   const sold = Math.min(toSafeCount(state.cucumbers), toSafeCount(amount));
   if (sold <= 0) return { ok: false, reason: "nothing-to-sell" };
   const earned = sold * GAME_CONFIG.economy.cucumberSalePrice;
@@ -323,15 +403,18 @@ export function sellCucumbers(state, amount = state.cucumbers) {
 }
 
 export function buyConsumable(state, consumableId) {
-  if (state.turn?.phase !== "preparation") {
-    return { ok: false, reason: "preparation-only" };
-  }
   const item = GAME_CONFIG.economy.consumables[consumableId];
   if (!item) return { ok: false, reason: "unknown-item" };
   if (state.coins < item.price) return { ok: false, reason: "not-enough-coins" };
 
   state.coins -= item.price;
-  if (consumableId === "energy") {
+  if (consumableId === "hammer") {
+    const wasEmpty = state.inventory.hammer <= 0;
+    state.inventory.hammer = addSafeNumbers(state.inventory.hammer, item.amount);
+    if (wasEmpty) {
+      state.toolStatus.hammerUsesRemaining = GAME_CONFIG.tools.hammer.usesPerItem;
+    }
+  } else if (consumableId === "energy") {
     state.resources.energy = Math.min(
       GAME_CONFIG.resources.maximumEnergy,
       state.resources.energy + item.amount
@@ -345,11 +428,21 @@ export function buyConsumable(state, consumableId) {
   return { ok: true, item };
 }
 
-export function calculateProductionRate(state) {
+export function buySeed(state, varietyId) {
+  const item = GAME_CONFIG.economy.seeds[varietyId];
+  if (!item) return { ok: false, reason: "unknown-seed" };
+  if (state.coins < item.price) return { ok: false, reason: "not-enough-coins" };
+  state.coins -= item.price;
+  if (!state.seeds || typeof state.seeds !== "object") state.seeds = {};
+  state.seeds[varietyId] = addSafeNumbers(state.seeds?.[varietyId], item.amount);
+  return { ok: true, item, variety: getCropVariety(varietyId) };
+}
+
+export function calculateProductionRate(state, now = Date.now()) {
   if (state?.turn?.phase !== "day") return 0;
   return (state?.plots ?? []).filter(
     (plot) => plot.crop.isPlanted && !getGrowthProgress(plot.crop.cropXp).isHarvestReady
-  ).length * GAME_CONFIG.crops.dayPassiveXpPerSecond;
+  ).length * GAME_CONFIG.crops.dayPassiveXpPerSecond * getSunlightMultiplier(state, now);
 }
 
 export function distributeAutomaticExperience(state, amount) {

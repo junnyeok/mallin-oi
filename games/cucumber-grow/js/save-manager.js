@@ -32,9 +32,9 @@ export function loadGameSave(storage = getBrowserStorage(), now = Date.now()) {
     return {
       state,
       status:
-        schema === "v4"
+        schema === "v8"
           ? "loaded"
-          : schema === "v3" || schema === "v2" || schema === "legacy"
+          : ["v7", "v6", "v5", "v4", "v3", "v2", "legacy"].includes(schema)
             ? "migrated"
             : "recovered",
       sourceSchema: schema,

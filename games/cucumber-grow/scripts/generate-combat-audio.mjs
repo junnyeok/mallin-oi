@@ -91,12 +91,31 @@ const sounds = {
       envelope(local, 0.075, 0.004, 0.035) *
       (chirp(local, 1_150, 1_650, 0.075) * 0.72 + pulse(local, 2_300) * 0.08);
   }, { gain: 0.28 }),
+  "rabbit-approach.wav": renderSound(0.4, (time, duration) => {
+    const local = time % 0.2;
+    return envelope(time, duration, 0.008, 0.08) *
+      envelope(local, 0.14, 0.004, 0.07) *
+      (chirp(local, 520, 920, 0.14) * 0.54 + Math.sin(2 * Math.PI * 180 * local) * 0.14);
+  }, { gain: 0.3 }),
   "boar-approach.wav": renderSound(0.46, (time, duration) => {
     const wobble = 94 + Math.sin(time * Math.PI * 9) * 18;
     return envelope(time, duration, 0.018, 0.14) *
       (Math.sin(2 * Math.PI * wobble * time) * 0.64 +
         Math.sin(2 * Math.PI * wobble * 2.1 * time) * 0.18);
   }, { gain: 0.4 }),
+  "mouse-approach.wav": renderSound(0.34, (time, duration) => {
+    const local = time % 0.11;
+    return envelope(time, duration, 0.005, 0.07) *
+      envelope(local, 0.085, 0.003, 0.035) *
+      chirp(local, 1_650, 2_450, 0.085);
+  }, { gain: 0.22 }),
+  "raccoon-approach.wav": renderSound(0.4, (time, duration) => {
+    const local = time % 0.13;
+    const noise = seededNoise(151 + Math.floor(time * SAMPLE_RATE / 3))();
+    return envelope(time, duration, 0.007, 0.1) *
+      envelope(local, 0.105, 0.004, 0.05) *
+      (chirp(local, 380, 620, 0.105) * 0.48 + noise * 0.08);
+  }, { gain: 0.28 }),
   "threat-eat.wav": renderSound(0.3, (time, duration) => {
     const noise = seededNoise(83 + Math.floor(time * SAMPLE_RATE / 2))();
     const crunch = Math.sin(2 * Math.PI * (140 + time * 170) * time);
@@ -109,10 +128,22 @@ const sounds = {
     envelope(time, duration, 0.008, 0.14) *
       (chirp(time, 1_050, 320, duration) * 0.72 + Math.sin(2 * Math.PI * 180 * time) * 0.16),
   { gain: 0.3 }),
+  "rabbit-defeat.wav": renderSound(0.42, (time, duration) =>
+    envelope(time, duration, 0.008, 0.16) *
+      (chirp(time, 860, 250, duration) * 0.58 + Math.sin(2 * Math.PI * 170 * time) * 0.13),
+  { gain: 0.28 }),
   "boar-defeat.wav": renderSound(0.5, (time, duration) =>
     envelope(time, duration, 0.012, 0.19) *
       (chirp(time, 190, 72, duration) * 0.68 + Math.sin(2 * Math.PI * 310 * time) * 0.11),
   { gain: 0.38 }),
+  "mouse-defeat.wav": renderSound(0.38, (time, duration) =>
+    envelope(time, duration, 0.006, 0.14) *
+      (chirp(time, 1_450, 260, duration) * 0.61 + pulse(time, 1_900) * 0.05),
+  { gain: 0.23 }),
+  "raccoon-defeat.wav": renderSound(0.46, (time, duration) =>
+    envelope(time, duration, 0.008, 0.17) *
+      (chirp(time, 610, 130, duration) * 0.54 + Math.sin(2 * Math.PI * 230 * time) * 0.14),
+  { gain: 0.3 }),
   "thief-defeat.wav": renderSound(0.48, (time, duration) =>
     envelope(time, duration, 0.008, 0.17) *
       (chirp(time, 720, 150, duration) * 0.46 +

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile, access } from "node:fs/promises";
-import { GAME_CONFIG } from "../js/game-config.js";
+import { GAME_CONFIG, getThreatDefinitionById } from "../js/game-config.js";
 import {
   getCoordinatesForIndex,
   getNeighborCoordinates,
@@ -15,6 +15,7 @@ import {
 import {
   addCropExperience,
   buyConsumable,
+  buySeed,
   canPurchaseGarden,
   getGrowthProgress,
   getMaximumPlotsForLevel,
@@ -33,19 +34,22 @@ import {
   getFacilityAffectedPlots,
   getFacilityStatus,
   placeFacility,
+  startGeneratorCycle,
   validateFacilityPlacement,
 } from "../js/facility-engine.js";
 import {
   advanceGameTime,
   applyThreatDamage,
   advanceThreatStates,
+  claimTownBounty,
   hitThreat,
   resolveExpiredThreats,
+  retreatThreatsFromPlot,
   spawnThreat,
   startNextDay,
   transitionPhase,
+  pauseTurnClock,
 } from "../js/turn-engine.js";
-import { applyOfflineReward } from "../js/offline-reward.js";
 import { loadGameSave, saveGame } from "../js/save-manager.js";
 
 class MemoryStorage {
@@ -101,6 +105,9 @@ test("신규 사용자는 텃밭 하나와 기본 도구를 한 번 지급받는
   assert.equal(state.plots.length, 1);
   assert.equal(state.inventory.wateringCan, 1);
   assert.equal(state.inventory.hammer, 1);
+  assert.equal(state.inventory.waterTank, 1);
+  assert.equal(state.turn.phase, "preparation");
+  assert.equal(state.toolStatus.wateringCanCharge, 30);
   assert.equal(state.baseItemsGranted, true);
   assert.equal(state.settings.bgmEnabled, true);
   assert.equal(state.settings.hapticsEnabled, true);
@@ -112,7 +119,7 @@ test("텃밭 하나에는 독립 작물 객체 하나만 존재한다", () => {
     "cropXp",
     "growthStageId",
     "isPlanted",
-    "yieldPenalty",
+    "varietyId",
   ]);
   assert.equal("slots" in plot, false);
 });
@@ -175,6 +182,7 @@ test("cropXp 성장과 playerXp 레벨은 별도 필드로 증가한다", () => 
 
 test("물뿌리개는 쿨타임 없이 빠른 10회 터치를 모두 XP로 처리한다", () => {
   const state = createInitialGameState(1_000);
+  state.turn.phase = "day";
   plant(state, 0);
   const results = Array.from({ length: 10 }, (_, index) =>
     useWateringCan(state, state.plots[0].plotId, 2_000 + index)
@@ -182,16 +190,16 @@ test("물뿌리개는 쿨타임 없이 빠른 10회 터치를 모두 XP로 처�
   assert.equal(results.every((result) => result.ok), true);
   assert.equal(GAME_CONFIG.tools.wateringCan.cropXp, 1);
   assert.equal(state.plots[0].crop.cropXp, 10);
-  assert.equal(state.resources.water, GAME_CONFIG.resources.startingWater - 10);
+  assert.equal(state.toolStatus.wateringCanCharge, 20);
+  assert.equal(state.resources.water, GAME_CONFIG.resources.startingWater);
 });
 
-test("수확은 텃밭 순서별 수확량과 피해 감산을 적용하고 playerXp를 준다", () => {
+test("수확은 텃밭 순서별 기본 수확량 전체와 playerXp를 준다", () => {
   const state = withPlots(3);
   const plot = plant(state, 2, 50);
-  plot.crop.yieldPenalty = 4;
   const result = harvestCrop(state, plot.plotId);
-  assert.equal(result.harvested, 46);
-  assert.equal(state.cucumbers, 46);
+  assert.equal(result.harvested, 50);
+  assert.equal(state.cucumbers, 50);
   assert.equal(state.playerXp, GAME_CONFIG.player.harvestXp);
   assert.equal(plot.crop.isPlanted, false);
 });
@@ -237,6 +245,7 @@ test("허수아비는 이름 하드코딩 없이 주변 낮 위협 확률을 70%
   state.facilities = [
     { facilityId: "facility-1", type: "scarecrow", row: 0, column: 0, active: true },
   ];
+  state.turn.phase = "day";
   assert.equal(getDaytimeProtectionChance(state, target.plotId), 0.7);
   const result = spawnThreat(state, 11_000, () => 0.1);
   assert.equal(result.spawned, false);
@@ -269,14 +278,14 @@ test("온실은 여섯 칸이 없거나 기존 시설과 충돌하면 설치를 
   const conflict = withPlots(6);
   setLevel(conflict, 6);
   conflict.inventory.greenhouse = 1;
-  conflict.facilities.push({ facilityId: "facility-1", type: "rainBarrel", row: 0, column: 1, active: true });
+  conflict.facilities.push({ facilityId: "facility-1", type: "sprinkler", row: 0, column: 1, active: true });
   assert.equal(
     validateFacilityPlacement(conflict, "greenhouse", 0, 0).reason,
     "facility-conflict"
   );
 });
 
-test("온실은 밤에 에너지가 있을 때만 내부 작물을 초당 성장시킨다", () => {
+test("밤에는 온실이 있어도 자동 성장하지 않고 직접 물주기만 성장시킨다", () => {
   const running = withPlots(6, 10_000);
   const crop = plant(running, 0);
   running.facilities = [{ facilityId: "facility-1", type: "greenhouse", row: 0, column: 0, active: true }];
@@ -285,8 +294,8 @@ test("온실은 밤에 에너지가 있을 때만 내부 작물을 초당 성장
   running.turn.lastEffectAt = 10_000;
   running.turn.phaseEndsAt = 100_000;
   advanceGameTime(running, 11_000);
-  assert.equal(crop.crop.cropXp, 1);
-  assert.equal(running.resources.energy, 0.5);
+  assert.equal(crop.crop.cropXp, 0);
+  assert.equal(running.resources.energy, 1);
 
   const stopped = withPlots(6, 10_000);
   const stoppedCrop = plant(stopped, 0);
@@ -300,39 +309,66 @@ test("온실은 밤에 에너지가 있을 때만 내부 작물을 초당 성장
   assert.equal(getFacilityStatus(stopped, stopped.facilities[0]).reason, "에너지 부족");
 });
 
-test("빗물통은 밤 종료 시 준비 단계에서 하루 한 번 물을 충전한다", () => {
+test("밤 종료 시 자동 물 보상 없이 턴 보고를 저장한다", () => {
   const state = withPlots(1, 10_000);
-  state.facilities = [{ facilityId: "facility-1", type: "rainBarrel", row: 0, column: 0, active: true }];
   state.resources.water = 0;
   state.turn.phase = "night";
+  state.turn.stats.harvestedCucumbers = 12;
   const first = transitionPhase(state, 20_000);
   assert.equal(first.to, "preparation");
-  assert.equal(state.resources.water, 18);
+  assert.equal(state.resources.water, 0);
+  assert.equal(first.report.harvestedCucumbers, 12);
   assert.equal(transitionPhase(state, 21_000).changed, false);
-  assert.equal(state.resources.water, 18);
 });
 
-test("발전기는 연료를 소비해 시설 에너지를 실제 생산한다", () => {
+test("발전기는 터치하면 연료를 소비하고 한 사이클 뒤 에너지를 생산한다", () => {
   const state = withPlots(1, 10_000);
-  state.facilities = [{ facilityId: "facility-1", type: "generator", row: 0, column: 0, active: true }];
-  state.resources.fuel = 1;
+  state.facilities = [{
+    facilityId: "facility-1",
+    type: "generator",
+    row: 0,
+    column: 0,
+    active: false,
+    generatorStartedAt: 0,
+    generatorEndsAt: 0,
+  }];
+  state.resources.fuel = GAME_CONFIG.facilities.find(({ id }) => id === "generator").fuelPerCycle;
   state.resources.energy = 0;
   state.turn.phase = "day";
   state.turn.lastEffectAt = 10_000;
   state.turn.phaseEndsAt = 100_000;
-  advanceGameTime(state, 11_000);
-  assert.equal(state.resources.fuel, 0.8);
-  assert.equal(state.resources.energy, 1);
+  const started = startGeneratorCycle(state, "facility-1", 10_000);
+  assert.equal(started.ok, true);
+  assert.equal(state.resources.fuel, 0);
+  advanceGameTime(state, 19_999);
+  assert.equal(state.resources.energy, 0);
+  const completed = advanceGameTime(state, 20_000);
+  assert.equal(state.resources.energy, started.definition.energyPerCycle);
+  assert.equal(completed.completedGenerators.length, 1);
+  assert.equal(state.facilities[0].active, false);
+});
+
+test("발전기는 텃밭을 차지하지 않고 나무 바닥 고정 위치에 설치된다", () => {
+  const state = createInitialGameState(10_000);
+  setLevel(state, 5);
+  state.inventory.generator = 1;
+  const result = placeFacility(state, "generator", -1, -1, 10_000);
+  assert.equal(result.ok, true);
+  assert.equal(result.facility.row, -1);
+  assert.equal(result.facility.column, -1);
+  assert.equal(result.targets.length, 0);
+  assert.equal(state.plots[0].crop.isPlanted, false);
 });
 
 test("낮→밤→준비 단계는 저장된 종료 시각으로 전환된다", () => {
   const state = createInitialGameState(10_000);
+  startNextDay(state, 10_000);
   state.turn.phaseEndsAt = 11_000;
   state.turn.lastEffectAt = 10_000;
-  const dayResult = advanceGameTime(state, 11_000, { offline: true });
+  const dayResult = advanceGameTime(state, 11_000);
   assert.equal(dayResult.transitions[0].to, "night");
   const nightEnd = state.turn.phaseEndsAt;
-  const nightResult = advanceGameTime(state, nightEnd, { offline: true });
+  const nightResult = advanceGameTime(state, nightEnd);
   assert.equal(nightResult.transitions[0].to, "preparation");
   assert.equal(state.turn.phaseEndsAt, null);
 });
@@ -340,15 +376,37 @@ test("낮→밤→준비 단계는 저장된 종료 시각으로 전환된다", 
 test("준비 단계는 시간이 지나도 자동으로 건너뛰지 않는다", () => {
   const state = createInitialGameState(10_000);
   setPreparation(state, 10_000);
-  advanceGameTime(state, 999_999, { offline: true });
+  advanceGameTime(state, 999_999);
   assert.equal(state.turn.phase, "preparation");
   assert.equal(state.turn.day, 1);
   assert.equal(startNextDay(state, 1_000_000).ok, true);
   assert.equal(state.turn.phase, "day");
-  assert.equal(state.turn.day, 2);
+  assert.equal(state.turn.day, 1);
 });
 
-test("낮 위협을 방치하면 해당 작물 수확량이 줄어든다", () => {
+test("준비 단계에 남은 이전 위협은 피해 없이 즉시 정리된다", () => {
+  const state = withPlots(1, 10_000);
+  setPreparation(state);
+  state.plots[0].crop.isPlanted = true;
+  state.threats = [{
+    threatId: "stale-threat",
+    type: "thief",
+    targetPlotId: state.plots[0].plotId,
+    state: "stealing",
+    actionEndsAt: 1,
+    health: 12,
+    maxHealth: 12,
+  }];
+  state.cucumbers = 10;
+
+  const result = advanceGameTime(state, 20_000, { random: () => 0 });
+
+  assert.equal(state.cucumbers, 10);
+  assert.equal(state.threats.length, 0);
+  assert.equal(result.expiredThreats.length, 0);
+});
+
+test("낮 위협을 방치하면 표적 작물이 통째로 사라진다", () => {
   const state = createInitialGameState(10_000);
   const plot = plant(state, 0);
   const threat = {
@@ -361,6 +419,7 @@ test("낮 위협을 방치하면 해당 작물 수확량이 줄어든다", () =>
     maxHealth: 5,
     spawnedAt: 10_000,
     approachEndsAt: 10_000,
+    actionStartedAt: 10_000,
     actionEndsAt: 11_000,
     despawnAt: 0,
     resolved: false,
@@ -368,23 +427,61 @@ test("낮 위협을 방치하면 해당 작물 수확량이 줄어든다", () =>
   state.threats = [threat];
   const resolved = resolveExpiredThreats(state, 11_000);
   assert.equal(resolved.length, 1);
-  assert.equal(plot.crop.yieldPenalty, 2);
+  assert.equal(resolved[0].result.kind, "eaten-crop");
+  assert.equal(resolved[0].result.amount, 10);
+  assert.equal(plot.crop.isPlanted, false);
 });
 
-test("밤 도둑을 방치하면 게임 내부 오이만 잃는다", () => {
+test("밤 도둑을 방치하면 보유 재화가 아니라 표적 작물을 훔쳐 간다", () => {
   const state = createInitialGameState(10_000);
   state.cucumbers = 20;
+  const plot = plant(state, 0, 35);
   const result = applyThreatDamage(state, {
     type: "thief",
     phase: "night",
     targetPlotId: state.plots[0].plotId,
   });
-  assert.equal(result.kind, "cucumbers");
-  assert.equal(state.cucumbers, 12);
+  assert.equal(result.kind, "stolen-crop");
+  assert.equal(result.amount, 10);
+  assert.equal(state.cucumbers, 20);
+  assert.equal(plot.crop.isPlanted, false);
 });
 
-test("뿅망치는 체력을 1씩 줄이고 0에서 보상·제거를 한 번만 처리한다", () => {
+test("수확 중인 오이가 먼저 사라지면 위협은 기뻐하지 않고 도망가며 도중에도 공격받는다", () => {
   const state = createInitialGameState(10_000);
+  state.turn.phase = "day";
+  const plot = plant(state, 0, GAME_CONFIG.crops.harvestExperience);
+  state.threats = [{
+    threatId: "threat-1",
+    type: "bird",
+    phase: "day",
+    targetPlotId: plot.plotId,
+    state: "eating",
+    health: 5,
+    maxHealth: 5,
+    spawnedAt: 10_000,
+    approachEndsAt: 11_000,
+    actionStartedAt: 11_000,
+    actionEndsAt: 20_000,
+    spawnEdge: "left",
+    spawnLane: 0.5,
+    attackSide: -1,
+    resolved: false,
+  }];
+  assert.equal(harvestCrop(state, plot.plotId, 12_000).ok, true);
+  const retreat = retreatThreatsFromPlot(state, plot.plotId, 12_000);
+  assert.equal(retreat.retreating.length, 1);
+  assert.equal(state.threats[0].state, "retreating");
+  assert.equal(hitThreat(state, "threat-1", 12_100).health, 4);
+  assert.equal(state.threats[0].resumeState, "retreating");
+  advanceThreatStates(state, state.threats[0].hitUntil + 1);
+  advanceThreatStates(state, state.threats[0].retreatEndsAt);
+  assert.equal(state.threats.length, 0);
+});
+
+test("뿅망치는 체력을 1씩 줄이고 퇴치 보상은 마을 경찰서에서 수령한다", () => {
+  const state = createInitialGameState(10_000);
+  state.turn.phase = "day";
   const plot = plant(state, 0);
   state.threats = [{
     threatId: "threat-1",
@@ -409,20 +506,27 @@ test("뿅망치는 체력을 1씩 줄이고 0에서 보상·제거를 한 번만
   assert.equal(hits.at(-1).defeated, true);
   assert.equal(state.playerXp, GAME_CONFIG.player.threatRepelXp);
   assert.equal(hitThreat(state, "threat-1", 11_100).reason, "already-defeated");
-  assert.equal(state.playerXp, GAME_CONFIG.player.threatRepelXp);
-  advanceThreatStates(state, 12_000);
+  assert.equal(state.threats[0].state, "defeated");
+  assert.equal(state.bounties.pendingCoins, getThreatDefinitionById("bird").bountyCoins);
+  advanceThreatStates(state, state.threats[0].despawnAt);
   assert.equal(state.threats.length, 0);
+  const claimed = claimTownBounty(state);
+  assert.equal(claimed.ok, true);
+  assert.equal(claimed.bountyCoins, getThreatDefinitionById("bird").bountyCoins);
   assert.equal(hitThreat(state, "threat-1", 12_001).reason, "no-threat");
 });
 
-test("배경 복귀 오프라인 진행은 새 위협을 폭주시지 않고 준비를 유지한다", () => {
+test("앱을 닫아둔 시간은 턴·성장·위협을 진행시키지 않는다", () => {
   const state = createInitialGameState(10_000);
+  startNextDay(state, 10_000);
   state.lastSavedAt = 10_000;
   state.turn.phaseEndsAt = 11_000;
-  const result = applyOfflineReward(state, 1_000_000);
-  assert.equal(result.phase, "preparation");
+  const shifted = pauseTurnClock(state, 990_000);
+  const result = advanceGameTime(state, 1_000_000);
+  assert.equal(shifted, 990_000);
+  assert.equal(result.phase, "day");
+  assert.equal(result.growthGained, 0);
   assert.equal(state.threats.length, 0);
-  assert.equal(state.lastSavedAt, 1_000_000);
 });
 
 test("v2의 4슬롯 텃밭은 작물 손실 없이 독립 텃밭 네 개로 마이그레이션된다", () => {
@@ -518,27 +622,60 @@ test("저장 직후 새로고침은 좌표·작물·시설·턴·자원을 동�
   assert.deepEqual(restored.resources, state.resources);
 });
 
-test("준비 상점은 오이 판매와 물·연료·에너지 구매를 실제 반영한다", () => {
+test("상점은 준비·낮·밤 모두 판매, 소모품과 씨앗 구매를 실제 반영한다", () => {
   const state = createInitialGameState(10_000);
   setPreparation(state);
   state.cucumbers = 10;
   assert.deepEqual(sellCucumbers(state), { ok: true, sold: 10, earned: 30 });
   const coinsAfterSale = state.coins;
   assert.equal(buyConsumable(state, "water").ok, true);
-  assert.equal(state.resources.water, 50);
-  assert.equal(state.coins, coinsAfterSale - 45);
+  assert.equal(state.resources.water, 180);
+  assert.equal(state.coins, coinsAfterSale - 15);
+  state.turn.phase = "day";
+  const solarBefore = state.seeds.solar;
+  assert.equal(buySeed(state, "solar").ok, true);
+  assert.equal(state.seeds.solar, solarBefore + 1);
+  assert.equal(buyConsumable(state, "hammer").ok, true);
 });
 
-test("시설 구매는 해금 레벨·가격·준비 단계를 모두 검사한다", () => {
+test("시설 구매는 턴 중에도 열리고 해금 레벨·가격을 검사한다", () => {
   const state = createInitialGameState(10_000);
   setPreparation(state);
   state.coins = 10_000;
   assert.equal(buyFacility(state, "greenhouse").reason, "level-locked");
   setLevel(state, 6);
+  state.turn.phase = "night";
   const result = buyFacility(state, "greenhouse");
   assert.equal(result.ok, true);
   assert.equal(state.inventory.greenhouse, 1);
   assert.equal(state.coins, 9_100);
+});
+
+test("태양열오이는 씨앗을 소비해 심고 수확하면 낮 성장 배수를 켠다", () => {
+  const state = createInitialGameState(10_000);
+  state.turn.phase = "day";
+  const plot = state.plots[0];
+  const seedsBefore = state.seeds.solar;
+  assert.equal(plantCrop(state, plot.plotId, "solar").ok, true);
+  assert.equal(plot.crop.varietyId, "solar");
+  assert.equal(state.seeds.solar, seedsBefore - 1);
+  plot.crop.cropXp = GAME_CONFIG.crops.harvestExperience;
+  const result = harvestCrop(state, plot.plotId, 20_000);
+  assert.equal(result.effect.type, "sunlight-boost");
+  assert.equal(state.effects.sunlightBoostEndsAt, 20_000 + GAME_CONFIG.crops.sunlightBoostDurationMs);
+});
+
+test("밤에 태양열오이를 수확하면 오이는 얻지만 햇빛 효과는 켜지지 않는다", () => {
+  const state = createInitialGameState(10_000);
+  state.turn.phase = "night";
+  const plot = state.plots[0];
+  plantCrop(state, plot.plotId, "solar");
+  plot.crop.cropXp = GAME_CONFIG.crops.harvestExperience;
+  const result = harvestCrop(state, plot.plotId, 20_000);
+  assert.equal(result.ok, true);
+  assert.equal(result.effect, null);
+  assert.equal(state.effects.sunlightBoostEndsAt, 0);
+  assert.equal(state.cucumbers, result.harvested);
 });
 
 test("저장된 오이는 타이머 시작 전 현재 단계 이미지로 최초 렌더하도록 연결된다", async () => {

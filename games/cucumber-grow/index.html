@@ -39,78 +39,97 @@
         </section>
 
         <section class="hud-turn" aria-label="현재 턴">
-          <strong id="dayLabel">1일차 · 낮</strong>
+          <strong id="dayLabel">낮</strong>
           <span id="turnTimer">01:30</span>
+          <button class="hud-next-day" id="nextDayButton" type="button" hidden>
+            다음 날 시작
+          </button>
         </section>
 
         <button class="hud-settings" id="menuButton" type="button" aria-label="설정 열기">
-          <span aria-hidden="true">⚙</span>
+          <img src="./assets/images/ui/menu/settings-v3.png" alt="" />
         </button>
 
         <section class="hud-resources" aria-label="보유 자원">
-          <span class="resource-pill" aria-label="보유 오이"><b aria-hidden="true">🥒</b><strong id="cucumberCount">0</strong></span>
-          <span class="resource-pill" aria-label="보유 코인"><b aria-hidden="true">🪙</b><strong id="coinCount">0</strong></span>
-          <span class="resource-pill" aria-label="보유 물"><b aria-hidden="true">💧</b><strong id="waterCount">0</strong></span>
-          <span class="resource-pill" aria-label="보유 연료"><b aria-hidden="true">⛽</b><strong id="fuelCount">0</strong></span>
-          <span class="resource-pill" aria-label="보유 에너지"><b aria-hidden="true">⚡</b><strong id="energyCount">0</strong></span>
+          <span class="resource-pill" aria-label="보유 오이"><img src="./assets/images/ui/resources/cucumber-v2.png" alt="" /><strong id="cucumberCount">0</strong></span>
+          <span class="resource-pill" aria-label="보유 코인"><img src="./assets/images/ui/resources/coin-v2.png" alt="" /><strong id="coinCount">0</strong></span>
+          <span class="resource-pill" aria-label="물통에 남은 물"><img src="./assets/images/ui/resources/water-v2.png" alt="" /><strong id="waterCount">0</strong></span>
+          <span class="resource-pill" aria-label="보유 연료"><img src="./assets/images/ui/resources/fuel-v2.png" alt="" /><strong id="fuelCount">0</strong></span>
+          <span class="resource-pill" aria-label="보유 에너지"><img src="./assets/images/ui/resources/energy-v2.png" alt="" /><strong id="energyCount">0</strong></span>
         </section>
       </header>
 
       <section class="garden-viewport" id="gardenWorld" aria-labelledby="gardenWorldTitle">
         <h1 class="visually-hidden" id="gardenWorldTitle">나의 오이 텃밭</h1>
         <div class="world-camera" id="worldCamera">
-          <section class="world-welcome" aria-label="농장 안내">
-            <img src="./assets/images/cucumber.png" alt="웃고 있는 말린오이 캐릭터" />
-            <div class="wood-sign">
-              <strong id="phaseMessage">오이를 심고 물을 주세요!</strong>
-              <span id="cameraHint">텃밭을 위아래로 밀어 이동</span>
-            </div>
+          <section class="equipment-terrace" aria-label="농장 장비 배치대">
+            <button class="water-tank-station" id="waterTankButton" type="button" aria-label="물통을 눌러 물뿌리개 충전">
+              <img src="./assets/images/facility-rain-barrel.png" alt="" />
+            </button>
+            <button class="generator-station" id="generatorStation" type="button" hidden>
+              <img src="./assets/images/facilities/generator-v2.png" alt="" />
+              <i class="generator-cycle-meter" aria-hidden="true"><b id="generatorStationMeter"></b></i>
+            </button>
+            <button class="town-gate-station" id="townGateButton" type="button" aria-label="열린 농장 문을 지나 마을로 이동">
+              <span>마을로</span>
+            </button>
           </section>
 
           <div class="plot-list" id="plotList" aria-label="3열 텃밭"></div>
 
-          <section class="preparation-dock" id="preparationDock" hidden>
-            <strong>오늘 준비를 마쳤나요?</strong>
-            <button class="game-button game-button--primary" id="nextDayButton" type="button">
-              준비 완료 · 다음 날 시작
-            </button>
-          </section>
           <div class="world-bottom-space" aria-hidden="true"></div>
         </div>
         <div class="threat-layer" id="threatLayer" aria-label="농장 위협"></div>
         <div class="combat-effect-layer" id="combatEffectLayer" aria-hidden="true"></div>
       </section>
 
+      <div class="sunlight-effect" id="sunlightEffect" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+
       <section class="quick-tools" id="toolTray" aria-label="장비 상태와 시설 설치">
-        <article class="tool-status" data-tool-status="wateringCan" aria-label="물뿌리개 보유, 오이를 누르면 자동 사용">
-          <span class="tool-button__art"><img src="./assets/images/water-gun.png" alt="" /></span>
-          <span>물뿌리개</span>
-          <small>자동 사용</small>
-        </article>
-        <article class="tool-status" data-tool-status="hammer" aria-label="뿅망치 보유, 위협을 누르면 자동 사용">
-          <span class="tool-button__art"><img src="./assets/images/tool-hammer.png" alt="" /></span>
-          <span>뿅망치</span>
-          <small>자동 사용</small>
-        </article>
-        <div class="facility-quick-list" id="facilityInventory" aria-label="설치 가능한 시설"></div>
-        <p class="selection-help" id="selectionHelp">오이를 눌러 물을 주고, 위협을 눌러 퇴치하세요.</p>
+        <div class="seed-drag-tray" aria-label="씨앗 선택">
+          <div class="seed-drag-list" id="seedDragList"></div>
+        </div>
+        <div class="tool-status-row">
+          <article class="tool-status" data-tool-status="wateringCan" aria-label="물뿌리개 성능과 충전 상태">
+            <small class="tool-performance" id="wateringCanStatus">+1XP</small>
+            <span class="tool-button__art"><img src="./assets/images/water-gun.png" alt="" /></span>
+            <span>물뿌리개</span>
+            <i class="tool-condition tool-condition--water"><b id="wateringCanMeter"></b></i>
+          </article>
+          <article class="tool-status" data-tool-status="hammer" aria-label="뿅망치 성능과 내구도">
+            <small class="tool-performance" id="hammerStatus">파워1</small>
+            <strong class="tool-quantity-badge" id="hammerQuantity" aria-label="보유 뿅망치 1개">×1</strong>
+            <span class="tool-button__art"><img src="./assets/images/tool-hammer.png" alt="" /></span>
+            <span>뿅망치</span>
+            <i class="tool-condition tool-condition--hammer"><b id="hammerDurabilityMeter"></b></i>
+          </article>
+          <article class="tool-status tool-status--water-tank" data-tool-status="waterTank" aria-label="물통에 남은 물">
+            <small class="tool-performance" id="waterTankStatus">물 0</small>
+            <span class="tool-button__art"><img src="./assets/images/facility-rain-barrel.png" alt="" /></span>
+            <span>물통</span>
+            <i class="tool-condition tool-condition--tank"><b id="waterTankMeter"></b></i>
+          </article>
+          <div class="facility-quick-list" id="facilityInventory" aria-label="설치 가능한 시설"></div>
+        </div>
       </section>
 
       <nav class="bottom-menu" aria-label="게임 메뉴">
         <button class="bottom-menu__button is-active" type="button" data-scene="farm" aria-current="page">
-          <span aria-hidden="true">🌱</span><small>텃밭</small>
+          <img src="./assets/images/ui/menu/farm-v3.png" alt="" /><small>텃밭</small>
         </button>
         <button class="bottom-menu__button" type="button" data-scene="facilities">
-          <span aria-hidden="true">🏡</span><small>시설</small>
+          <img src="./assets/images/ui/menu/facilities-v3.png" alt="" /><small>시설</small>
         </button>
         <button class="bottom-menu__button" type="button" data-scene="inventory">
-          <span aria-hidden="true">🎒</span><small>가방</small>
+          <img src="./assets/images/ui/menu/inventory-v3.png" alt="" /><small>가방</small>
         </button>
         <button class="bottom-menu__button" type="button" data-scene="codex">
-          <span aria-hidden="true">📗</span><small>도감</small>
+          <img src="./assets/images/ui/menu/codex-v3.png" alt="" /><small>도감</small>
         </button>
         <button class="bottom-menu__button" type="button" data-scene="shop">
-          <span aria-hidden="true">🛒</span><small>상점</small>
+          <img src="./assets/images/ui/menu/shop-v3.png" alt="" /><small>상점</small>
         </button>
       </nav>
 
@@ -121,13 +140,13 @@
             <span id="sceneEyebrow">FARM MENU</span>
             <h2 id="sceneTitle">농장 메뉴</h2>
           </div>
-          <button class="scene-settings" id="sceneSettingsButton" type="button" aria-label="설정 열기">⚙</button>
+          <button class="scene-settings" id="sceneSettingsButton" type="button" aria-label="설정 열기"><img src="./assets/images/ui/menu/settings-v3.png" alt="" /></button>
         </header>
 
         <div class="scene-scroll" id="sceneScroll">
           <section class="game-scene" data-scene-panel="facilities" hidden>
             <div class="scene-hero scene-hero--facility">
-              <span aria-hidden="true">🏡</span>
+              <img src="./assets/images/ui/menu/facilities-v3.png" alt="" />
               <div><strong>시설 관리소</strong><small>작동 범위와 자원 상태를 한눈에 확인하세요.</small></div>
             </div>
             <div class="facility-manager-list" id="facilityManagerList"></div>
@@ -140,7 +159,7 @@
 
           <section class="game-scene" data-scene-panel="inventory" hidden>
             <div class="scene-hero scene-hero--inventory">
-              <span aria-hidden="true">🎒</span>
+              <img src="./assets/images/ui/menu/inventory-v3.png" alt="" />
               <div><strong>농장 가방</strong><small>도구와 시설, 소모품 보유량입니다.</small></div>
             </div>
             <div class="inventory-grid" id="inventorySlotList"></div>
@@ -157,8 +176,12 @@
             <div class="shop-awning" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
             <p class="shop-phase-note" id="shopPhaseNote"></p>
             <section class="market-stall market-stall--sell">
-              <div class="market-stall__title"><span aria-hidden="true">🥒</span><div><strong>오이 판매대</strong><small>한 개에 <b id="salePrice">3</b>코인</small></div></div>
+              <div class="market-stall__title"><img src="./assets/images/ui/resources/cucumber-v2.png" alt="" /><div><strong>오이 판매대</strong><small>한 개에 <b id="salePrice">3</b>코인</small></div></div>
               <button class="game-button game-button--gold" id="sellAllButton" type="button">보유 오이 모두 판매</button>
+            </section>
+            <section class="market-stall">
+              <h3>오이 씨앗</h3>
+              <div class="shop-grid" id="seedShopList"></div>
             </section>
             <section class="market-stall">
               <h3>시설 진열대</h3>
@@ -168,6 +191,19 @@
               <h3>농장 소모품</h3>
               <div class="shop-grid" id="consumableShopList"></div>
             </section>
+          </section>
+
+          <section class="game-scene village-scene" data-scene-panel="village" hidden>
+            <div class="village-square" aria-label="오이 마을 광장">
+              <button class="village-destination village-destination--police" id="villagePoliceButton" type="button">
+                <strong>경찰서</strong>
+                <small id="townBountyStatus">보상금 0코인</small>
+              </button>
+              <button class="village-destination village-destination--shop" id="villageShopButton" type="button">
+                <strong>마을 상점</strong>
+                <small>씨앗 · 농장 소모품</small>
+              </button>
+            </div>
           </section>
 
           <section class="game-scene" data-scene-panel="settings" hidden>
@@ -194,33 +230,32 @@
         </div>
       </section>
 
-      <section class="modal-backdrop" id="offlineModal" role="dialog" aria-modal="true" aria-labelledby="offlineModalTitle" hidden>
-        <div class="result-popup result-popup--sunrise">
-          <span class="result-popup__icon" aria-hidden="true">☀</span>
-          <small>WELCOME BACK</small>
-          <h2 id="offlineModalTitle">농장이 기다렸어요!</h2>
-          <dl class="offline-summary">
-            <div><dt>자리를 비운 시간</dt><dd id="offlineDuration">0초</dd></div>
-            <div><dt>성장한 경험치</dt><dd><span id="offlineReward">0</span> XP</dd></div>
-            <div><dt>현재 단계</dt><dd id="offlinePhase">낮</dd></div>
-          </dl>
-          <button class="game-button game-button--primary" id="offlineConfirmButton" type="button">농장으로</button>
-        </div>
+      <section class="phase-banner" id="phaseBanner" aria-live="assertive" hidden>
+        <small id="phaseBannerDay">MALLIN FARM</small>
+        <strong id="phaseBannerTitle">낮</strong>
+        <span id="phaseBannerSubtitle">햇살과 함께 농장 일이 시작됩니다</span>
       </section>
 
-      <section class="modal-backdrop" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultModalTitle" hidden>
-        <div class="result-popup" id="resultPopup">
-          <span class="result-popup__icon" id="resultModalIcon" aria-hidden="true">✨</span>
-          <small id="resultModalEyebrow">GREAT!</small>
-          <h2 id="resultModalTitle">멋져요!</h2>
-          <p id="resultModalMessage"></p>
-          <button class="game-button game-button--primary" id="resultModalConfirmButton" type="button">확인</button>
+      <section class="modal-backdrop" id="turnReportModal" role="dialog" aria-modal="true" aria-labelledby="turnReportTitle" hidden>
+        <div class="result-popup turn-report-popup">
+          <span class="result-popup__icon" aria-hidden="true"><img src="./assets/images/ui/menu/report-v3.png" alt="" /></span>
+          <small>DAILY FARM REPORT</small>
+          <h2 id="turnReportTitle">농장 보고</h2>
+          <dl class="turn-report-list">
+            <div><dt>수확량</dt><dd><span id="reportHarvest">0</span>개</dd></div>
+            <div><dt>성장 경험치</dt><dd><span id="reportCropXp">0</span> XP</dd></div>
+            <div><dt>플레이어 경험치</dt><dd><span id="reportPlayerXp">0</span> XP</dd></div>
+            <div><dt>동물 퇴치</dt><dd><span id="reportAnimals">0</span>마리</dd></div>
+            <div><dt>도둑 퇴치</dt><dd><span id="reportThieves">0</span>명</dd></div>
+            <div><dt>경찰서 보상금</dt><dd><span id="reportBounty">0</span>코인</dd></div>
+          </dl>
+          <button class="game-button game-button--primary" id="turnReportConfirmButton" type="button">준비 시간으로</button>
         </div>
       </section>
 
       <section class="modal-backdrop" id="exitModal" role="dialog" aria-modal="true" aria-labelledby="exitModalTitle" hidden>
         <div class="result-popup result-popup--compact">
-          <span class="result-popup__icon" aria-hidden="true">🥒</span>
+          <span class="result-popup__icon" aria-hidden="true"><img src="./assets/images/ui/menu/exit-v3.png" alt="" /></span>
           <h2 id="exitModalTitle">농장을 나갈까요?</h2>
           <p>진행 상황은 안전하게 저장됩니다.</p>
           <div class="dialog-actions">
@@ -246,6 +281,9 @@
         <p id="loadingLabel">농장을 준비하고 있어요…</p>
         <button class="start-button" id="startButton" type="button" hidden>화면을 눌러 시작</button>
       </section>
+      <div class="cloud-transition" id="cloudTransition" aria-hidden="true" hidden>
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
     </main>
 
     <script type="module" src="./js/main.js"></script>

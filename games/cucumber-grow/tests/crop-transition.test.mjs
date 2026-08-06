@@ -368,8 +368,10 @@ test("단일 작물 입력은 포인터 카메라에서 탭·드래그를 구분
     readFile(new URL("../index.html", import.meta.url), "utf8"),
   ]);
   assert.match(mainSource, /onTap:\s*handleWorldTap/);
-  assert.match(mainSource, /plantCrop\(state, plotId\)/);
-  assert.match(mainSource, /harvestCrop\(state, plotId\)/);
+  assert.match(mainSource, /plantCrop\(state, drop\.plotId, drop\.varietyId\)/);
+  assert.match(mainSource, /beginSeedDrag/);
+  assert.doesNotMatch(html, /seedPickerModal|CHOOSE A SEED/);
+  assert.match(mainSource, /harvestCrop\(state, plotId, Date\.now\(\)\)/);
   assert.match(mainSource, /useWateringCan\(state, plotId\)/);
   assert.match(cameraSource, /addEventListener\("pointerdown"/);
   assert.match(cameraSource, /addEventListener\("pointermove"/);

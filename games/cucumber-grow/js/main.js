@@ -1,10 +1,12 @@
 import { GAME_CONFIG } from "./game-config.js";
 import {
   buyConsumable,
+  buySeed,
   getPlayerLevel,
   harvestCrop,
   plantCrop,
   purchaseGarden,
+  reloadWateringCan,
   sellCucumbers,
   synchronizeDerivedState,
   useWateringCan,
@@ -13,13 +15,16 @@ import {
   buyFacility,
   getFacilityDefinition,
   placeFacility,
+  startGeneratorCycle,
 } from "./facility-engine.js";
 import {
   advanceGameTime,
+  claimTownBounty,
   hitThreat,
+  pauseTurnClock,
+  retreatThreatsFromPlot,
   startNextDay,
 } from "./turn-engine.js";
-import { applyOfflineReward } from "./offline-reward.js";
 import { GameSaveRepository, createStorageBackend } from "./save-repository.js";
 import { GameAudioManager } from "./audio-manager.js";
 import { NativeBridge } from "./native-bridge.js";
@@ -59,11 +64,12 @@ const repository = new GameSaveRepository({
 const loadedAt = Date.now();
 const loadResult = await repository.load(loadedAt);
 let state = loadResult.state;
-const offlineResult = applyOfflineReward(state, loadedAt);
+pauseTurnClock(state, Math.max(0, loadedAt - state.lastSavedAt));
 synchronizeDerivedState(state);
 
 const audio = new GameAudioManager(state.settings);
 audio.preload();
+audio.setBgmMode(state.turn.phase === "preparation" ? "preparation" : state.turn.phase);
 ui.setLoadingProgress(62, "오이와 시설을 배치하는 중…");
 ui.render(state, { now: loadedAt, renderMenus: true });
 
@@ -74,6 +80,7 @@ let runtimeActive = false;
 let resumePromise = null;
 let lastPhase = state.turn.phase;
 let interactionPauseStartedAt = null;
+let appPauseStartedAt = null;
 
 function shiftTimestamp(value, offset) {
   return Number.isFinite(value) && value > 0 ? value + offset : value;
@@ -92,13 +99,25 @@ function resumeInteractionClock(now) {
     [
       "spawnedAt",
       "approachEndsAt",
+      "actionStartedAt",
       "actionEndsAt",
       "hitEndsAt",
       "defeatedAt",
+      "knockedOutAt",
+      "reviveAt",
+      "celebrateEndsAt",
+      "retreatStartedAt",
+      "retreatEndsAt",
+      "deliveredAt",
       "despawnAt",
     ].forEach((key) => {
       threat[key] = shiftTimestamp(threat[key], pausedFor);
     });
+  });
+  (state.facilities ?? []).forEach((facility) => {
+    if (facility.type !== "generator") return;
+    facility.generatorStartedAt = shiftTimestamp(facility.generatorStartedAt, pausedFor);
+    facility.generatorEndsAt = shiftTimestamp(facility.generatorEndsAt, pausedFor);
   });
 }
 
@@ -141,42 +160,74 @@ function showProgressResult(previousLevel, actionResult, fallback = null) {
   if (currentLevel > previousLevel) {
     audio.play("levelUp", { minimumGapMs: 300 });
     void nativeBridge.haptic("success", state.settings.hapticsEnabled);
-    ui.showResult({
-      icon: "🌟",
-      eyebrow: "LEVEL UP!",
-      title: `레벨 ${currentLevel} 달성!`,
-      message: fallback
-        ? `${fallback} 이제 텃밭과 새 시설 해금을 확인해 보세요.`
-        : "새로운 텃밭과 시설을 확인해 보세요.",
-    });
+    ui.showToast(`레벨 ${currentLevel} 달성!`);
     return;
   }
   if (actionResult?.stageChanged) {
-    audio.play("evolve", { minimumGapMs: 250 });
-    ui.showResult({
-      icon: "✨",
-      eyebrow: "GROW UP!",
-      title: `${actionResult.stage.name}(으)로 성장!`,
-      message: actionResult.becameHarvestReady
-        ? "오이가 다 자랐어요. 한 번 더 눌러 수확하세요!"
-        : "물을 주고 돌보면 더 멋진 오이로 자라요.",
-    });
+    audio.play(actionResult.stage.id === "young" ? "grow" : "evolve", { minimumGapMs: 250 });
   }
 }
 
+function handleWaterTankReload() {
+  const result = reloadWateringCan(state);
+  if (!result.ok) {
+    showFailure(result.reason);
+    return;
+  }
+  renderAction({ sound: "reload", haptic: "medium" });
+}
+
+function handleStartNextDay() {
+  const result = startNextDay(state);
+  if (!result.ok) {
+    showFailure(result.reason);
+    return;
+  }
+  renderAction({ sound: "day", haptic: "success" });
+  audio.setBgmMode("day");
+  ui.showPhaseBanner("day", result.day);
+}
+
 function handleWorldTap(target, pointerEvent = null) {
+  if (target?.closest?.("#waterTankButton")) {
+    pointerEvent?.preventDefault?.();
+    handleWaterTankReload();
+    return;
+  }
+  if (target?.closest?.("#nextDayButton")) {
+    pointerEvent?.preventDefault?.();
+    handleStartNextDay();
+    return;
+  }
+  if (target?.closest?.("#townGateButton")) {
+    pointerEvent?.preventDefault?.();
+    ui.openScene("village", ui.elements.townGateButton);
+    return;
+  }
+  const generatorButton = target?.closest?.("[data-generator-action]");
+  if (generatorButton) {
+    pointerEvent?.preventDefault?.();
+    pointerEvent?.stopPropagation?.();
+    const result = startGeneratorCycle(state, generatorButton.dataset.generatorAction, Date.now());
+    if (!result.ok) {
+      showFailure(result.reason);
+      return;
+    }
+    renderAction({ sound: "button", haptic: "medium" });
+    return;
+  }
   const threatButton = target?.closest?.("[data-threat-action]");
   if (threatButton) {
     pointerEvent?.preventDefault?.();
     pointerEvent?.stopPropagation?.();
     const threatId = threatButton.dataset.threatAction;
     const previousLevel = getPlayerLevel(state.playerXp);
-    audio.play("hammerSwing", { minimumGapMs: 28 });
     const result = hitThreat(state, threatId);
     if (!result.ok) {
       if (result.reason !== "already-defeated") showFailure(result.reason);
       return;
     }
+    audio.play("hammerSwing", { minimumGapMs: 28 });
     synchronizeDerivedState(state);
     ui.render(state, { renderMenus: false });
     ui.playThreatHit(threatId, {
@@ -189,7 +240,6 @@ function handleWorldTap(target, pointerEvent = null) {
     queueSave();
     if (result.defeated) {
       audio.play(result.definition.defeatSound, { minimumGapMs: 120 });
-      ui.showToast(`${result.definition.name} 퇴치 완료!`);
       showProgressResult(previousLevel, result);
     }
     return;
@@ -226,33 +276,24 @@ function handleWorldTap(target, pointerEvent = null) {
   }
 
   if (!plot.crop.isPlanted) {
-    const result = plantCrop(state, plotId);
-    if (!result.ok) showFailure(result.reason, {}, plotId);
-    else renderAction({ message: "새 오이 씨앗을 심었어요!", sound: "plant", haptic: "light", plotId });
+    ui.playPlotFeedback(plotId, "error");
     return;
   }
 
   if (plot.crop.cropXp >= GAME_CONFIG.crops.harvestExperience) {
-    const result = harvestCrop(state, plotId);
+    const result = harvestCrop(state, plotId, Date.now());
     if (!result.ok) {
       showFailure(result.reason, {}, plotId);
       return;
     }
+    retreatThreatsFromPlot(state, plotId, Date.now());
     renderAction({
-      message: `오이 ${result.harvested}개 수확!`,
       sound: "harvest",
       haptic: "success",
       plotId,
     });
-    const level = getPlayerLevel(state.playerXp);
-    ui.showResult({
-      icon: "🥒",
-      eyebrow: level > previousLevel ? "HARVEST & LEVEL UP!" : "HARVEST!",
-      title: level > previousLevel ? `오이 ${result.harvested}개 · 레벨 ${level}!` : `오이 ${result.harvested}개 수확!`,
-      message: result.penalty > 0
-        ? `위협 피해로 기본 수확량보다 ${result.penalty}개 줄었어요.`
-        : "싱싱한 오이가 가방에 들어왔어요.",
-    });
+    ui.playHarvestReward(plotId, result.harvested);
+    showProgressResult(previousLevel, result);
     return;
   }
 
@@ -262,7 +303,6 @@ function handleWorldTap(target, pointerEvent = null) {
     return;
   }
   renderAction({
-    message: `물주기 +${GAME_CONFIG.tools.wateringCan.cropXp} XP`,
     sound: "water",
     haptic: "light",
     plotId,
@@ -281,31 +321,74 @@ const camera = new WorldCameraController({
 });
 camera.mount();
 
+let activeSeedPointerId = null;
+
+ui.elements.toolTray.addEventListener("pointerdown", (event) => {
+  const seed = event.target.closest("[data-seed-drag]");
+  if (!seed || seed.disabled || activeSeedPointerId !== null) return;
+  const variety = GAME_CONFIG.crops.varieties[seed.dataset.seedDrag];
+  if (!variety) return;
+  event.preventDefault();
+  event.stopPropagation();
+  activeSeedPointerId = event.pointerId;
+  seed.setPointerCapture?.(event.pointerId);
+  ui.beginSeedDrag(variety.id, variety.stageAssets.sprout, event.clientX, event.clientY);
+  void nativeBridge.haptic("light", state.settings.hapticsEnabled);
+}, { capture: true });
+
+globalThis.addEventListener("pointermove", (event) => {
+  if (event.pointerId === activeSeedPointerId) {
+    event.preventDefault();
+    ui.moveSeedDrag(event.clientX, event.clientY);
+  }
+}, { passive: false });
+
+function finishPointerDrag(event, cancelled = false) {
+  if (event.pointerId === activeSeedPointerId) {
+    const drop = cancelled ? (ui.cancelSeedDrag(), null) : ui.finishSeedDrag();
+    activeSeedPointerId = null;
+    if (drop?.plotId) {
+      const result = plantCrop(state, drop.plotId, drop.varietyId);
+      if (!result.ok) showFailure(result.reason, {}, drop.plotId);
+      else renderAction({ sound: "plant", haptic: "light", plotId: drop.plotId });
+    }
+  }
+}
+
+globalThis.addEventListener("pointerup", (event) => finishPointerDrag(event));
+globalThis.addEventListener("pointercancel", (event) => finishPointerDrag(event, true));
+globalThis.addEventListener("gameappinactive", () => {
+  ui.cancelSeedDrag();
+  activeSeedPointerId = null;
+});
+
 function handleTick() {
   const now = Date.now();
-  if (ui.isInteractionBlocked()) {
+  if (ui.shouldPauseGameClock()) {
     if (interactionPauseStartedAt === null) interactionPauseStartedAt = now;
     return;
   }
   resumeInteractionClock(now);
   const result = advanceGameTime(state, now);
+  result.expiredThreats.forEach(({ threat, result: damage }) => {
+    if (damage.damaged) ui.markCropLoss(threat.targetPlotId, damage.kind, now);
+  });
   synchronizeDerivedState(state);
   ui.render(state, { now, renderMenus: false });
 
   if (result.threatResult?.spawned) {
-    ui.showToast(`${result.threatResult.definition.name} 등장! 텃밭으로 다가옵니다. 직접 눌러 주세요.`);
+    ui.announce(`${result.threatResult.definition.name} 등장`);
     if (!result.threatResult.definition.isSilent && result.threatResult.definition.approachSound) {
       audio.play(result.threatResult.definition.approachSound, { minimumGapMs: 500 });
     }
     void nativeBridge.haptic("warning", state.settings.hapticsEnabled);
   } else if (result.threatResult?.reason === "scarecrow-protected") {
-    ui.showToast("허수아비가 위협을 막았습니다!");
+    ui.announce("허수아비가 위협을 막았습니다");
   }
 
-  result.expiredThreats.forEach(({ result: damage }) => {
+  result.expiredThreats.forEach(({ threat, result: damage }) => {
     if (!damage.damaged) return;
-    const unit = damage.kind === "coins" ? "코인" : damage.kind === "cucumbers" ? "오이" : "수확량";
-    ui.showToast(`위협을 놓쳐 ${unit} ${damage.amount} 피해를 입었습니다.`);
+    ui.playPlotDamage(threat.targetPlotId, damage.amount, damage.kind);
     audio.play("damage", { minimumGapMs: 350 });
     void nativeBridge.haptic("error", state.settings.hapticsEnabled);
     queueSave();
@@ -317,18 +400,25 @@ function handleTick() {
       audio.play(event.definition.eatingSound, { minimumGapMs: 420 });
     });
 
+  if (result.completedGenerators?.length) {
+    audio.play("coin", { minimumGapMs: 250 });
+    void nativeBridge.haptic("success", state.settings.hapticsEnabled);
+    queueSave();
+  }
+
   if (lastPhase !== state.turn.phase) {
     lastPhase = state.turn.phase;
     const isNight = state.turn.phase === "night";
+    audio.setBgmMode(state.turn.phase === "preparation" ? "preparation" : state.turn.phase);
     audio.play(isNight ? "night" : "day", { minimumGapMs: 400 });
     void nativeBridge.haptic("medium", state.settings.hapticsEnabled);
-    ui.showToast(
-      isNight
-        ? "밤이 되었습니다. 도둑과 온실을 확인하세요."
-        : state.turn.phase === "preparation"
-          ? "하루가 끝났어요. 준비를 마칠 때까지 시간은 멈춥니다."
-          : `${state.turn.day}일차 낮이 시작됐습니다.`
-    );
+    if (isNight || state.turn.phase === "day") {
+      ui.showPhaseBanner(state.turn.phase, state.turn.day);
+    } else if (state.turn.phase === "preparation") {
+      const report = result.transitions.find((transition) => transition.to === "preparation")?.report
+        ?? state.turn.lastReport;
+      ui.showTurnReport(report);
+    }
     queueSave();
   }
 }
@@ -352,6 +442,7 @@ function stopLoops() {
 async function suspendGame() {
   if (!runtimeActive) return;
   runtimeActive = false;
+  appPauseStartedAt = Date.now();
   interactionPauseStartedAt = null;
   stopLoops();
   globalThis.dispatchEvent(new Event("gameappinactive"));
@@ -364,7 +455,8 @@ async function resumeGame() {
   if (resumePromise) return resumePromise;
   resumePromise = (async () => {
     const now = Date.now();
-    const result = applyOfflineReward(state, now);
+    pauseTurnClock(state, Math.max(0, now - (appPauseStartedAt ?? now)));
+    appPauseStartedAt = null;
     synchronizeDerivedState(state);
     runtimeActive = true;
     lastPhase = state.turn.phase;
@@ -373,12 +465,6 @@ async function resumeGame() {
     audio.setActive(true);
     startLoops();
     await flushState({ announceFailure: false });
-    if (
-      result.elapsedSeconds >= 2 &&
-      (result.growthGained > 0 || result.transitions.length > 0)
-    ) {
-      ui.showOfflineReward(result);
-    }
   })().finally(() => {
     resumePromise = null;
   });
@@ -388,11 +474,23 @@ async function resumeGame() {
 ui.elements.toolTray.addEventListener("click", (event) => {
   const button = event.target.closest("[data-select-facility]");
   if (!button) return;
+  const definition = getFacilityDefinition(button.dataset.selectFacility);
+  if (definition?.placement === "terrace") {
+    const previousLevel = getPlayerLevel(state.playerXp);
+    const result = placeFacility(state, definition.id, -1, -1);
+    if (!result.ok) {
+      showFailure(result.reason);
+      return;
+    }
+    ui.setFacilityPlacement(null);
+    renderAction({ sound: "install", haptic: "success" });
+    showProgressResult(previousLevel, result);
+    return;
+  }
   const nextFacility = ui.placementFacilityId === button.dataset.selectFacility
     ? null
     : button.dataset.selectFacility;
   ui.setFacilityPlacement(nextFacility);
-  audio.play("button");
   void nativeBridge.haptic("light", state.settings.hapticsEnabled);
 });
 
@@ -400,20 +498,41 @@ ui.elements.bottomMenu.addEventListener("click", (event) => {
   const button = event.target.closest("[data-scene]");
   if (!button) return;
   ui.openScene(button.dataset.scene, button);
-  audio.play("button");
 });
 
 ui.elements.menuButton.addEventListener("click", () => {
   ui.openScene("settings", ui.elements.menuButton);
-  audio.play("button");
 });
 ui.elements.sceneSettingsButton.addEventListener("click", () => {
   ui.openScene("settings", ui.elements.sceneSettingsButton);
-  audio.play("button");
 });
 ui.elements.sceneCloseButton.addEventListener("click", () => {
   ui.closeScene();
-  audio.play("button");
+});
+
+ui.elements.villagePoliceButton.addEventListener("click", () => {
+  const result = claimTownBounty(state);
+  if (!result.ok) {
+    showFailure(result.reason);
+    return;
+  }
+  renderAction({
+    message: `경찰서 퇴치 보상금 ${result.bountyCoins}코인을 받았습니다.`,
+    sound: "coin",
+    haptic: "success",
+  });
+});
+
+ui.elements.villageShopButton.addEventListener("click", () => {
+  ui.openScene("shop", ui.elements.villageShopButton);
+});
+
+ui.elements.waterTankButton.addEventListener("click", (event) => {
+  if (event.detail === 0) handleWaterTankReload();
+});
+
+ui.elements.townGateButton.addEventListener("click", (event) => {
+  if (event.detail === 0) ui.openScene("village", ui.elements.townGateButton);
 });
 
 ui.elements.gardenPurchaseButton.addEventListener("click", () => {
@@ -448,23 +567,24 @@ ui.elements.consumableShopList.addEventListener("click", (event) => {
   else renderAction({ message: `${result.item.name} 구매 완료!`, sound: "purchase", haptic: "success" });
 });
 
-ui.elements.nextDayButton.addEventListener("click", () => {
-  const result = startNextDay(state);
+ui.elements.seedShopList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-buy-seed]");
+  if (!button) return;
+  const result = buySeed(state, button.dataset.buySeed);
   if (!result.ok) showFailure(result.reason);
-  else renderAction({ message: `${result.day}일차 낮이 시작됐습니다!`, sound: "day", haptic: "success" });
+  else renderAction({ message: `${result.item.name} 구매 완료!`, sound: "purchase", haptic: "success" });
 });
 
-ui.elements.offlineConfirmButton.addEventListener("click", () => {
-  ui.hideOfflineReward();
-  audio.play("button");
+ui.elements.nextDayButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  handleStartNextDay();
 });
-ui.elements.resultModalConfirmButton.addEventListener("click", () => {
-  ui.hideResult();
-  audio.play("button");
+
+ui.elements.turnReportConfirmButton.addEventListener("click", () => {
+  ui.hideTurnReport();
 });
 ui.elements.exitCancelButton.addEventListener("click", () => {
   ui.hideExitConfirm();
-  audio.play("button");
 });
 ui.elements.exitConfirmButton.addEventListener("click", async () => {
   await flushState({ announceFailure: false });
@@ -526,22 +646,23 @@ ui.elements.importSaveInput.addEventListener("change", async () => {
     audio.setSettings(state.settings);
     ui.render(state, { renderMenus: true });
     camera.refreshBounds();
-    ui.showResult({
-      icon: "💾",
-      eyebrow: "RESTORED!",
-      title: "농장을 복원했어요",
-      message: "백업에 있던 오이, 시설, 턴과 설정을 안전하게 가져왔습니다.",
-    });
+    ui.showToast("농장 백업을 복원했습니다.");
   } catch {
     showFailure("invalid-backup");
   }
 });
 
 ui.elements.supportUrlButton.addEventListener("click", async () => {
-  audio.play("button");
   const opened = await nativeBridge.openExternal("https://mallinoi.com/");
   if (!opened) showFailure("external-link-failed");
 });
+
+document.addEventListener("pointerdown", (event) => {
+  const button = event.target.closest?.("button");
+  if (!button || button.disabled) return;
+  if (button.matches(".start-button, [data-plot-action], [data-threat-action], #waterTankButton")) return;
+  audio.play("button", { minimumGapMs: 70 });
+}, { capture: true });
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
@@ -561,7 +682,6 @@ await nativeBridge.addAppStateListener(({ isActive }) => {
 await nativeBridge.addBackButtonListener(() => {
   if (!started) return;
   if (ui.closeTopLayer()) {
-    audio.play("button");
     return;
   }
   ui.showExitConfirm();
@@ -583,9 +703,18 @@ ui.elements.startButton.addEventListener("click", async () => {
   if (started) return;
   started = true;
   runtimeActive = true;
+  audio.setBgmMode("launch");
   await audio.unlock();
-  ui.hideStartScreen();
+  audio.play("button", { minimumGapMs: 0 });
+  await ui.hideStartScreen();
   startLoops();
+  globalThis.setTimeout(() => {
+    const mode = state.turn.phase === "preparation" ? "preparation" : state.turn.phase;
+    audio.setBgmMode(mode);
+    if (["day", "night"].includes(state.turn.phase)) {
+      ui.showPhaseBanner(state.turn.phase, state.turn.day);
+    }
+  }, 620);
   if (
     loadResult.status === "migrated" ||
     loadResult.status === "recovered"
@@ -597,10 +726,5 @@ ui.elements.startButton.addEventListener("click", async () => {
     );
   } else if (loadResult.recoveredFromBackup) {
     ui.showToast("손상된 최신 저장 대신 직전 정상 농장을 복구했습니다.");
-  } else if (
-    offlineResult.elapsedSeconds >= 2 &&
-    (offlineResult.growthGained > 0 || offlineResult.transitions.length > 0)
-  ) {
-    ui.showOfflineReward(offlineResult);
   }
 });

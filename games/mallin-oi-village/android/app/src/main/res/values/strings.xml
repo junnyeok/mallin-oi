@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">말오닷특별시</string>
+    <string name="title_activity_main">말오닷특별시</string>
+    <string name="package_name">com.mallinoi.specialcity</string>
+    <string name="custom_url_scheme">com.mallinoi.specialcity</string>
+</resources>

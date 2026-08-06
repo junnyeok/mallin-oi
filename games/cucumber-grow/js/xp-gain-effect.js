@@ -99,7 +99,7 @@ function getNextLane(container) {
 }
 
 function normalizeSource(source) {
-  return ["watering", "production", "offline"].includes(source)
+  return ["watering", "production"].includes(source)
     ? source
     : "generic";
 }

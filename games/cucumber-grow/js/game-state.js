@@ -52,7 +52,7 @@ export function createEmptyCrop() {
     isPlanted: false,
     cropXp: 0,
     growthStageId: GAME_CONFIG.crops.growthStages[0].id,
-    yieldPenalty: 0,
+    varietyId: GAME_CONFIG.crops.defaultVarietyId,
   };
 }
 
@@ -75,10 +75,29 @@ function normalizeCrop(rawCrop) {
     isPlanted,
     cropXp,
     growthStageId: stageIdForCropXp(cropXp),
-    yieldPenalty: isPlanted
-      ? Math.floor(toSafeNonNegativeNumber(rawCrop?.yieldPenalty))
-      : 0,
+    varietyId: GAME_CONFIG.crops.varieties[rawCrop?.varietyId]
+      ? rawCrop.varietyId
+      : GAME_CONFIG.crops.defaultVarietyId,
   };
+}
+
+function createSeeds() {
+  return Object.fromEntries(
+    Object.values(GAME_CONFIG.crops.varieties).map((variety) => [
+      variety.id,
+      toSafeCount(variety.startingSeeds),
+    ])
+  );
+}
+
+function normalizeSeeds(rawSeeds) {
+  const seeds = createSeeds();
+  Object.keys(seeds).forEach((varietyId) => {
+    if (rawSeeds && Object.prototype.hasOwnProperty.call(rawSeeds, varietyId)) {
+      seeds[varietyId] = toSafeCount(rawSeeds[varietyId]);
+    }
+  });
+  return seeds;
 }
 
 export function createGardenPlot(plotNumber = 1, rawCrop = null) {
@@ -98,8 +117,8 @@ function createInventory() {
   return {
     wateringCan: 1,
     hammer: 1,
+    waterTank: 1,
     sprinkler: 0,
-    rainBarrel: 0,
     scarecrow: 0,
     generator: 0,
     greenhouse: 0,
@@ -108,13 +127,62 @@ function createInventory() {
 
 function normalizeInventory(rawInventory) {
   const initial = createInventory();
+  const hasSavedHammer =
+    rawInventory &&
+    typeof rawInventory === "object" &&
+    Object.prototype.hasOwnProperty.call(rawInventory, "hammer");
 
   Object.keys(initial).forEach((key) => {
     initial[key] = toSafeCount(rawInventory?.[key]);
   });
   initial.wateringCan = Math.max(1, initial.wateringCan);
-  initial.hammer = Math.max(1, initial.hammer);
+  initial.waterTank = Math.max(1, initial.waterTank);
+  if (!hasSavedHammer) initial.hammer = 1;
   return initial;
+}
+
+function createToolStatus() {
+  return {
+    wateringCanCharge: GAME_CONFIG.tools.wateringCan.capacity,
+    hammerUsesRemaining: GAME_CONFIG.tools.hammer.usesPerItem,
+  };
+}
+
+function normalizeToolStatus(rawStatus, inventory) {
+  const defaults = createToolStatus();
+  const charge = Math.min(
+    GAME_CONFIG.tools.wateringCan.capacity,
+    toSafeCount(rawStatus?.wateringCanCharge, defaults.wateringCanCharge)
+  );
+  const hammerUsesRemaining = inventory.hammer > 0
+    ? Math.min(
+        GAME_CONFIG.tools.hammer.usesPerItem,
+        Math.max(
+          1,
+          toSafeCount(rawStatus?.hammerUsesRemaining, defaults.hammerUsesRemaining)
+        )
+      )
+    : 0;
+  return { wateringCanCharge: charge, hammerUsesRemaining };
+}
+
+function createTurnStats() {
+  return {
+    harvestedCucumbers: 0,
+    cropXp: 0,
+    playerXp: 0,
+    animalsDefeated: 0,
+    thievesDefeated: 0,
+    bountyCoins: 0,
+  };
+}
+
+function normalizeTurnStats(rawStats) {
+  const stats = createTurnStats();
+  Object.keys(stats).forEach((key) => {
+    stats[key] = toSafeNonNegativeNumber(rawStats?.[key]);
+  });
+  return stats;
 }
 
 function normalizeSettings(rawSettings) {
@@ -138,12 +206,15 @@ function normalizeSettings(rawSettings) {
 function createTurn(now) {
   return {
     day: 1,
-    phase: "day",
+    phase: "preparation",
     phaseStartedAt: now,
-    phaseEndsAt: now + GAME_CONFIG.turn.dayDurationMs,
+    phaseEndsAt: null,
     lastEffectAt: now,
-    nextThreatAt: now + GAME_CONFIG.threats.dayIntervalMs,
+    nextThreatAt: null,
     preparationCollectedDay: 0,
+    lastCompletedDay: 0,
+    stats: createTurnStats(),
+    lastReport: null,
   };
 }
 
@@ -162,6 +233,8 @@ export function createInitialGameState(now = Date.now()) {
     plots: [createGardenPlot(1)],
     nextPlotSequence: 2,
     inventory: createInventory(),
+    seeds: createSeeds(),
+    toolStatus: createToolStatus(),
     baseItemsGranted: true,
     facilities: [],
     legacyFacilities: {},
@@ -169,6 +242,13 @@ export function createInitialGameState(now = Date.now()) {
       water: GAME_CONFIG.resources.startingWater,
       fuel: GAME_CONFIG.resources.startingFuel,
       energy: GAME_CONFIG.resources.startingEnergy,
+    },
+    bounties: {
+      pendingCoins: 0,
+      claimedCoins: 0,
+    },
+    effects: {
+      sunlightBoostEndsAt: 0,
     },
     turn: createTurn(safeNow),
     threats: [],
@@ -188,7 +268,28 @@ export function detectGameStateSchema(rawState) {
       rawState.saveVersion === GAME_CONFIG.schemaVersion) &&
     Array.isArray(rawState.plots)
   ) {
-    return "v4";
+    return "v8";
+  }
+
+  if (
+    (rawState.schemaVersion === 7 || rawState.saveVersion === 7) &&
+    Array.isArray(rawState.plots)
+  ) {
+    return "v7";
+  }
+
+  if (
+    (rawState.schemaVersion === 6 || rawState.saveVersion === 6) &&
+    Array.isArray(rawState.plots)
+  ) {
+    return "v6";
+  }
+
+  if (
+    (rawState.schemaVersion === 5 || rawState.saveVersion === 5) &&
+    Array.isArray(rawState.plots)
+  ) {
+    return "v5";
   }
 
   if (
@@ -196,6 +297,13 @@ export function detectGameStateSchema(rawState) {
     Array.isArray(rawState.plots)
   ) {
     return "v3";
+  }
+
+  if (
+    (rawState.schemaVersion === 4 || rawState.saveVersion === 4) &&
+    Array.isArray(rawState.plots)
+  ) {
+    return "v4";
   }
 
   if (
@@ -259,7 +367,8 @@ function normalizeFacilities(rawFacilities, plots) {
       const column = toSafeCount(
         facility?.column ?? facility?.anchor?.column
       );
-      const anchorExists = plots.some(
+      const isTerrace = definition?.placement === "terrace";
+      const anchorExists = isTerrace || plots.some(
         (plot) => plot.row === row && plot.column === column
       );
 
@@ -271,10 +380,16 @@ function normalizeFacilities(rawFacilities, plots) {
           usedIds
         ),
         type: definition.id,
-        row,
-        column,
-        active: facility?.active !== false,
+        row: isTerrace ? -1 : row,
+        column: isTerrace ? -1 : column,
+        active: definition.id === "generator" ? facility?.active === true : facility?.active !== false,
         installedAt: toSafeNonNegativeNumber(facility?.installedAt),
+        generatorStartedAt: definition.id === "generator"
+          ? toSafeNonNegativeNumber(facility?.generatorStartedAt)
+          : 0,
+        generatorEndsAt: definition.id === "generator"
+          ? toSafeNonNegativeNumber(facility?.generatorEndsAt)
+          : 0,
       };
     })
     .filter(Boolean);
@@ -329,6 +444,15 @@ function normalizeTurn(rawTurn, now) {
     preparationCollectedDay: toSafeCount(
       rawTurn?.preparationCollectedDay
     ),
+    lastCompletedDay: toSafeCount(rawTurn?.lastCompletedDay),
+    stats: normalizeTurnStats(rawTurn?.stats),
+    lastReport:
+      rawTurn?.lastReport && typeof rawTurn.lastReport === "object"
+        ? {
+            day: Math.max(1, toSafeCount(rawTurn.lastReport.day) || 1),
+            ...normalizeTurnStats(rawTurn.lastReport),
+          }
+        : null,
   };
 }
 
@@ -353,10 +477,13 @@ function normalizeThreats(rawThreats, plots, now) {
         "stealing",
         "hit",
         "defeated",
+        "celebrating",
+        "retreating",
         "despawning",
       ]);
-      const state = allowedStates.has(threat?.state)
-        ? threat.state
+      const savedState = threat?.state === "knockedOut" ? "defeated" : threat?.state;
+      const state = allowedStates.has(savedState)
+        ? savedState
         : isLegacyThreat
           ? definition.id === "thief" ? "stealing" : "eating"
           : "approaching";
@@ -370,6 +497,10 @@ function normalizeThreats(rawThreats, plots, now) {
           threat?.expiresAt,
           spawnedAt + GAME_CONFIG.threats.responseWindowMs
         )
+      );
+      const actionStartedAt = toSafeNonNegativeNumber(
+        threat?.actionStartedAt,
+        ["eating", "stealing"].includes(state) ? spawnedAt : 0
       );
       const health = Math.min(
         definition.maxHealth,
@@ -390,7 +521,7 @@ function normalizeThreats(rawThreats, plots, now) {
         phase,
         targetPlotId: threat.targetPlotId,
         state,
-        resumeState: ["approaching", "eating", "stealing"].includes(threat?.resumeState)
+        resumeState: ["approaching", "eating", "stealing", "retreating"].includes(threat?.resumeState)
           ? threat.resumeState
           : null,
         health: state === "defeated" ? health : Math.max(1, health),
@@ -398,14 +529,35 @@ function normalizeThreats(rawThreats, plots, now) {
         spawnedAt,
         approachEndsAt,
         actionEndsAt,
+        actionStartedAt,
+        biteStage: definition.id === "thief"
+          ? 0
+          : Math.min(3, toSafeCount(threat?.biteStage)),
         hitEndsAt: toSafeNonNegativeNumber(threat?.hitEndsAt),
         defeatedAt: toSafeNonNegativeNumber(threat?.defeatedAt),
-        despawnAt: toSafeNonNegativeNumber(threat?.despawnAt),
+        knockedOutAt: 0,
+        reviveAt: 0,
+        celebrateEndsAt: toSafeNonNegativeNumber(
+          threat?.celebrateEndsAt,
+          state === "celebrating" ? now + GAME_CONFIG.threats.celebrateDurationMs : 0
+        ),
+        retreatStartedAt: toSafeNonNegativeNumber(threat?.retreatStartedAt),
+        retreatEndsAt: toSafeNonNegativeNumber(threat?.retreatEndsAt),
+        retreatFromProgress: Math.min(
+          1,
+          Math.max(0, toSafeNonNegativeNumber(threat?.retreatFromProgress, 1))
+        ),
+        deliveredAt: toSafeNonNegativeNumber(threat?.deliveredAt),
+        despawnAt: toSafeNonNegativeNumber(
+          threat?.despawnAt,
+          state === "defeated" ? now + GAME_CONFIG.threats.defeatedDisplayMs : 0
+        ),
         spawnEdge,
         spawnLane: Math.min(
           0.92,
           Math.max(0.08, toSafeNonNegativeNumber(threat?.spawnLane, 0.2 + (index % 4) * 0.2))
         ),
+        attackSide: threat?.attackSide === -1 || (threat?.attackSide !== 1 && index % 2 === 0) ? -1 : 1,
         rewardGranted: threat?.rewardGranted === true,
         resolved: threat?.resolved === true,
       };
@@ -426,22 +578,27 @@ function normalizeV3State(rawState, now) {
   const plots = normalizePlots(rawState?.plots);
   const playerXp = toSafeNonNegativeNumber(rawState?.playerXp);
   const facilities = normalizeFacilities(rawState?.facilities, plots);
+  const inventory = normalizeInventory(rawState?.inventory);
+  const turn = normalizeTurn(rawState?.turn, now);
+  const savedCoins = toSafeNonNegativeNumber(
+    rawState?.coins,
+    GAME_CONFIG.economy.startingCoins
+  );
 
   return {
     schemaVersion: GAME_CONFIG.schemaVersion,
     saveVersion: GAME_CONFIG.schemaVersion,
     cucumbers: toSafeNonNegativeNumber(rawState?.cucumbers),
-    coins: toSafeNonNegativeNumber(
-      rawState?.coins,
-      GAME_CONFIG.economy.startingCoins
-    ),
+    coins: Math.min(GAME_CONFIG.maxGameNumber, savedCoins),
     totalEarned: toSafeNonNegativeNumber(rawState?.totalEarned),
     playerXp,
     playerLevel: getLevelForXp(playerXp),
     harvestCount: toSafeCount(rawState?.harvestCount),
     plots,
     nextPlotSequence: plots.length + 1,
-    inventory: normalizeInventory(rawState?.inventory),
+    inventory,
+    seeds: normalizeSeeds(rawState?.seeds),
+    toolStatus: normalizeToolStatus(rawState?.toolStatus, inventory),
     baseItemsGranted: true,
     facilities,
     legacyFacilities:
@@ -467,8 +624,26 @@ function normalizeV3State(rawState, now) {
         )
       ),
     },
-    turn: normalizeTurn(rawState?.turn, now),
-    threats: normalizeThreats(rawState?.threats, plots, now),
+    bounties: {
+      pendingCoins: Math.min(
+        GAME_CONFIG.maxGameNumber,
+        toSafeNonNegativeNumber(rawState?.bounties?.pendingCoins)
+      ),
+      claimedCoins: Math.min(
+        GAME_CONFIG.maxGameNumber,
+        toSafeNonNegativeNumber(rawState?.bounties?.claimedCoins)
+      ),
+    },
+    effects: {
+      sunlightBoostEndsAt: toSafeNonNegativeNumber(
+        rawState?.effects?.sunlightBoostEndsAt
+      ),
+    },
+    turn,
+    threats:
+      turn.phase === "preparation"
+        ? []
+        : normalizeThreats(rawState?.threats, plots, now),
     lastSavedAt: safeTimestamp(rawState?.lastSavedAt, now, now),
     startedAt: safeTimestamp(rawState?.startedAt, now, now),
     settings: normalizeSettings(rawState?.settings ?? initial.settings),
@@ -523,7 +698,6 @@ function migrateLegacyState(rawState, now) {
   const crop = {
     isPlanted: rawState.isPlanted !== false,
     cropXp: rawState.growthExperience,
-    yieldPenalty: 0,
   };
 
   return normalizeV3State(
@@ -552,7 +726,7 @@ export function normalizeGameState(rawState, now = Date.now()) {
   const safeNow = Math.floor(toSafeNonNegativeNumber(now, Date.now()));
   const schema = detectGameStateSchema(rawState);
 
-  if (schema === "v4" || schema === "v3") return normalizeV3State(rawState, safeNow);
+  if (["v8", "v7", "v6", "v5", "v4", "v3"].includes(schema)) return normalizeV3State(rawState, safeNow);
   if (schema === "v2") return migrateV2State(rawState, safeNow);
   if (schema === "legacy") return migrateLegacyState(rawState, safeNow);
   if (schema === "partial") return normalizeV3State(rawState, safeNow);

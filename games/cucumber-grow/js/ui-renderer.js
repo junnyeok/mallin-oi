@@ -1,6 +1,8 @@
 import { GAME_CONFIG, getThreatDefinitionById } from "./game-config.js";
 import {
   canPurchaseGarden,
+  getCropStageAsset,
+  getCropVariety,
   getGrowthProgress,
   getMaximumPlotsForLevel,
   getPlayerProgress,
@@ -10,12 +12,13 @@ import {
 import {
   getFacilityAffectedPlots,
   getFacilityDefinition,
+  getGeneratorProgress,
   getFacilityStatus,
   isPlotIndoors,
   validateFacilityPlacement,
 } from "./facility-engine.js";
 import { getTurnRemainingMs } from "./turn-engine.js";
-import { formatDuration, formatNumber } from "./number-format.js";
+import { formatNumber } from "./number-format.js";
 import { showXpGain } from "./xp-gain-effect.js";
 
 const PHASE_LABELS = {
@@ -26,7 +29,15 @@ const PHASE_LABELS = {
 
 export function getReasonMessage(reason, context = {}) {
   const messages = {
-    "not-enough-water": "물이 부족합니다. 준비 시간에 물을 구매해 주세요.",
+    "not-enough-water": "물이 부족합니다. 상점에서 물을 구매해 주세요.",
+    "turn-not-active": "하루의 턴을 시작한 뒤에 사용할 수 있습니다.",
+    "watering-can-empty": "물뿌리개가 비었습니다. 위쪽 물통을 눌러 충전하세요.",
+    "watering-can-full": "물뿌리개가 이미 가득 찼습니다.",
+    "water-tank-empty": "물통이 비었습니다. 상점에서 물을 구매하세요.",
+    "no-hammer": "뿅망치가 없습니다. 상점에서 새 망치를 구매하세요.",
+    "no-seed": "이 씨앗이 없습니다. 상점에서 씨앗을 구매하세요.",
+    "unknown-seed": "선택할 수 없는 오이 씨앗입니다.",
+    "no-bounty": "경찰서에서 받을 퇴치 보상금이 없습니다.",
     "not-enough-coins": "코인이 부족합니다.",
     "empty-plot": "빈 텃밭입니다. 먼저 오이를 심어 주세요.",
     "harvest-ready": "다 자란 오이는 먼저 수확해 주세요.",
@@ -36,8 +47,12 @@ export function getReasonMessage(reason, context = {}) {
     "maximum-plots": "현재 버전의 최대 텃밭 수에 도달했습니다.",
     "no-threat": "지금 내쫓을 새·짐승·도둑이 없습니다.",
     "already-defeated": "이미 쓰러진 위협입니다.",
+    "generator-running": "발전기가 이미 힘차게 돌아가고 있습니다.",
+    "energy-full": "에너지가 가득 찼습니다.",
+    "not-enough-fuel": "발전기를 돌릴 연료가 부족합니다.",
+    "not-knocked-out": "먼저 뿅망치로 위협을 기절시켜 주세요.",
     "facility-occupied": "시설이 있는 칸에는 오이를 심을 수 없습니다.",
-    "not-owned": "먼저 준비 시간 상점에서 시설을 구매해 주세요.",
+    "not-owned": "먼저 상점에서 시설을 구매해 주세요.",
     "level-locked": "플레이어 레벨이 부족합니다.",
     "invalid-anchor": "시설을 놓을 수 없는 위치입니다.",
     "empty-plot-required": "이 시설은 오이가 없는 빈 텃밭에 놓아야 합니다.",
@@ -62,9 +77,8 @@ function formatTimer(milliseconds) {
 function facilityDescription(definition) {
   if (definition.id === "sprinkler") return "주변 8칸 · 초당 1XP · 물 0.25";
   if (definition.id === "scarecrow") return "주변 8칸 · 낮 위협 70% 방어";
-  if (definition.id === "greenhouse") return "3×2 여섯 칸 · 밤 성장 · 에너지 0.5/초";
-  if (definition.id === "rainBarrel") return "준비 시간마다 물 18 충전";
-  if (definition.id === "generator") return "연료 0.2/초 → 에너지 1/초";
+  if (definition.id === "greenhouse") return "3×2 여섯 칸 · 밤 작물 보호";
+  if (definition.id === "generator") return `연료 ${definition.fuelPerCycle} → 에너지 ${definition.energyPerCycle} · ${definition.cycleDurationMs / 1_000}초`;
   return "농장 시설";
 }
 
@@ -77,10 +91,13 @@ export class GameUI {
     this.placementFacilityId = null;
     this.lastModalTrigger = null;
     this.toastTimer = null;
+    this.phaseBannerTimer = null;
     this.currentScene = "farm";
     this.feedbackTimers = new Set();
     this.combatEffectPool = [];
     this.wateringEffectPool = [];
+    this.pendingCropLoss = new Map();
+    this.seedDrag = null;
     this.elements = {
       gameApp: documentRoot.querySelector("#gameApp"),
       cucumberCount: documentRoot.querySelector("#cucumberCount"),
@@ -93,13 +110,25 @@ export class GameUI {
       waterCount: documentRoot.querySelector("#waterCount"),
       fuelCount: documentRoot.querySelector("#fuelCount"),
       energyCount: documentRoot.querySelector("#energyCount"),
-      phaseMessage: documentRoot.querySelector("#phaseMessage"),
       nextDayButton: documentRoot.querySelector("#nextDayButton"),
-      preparationDock: documentRoot.querySelector("#preparationDock"),
       saveStatus: documentRoot.querySelector("#saveStatus"),
       toolTray: documentRoot.querySelector("#toolTray"),
       facilityInventory: documentRoot.querySelector("#facilityInventory"),
-      selectionHelp: documentRoot.querySelector("#selectionHelp"),
+      wateringCanStatus: documentRoot.querySelector("#wateringCanStatus"),
+      wateringCanMeter: documentRoot.querySelector("#wateringCanMeter"),
+      hammerStatus: documentRoot.querySelector("#hammerStatus"),
+      hammerDurabilityMeter: documentRoot.querySelector("#hammerDurabilityMeter"),
+      hammerQuantity: documentRoot.querySelector("#hammerQuantity"),
+      waterTankButton: documentRoot.querySelector("#waterTankButton"),
+      waterTankStatus: documentRoot.querySelector("#waterTankStatus"),
+      waterTankMeter: documentRoot.querySelector("#waterTankMeter"),
+      generatorStation: documentRoot.querySelector("#generatorStation"),
+      generatorStationMeter: documentRoot.querySelector("#generatorStationMeter"),
+      townGateButton: documentRoot.querySelector("#townGateButton"),
+      villagePoliceButton: documentRoot.querySelector("#villagePoliceButton"),
+      villageShopButton: documentRoot.querySelector("#villageShopButton"),
+      townBountyStatus: documentRoot.querySelector("#townBountyStatus"),
+      seedDragList: documentRoot.querySelector("#seedDragList"),
       plotList: documentRoot.querySelector("#plotList"),
       gardenWorld: documentRoot.querySelector("#gardenWorld"),
       threatLayer: documentRoot.querySelector("#threatLayer"),
@@ -122,18 +151,20 @@ export class GameUI {
       gardenPurchaseButton: documentRoot.querySelector("#gardenPurchaseButton"),
       facilityShopList: documentRoot.querySelector("#facilityShopList"),
       consumableShopList: documentRoot.querySelector("#consumableShopList"),
-      offlineModal: documentRoot.querySelector("#offlineModal"),
-      offlineDuration: documentRoot.querySelector("#offlineDuration"),
-      offlineReward: documentRoot.querySelector("#offlineReward"),
-      offlinePhase: documentRoot.querySelector("#offlinePhase"),
-      offlineConfirmButton: documentRoot.querySelector("#offlineConfirmButton"),
-      resultModal: documentRoot.querySelector("#resultModal"),
-      resultPopup: documentRoot.querySelector("#resultPopup"),
-      resultModalIcon: documentRoot.querySelector("#resultModalIcon"),
-      resultModalEyebrow: documentRoot.querySelector("#resultModalEyebrow"),
-      resultModalTitle: documentRoot.querySelector("#resultModalTitle"),
-      resultModalMessage: documentRoot.querySelector("#resultModalMessage"),
-      resultModalConfirmButton: documentRoot.querySelector("#resultModalConfirmButton"),
+      seedShopList: documentRoot.querySelector("#seedShopList"),
+      phaseBanner: documentRoot.querySelector("#phaseBanner"),
+      phaseBannerDay: documentRoot.querySelector("#phaseBannerDay"),
+      phaseBannerTitle: documentRoot.querySelector("#phaseBannerTitle"),
+      phaseBannerSubtitle: documentRoot.querySelector("#phaseBannerSubtitle"),
+      turnReportModal: documentRoot.querySelector("#turnReportModal"),
+      turnReportTitle: documentRoot.querySelector("#turnReportTitle"),
+      reportHarvest: documentRoot.querySelector("#reportHarvest"),
+      reportCropXp: documentRoot.querySelector("#reportCropXp"),
+      reportPlayerXp: documentRoot.querySelector("#reportPlayerXp"),
+      reportAnimals: documentRoot.querySelector("#reportAnimals"),
+      reportThieves: documentRoot.querySelector("#reportThieves"),
+      reportBounty: documentRoot.querySelector("#reportBounty"),
+      turnReportConfirmButton: documentRoot.querySelector("#turnReportConfirmButton"),
       exitModal: documentRoot.querySelector("#exitModal"),
       exitCancelButton: documentRoot.querySelector("#exitCancelButton"),
       exitConfirmButton: documentRoot.querySelector("#exitConfirmButton"),
@@ -154,6 +185,7 @@ export class GameUI {
       loadingTrack: documentRoot.querySelector("#loadingTrack"),
       loadingBar: documentRoot.querySelector("#loadingBar"),
       loadingLabel: documentRoot.querySelector("#loadingLabel"),
+      cloudTransition: documentRoot.querySelector("#cloudTransition"),
       toast: documentRoot.querySelector("#toast"),
       announcement: documentRoot.querySelector("#gameAnnouncement"),
     };
@@ -165,9 +197,6 @@ export class GameUI {
     root.dataset.plotId = plot.plotId;
     root.dataset.row = String(plot.row);
     root.dataset.column = String(plot.column);
-
-    const coordinate = this.document.createElement("span");
-    coordinate.className = "plot-coordinate";
 
     const button = this.document.createElement("button");
     button.type = "button";
@@ -184,11 +213,17 @@ export class GameUI {
     cropImage.alt = "";
     cropImage.decoding = "async";
 
-    const cropFallback = this.document.createElement("span");
+    const cropFallback = this.document.createElement("img");
     cropFallback.className = "crop-fallback";
-    cropFallback.textContent = "🥒";
+    cropFallback.src = GAME_CONFIG.uiAssets.resources.cucumber;
+    cropFallback.alt = "";
     cropFallback.setAttribute("aria-hidden", "true");
     cropFallback.hidden = true;
+
+    const damageMeter = this.document.createElement("span");
+    damageMeter.className = "crop-damage-meter";
+    damageMeter.setAttribute("aria-hidden", "true");
+    damageMeter.hidden = true;
 
     cropImage.addEventListener("load", () => {
       cropImage.hidden = false;
@@ -216,7 +251,8 @@ export class GameUI {
     const progressBar = this.document.createElement("i");
     progress.append(progressBar);
 
-    const facilityBadge = this.document.createElement("span");
+    const facilityBadge = this.document.createElement("button");
+    facilityBadge.type = "button";
     facilityBadge.className = "facility-badge";
     facilityBadge.hidden = true;
 
@@ -225,15 +261,15 @@ export class GameUI {
     indoorMark.textContent = "온실 내부";
     indoorMark.hidden = true;
 
-    button.append(emptyMarker, cropImage, cropFallback, cropName, plotYield, progress);
-    root.append(coordinate, button, facilityBadge, indoorMark);
+    button.append(emptyMarker, cropImage, cropFallback, damageMeter, cropName, plotYield, progress);
+    root.append(button, facilityBadge, indoorMark);
     return {
       root,
-      coordinate,
       button,
       emptyMarker,
       cropImage,
       cropFallback,
+      damageMeter,
       cropName,
       plotYield,
       progress,
@@ -272,7 +308,7 @@ export class GameUI {
   createThreatView(threat) {
     const actor = this.document.createElement("button");
     actor.type = "button";
-    actor.className = "threat-actor";
+    actor.className = "threat-actor is-unpositioned";
     actor.dataset.threatAction = threat.threatId;
 
     const healthBar = this.document.createElement("span");
@@ -284,9 +320,12 @@ export class GameUI {
     const sprite = this.document.createElement("span");
     sprite.className = "threat-sprite";
     sprite.setAttribute("aria-hidden", "true");
-    actor.append(healthBar, sprite);
+    const facing = this.document.createElement("span");
+    facing.className = "threat-facing";
+    facing.append(sprite);
+    actor.append(healthBar, facing);
     this.elements.threatLayer.append(actor);
-    return { actor, healthBar, healthFill, sprite };
+    return { actor, healthBar, healthFill, facing, sprite };
   }
 
   ensureThreatViews(state) {
@@ -315,14 +354,16 @@ export class GameUI {
     const height = viewportRect.height || viewport.clientHeight || 600;
     const targetView = this.plotViews.get(threat.targetPlotId);
     const targetRect = targetView?.root.getBoundingClientRect?.();
+    const attackSide = threat.attackSide === -1 ? -1 : 1;
     const targetX = targetRect
-      ? targetRect.left - viewportRect.left + targetRect.width / 2
+      ? targetRect.left - viewportRect.left + targetRect.width * (0.5 + attackSide * 0.42)
       : width / 2;
     const targetY = targetRect
-      ? targetRect.top - viewportRect.top + targetRect.height * 0.42
+      ? targetRect.top - viewportRect.top + targetRect.height * 0.48
       : height / 2;
     const lane = Math.min(0.92, Math.max(0.08, threat.spawnLane ?? 0.5));
-    const actorRadius = 52;
+    const definition = getThreatDefinitionById(threat.type);
+    const actorRadius = (definition?.actorSize ?? 82) / 2 + 10;
     const starts = {
       top: { x: lane * width, y: -actorRadius },
       right: { x: width + actorRadius, y: lane * height },
@@ -331,6 +372,7 @@ export class GameUI {
     };
     const start = starts[threat.spawnEdge] ?? starts.left;
     const movementState = threat.state === "hit" ? threat.resumeState : threat.state;
+    const isRetreating = movementState === "retreating";
     const progress = movementState === "approaching"
       ? Math.min(
           1,
@@ -340,13 +382,65 @@ export class GameUI {
               Math.max(1, threat.approachEndsAt - threat.spawnedAt)
           )
         )
-      : 1;
-    const eased = 1 - (1 - progress) ** 2;
-    const targetOffset = ((index % 3) - 1) * 14;
-    return {
-      x: start.x + (targetX + targetOffset - start.x) * eased,
-      y: start.y + (targetY - start.y) * eased,
-    };
+      : isRetreating
+        ? Math.min(1, Math.max(0, threat.retreatFromProgress ?? 1))
+        : 1;
+    const eased = definition?.approachMotion === "sneak"
+      ? progress * progress * (3 - 2 * progress)
+      : 1 - (1 - progress) ** 2;
+    const targetOffset = ((index % 3) - 1) * 7;
+    const safeTargetX = Math.min(width - actorRadius, Math.max(actorRadius, targetX + targetOffset));
+    const safeTargetY = Math.min(height - actorRadius, Math.max(actorRadius, targetY));
+    const baseX = start.x + (safeTargetX - start.x) * eased;
+    const baseY = start.y + (safeTargetY - start.y) * eased;
+    const vectorX = safeTargetX - start.x;
+    const vectorY = safeTargetY - start.y;
+    const length = Math.max(1, Math.hypot(vectorX, vectorY));
+    const perpendicularX = -vectorY / length;
+    const perpendicularY = vectorX / length;
+    const remaining = 1 - progress;
+    let offsetX = 0;
+    let offsetY = 0;
+    if (movementState === "approaching") {
+      switch (definition?.approachMotion) {
+        case "fly":
+          offsetY -= Math.sin(progress * Math.PI) * 58;
+          offsetX += perpendicularX * Math.sin(progress * Math.PI * 3) * 12 * remaining;
+          break;
+        case "hop":
+          offsetY -= Math.abs(Math.sin(progress * Math.PI * 4)) * 34;
+          break;
+        case "scurry":
+          offsetX += perpendicularX * Math.sin(progress * Math.PI * 9) * 34 * (0.55 + remaining * 0.45);
+          offsetY += perpendicularY * Math.sin(progress * Math.PI * 9) * 34 * (0.55 + remaining * 0.45);
+          break;
+        case "charge":
+          offsetY += Math.sin(progress * Math.PI * 6) * 4;
+          break;
+        case "run":
+          offsetX += perpendicularX * Math.sin(progress * Math.PI * 5) * 10 * remaining;
+          offsetY += perpendicularY * Math.sin(progress * Math.PI * 5) * 10 * remaining;
+          break;
+        case "sneak":
+          offsetX += perpendicularX * Math.sin(progress * Math.PI * 4) * 8 * remaining;
+          offsetY += perpendicularY * Math.sin(progress * Math.PI * 4) * 8 * remaining;
+          break;
+        default:
+          break;
+      }
+    }
+    if (isRetreating) {
+      const retreatProgress = Math.min(
+        1,
+        Math.max(0, (now - threat.retreatStartedAt) / Math.max(1, threat.retreatEndsAt - threat.retreatStartedAt))
+      );
+      const retreatEase = retreatProgress * retreatProgress * (3 - 2 * retreatProgress);
+      return {
+        x: baseX + (start.x - baseX) * retreatEase,
+        y: baseY + (start.y - baseY) * retreatEase,
+      };
+    }
+    return { x: baseX + offsetX, y: baseY + offsetY };
   }
 
   renderThreats(state, now) {
@@ -360,29 +454,53 @@ export class GameUI {
         0,
         Math.min(100, (threat.health / definition.maxHealth) * 100)
       );
-      const spriteState = threat.state === "stealing" ? "eating" : threat.state;
-      const frame = {
-        approaching: "0%",
-        eating: "33.333%",
-        hit: "66.667%",
-        defeated: "100%",
-        despawning: "100%",
-      }[spriteState] ?? "0%";
+      const spriteState = threat.state === "stealing"
+        ? "eating"
+        : threat.state === "retreating"
+          ? "approaching"
+        : threat.state === "celebrating"
+          ? "happy"
+          : threat.state === "despawning" && threat.health > 0
+            ? "happy"
+          : threat.state;
+      const stripKey = threat.state === "stealing"
+        ? "stealing"
+        : threat.state === "retreating"
+          ? "approaching"
+          : threat.state;
+      const stripAsset = definition.animationStrips?.[stripKey];
+      const frameState = spriteState === "despawning" ? "defeated" : spriteState;
+      const frameAsset = stripAsset ?? definition.animationFrames?.[frameState]
+        ?? definition.animationFrames?.approaching
+        ?? definition.animationAsset;
 
       view.actor.dataset.state = threat.state;
       view.actor.dataset.threatType = definition.id;
-      view.actor.style.setProperty("--threat-x", `${position.x}px`);
-      view.actor.style.setProperty("--threat-y", `${position.y}px`);
-      view.sprite.style.backgroundImage = `url("${definition.animationAsset}")`;
-      view.sprite.style.backgroundPosition = `${frame} 50%`;
+      view.actor.dataset.facing = threat.attackSide === -1 ? "right" : "left";
+      view.actor.dataset.spriteMode = stripAsset ? "strip" : "frame";
+      view.actor.style.setProperty("--actor-size", `${definition.actorSize ?? 82}px`);
+      if (position) {
+        view.actor.style.setProperty("--threat-x", `${position.x}px`);
+        view.actor.style.setProperty("--threat-y", `${position.y}px`);
+      }
+      view.sprite.style.backgroundImage = `url("${frameAsset}")`;
       view.healthFill.style.width = `${healthPercent}%`;
       view.healthFill.dataset.healthLevel =
         healthPercent > 55 ? "high" : healthPercent > 25 ? "medium" : "low";
-      view.healthBar.hidden = ["defeated", "despawning"].includes(threat.state);
+      view.healthBar.hidden = ["defeated", "celebrating", "despawning"].includes(threat.state);
+      view.actor.disabled = threat.resolved === true;
       view.actor.setAttribute(
         "aria-label",
-        `${definition.name}, 체력 ${threat.health}/${definition.maxHealth}, 눌러서 뿅망치 공격`
+        threat.state === "celebrating"
+          ? `${definition.name}, 오이를 가져가 기뻐하는 중`
+          : threat.state === "defeated"
+            ? `${definition.name}, 퇴치됨`
+          : `${definition.name}, 체력 ${threat.health}/${definition.maxHealth}, 눌러서 뿅망치 공격`
       );
+      if (view.actor.classList.contains("is-unpositioned")) {
+        const reveal = () => view.actor.classList.remove("is-unpositioned");
+        this.document.defaultView?.requestAnimationFrame?.(reveal) ?? reveal();
+      }
     });
   }
 
@@ -391,25 +509,38 @@ export class GameUI {
     if (!view) return;
     const progress = getGrowthProgress(plot.crop.cropXp);
     const isPlanted = plot.crop.isPlanted;
+    const loss = this.pendingCropLoss.get(plot.plotId);
+    const lossActive = !isPlanted && loss && now < loss.endsAt;
+    if (loss && !lossActive) this.pendingCropLoss.delete(plot.plotId);
+    const visuallyPlanted = isPlanted || lossActive;
+    const biteStage = isPlanted
+      ? Math.max(0, ...state.threats
+          .filter((threat) => threat.targetPlotId === plot.plotId && threat.type !== "thief" && threat.state !== "despawning")
+          .map((threat) => threat.biteStage ?? 0))
+      : 0;
     const anchorFacility = state.facilities.find(
       (facility) => facility.row === plot.row && facility.column === plot.column
     );
 
     view.root.dataset.row = String(plot.row);
     view.root.dataset.column = String(plot.column);
+    view.root.dataset.stage = isPlanted ? progress.stage.id : "empty";
+    view.root.dataset.variety = plot.crop.varietyId ?? GAME_CONFIG.crops.defaultVarietyId;
+    view.root.dataset.damageStage = String(biteStage);
+    view.damageMeter.hidden = true;
+    view.root.classList.toggle("is-crop-lost", Boolean(lossActive));
+    view.root.classList.toggle("is-crop-stolen", Boolean(lossActive && loss.kind === "stolen-crop"));
     view.root.classList.toggle("is-indoor", isPlotIndoors(state, plot.plotId));
-    view.coordinate.textContent = `${plot.row + 1}행 ${plot.column + 1}열`;
-    view.emptyMarker.hidden = isPlanted;
-    view.cropImage.hidden = !isPlanted;
-    view.cropFallback.hidden = !isPlanted || view.cropImage.dataset.assetFailed !== "true";
+    view.emptyMarker.hidden = visuallyPlanted;
+    view.cropImage.hidden = !visuallyPlanted;
+    view.cropFallback.hidden = !visuallyPlanted || view.cropImage.dataset.assetFailed !== "true";
     view.cropName.textContent = isPlanted
-      ? progress.isHarvestReady
-        ? "수확 가능"
-        : progress.stage.name
+      ? getCropVariety(plot.crop.varietyId).name
       : anchorFacility
         ? "시설 칸"
-        : "눌러서 심기";
+        : "빈 텃밭";
     view.plotYield.textContent = `기본 수확 ${formatNumber(getPlotHarvestYield(plot))}개`;
+    view.plotYield.hidden = !isPlanted;
     view.progress.hidden = !isPlanted;
     view.progressBar.style.width = `${progress.progressPercent}%`;
     view.progress.setAttribute("aria-valuemin", "0");
@@ -423,7 +554,11 @@ export class GameUI {
     );
 
     if (isPlanted) {
-      const requestedAsset = progress.stage.characterAsset;
+      const variety = getCropVariety(plot.crop.varietyId);
+      const requestedAsset = biteStage > 0
+        ? variety.damagedStageAssets?.[progress.stage.id]?.[biteStage - 1]
+          ?? getCropStageAsset(plot.crop, progress.stage.id)
+        : getCropStageAsset(plot.crop, progress.stage.id);
       if (view.cropImage.dataset.requestedAsset !== requestedAsset) {
         view.cropImage.dataset.requestedAsset = requestedAsset;
         view.cropImage.dataset.fallbackApplied = "false";
@@ -432,29 +567,42 @@ export class GameUI {
         view.cropImage.hidden = false;
         view.cropImage.src = requestedAsset;
       }
-    } else {
+    } else if (!lossActive) {
       view.cropImage.removeAttribute("src");
       delete view.cropImage.dataset.requestedAsset;
     }
 
     if (anchorFacility) {
       const definition = getFacilityDefinition(anchorFacility.type);
-      const status = getFacilityStatus(state, anchorFacility);
+      const status = getFacilityStatus(state, anchorFacility, now);
       view.facilityBadge.hidden = false;
+      view.facilityBadge.className = "facility-badge";
       view.facilityBadge.classList.toggle("is-stopped", !status.active);
       view.facilityBadge.replaceChildren();
       const image = this.document.createElement("img");
       image.src = definition.asset;
       image.alt = "";
-      const label = this.document.createElement("span");
-      label.textContent = `${definition.name} · ${status.reason}`;
-      view.facilityBadge.append(image, label);
+      if (definition.id === "generator") {
+        view.facilityBadge.hidden = true;
+        delete view.facilityBadge.dataset.generatorAction;
+      } else {
+        delete view.facilityBadge.dataset.generatorAction;
+        const label = this.document.createElement("span");
+        label.textContent = `${definition.name} · ${status.reason}`;
+        view.facilityBadge.append(image, label);
+      }
     } else {
       view.facilityBadge.hidden = true;
+      view.facilityBadge.className = "facility-badge";
+      delete view.facilityBadge.dataset.generatorAction;
       view.facilityBadge.replaceChildren();
     }
 
     view.indoorMark.hidden = !isPlotIndoors(state, plot.plotId);
+  }
+
+  markCropLoss(plotId, kind, now = Date.now()) {
+    this.pendingCropLoss.set(plotId, { kind, endsAt: now + 680 });
   }
 
   renderFacilityRanges(state) {
@@ -464,6 +612,80 @@ export class GameUI {
           this.plotViews.get(plot.plotId)?.root.classList.add("is-range");
         });
       });
+  }
+
+  renderSeedTray(state) {
+    this.elements.seedDragList.replaceChildren();
+    Object.values(GAME_CONFIG.crops.varieties).forEach((variety) => {
+      const count = state.seeds[variety.id] ?? 0;
+      const button = this.document.createElement("button");
+      button.type = "button";
+      button.className = "seed-drag-item";
+      button.dataset.seedDrag = variety.id;
+      button.disabled = count <= 0;
+      button.setAttribute("aria-label", `${variety.name} 씨앗 ${formatNumber(count)}개, 빈 텃밭으로 끌어 심기`);
+      const image = this.document.createElement("img");
+      image.src = variety.stageAssets.sprout;
+      image.alt = "";
+      const name = this.document.createElement("span");
+      name.textContent = variety.name.replace("오이", "");
+      const quantity = this.document.createElement("b");
+      quantity.textContent = `×${formatNumber(count)}`;
+      button.append(image, name, quantity);
+      this.elements.seedDragList.append(button);
+    });
+  }
+
+  getEmptyPlotAtPoint(state, clientX, clientY) {
+    for (const plot of state.plots) {
+      if (plot.crop.isPlanted) continue;
+      const view = this.plotViews.get(plot.plotId);
+      const rect = view?.root.getBoundingClientRect?.();
+      if (!rect) continue;
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        return plot.plotId;
+      }
+    }
+    return null;
+  }
+
+  beginSeedDrag(varietyId, imageSource, clientX, clientY) {
+    this.cancelSeedDrag();
+    const ghost = this.document.createElement("img");
+    ghost.className = "seed-drag-ghost";
+    ghost.src = imageSource;
+    ghost.alt = "";
+    this.elements.feedbackLayer.append(ghost);
+    this.seedDrag = { varietyId, ghost, plotId: null };
+    this.elements.gameApp.classList.add("is-seed-dragging");
+    this.moveSeedDrag(clientX, clientY);
+  }
+
+  moveSeedDrag(clientX, clientY) {
+    if (!this.seedDrag) return null;
+    const rootRect = this.elements.gameApp.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+    this.seedDrag.ghost.style.setProperty("--drag-x", `${clientX - rootRect.left}px`);
+    this.seedDrag.ghost.style.setProperty("--drag-y", `${clientY - rootRect.top}px`);
+    const plotId = this.getEmptyPlotAtPoint(this.currentState, clientX, clientY);
+    this.seedDrag.plotId = plotId;
+    this.plotViews.forEach((view, candidateId) => {
+      view.root.classList.toggle("is-seed-drop-target", candidateId === plotId);
+    });
+    return plotId;
+  }
+
+  finishSeedDrag() {
+    if (!this.seedDrag) return null;
+    const result = { varietyId: this.seedDrag.varietyId, plotId: this.seedDrag.plotId };
+    this.cancelSeedDrag();
+    return result;
+  }
+
+  cancelSeedDrag() {
+    this.seedDrag?.ghost?.remove();
+    this.seedDrag = null;
+    this.elements.gameApp.classList.remove("is-seed-dragging");
+    this.plotViews.forEach((view) => view.root.classList.remove("is-seed-drop-target"));
   }
 
   renderInventory(state) {
@@ -492,22 +714,50 @@ export class GameUI {
     });
   }
 
+  renderGeneratorStation(state, now) {
+    const generator = state.facilities.find((facility) => facility.type === "generator");
+    this.elements.generatorStation.hidden = !generator;
+    if (!generator) {
+      delete this.elements.generatorStation.dataset.generatorAction;
+      this.elements.generatorStationMeter.style.width = "0%";
+      return;
+    }
+    const progress = getGeneratorProgress(generator, now);
+    const status = getFacilityStatus(state, generator, now);
+    this.elements.generatorStation.dataset.generatorAction = generator.facilityId;
+    this.elements.generatorStation.classList.toggle("is-running", generator.active === true);
+    this.elements.generatorStationMeter.style.width = `${progress}%`;
+    this.elements.generatorStation.setAttribute(
+      "aria-label",
+      generator.active
+        ? `발전기 가동 중 ${Math.round(progress)}%`
+        : `${status.reason}, 발전기를 눌러 가동`
+    );
+  }
+
   renderInventoryScene(state) {
     this.elements.inventorySlotList.replaceChildren();
     const slots = [
       {
         id: "wateringCan",
         name: "물뿌리개",
-        detail: "오이를 누르면 자동 사용 · 물 1 · XP 1",
+        detail: `성능 +${GAME_CONFIG.tools.wateringCan.cropXp}XP · 충전 ${state.toolStatus.wateringCanCharge}/${GAME_CONFIG.tools.wateringCan.capacity}`,
         image: GAME_CONFIG.tools.wateringCan.asset,
         count: state.inventory.wateringCan,
       },
       {
         id: "hammer",
         name: "뿅망치",
-        detail: "위협을 누르면 자동 사용 · 공격력 1",
+        detail: `파워 ${GAME_CONFIG.tools.hammer.damage} · 내구도 ${state.toolStatus.hammerUsesRemaining}/${GAME_CONFIG.tools.hammer.usesPerItem}`,
         image: GAME_CONFIG.tools.hammer.asset,
         count: state.inventory.hammer,
+      },
+      {
+        id: "waterTank",
+        name: "물통",
+        detail: `물뿌리개 최대 ${GAME_CONFIG.tools.wateringCan.capacity} 충전`,
+        image: GAME_CONFIG.tools.waterTank.asset,
+        count: state.inventory.waterTank,
       },
       ...GAME_CONFIG.facilities.map((definition) => ({
         id: definition.id,
@@ -516,9 +766,16 @@ export class GameUI {
         image: definition.asset,
         count: state.inventory[definition.id] ?? 0,
       })),
-      { id: "water", name: "물", detail: "물주기와 스프링클러", icon: "💧", count: state.resources.water },
-      { id: "fuel", name: "연료", detail: "발전기 가동", icon: "⛽", count: state.resources.fuel },
-      { id: "energy", name: "에너지", detail: "온실 가동", icon: "⚡", count: state.resources.energy },
+      ...Object.values(GAME_CONFIG.crops.varieties).map((variety) => ({
+        id: `${variety.id}-seed`,
+        name: `${variety.name} 씨앗`,
+        detail: "오이 씨앗",
+        image: GAME_CONFIG.economy.seeds[variety.id]?.asset,
+        count: state.seeds[variety.id] ?? 0,
+      })),
+      { id: "water", name: "물", detail: "물주기와 스프링클러", image: GAME_CONFIG.uiAssets.resources.water, count: state.resources.water },
+      { id: "fuel", name: "연료", detail: "발전기 가동", image: GAME_CONFIG.uiAssets.resources.fuel, count: state.resources.fuel },
+      { id: "energy", name: "에너지", detail: "시설 가동", image: GAME_CONFIG.uiAssets.resources.energy, count: state.resources.energy },
     ];
 
     slots.forEach((item) => {
@@ -581,23 +838,23 @@ export class GameUI {
   renderCodex(state) {
     this.elements.codexList.replaceChildren();
     const highestCropXp = Math.max(0, ...state.plots.map((plot) => plot.crop.cropXp));
-    GAME_CONFIG.crops.growthStages.forEach((stage) => {
+    Object.values(GAME_CONFIG.crops.varieties).forEach((variety) => GAME_CONFIG.crops.growthStages.forEach((stage) => {
       const unlocked = highestCropXp >= stage.minimumExperience || state.harvestCount > 0;
       const entry = this.document.createElement("article");
       entry.className = "codex-entry";
       entry.classList.toggle("is-locked", !unlocked);
       const image = this.document.createElement("img");
-      image.src = stage.characterAsset;
-      image.alt = unlocked ? `${stage.name} 오이` : "잠긴 오이";
+      image.src = variety.stageAssets[stage.id];
+      image.alt = unlocked ? `${variety.name} ${stage.name}` : "잠긴 오이";
       const name = this.document.createElement("strong");
-      name.textContent = unlocked ? stage.name : "???";
+      name.textContent = unlocked ? `${variety.name} · ${stage.name}` : "???";
       const detail = this.document.createElement("small");
       detail.textContent = unlocked
         ? `작물 XP ${stage.minimumExperience}부터 만날 수 있어요.`
         : `작물 XP ${stage.minimumExperience}에 발견`;
       entry.append(image, name, detail);
       this.elements.codexList.append(entry);
-    });
+    }));
   }
 
   renderSettings(state) {
@@ -612,7 +869,6 @@ export class GameUI {
   }
 
   renderShop(state) {
-    const isPreparation = state.turn.phase === "preparation";
     const player = getPlayerProgress(state.playerXp);
     const eligibility = canPurchaseGarden(state);
     const nextPlot = state.plots.length + 1;
@@ -620,13 +876,13 @@ export class GameUI {
     const reachedAbsoluteMaximum = nextPlot > GAME_CONFIG.board.maximumPurchasablePlots;
     const reachedLevelMaximum = nextPlot > maximum;
 
-    this.elements.shopPhaseNote.textContent = isPreparation
-      ? "준비 시간입니다. 판매·구매를 마친 뒤 준비 완료를 눌러 주세요."
-      : "낮과 밤에는 농장을 관리합니다. 상점 거래는 준비 시간에 열립니다.";
+    this.elements.shopPhaseNote.textContent = state.turn.phase === "preparation"
+      ? "장비를 정비하고 씨앗을 준비하세요."
+      : "턴 중에도 구매할 수 있습니다. 상점을 보는 동안 농장은 잠시 멈춥니다.";
     this.elements.salePrice.textContent = formatNumber(
       GAME_CONFIG.economy.cucumberSalePrice
     );
-    this.elements.sellAllButton.disabled = !isPreparation || state.cucumbers <= 0;
+    this.elements.sellAllButton.disabled = state.cucumbers <= 0;
     this.elements.plotShopDescription.textContent = reachedAbsoluteMaximum
       ? `보유 ${state.plots.length}개 · 새 확장 상한 ${GAME_CONFIG.board.maximumPurchasablePlots}개 · 기존 구매분 유지`
       : reachedLevelMaximum
@@ -662,22 +918,18 @@ export class GameUI {
       button.type = "button";
       button.dataset.buyFacility = definition.id;
       button.textContent = `구매 ×${state.inventory[definition.id] ?? 0}`;
-      button.disabled =
-        !isPreparation ||
-        player.level < definition.unlockLevel ||
-        state.coins < definition.price;
+      button.disabled = player.level < definition.unlockLevel || state.coins < definition.price;
       card.append(image, copy, button);
       this.elements.facilityShopList.append(card);
     });
 
     this.elements.consumableShopList.replaceChildren();
-    const icons = { water: "💧", fuel: "⛽", energy: "⚡" };
     Object.values(GAME_CONFIG.economy.consumables).forEach((item) => {
       const card = this.document.createElement("article");
       card.className = "shop-item";
-      const icon = this.document.createElement("span");
-      icon.className = "shop-item__icon";
-      icon.textContent = icons[item.id];
+      const icon = this.document.createElement("img");
+      icon.src = item.asset;
+      icon.alt = "";
       const copy = this.document.createElement("div");
       const name = this.document.createElement("strong");
       name.textContent = item.name;
@@ -688,9 +940,31 @@ export class GameUI {
       button.type = "button";
       button.dataset.buyConsumable = item.id;
       button.textContent = "구매";
-      button.disabled = !isPreparation || state.coins < item.price;
+      button.disabled = state.coins < item.price;
       card.append(icon, copy, button);
       this.elements.consumableShopList.append(card);
+    });
+
+    this.elements.seedShopList.replaceChildren();
+    Object.values(GAME_CONFIG.economy.seeds).forEach((item) => {
+      const card = this.document.createElement("article");
+      card.className = "shop-item shop-item--seed";
+      const image = this.document.createElement("img");
+      image.src = item.asset;
+      image.alt = "";
+      const copy = this.document.createElement("div");
+      const name = this.document.createElement("strong");
+      name.textContent = item.name;
+      const detail = this.document.createElement("small");
+      detail.textContent = `${formatNumber(item.price)}코인 · 오이 씨앗`;
+      copy.append(name, detail);
+      const button = this.document.createElement("button");
+      button.type = "button";
+      button.dataset.buySeed = item.id;
+      button.textContent = `구매 ×${formatNumber(state.seeds[item.id] ?? 0)}`;
+      button.disabled = state.coins < item.price;
+      card.append(image, copy, button);
+      this.elements.seedShopList.append(card);
     });
   }
 
@@ -705,26 +979,38 @@ export class GameUI {
       ? `${formatNumber(player.experience)} XP · MAX`
       : `${formatNumber(player.earned)} / ${formatNumber(player.requirement)} XP`;
     this.elements.playerXpBar.style.width = `${player.progressPercent}%`;
-    this.elements.dayLabel.textContent = `${state.turn.day}일차 · ${PHASE_LABELS[state.turn.phase]}`;
+    const isPreparation = state.turn.phase === "preparation";
+    this.elements.dayLabel.textContent = PHASE_LABELS[state.turn.phase];
+    this.elements.dayLabel.hidden = isPreparation;
     this.elements.turnTimer.textContent = formatTimer(remaining);
+    this.elements.turnTimer.hidden = isPreparation;
+    this.elements.nextDayButton.hidden = !isPreparation;
+    this.elements.nextDayButton.parentElement?.classList.toggle("is-preparation", isPreparation);
     this.elements.waterCount.textContent = formatNumber(state.resources.water);
     this.elements.fuelCount.textContent = formatNumber(state.resources.fuel);
     this.elements.energyCount.textContent = formatNumber(state.resources.energy);
-    this.elements.preparationDock.hidden = state.turn.phase !== "preparation";
+    this.elements.wateringCanStatus.textContent =
+      `+${GAME_CONFIG.tools.wateringCan.cropXp}XP`;
+    this.elements.hammerStatus.textContent =
+      `파워${GAME_CONFIG.tools.hammer.damage}`;
+    this.elements.wateringCanMeter.style.width = `${Math.min(100, (state.toolStatus.wateringCanCharge / GAME_CONFIG.tools.wateringCan.capacity) * 100)}%`;
+    this.elements.hammerDurabilityMeter.style.width = `${Math.min(100, (state.toolStatus.hammerUsesRemaining / GAME_CONFIG.tools.hammer.usesPerItem) * 100)}%`;
+    this.elements.hammerQuantity.textContent = `×${formatNumber(state.inventory.hammer)}`;
+    this.elements.hammerQuantity.setAttribute("aria-label", `보유 뿅망치 ${formatNumber(state.inventory.hammer)}개`);
+    this.elements.waterTankStatus.textContent = `물 ${formatNumber(state.resources.water)}`;
+    this.elements.waterTankMeter.style.width = `${Math.min(100, (state.resources.water / 120) * 100)}%`;
+    this.elements.waterTankButton.disabled = false;
+    this.renderGeneratorStation(state, now);
+    this.elements.townBountyStatus.textContent = `보상금 ${formatNumber(state.bounties.pendingCoins)}코인`;
     this.elements.gameApp.classList.remove("phase-day", "phase-night", "phase-preparation");
     this.elements.gameApp.classList.add(`phase-${state.turn.phase}`);
-    this.elements.phaseMessage.textContent =
-      state.turn.phase === "day"
-        ? "햇살 아래 오이가 자라고 있어요!"
-        : state.turn.phase === "night"
-          ? "밤이에요. 도둑과 온실을 살펴보세요."
-          : "상점에서 내일 쓸 자원을 준비하세요.";
-
+    this.elements.gameApp.classList.toggle("is-sunlight-boost", state.effects.sunlightBoostEndsAt > now);
     this.ensurePlotViews(state);
     state.plots.forEach((plot) => this.renderPlot(state, plot, now));
     this.renderFacilityRanges(state);
     this.renderThreats(state, now);
     if (renderMenus) {
+      this.renderSeedTray(state);
       this.renderInventory(state);
       this.renderInventoryScene(state);
       this.renderFacilityManager(state);
@@ -741,10 +1027,6 @@ export class GameUI {
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    const definition = getFacilityDefinition(this.placementFacilityId);
-    this.elements.selectionHelp.textContent = definition
-      ? `${definition.name} 설치 위치를 선택하세요. ${facilityDescription(definition)}`
-      : "오이를 눌러 물을 주고, 위협을 눌러 퇴치하세요.";
   }
 
   previewPlacement(state, type, row, column) {
@@ -769,7 +1051,8 @@ export class GameUI {
       facilities: ["FARM MANAGEMENT", "텃밭 · 시설"],
       inventory: ["MY FARM BAG", "인벤토리"],
       codex: ["CUCUMBER BOOK", "오이 도감"],
-      shop: ["PREPARATION MARKET", "농장 상점"],
+      shop: ["FARM MARKET", "농장 상점"],
+      village: ["CUCUMBER VILLAGE", "오이 마을"],
       settings: ["GAME OPTIONS", "설정"],
     };
     if (!titles[scene]) return;
@@ -778,6 +1061,7 @@ export class GameUI {
     if (this.currentState) this.render(this.currentState, { renderMenus: true });
     this.elements.sceneEyebrow.textContent = titles[scene][0];
     this.elements.sceneTitle.textContent = titles[scene][1];
+    this.elements.sceneLayer.dataset.scene = scene;
     this.document.querySelectorAll("[data-scene-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.scenePanel !== scene;
     });
@@ -795,6 +1079,7 @@ export class GameUI {
   closeScene() {
     if (this.elements.sceneLayer.hidden) return false;
     this.elements.sceneLayer.hidden = true;
+    delete this.elements.sceneLayer.dataset.scene;
     this.currentScene = "farm";
     this.elements.bottomMenu.querySelectorAll("[data-scene]").forEach((button) => {
       const selected = button.dataset.scene === "farm";
@@ -815,30 +1100,42 @@ export class GameUI {
     return this.closeScene();
   }
 
-  showOfflineReward(result) {
-    this.elements.offlineDuration.textContent = formatDuration(result.elapsedSeconds);
-    this.elements.offlineReward.textContent = formatNumber(result.growthGained);
-    this.elements.offlinePhase.textContent = PHASE_LABELS[result.phase];
-    this.elements.offlineModal.hidden = false;
-    this.elements.offlineConfirmButton.focus();
+  showPhaseBanner(phase, day) {
+    if (!["day", "night"].includes(phase)) return;
+    const windowRef = this.document.defaultView;
+    windowRef?.clearTimeout(this.phaseBannerTimer);
+    this.elements.phaseBanner.dataset.phase = phase;
+    this.elements.phaseBannerDay.textContent = "MALLIN FARM";
+    this.elements.phaseBannerTitle.textContent = phase === "day" ? "낮" : "밤";
+    this.elements.phaseBannerSubtitle.textContent = phase === "day"
+      ? "햇살과 함께 농장 일이 시작됩니다"
+      : "달빛 아래 더 많은 위협이 몰려옵니다";
+    this.elements.phaseBanner.hidden = false;
+    this.elements.phaseBanner.classList.remove("is-active");
+    windowRef?.requestAnimationFrame?.(() => {
+      this.elements.phaseBanner.classList.add("is-active");
+    });
+    this.phaseBannerTimer = windowRef?.setTimeout(() => {
+      this.elements.phaseBanner.hidden = true;
+      this.elements.phaseBanner.classList.remove("is-active");
+    }, 1_650);
   }
 
-  hideOfflineReward() {
-    this.elements.offlineModal.hidden = true;
+  showTurnReport(report) {
+    if (!report) return;
+    this.elements.turnReportTitle.textContent = "농장 보고";
+    this.elements.reportHarvest.textContent = formatNumber(report.harvestedCucumbers);
+    this.elements.reportCropXp.textContent = formatNumber(report.cropXp);
+    this.elements.reportPlayerXp.textContent = formatNumber(report.playerXp);
+    this.elements.reportAnimals.textContent = formatNumber(report.animalsDefeated);
+    this.elements.reportThieves.textContent = formatNumber(report.thievesDefeated);
+    this.elements.reportBounty.textContent = formatNumber(report.bountyCoins);
+    this.elements.turnReportModal.hidden = false;
+    this.elements.turnReportConfirmButton.focus();
   }
 
-  showResult({ icon = "✨", eyebrow = "GREAT!", title, message, kind = "success" }) {
-    this.elements.resultModalIcon.textContent = icon;
-    this.elements.resultModalEyebrow.textContent = eyebrow;
-    this.elements.resultModalTitle.textContent = title;
-    this.elements.resultModalMessage.textContent = message;
-    this.elements.resultPopup.dataset.kind = kind;
-    this.elements.resultModal.hidden = false;
-    this.elements.resultModalConfirmButton.focus();
-  }
-
-  hideResult() {
-    this.elements.resultModal.hidden = true;
+  hideTurnReport() {
+    this.elements.turnReportModal.hidden = true;
   }
 
   showExitConfirm() {
@@ -851,13 +1148,9 @@ export class GameUI {
   }
 
   closeTopLayer() {
-    if (!this.elements.resultModal.hidden) {
-      this.hideResult();
-      return "result";
-    }
-    if (!this.elements.offlineModal.hidden) {
-      this.hideOfflineReward();
-      return "offline";
+    if (!this.elements.turnReportModal.hidden) {
+      this.hideTurnReport();
+      return "turn-report";
     }
     if (!this.elements.exitModal.hidden) {
       this.hideExitConfirm();
@@ -873,8 +1166,16 @@ export class GameUI {
   isInteractionBlocked() {
     return (
       !this.elements.sceneLayer.hidden ||
-      !this.elements.offlineModal.hidden ||
-      !this.elements.resultModal.hidden ||
+      !this.elements.turnReportModal.hidden ||
+      !this.elements.exitModal.hidden ||
+      !this.elements.startScreen.hidden
+    );
+  }
+
+  shouldPauseGameClock() {
+    return (
+      !this.elements.sceneLayer.hidden ||
+      !this.elements.turnReportModal.hidden ||
       !this.elements.exitModal.hidden ||
       !this.elements.startScreen.hidden
     );
@@ -893,10 +1194,24 @@ export class GameUI {
   }
 
   hideStartScreen() {
-    this.elements.startScreen.classList.add("is-leaving");
-    this.document.defaultView?.setTimeout(() => {
-      this.elements.startScreen.hidden = true;
-    }, 380);
+    const windowRef = this.document.defaultView;
+    const schedule = windowRef?.setTimeout?.bind(windowRef) ?? globalThis.setTimeout;
+    this.elements.cloudTransition.hidden = false;
+    this.elements.cloudTransition.classList.remove("is-covering", "is-opening");
+    void this.elements.cloudTransition.offsetWidth;
+    this.elements.cloudTransition.classList.add("is-covering");
+    return new Promise((resolve) => {
+      schedule(() => {
+        this.elements.startScreen.hidden = true;
+        this.elements.cloudTransition.classList.remove("is-covering");
+        this.elements.cloudTransition.classList.add("is-opening");
+      }, 640);
+      schedule(() => {
+        this.elements.cloudTransition.hidden = true;
+        this.elements.cloudTransition.classList.remove("is-opening");
+        resolve();
+      }, 1_280);
+    });
   }
 
   takeEffectFromPool(pool, limit, factory) {
@@ -970,8 +1285,8 @@ export class GameUI {
       top: 0,
     };
     const plotRect = plotView.root.getBoundingClientRect?.();
-    const x = (plotRect?.left ?? 0) - layerRect.left + (plotRect?.width ?? 100) * 0.66;
-    const y = (plotRect?.top ?? 0) - layerRect.top + (plotRect?.height ?? 140) * 0.36;
+    const x = (plotRect?.left ?? 0) - layerRect.left + (plotRect?.width ?? 100) * 0.72;
+    const y = (plotRect?.top ?? 0) - layerRect.top + (plotRect?.height ?? 140) * 0.31;
     const effect = this.takeEffectFromPool(this.wateringEffectPool, 5, () => {
       const root = this.document.createElement("span");
       root.className = "watering-action-effect";
@@ -979,12 +1294,9 @@ export class GameUI {
       const can = this.document.createElement("img");
       can.src = GAME_CONFIG.tools.wateringCan.asset;
       can.alt = "";
-      root.append(can);
-      for (let index = 0; index < 4; index += 1) {
-        const droplet = this.document.createElement("i");
-        droplet.style.setProperty("--drop-index", String(index));
-        root.append(droplet);
-      }
+      const stream = this.document.createElement("span");
+      stream.className = "water-stream-sprite";
+      root.append(can, stream);
       this.elements.combatEffectLayer.append(root);
       return root;
     });
@@ -997,6 +1309,27 @@ export class GameUI {
       effect.hidden = true;
       effect.classList.remove("is-active");
     }, 520);
+  }
+
+  playHarvestReward(plotId, amount) {
+    const view = this.plotViews.get(plotId);
+    if (!view || amount <= 0) return;
+    const layerRect = this.elements.feedbackLayer.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+    const plotRect = view.root.getBoundingClientRect?.();
+    const effect = this.document.createElement("span");
+    effect.className = "harvest-gain";
+    const image = this.document.createElement("img");
+    image.src = GAME_CONFIG.uiAssets.resources.cucumber;
+    image.alt = "";
+    const value = this.document.createElement("strong");
+    value.textContent = `+${formatNumber(amount)}`;
+    effect.append(image, value);
+    effect.style.left = `${(plotRect?.left ?? 0) - layerRect.left + (plotRect?.width ?? 100) / 2}px`;
+    effect.style.top = `${(plotRect?.top ?? 0) - layerRect.top + (plotRect?.height ?? 120) * .42}px`;
+    this.elements.feedbackLayer.append(effect);
+    const remove = () => effect.remove();
+    effect.addEventListener("animationend", remove, { once: true });
+    this.document.defaultView?.setTimeout(remove, 1_100);
   }
 
   playPlotFeedback(plotId, type, amount = 0) {
@@ -1025,6 +1358,32 @@ export class GameUI {
       this.feedbackTimers.delete(timer);
     }, 560);
     if (timer) this.feedbackTimers.add(timer);
+  }
+
+  playPlotDamage(plotId, amount, kind = "yield") {
+    const view = this.plotViews.get(plotId);
+    if (!view || amount <= 0) return;
+    const layerRect = this.elements.feedbackLayer.getBoundingClientRect?.() ?? {
+      left: 0,
+      top: 0,
+    };
+    const plotRect = view.root.getBoundingClientRect?.();
+    const effect = this.document.createElement("span");
+    effect.className = "damage-gain";
+    effect.textContent = `-${formatNumber(amount)}`;
+    effect.dataset.kind = kind;
+    effect.style.left = `${(plotRect?.left ?? 0) - layerRect.left + (plotRect?.width ?? 100) / 2}px`;
+    effect.style.top = `${(plotRect?.top ?? 0) - layerRect.top + (plotRect?.height ?? 120) * 0.42}px`;
+    this.elements.feedbackLayer.append(effect);
+    const remove = () => effect.remove();
+    effect.addEventListener("animationend", remove, { once: true });
+    this.document.defaultView?.setTimeout(remove, 1_050);
+    view.root.classList.remove("is-feedback-error");
+    view.root.classList.add("is-feedback-error");
+    this.document.defaultView?.setTimeout(
+      () => view.root.classList.remove("is-feedback-error"),
+      360
+    );
   }
 
   setSaveError(message = "") {

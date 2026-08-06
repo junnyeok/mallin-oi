@@ -1,4 +1,5 @@
 const SOUND_FILES = Object.freeze({
+  button: "./assets/sounds/ui/button-cucumber-pop-v4.wav",
   plant: "./assets/sounds/01-plant-sprout.wav",
   grow: "./assets/sounds/02-evolve-baby-cucumber.wav",
   evolve: "./assets/sounds/03-evolve-adult-cucumber.wav",
@@ -8,12 +9,25 @@ const SOUND_FILES = Object.freeze({
   hammerHit: "./assets/sounds/combat/hammer-hit.wav",
   birdApproach: "./assets/sounds/combat/bird-approach.wav",
   squirrelApproach: "./assets/sounds/combat/squirrel-approach.wav",
+  rabbitApproach: "./assets/sounds/combat/rabbit-approach.wav",
   boarApproach: "./assets/sounds/combat/boar-approach.wav",
+  mouseApproach: "./assets/sounds/combat/mouse-approach.wav",
+  raccoonApproach: "./assets/sounds/combat/raccoon-approach.wav",
   threatEat: "./assets/sounds/combat/threat-eat.wav",
   birdDefeat: "./assets/sounds/combat/bird-defeat.wav",
   squirrelDefeat: "./assets/sounds/combat/squirrel-defeat.wav",
+  rabbitDefeat: "./assets/sounds/combat/rabbit-defeat.wav",
   boarDefeat: "./assets/sounds/combat/boar-defeat.wav",
+  mouseDefeat: "./assets/sounds/combat/mouse-defeat.wav",
+  raccoonDefeat: "./assets/sounds/combat/raccoon-defeat.wav",
   thiefDefeat: "./assets/sounds/combat/thief-defeat.wav",
+});
+
+const BGM_FILES = Object.freeze({
+  launch: "./assets/sounds/bgm/01-launch-fanfare.wav",
+  preparation: "./assets/sounds/bgm/02-preparation-workshop.wav",
+  day: "./assets/sounds/bgm/03-daytime-rush.wav",
+  night: "./assets/sounds/bgm/04-nighttime-sneak.wav",
 });
 
 const FILE_POOL_LIMITS = Object.freeze({
@@ -35,16 +49,23 @@ const TONE_PATTERNS = Object.freeze({
   hammerHit: [[180, 0.08, "square"], [430, 0.05, "triangle"]],
   birdApproach: [[1_200, 0.06, "sine"], [1_850, 0.07, "sine"]],
   squirrelApproach: [[920, 0.04, "square"], [1_260, 0.04, "square"]],
+  rabbitApproach: [[720, 0.045, "triangle"], [980, 0.055, "triangle"]],
   boarApproach: [[120, 0.13, "sawtooth"]],
+  mouseApproach: [[1_320, 0.035, "square"], [1_620, 0.04, "square"]],
+  raccoonApproach: [[310, 0.05, "triangle"], [420, 0.06, "triangle"]],
   threatEat: [[260, 0.05, "square"], [190, 0.06, "square"]],
   birdDefeat: [[1_150, 0.07, "sine"], [520, 0.12, "sine"]],
   squirrelDefeat: [[880, 0.07, "triangle"], [330, 0.13, "triangle"]],
+  rabbitDefeat: [[760, 0.07, "sine"], [260, 0.14, "triangle"]],
   boarDefeat: [[180, 0.11, "sawtooth"], [82, 0.17, "sine"]],
+  mouseDefeat: [[1_020, 0.05, "square"], [240, 0.14, "sine"]],
+  raccoonDefeat: [[520, 0.08, "triangle"], [160, 0.16, "sine"]],
   thiefDefeat: [[620, 0.08, "triangle"], [170, 0.15, "sine"]],
   damage: [[145, 0.12, "sawtooth"], [95, 0.16, "sawtooth"]],
   day: [[392, 0.08, "sine"], [523, 0.13, "sine"]],
   night: [[330, 0.11, "sine"], [247, 0.17, "sine"]],
   install: [[350, 0.055, "square"], [520, 0.1, "triangle"]],
+  reload: [[260, 0.05, "sine"], [390, 0.07, "sine"], [520, 0.1, "triangle"]],
 });
 
 function createAudioContext() {
@@ -62,8 +83,8 @@ export class GameAudioManager {
     this.settings = settings;
     this.unlocked = false;
     this.active = true;
-    this.bgmTimer = null;
-    this.bgmStep = 0;
+    this.bgmAudio = null;
+    this.bgmMode = "launch";
     this.filePools = new Map();
     this.activeFileAudio = new Set();
     this.lastPlayedAt = new Map();
@@ -74,6 +95,9 @@ export class GameAudioManager {
     this.activeFileAudio.forEach((audio) => {
       audio.volume = Math.min(1, Math.max(0, settings.sfxVolume ?? 0.72));
     });
+    if (this.bgmAudio) {
+      this.bgmAudio.volume = Math.min(1, Math.max(0, settings.bgmVolume ?? 0.45));
+    }
     if (!settings.bgmEnabled) this.stopBgm();
     else if (this.unlocked && this.active) this.startBgm();
   }
@@ -172,41 +196,47 @@ export class GameAudioManager {
     return true;
   }
 
+  setBgmMode(mode) {
+    if (!BGM_FILES[mode]) return false;
+    if (this.bgmMode === mode && this.bgmAudio) return true;
+    this.stopBgm();
+    this.bgmMode = mode;
+    if (this.unlocked && this.active && this.settings.bgmEnabled !== false) {
+      this.startBgm();
+    }
+    return true;
+  }
+
   startBgm() {
     if (
-      this.bgmTimer !== null ||
+      this.bgmAudio !== null ||
       !this.unlocked ||
       !this.active ||
       this.settings.bgmEnabled === false ||
-      !this.context
+      typeof Audio !== "function"
     ) {
       return;
     }
-    const melody = [392, 440, 523, 440, 349, 392, 440, 330];
-    const playStep = () => {
-      if (!this.active || this.settings.bgmEnabled === false || this.context?.state !== "running") return;
-      const oscillator = this.context.createOscillator();
-      const gain = this.context.createGain();
-      const now = this.context.currentTime;
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(melody[this.bgmStep % melody.length], now);
-      const volume = 0.026 * Math.min(1, Math.max(0, this.settings.bgmVolume ?? 0.45));
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), now + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
-      oscillator.connect(gain).connect(this.context.destination);
-      oscillator.start(now);
-      oscillator.stop(now + 0.74);
-      this.bgmStep += 1;
-    };
-    playStep();
-    this.bgmTimer = globalThis.setInterval(playStep, 840);
+    const audio = new Audio(BGM_FILES[this.bgmMode]);
+    audio.preload = "auto";
+    audio.playsInline = true;
+    audio.loop = true;
+    audio.volume = Math.min(1, Math.max(0, this.settings.bgmVolume ?? 0.45));
+    this.bgmAudio = audio;
+    void audio.play().catch(() => {
+      if (this.bgmAudio === audio) this.bgmAudio = null;
+    });
   }
 
   stopBgm() {
-    if (this.bgmTimer === null) return;
-    globalThis.clearInterval(this.bgmTimer);
-    this.bgmTimer = null;
+    if (!this.bgmAudio) return;
+    try {
+      this.bgmAudio.pause();
+      this.bgmAudio.currentTime = 0;
+    } catch {
+      // 중단 실패는 게임 진행과 무관하다.
+    }
+    this.bgmAudio = null;
   }
 
   stopFileSounds() {

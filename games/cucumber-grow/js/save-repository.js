@@ -140,7 +140,7 @@ export class GameSaveRepository {
       synchronizeDerivedState(state);
       return {
         state,
-        status: sourceSchema === "v4" ? "loaded" : "migrated",
+        status: sourceSchema === "v8" ? "loaded" : "migrated",
         sourceSchema,
         storage: this.backend.kind,
         revision: this.revision,
