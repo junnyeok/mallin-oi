@@ -1785,7 +1785,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '기동인은 행정당직이 좋아.',
     detailDescription:
-      '오이키우기 게임에서 가장 얻기 힘든 장소가 될 거야..<br>구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+      '구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
     previewImages: [
       {
         code: 'BG-04-pc',
