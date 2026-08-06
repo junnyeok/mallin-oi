@@ -26,27 +26,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.13.0
-          cache: npm
-          cache-dependency-path: games/mallin-oi-village/package-lock.json
-
-      - name: Build 말오닷특별시
-        working-directory: games/mallin-oi-village
-        run: |
-          npm ci
-          npm run build -- --base=/games/mallin-oi-village/
-
       - name: Prepare Pages files
         run: |
-          mkdir -p _site/games/cucumber-grow _site/games/mallin-oi-village
+          mkdir -p _site
           cp -R account assets images partials _site/
           cp ./*.html .nojekyll CNAME site.webmanifest sw.js _site/
-          cp games/cucumber-grow/index.html _site/games/cucumber-grow/
-          cp -R games/cucumber-grow/assets games/cucumber-grow/css games/cucumber-grow/js _site/games/cucumber-grow/
-          cp -R games/mallin-oi-village/dist/. _site/games/mallin-oi-village/
           du -sh _site
           find _site -type f | wc -l
 
