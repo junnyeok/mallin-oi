@@ -1061,6 +1061,8 @@
 ./images/logo-study.png
 ./images/logo-word.png
 ./images/logo-work.png
+./images/mallin-plus/cucumber-grow.png
+./images/mallin-plus/mallodat-special-city.png
 ./images/profile-background/CPA-mobile.png
 ./images/profile-background/CPA.png
 ./images/profile-background/changsin-mobile.png
@@ -1567,6 +1569,8 @@
 ./www/images/logo-study.png
 ./www/images/logo-word.png
 ./www/images/logo-work.png
+./www/images/mallin-plus/cucumber-grow.png
+./www/images/mallin-plus/mallodat-special-city.png
 ./www/images/profile-background/changsin-mobile.png
 ./www/images/profile-background/changsin.png
 ./www/images/profile-background/refrigerator-mobile.png
