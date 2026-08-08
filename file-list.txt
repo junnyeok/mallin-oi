@@ -1352,6 +1352,7 @@
 ./supabase-SQLEditor/20260803-calendar-paste-schedule-conflicts.sql
 ./supabase-SQLEditor/20260803-new-character-skins.sql
 ./supabase-SQLEditor/20260804-spider-web-character-effect.sql
+./supabase-SQLEditor/20260808-run-muscle-night-bgm.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1390,6 +1391,7 @@
 ./supabase/migrations/20260803010000_new_character_skins.sql
 ./supabase/migrations/20260804000000_spider_web_character_effect.sql
 ./supabase/migrations/20260804010000_spider_web_test_purchase_permission.sql
+./supabase/migrations/20260808000000_run_muscle_night_bgm.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1408,6 +1410,7 @@
 ./tests/fixtures/study-completion-celebration-browser.html
 ./tests/new-character-skins.test.mjs
 ./tests/profile-bio-contrast.test.mjs
+./tests/run-muscle-night-bgm.test.mjs
 ./tests/study-completion-celebration.test.mjs
 ./work.html
 ./write.html

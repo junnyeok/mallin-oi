@@ -117,6 +117,24 @@ export const EMPTY_ROAD_BGM_PREVIEW = [
   },
 ];
 
+export const RUN_BGM_PREVIEW = [
+  {
+    code: 'bgm-cucumbergirl-run',
+    label: 'まだいけるよ LP',
+    imagePath: withAssetVersion('./images/BGM/Run_LP.png'),
+    displayOrder: 1,
+  },
+];
+
+export const MUSCLE_NIGHT_BGM_PREVIEW = [
+  {
+    code: 'bgm-grilledegg-muscle-night',
+    label: 'MUSCLE NIGHT LP',
+    imagePath: withAssetVersion('./images/BGM/MUSCLE-NIGHT_LP.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -249,6 +267,26 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/Empty-road_LP.png'),
     isDefault: false,
     displayOrder: 13,
+  },
+  {
+    id: 'mallin-oi-cucumbergirl-run',
+    storeItemId: 'bgm-cucumbergirl-02',
+    title: 'まだいけるよ',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/Run.mp3'),
+    coverPath: withAssetVersion('./images/BGM/Run_LP.png'),
+    isDefault: false,
+    displayOrder: 14,
+  },
+  {
+    id: 'mallin-oi-grilledegg-muscle-night',
+    storeItemId: 'bgm-grilledegg-02',
+    title: 'MUSCLE NIGHT',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/MUSCLE-NIGHT.mp3'),
+    coverPath: withAssetVersion('./images/BGM/MUSCLE-NIGHT_LP.png'),
+    isDefault: false,
+    displayOrder: 15,
   },
 ];
 
@@ -1736,6 +1774,40 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'bgm-cucumbergirl-02',
+    name: 'まだいけるよ',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒👧🏼🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/Run_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/Run.mp3'),
+    price: 721,
+    state: '판매 중',
+    description: '오이소녀의 두번째 곡이야.',
+    detailDescription:
+      '일본 진출까지 시작한 오이소녀야. <br>구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: RUN_BGM_PREVIEW,
+    releaseDate: '2026-08-08',
+    isPurchasable: true,
+  },
+  {
+    id: 'bgm-grilledegg-02',
+    name: 'MUSCLE NIGHT',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥚🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/MUSCLE-NIGHT_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/MUSCLE-NIGHT.mp3'),
+    price: 653,
+    state: '판매 중',
+    description: '벌크업에 성공한 구운계란 형님의 두번째 헬스곡이야.',
+    detailDescription:
+      '벌크업에 성공한 구운계란 형님의 두번째 헬스곡이야. <br>구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: MUSCLE_NIGHT_BGM_PREVIEW,
+    releaseDate: '2026-08-08',
+    isPurchasable: true,
+  },
+  {
     id: 'BG-03',
     name: '냉장고 프로필배경',
     category: 'profile',
@@ -1864,6 +1936,8 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'bgm-cucumbergirl-02',
+  'bgm-grilledegg-02',
   'cha-effects-web-01',
   'skin-cucumber-04',
   'skin-grilled-egg-02',

@@ -43,8 +43,8 @@ test('Burning Soul 상품과 BGM 카탈로그가 한 번만 연결된다', () =>
   assert.equal(tracks[0].coverPath, products[0].thumbImagePath);
 });
 
-test('Burning Soul이 거미줄 효과·신규 스킨 2종·텅 빈 거리·BF-02 다음 New 상품이다', () => {
-  assert.equal(getFeaturedStoreItems(6)[5].id, ITEM_ID);
+test('Burning Soul이 신규 BGM 2곡과 기존 우선 품목 다음 New 상품이다', () => {
+  assert.equal(getFeaturedStoreItems(8)[7].id, ITEM_ID);
 });
 
 test('구매 SQL은 서버 가격, 인벤토리 보유 기록, 원장 기록을 연결한다', async () => {
