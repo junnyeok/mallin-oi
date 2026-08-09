@@ -57,8 +57,8 @@ test('BF-02 상품과 프로필테두리 카탈로그가 정확히 한 번 연�
   assert.equal(getProfileFrameByItemId(ITEM_ID)?.itemId, ITEM_ID);
 });
 
-test('BF-02가 신규 BGM 2곡·거미줄 효과·신규 스킨 2종·텅 빈 거리 다음 New 상품이다', async () => {
-  assert.equal(getFeaturedStoreItems(7)[6].id, ITEM_ID);
+test('BF-02가 이번 신규 스킨 2종과 기존 우선 상품 다음 New 상품이다', async () => {
+  assert.equal(getFeaturedStoreItems(9)[8].id, ITEM_ID);
 
   const homeHtml = await readFile('index.html', 'utf8');
   assert.match(
@@ -73,13 +73,15 @@ test('BF-02가 신규 BGM 2곡·거미줄 효과·신규 스킨 2종·텅 빈 �
     return difference;
   });
 
-  assert.equal(newest[0].id, 'bgm-cucumbergirl-02');
-  assert.equal(newest[1].id, 'bgm-grilledegg-02');
-  assert.equal(newest[2].id, 'cha-effects-web-01');
-  assert.equal(newest[3].id, 'skin-cucumber-04');
-  assert.equal(newest[4].id, 'skin-grilled-egg-02');
-  assert.equal(newest[5].id, 'bgm-potato-02');
-  assert.equal(newest[6].id, ITEM_ID);
+  assert.equal(newest[0].id, 'skin-cucumber-05');
+  assert.equal(newest[1].id, 'skin-cucumberboy-02');
+  assert.equal(newest[2].id, 'bgm-cucumbergirl-02');
+  assert.equal(newest[3].id, 'bgm-grilledegg-02');
+  assert.equal(newest[4].id, 'cha-effects-web-01');
+  assert.equal(newest[5].id, 'skin-cucumber-04');
+  assert.equal(newest[6].id, 'skin-grilled-egg-02');
+  assert.equal(newest[7].id, 'bgm-potato-02');
+  assert.equal(newest[8].id, ITEM_ID);
 });
 
 test('PC·모바일 PNG가 요청한 RGBA 크기와 종횡비를 유지한다', async () => {

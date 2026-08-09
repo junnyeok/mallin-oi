@@ -173,6 +173,13 @@ begin
     v_required_character_code := 'char-cucumber';
     v_required_character_name := '기본오이';
 
+  elsif p_item_id = 'skin-cucumber-05' then
+    v_price := 587;
+    v_name := '카를레스 푸오이욜';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
   elsif p_item_id = 'skin-grilled-egg-02' then
     v_price := 689;
     v_name := '이놈스케';
@@ -248,6 +255,13 @@ begin
   elsif p_item_id = 'skin-cucumberboy-01' then
     v_price := 875;
     v_name := '기동대 의무복무 오이소년';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber-boy';
+    v_required_character_name := '오이소년 캐릭터';
+
+  elsif p_item_id = 'skin-cucumberboy-02' then
+    v_price := 721;
+    v_name := '여름 기동보이 오이소년';
     v_category := 'skin';
     v_required_character_code := 'char-cucumber-boy';
     v_required_character_name := '오이소년 캐릭터';
@@ -438,6 +452,8 @@ begin
         'BG-04',
         'skin-cucumber-03',
         'skin-cucumber-04',
+        'skin-cucumber-05',
+        'skin-cucumberboy-02',
         'skin-grilled-egg-02',
         'cha-effects-fire-01',
         'bgm-tetocarrto-02',
@@ -462,6 +478,8 @@ begin
            'BG-04',
            'skin-cucumber-03',
            'skin-cucumber-04',
+           'skin-cucumber-05',
+           'skin-cucumberboy-02',
            'skin-grilled-egg-02',
            'cha-effects-fire-01',
            'bgm-tetocarrto-02',
@@ -926,6 +944,21 @@ begin
     )
     on conflict (user_id, skin_code) do nothing;
 
+  elsif p_item_id = 'skin-cucumberboy-02' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber-boy',
+      'char-cucumber-boy-summer',
+      '여름 기동보이 오이소년',
+      './images/skins/summerboy.png',
+      503,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
   elsif p_item_id = 'skin-grilledegg-01' then
     insert into public.user_character_skins (
       user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
@@ -1010,6 +1043,35 @@ begin
       '당신의 친절한 오이',
       './images/skins/spioi.png',
       4,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-cucumber-05' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'default_grant'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-socceroi',
+      '카를레스 푸오이욜',
+      './images/skins/socceroi.png',
+      5,
       'store_purchase'
     )
     on conflict (user_id, skin_code) do nothing;
@@ -1295,6 +1357,8 @@ begin
         then '오이소녀 경찰스킨 구매가 완료됐어. 923피클이 차감됐고 내프로필 오이소녀 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumberboy-01'
         then '기동대 의무복무 오이소년 구매가 완료됐어. 875피클이 차감됐고 내프로필 오이소년 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumberboy-02'
+        then '여름 기동보이 오이소년 구매가 완료됐어. 721피클이 차감됐고 내프로필 오이소년 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'bgm-tetocarrot-01'
         then '테토당근 BGM 구매가 완료됐어. 420피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-grilledegg-01'
@@ -1355,6 +1419,8 @@ begin
         then '오죠 이토루 구매가 완료됐어. 775피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-04'
         then '당신의 친절한 오이 구매가 완료됐어. 621피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumber-05'
+        then '카를레스 푸오이욜 구매가 완료됐어. 587피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-grilled-egg-02'
         then '이놈스케 구매가 완료됐어. 689피클이 차감됐고 구운계란 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-avocado-01'

@@ -1097,7 +1097,9 @@
 ./images/skins/inomske.png
 ./images/skins/ozyo.png
 ./images/skins/potato-hot.png
+./images/skins/socceroi.png
 ./images/skins/spioi.png
+./images/skins/summerboy.png
 ./images/skins/tetocarrot-rock.png
 ./index.html
 ./inventory.html
@@ -1353,6 +1355,7 @@
 ./supabase-SQLEditor/20260803-new-character-skins.sql
 ./supabase-SQLEditor/20260804-spider-web-character-effect.sql
 ./supabase-SQLEditor/20260808-run-muscle-night-bgm.sql
+./supabase-SQLEditor/20260809-socceroi-summerboy-skins.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1392,6 +1395,7 @@
 ./supabase/migrations/20260804000000_spider_web_character_effect.sql
 ./supabase/migrations/20260804010000_spider_web_test_purchase_permission.sql
 ./supabase/migrations/20260808000000_run_muscle_night_bgm.sql
+./supabase/migrations/20260809000000_socceroi_summerboy_skins.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1411,6 +1415,7 @@
 ./tests/new-character-skins.test.mjs
 ./tests/profile-bio-contrast.test.mjs
 ./tests/run-muscle-night-bgm.test.mjs
+./tests/socceroi-summerboy-skins.test.mjs
 ./tests/study-completion-celebration.test.mjs
 ./work.html
 ./write.html
@@ -1596,7 +1601,9 @@
 ./www/images/services/write_button.png
 ./www/images/skins/inomske.png
 ./www/images/skins/ozyo.png
+./www/images/skins/socceroi.png
 ./www/images/skins/spioi.png
+./www/images/skins/summerboy.png
 ./www/index.html
 ./www/inventory.html
 ./www/login.html

@@ -489,6 +489,24 @@ export const KIND_CUCUMBER_SKIN_PREVIEW = [
   },
 ];
 
+export const SOCCEROI_CUCUMBER_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-socceroi',
+    label: '카를레스 푸오이욜',
+    imagePath: withAssetVersion('./images/skins/socceroi.png'),
+    displayOrder: 1,
+  },
+];
+
+export const SUMMER_CUCUMBER_BOY_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-boy-summer',
+    label: '여름 기동보이 오이소년',
+    imagePath: withAssetVersion('./images/skins/summerboy.png'),
+    displayOrder: 1,
+  },
+];
+
 export const INOMSKE_GRILLED_EGG_SKIN_PREVIEW = [
   {
     code: 'char-grilled-egg-inomske',
@@ -1927,6 +1945,38 @@ export const STORE_ITEMS = [
     releaseDate: '2026-08-03',
     isPurchasable: true,
   },
+  {
+    id: 'skin-cucumber-05',
+    name: '카를레스 푸오이욜',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥒⚽️',
+    thumbImagePath: withAssetVersion('./images/skins/socceroi.png'),
+    price: 587,
+    state: '판매 중',
+    description: '이번 월드컵을 우승했어.',
+    detailDescription:
+      '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: SOCCEROI_CUCUMBER_SKIN_PREVIEW,
+    releaseDate: '2026-08-09',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-cucumberboy-02',
+    name: '여름 기동보이 오이소년',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🥒👮🏽‍♂️☀️',
+    thumbImagePath: withAssetVersion('./images/skins/summerboy.png'),
+    price: 721,
+    state: '판매 중',
+    description: '더운 날 휴대용 선풍기는 필수야.',
+    detailDescription:
+      '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: SUMMER_CUCUMBER_BOY_SKIN_PREVIEW,
+    releaseDate: '2026-08-09',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -1936,6 +1986,8 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'skin-cucumber-05',
+  'skin-cucumberboy-02',
   'bgm-cucumbergirl-02',
   'bgm-grilledegg-02',
   'cha-effects-web-01',
@@ -2075,6 +2127,14 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: 'skin-cucumber-04',
   },
   {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-socceroi',
+    skin_name: '카를레스 푸오이욜',
+    image_path: withAssetVersion('./images/skins/socceroi.png'),
+    display_order: 5,
+    store_item_id: 'skin-cucumber-05',
+  },
+  {
     character_code: 'char-cucumber-girl',
     skin_code: 'char-cucumber-girl-basic',
     skin_name: '오이소녀 캐릭터',
@@ -2129,6 +2189,14 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/skins/cucumberboy_police.png'),
     display_order: 502,
     store_item_id: 'skin-cucumberboy-01',
+  },
+  {
+    character_code: 'char-cucumber-boy',
+    skin_code: 'char-cucumber-boy-summer',
+    skin_name: '여름 기동보이 오이소년',
+    image_path: withAssetVersion('./images/skins/summerboy.png'),
+    display_order: 503,
+    store_item_id: 'skin-cucumberboy-02',
   },
   {
     character_code: 'char-egg-potato',

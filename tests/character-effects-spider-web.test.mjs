@@ -59,7 +59,7 @@ test('거미줄 상품과 SVG 카탈로그 메타데이터가 한 번만 정의�
   assert.match(products[0].thumbImagePath, /spider-web-effect-01\.png/);
   assert.equal(effects[0].renderMode, 'spider-web-svg');
   assert.equal(effects[0].sprite, undefined);
-  assert.equal(getFeaturedStoreItems(3)[2].id, WEB_ITEM_ID);
+  assert.equal(getFeaturedStoreItems(5)[4].id, WEB_ITEM_ID);
 });
 
 test('front 배치가 모든 장착 문맥에서 캐릭터 전체를 같은 비율로 감싼다', () => {

@@ -56,6 +56,8 @@ const nativeSkinImageFiles = [
   'images/skins/ozyo.png',
   'images/skins/spioi.png',
   'images/skins/inomske.png',
+  'images/skins/socceroi.png',
+  'images/skins/summerboy.png',
 ];
 const nativeCharacterEffectImageFiles = [
   'images/character-effects/cucumber-heart.png',
