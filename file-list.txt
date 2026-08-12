@@ -1067,6 +1067,8 @@
 ./images/profile-background/CPA.png
 ./images/profile-background/changsin-mobile.png
 ./images/profile-background/changsin.png
+./images/profile-background/idolstage-mobile.webp
+./images/profile-background/idolstage.webp
 ./images/profile-background/nightwork-mobile.png
 ./images/profile-background/nightwork.png
 ./images/profile-background/refrigerator-mobile.png
@@ -1356,6 +1358,7 @@
 ./supabase-SQLEditor/20260804-spider-web-character-effect.sql
 ./supabase-SQLEditor/20260808-run-muscle-night-bgm.sql
 ./supabase-SQLEditor/20260809-socceroi-summerboy-skins.sql
+./supabase-SQLEditor/20260812-cucumber-girl-stage-profile-background.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1396,9 +1399,11 @@
 ./supabase/migrations/20260804010000_spider_web_test_purchase_permission.sql
 ./supabase/migrations/20260808000000_run_muscle_night_bgm.sql
 ./supabase/migrations/20260809000000_socceroi_summerboy_skins.sql
+./supabase/migrations/20260812000000_bg05_cucumber_girl_stage_profile_background.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
+./tests/bg05-profile-background.test.mjs
 ./tests/burning-soul-bgm.test.mjs
 ./tests/calendar-copy-paste.test.mjs
 ./tests/calendar-loading.test.mjs
@@ -1581,6 +1586,8 @@
 ./www/images/mallin-plus/mallodat-special-city.png
 ./www/images/profile-background/changsin-mobile.png
 ./www/images/profile-background/changsin.png
+./www/images/profile-background/idolstage-mobile.webp
+./www/images/profile-background/idolstage.webp
 ./www/images/profile-background/refrigerator-mobile.png
 ./www/images/profile-background/refrigerator.png
 ./www/images/profile-frame/mallin-shiny-mobile.png

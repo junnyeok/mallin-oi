@@ -45,6 +45,8 @@ const nativeProfileBackgroundImageFiles = [
   'images/profile-background/refrigerator-mobile.png',
   'images/profile-background/changsin.png',
   'images/profile-background/changsin-mobile.png',
+  'images/profile-background/idolstage.webp',
+  'images/profile-background/idolstage-mobile.webp',
 ];
 const nativeProfileFrameImageFiles = [
   'images/profile-frame/rainbow.png',

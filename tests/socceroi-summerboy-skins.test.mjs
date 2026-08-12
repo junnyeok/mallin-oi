@@ -51,7 +51,7 @@ const SQL_EDITOR_PATH =
 const MIGRATION_PATH =
   'supabase/migrations/20260809000000_socceroi_summerboy_skins.sql';
 
-test('신규 스킨 2종이 지정 가격·이미지·설명으로 한 번씩 등록되고 주요 상품 1·2번에 노출된다', () => {
+test('신규 스킨 2종이 지정 가격·이미지·설명으로 한 번씩 등록되고 BG-05 다음에 노출된다', () => {
   for (const expected of SKINS) {
     const products = STORE_ITEMS.filter((item) => item.id === expected.itemId);
 
@@ -77,7 +77,9 @@ test('신규 스킨 2종이 지정 가격·이미지·설명으로 한 번씩 �
   }
 
   assert.deepEqual(
-    getFeaturedStoreItems(2).map((item) => item.id),
+    getFeaturedStoreItems(3)
+      .slice(1)
+      .map((item) => item.id),
     SKINS.map((item) => item.itemId),
   );
 });

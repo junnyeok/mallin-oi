@@ -112,12 +112,12 @@ test('상품·트랙·displayOrder 전체 중복이 없고 New 순서가 명시�
   assert.deepEqual(
     getFeaturedStoreItems(6).map((item) => item.id),
     [
+      'BG-05',
       'skin-cucumber-05',
       'skin-cucumberboy-02',
       'bgm-cucumbergirl-02',
       'bgm-grilledegg-02',
       'cha-effects-web-01',
-      'skin-cucumber-04',
     ],
   );
 });

@@ -245,6 +245,11 @@ begin
     v_name := '기동인의 행정당직 프로필배경';
     v_category := 'profile';
 
+  elsif p_item_id = 'BG-05' then
+    v_price := 626;
+    v_name := '오이소녀의 스테이지';
+    v_category := 'profile';
+
   elsif p_item_id = 'skin-cucumbergirl-01' then
     v_price := 923;
     v_name := '오이소녀 경찰스킨';
@@ -450,6 +455,7 @@ begin
       p_item_id not in (
         'BG-03',
         'BG-04',
+        'BG-05',
         'skin-cucumber-03',
         'skin-cucumber-04',
         'skin-cucumber-05',
@@ -476,6 +482,7 @@ begin
          and p_item_id not in (
            'BG-03',
            'BG-04',
+           'BG-05',
            'skin-cucumber-03',
            'skin-cucumber-04',
            'skin-cucumber-05',
@@ -1229,6 +1236,10 @@ begin
     -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'BG-05' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'emo-eat-01' then
     insert into public.user_emoticons (
       user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
@@ -1405,6 +1416,8 @@ begin
         then '냉장고 프로필배경 구매가 완료됐어. 588피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-04'
         then '기동인의 행정당직 프로필배경 구매가 완료됐어. 593피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-05'
+        then '오이소녀의 스테이지 구매가 완료됐어. 626피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-moved-01'

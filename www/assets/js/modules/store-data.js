@@ -937,6 +937,20 @@ export const PROFILE_BACKGROUND_CATALOG = [
     ),
     displayOrder: 4,
   },
+  {
+    itemId: 'BG-05',
+    name: '오이소녀의 스테이지',
+    pcImagePath: withAssetVersion(
+      './images/profile-background/idolstage.webp',
+    ),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/idolstage-mobile.webp',
+    ),
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/idolstage.webp',
+    ),
+    displayOrder: 5,
+  },
 ];
 
 export function getProfileBackgroundByItemId(itemId = '') {
@@ -1898,6 +1912,42 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'BG-05',
+    name: '오이소녀의 스테이지',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '🥒🤷🏻‍♀️🎊',
+    thumbImagePath: withAssetVersion(
+      './images/profile-background/idolstage.webp',
+    ),
+    price: 626,
+    state: '판매 중',
+    description: '오이소녀의 아이돌 스테이지야.',
+    detailDescription:
+      '구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-05-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/idolstage.webp',
+        ),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-05-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/idolstage-mobile.webp',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    releaseDate: '2026-08-12',
+    isPurchasable: true,
+  },
+  {
     id: 'skin-cucumber-03',
     name: '오죠 이토루',
     category: 'skin',
@@ -1986,6 +2036,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'BG-05',
   'skin-cucumber-05',
   'skin-cucumberboy-02',
   'bgm-cucumbergirl-02',
