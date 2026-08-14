@@ -15,6 +15,7 @@ struct CalendarWidgetItem: Decodable, Identifiable {
     let title: String
     let memo: String
     let time: String?
+    let isDone: Bool?
     let sortOrder: Int
     let createdAt: String?
 }
@@ -440,6 +441,11 @@ struct DayCellView: View {
                 Text(displayTitle(for: item))
                     .font(.system(size: badgeFontSize, weight: .bold))
                     .foregroundStyle(theme.text)
+                    .overlay(
+                        Rectangle()
+                            .fill(theme.text)
+                            .frame(height: calendarType == "study" && item.isDone == true ? 1 : 0)
+                    )
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
@@ -676,6 +682,7 @@ struct SampleData {
                 title: "일정",
                 memo: "",
                 time: nil,
+                isDone: calendarType == "study" && index % 6 == 0,
                 sortOrder: 10,
                 createdAt: nil
             ) : nil

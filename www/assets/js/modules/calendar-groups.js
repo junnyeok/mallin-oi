@@ -8,6 +8,7 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
+import { normalizeBackupPayload } from './calendar-group-backup-comparison.js';
 import { openCalendarManagePopup } from './service-menu.js';
 
 let calendarCopyPasteModulePromise = null;
@@ -51,11 +52,6 @@ const BACKUP_STATUS = {
   CHECKING: 'checking',
   RUNNING: 'running',
 };
-const BACKUP_BOOLEAN_PAYLOAD_KEYS = new Set([
-  'isDone',
-  'is_shared_copy',
-  'categoryEndsNextDay',
-]);
 const BACKUP_SOURCE_CONFIG = {
   study: {
     table: 'study_calendar_todos',
@@ -490,41 +486,6 @@ async function rpc(name, params = {}) {
 function getRelatedCategory(row, relation) {
   const category = row?.[relation];
   return Array.isArray(category) ? category[0] || null : category || null;
-}
-
-function normalizeBackupPayload(payload = {}, calendarType = '') {
-  const comparableKeys = {
-    study: new Set([
-      'isDone',
-      'categoryName',
-      'todoTime',
-      'todoEndDate',
-      'todoEndTime',
-    ]),
-    work: new Set([
-      'isDone',
-      'workText',
-      'categoryName',
-      'categoryStartTime',
-      'categoryEndTime',
-      'categoryEndsNextDay',
-    ]),
-  }[calendarType];
-
-  return Object.keys(payload)
-    .filter((key) => !comparableKeys || comparableKeys.has(key))
-    .sort()
-    .reduce((result, key) => {
-      const value = payload[key];
-      if (BACKUP_BOOLEAN_PAYLOAD_KEYS.has(key)) {
-        result[key] =
-          value === true || value === 'true' || value === 1 || value === '1';
-        return result;
-      }
-
-      result[key] = value ?? null;
-      return result;
-    }, {});
 }
 
 function makeBackupComparable(event, calendarType = '') {

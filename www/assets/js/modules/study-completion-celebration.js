@@ -22,6 +22,8 @@ export function createStudyCompletionCelebration({
   pathResolver = (path) => new URL(path, documentRef.baseURI).href,
   pauseBgm = () => null,
   restoreBgm = async () => false,
+  beginAudioSession = async () => false,
+  endAudioSession = async () => false,
   imagePath = STUDY_COMPLETION_IMAGE_PATH,
   audioPath = STUDY_COMPLETION_AUDIO_PATH,
   durationMs = 3000,
@@ -32,6 +34,8 @@ export function createStudyCompletionCelebration({
   let cleanupTimer = 0;
   let audio = null;
   let bgmHandle = null;
+  let nativeAudioSessionActive = false;
+  let pendingAudioRelease = Promise.resolve();
   let destroyed = false;
   let runSequence = 0;
   let activePlaybackSequence = 0;
@@ -42,15 +46,35 @@ export function createStudyCompletionCelebration({
     );
   }
 
-  async function releaseBgm() {
+  function queueAudioRelease() {
     const handle = bgmHandle;
+    const shouldEndAudioSession = nativeAudioSessionActive;
     bgmHandle = null;
-    if (!handle) return;
-    try {
-      await restoreBgm(handle);
-    } catch {
-      // 축하 음원 정리는 일정 저장 결과에 영향을 주지 않는다.
-    }
+    nativeAudioSessionActive = false;
+
+    if (!handle && !shouldEndAudioSession) return pendingAudioRelease;
+
+    pendingAudioRelease = pendingAudioRelease
+      .catch(() => {})
+      .then(async () => {
+        if (shouldEndAudioSession) {
+          try {
+            await endAudioSession();
+          } catch {
+            // 네이티브 오디오 세션 반납 실패도 일정 저장을 막지 않는다.
+          }
+        }
+
+        if (handle) {
+          try {
+            await restoreBgm(handle);
+          } catch {
+            // 사이트 BGM 복원 실패는 일정 저장 결과에 영향을 주지 않는다.
+          }
+        }
+      });
+
+    return pendingAudioRelease;
   }
 
   function clearTimer() {
@@ -82,7 +106,7 @@ export function createStudyCompletionCelebration({
   function stopPlayback() {
     activePlaybackSequence = 0;
     stopAudio(audio);
-    void releaseBgm();
+    void queueAudioRelease();
   }
 
   function cleanup() {
@@ -104,12 +128,12 @@ export function createStudyCompletionCelebration({
         cleanup();
         return;
       }
-      void releaseBgm();
+      void queueAudioRelease();
     });
     audio.addEventListener?.('error', () => {
       const sequence = activePlaybackSequence;
       activePlaybackSequence = 0;
-      void releaseBgm();
+      void queueAudioRelease();
       scheduleCleanup(sequence, durationMs);
     });
     return audio;
@@ -135,9 +159,22 @@ export function createStudyCompletionCelebration({
       // 일부 WebView에서는 명시적 load가 없어도 play가 가능하다.
     }
 
-    await releaseBgm();
+    await pendingAudioRelease.catch(() => {});
     if (destroyed || sequence !== runSequence) return false;
     bgmHandle = pauseBgm('study-completion-celebration');
+
+    try {
+      nativeAudioSessionActive = Boolean(await beginAudioSession());
+    } catch {
+      nativeAudioSessionActive = false;
+    }
+
+    if (destroyed || sequence !== runSequence) {
+      stopAudio(player);
+      await queueAudioRelease();
+      return false;
+    }
+
     activePlaybackSequence = sequence;
 
     try {
@@ -145,13 +182,13 @@ export function createStudyCompletionCelebration({
       if (destroyed || sequence !== runSequence) {
         activePlaybackSequence = 0;
         stopAudio(player);
-        await releaseBgm();
+        await queueAudioRelease();
         return false;
       }
       return true;
     } catch {
       if (activePlaybackSequence === sequence) activePlaybackSequence = 0;
-      await releaseBgm();
+      await queueAudioRelease();
       return false;
     }
   }

@@ -8,6 +8,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.StrikethroughSpan;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -293,7 +296,19 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 int backgroundId = eventBackgroundIds[itemIndex];
                 int textId = eventTextIds[itemIndex];
 
-                dayViews.setTextViewText(textId, title);
+                CharSequence displayText = title;
+                if ("study".equals(calendarType) && item.optBoolean("isDone", false)) {
+                    SpannableString completedTitle = new SpannableString(title);
+                    completedTitle.setSpan(
+                            new StrikethroughSpan(),
+                            0,
+                            completedTitle.length(),
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    );
+                    displayText = completedTitle;
+                }
+
+                dayViews.setTextViewText(textId, displayText);
                 dayViews.setTextViewTextSize(
                         textId,
                         TypedValue.COMPLEX_UNIT_SP,

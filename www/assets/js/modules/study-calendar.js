@@ -13,6 +13,10 @@ import {
   pauseBgmForExternalAudio,
   restoreBgmAfterExternalAudio,
 } from './bgm-player.js';
+import {
+  beginCompletionAudioSession,
+  endCompletionAudioSession,
+} from './completion-audio-session.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import {
   createCalendarScheduleListContent,
@@ -1100,6 +1104,8 @@ async function initPageCalendar(loadingController) {
     pathResolver: resolveSitePath,
     pauseBgm: pauseBgmForExternalAudio,
     restoreBgm: restoreBgmAfterExternalAudio,
+    beginAudioSession: beginCompletionAudioSession,
+    endAudioSession: endCompletionAudioSession,
   });
   const pendingCompletionTodoIds = new Set();
   const cleanupCompletionCelebration = () => {

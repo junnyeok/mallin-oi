@@ -9,6 +9,10 @@ import {
   STUDY_COMPLETION_PARTICLE_LIMIT,
   createStudyCompletionCelebration,
 } from '../assets/js/modules/study-completion-celebration.js';
+import {
+  beginCompletionAudioSession,
+  endCompletionAudioSession,
+} from '../assets/js/modules/completion-audio-session.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -110,7 +114,9 @@ function createHarness({ reducedMotion = false, playRejects = false } = {}) {
         : Promise.resolve();
     },
   };
+  const releaseOrder = [];
   const bgm = { pauseCalls: 0, restoreCalls: 0 };
+  const nativeAudioSession = { beginCalls: 0, endCalls: 0 };
   const controller = createStudyCompletionCelebration({
     documentRef,
     windowRef,
@@ -122,6 +128,16 @@ function createHarness({ reducedMotion = false, playRejects = false } = {}) {
     },
     restoreBgm: async () => {
       bgm.restoreCalls += 1;
+      releaseOrder.push('restore-bgm');
+      return true;
+    },
+    beginAudioSession: async () => {
+      nativeAudioSession.beginCalls += 1;
+      return true;
+    },
+    endAudioSession: async () => {
+      nativeAudioSession.endCalls += 1;
+      releaseOrder.push('end-native-session');
       return true;
     },
     durationMs: 3000,
@@ -133,6 +149,8 @@ function createHarness({ reducedMotion = false, playRejects = false } = {}) {
     controller,
     sound,
     bgm,
+    nativeAudioSession,
+    releaseOrder,
     getTimerDelays() {
       return [...timers.values()].map(({ delay }) => delay);
     },
@@ -239,6 +257,8 @@ test('완료 성공 효과는 이미지·상한 내 파티클·음원을 한 번
   );
   assert.equal(harness.sound.playCalls, 1);
   assert.equal(harness.bgm.pauseCalls, 1);
+  assert.equal(harness.nativeAudioSession.beginCalls, 1);
+  assert.equal(harness.nativeAudioSession.endCalls, 0);
   assert.deepEqual(harness.getTimerDelays(), [10000]);
 });
 
@@ -256,6 +276,11 @@ test('정상 재생은 3초에 종료하지 않고 실제 음원 ended에서 효
   assert.equal(harness.body.children.length, 0);
   assert.equal(harness.controller.getState().active, false);
   assert.equal(harness.bgm.restoreCalls, 1);
+  assert.equal(harness.nativeAudioSession.endCalls, 1);
+  assert.deepEqual(harness.releaseOrder, [
+    'end-native-session',
+    'restore-bgm',
+  ]);
   assert.deepEqual(harness.getTimerDelays(), []);
 });
 
@@ -273,6 +298,7 @@ test('빠른 연속 완료도 오버레이와 음원을 중첩하지 않고 현�
   assert.equal(harness.body.children.length, 0);
   assert.equal(harness.controller.getState().active, false);
   assert.ok(harness.bgm.restoreCalls >= 1);
+  assert.ok(harness.nativeAudioSession.endCalls >= 1);
 });
 
 test('ended 이벤트가 유실되면 안전 타이머가 남은 효과와 음원을 정리한다', async () => {
@@ -301,9 +327,25 @@ test('음원 재생 실패는 축하 표시나 완료 흐름을 실패시키지 
   await flushPromises();
   assert.equal(harness.body.children.length, 1);
   assert.equal(harness.sound.playCalls, 1);
+  assert.equal(harness.nativeAudioSession.beginCalls, 1);
   assert.deepEqual(harness.getTimerDelays(), [3000]);
   harness.runTimers({ maxDelay: 3000 });
+  await flushPromises();
   assert.equal(harness.body.children.length, 0);
+  assert.equal(harness.nativeAudioSession.endCalls, 1);
+});
+
+test('네이티브 오디오 세션은 효과음이 끝난 뒤에만 반납한다', async () => {
+  const harness = createHarness();
+  harness.controller.celebrate();
+  await flushPromises();
+
+  assert.equal(harness.nativeAudioSession.beginCalls, 1);
+  assert.equal(harness.nativeAudioSession.endCalls, 0);
+
+  harness.sound.emit('ended');
+  await flushPromises();
+  assert.equal(harness.nativeAudioSession.endCalls, 1);
 });
 
 test('브라우저 fixture는 4.224초 음원 종료와 수동 ended 검증을 재현한다', () => {
@@ -347,6 +389,60 @@ test('PJAX와 pagehide는 축하 DOM·타이머·음원을 정리한다', () => 
   assert.match(study, /completionCelebration\.destroy\(\)/);
 });
 
+test('자기개발 캘린더는 네이티브 오디오 세션 시작·반납 브리지를 연결한다', () => {
+  const study = fs.readFileSync(
+    path.join(rootDir, 'assets/js/modules/study-calendar.js'),
+    'utf8',
+  );
+  assert.match(study, /beginAudioSession:\s*beginCompletionAudioSession/);
+  assert.match(study, /endAudioSession:\s*endCompletionAudioSession/);
+});
+
+test('Capacitor 네이티브 브리지는 오디오 세션 시작·반납 메서드를 호출한다', async () => {
+  const calls = [];
+  const plugin = {
+    async beginInterruption() {
+      calls.push('begin');
+      return { active: true };
+    },
+    async endInterruption() {
+      calls.push('end');
+    },
+  };
+  const windowRef = {
+    Capacitor: {
+      isNativePlatform: () => true,
+      registerPlugin: (name) => {
+        assert.equal(name, 'CompletionAudioSession');
+        return plugin;
+      },
+    },
+  };
+
+  assert.equal(await beginCompletionAudioSession(windowRef), true);
+  assert.equal(await endCompletionAudioSession(windowRef), true);
+  assert.deepEqual(calls, ['begin', 'end']);
+});
+
+test('iOS와 Android는 축하 효과음을 일시 오디오 중단으로 처리하고 종료 후 포커스를 반납한다', () => {
+  const iosPlugin = fs.readFileSync(
+    path.join(rootDir, 'ios/App/App/CompletionAudioSessionPlugin.swift'),
+    'utf8',
+  );
+  const androidPlugin = fs.readFileSync(
+    path.join(
+      rootDir,
+      'android/app/src/main/java/com/mallinoi/calendar/CompletionAudioSessionPlugin.java',
+    ),
+    'utf8',
+  );
+
+  assert.match(iosPlugin, /setCategory\(\.playback/);
+  assert.match(iosPlugin, /notifyOthersOnDeactivation/);
+  assert.match(androidPlugin, /AUDIOFOCUS_GAIN_TRANSIENT/);
+  assert.match(androidPlugin, /abandonAudioFocusRequest|abandonAudioFocus/);
+});
+
 test('축하 CSS는 터치를 막지 않고 중앙·반응형·reduced motion을 지원한다', () => {
   const css = fs.readFileSync(
     path.join(rootDir, 'assets/css/components/study-completion-celebration.css'),
@@ -373,7 +469,9 @@ test('생성 축하 이미지는 1536×1024 RGBA PNG이며 투명·가시 픽셀
 
 test('루트·www·Android·iOS 축하 코드·CSS·이미지가 바이트 단위로 같다', () => {
   const relativePaths = [
+    'assets/js/modules/completion-audio-session.js',
     'assets/js/modules/study-completion-celebration.js',
+    'assets/js/modules/study-calendar.js',
     'assets/css/components/study-completion-celebration.css',
     'images/calendar/study-completion-celebration.png',
   ];
