@@ -15,7 +15,11 @@ public class CompletionAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func beginInterruption(_ call: CAPPluginCall) {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [])
+            try session.setCategory(
+                .playback,
+                mode: .default,
+                options: [.mixWithOthers, .duckOthers]
+            )
             try session.setActive(true)
             isActive = true
             call.resolve(["active": true])

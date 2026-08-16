@@ -439,13 +439,9 @@ struct DayCellView: View {
 
             ForEach(Array(visibleItems.prefix(maxVisibleItems))) { item in
                 Text(displayTitle(for: item))
+                    .strikethrough(calendarType == "study" && item.isDone == true)
                     .font(.system(size: badgeFontSize, weight: .bold))
                     .foregroundStyle(theme.text)
-                    .overlay(
-                        Rectangle()
-                            .fill(theme.text)
-                            .frame(height: calendarType == "study" && item.isDone == true ? 1 : 0)
-                    )
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
@@ -454,6 +450,7 @@ struct DayCellView: View {
                     .frame(maxWidth: .infinity, minHeight: badgeHeight, maxHeight: badgeHeight)
                     .background(textColor(for: item.displayColor ?? item.categoryColor))
                     .clipShape(RoundedRectangle(cornerRadius: 5 * monthContentScale, style: .continuous))
+                    .opacity(calendarType == "study" && item.isDone == true ? 0.62 : 1)
             }
 
             if hasWorkMemo, let item = visibleItems.first {

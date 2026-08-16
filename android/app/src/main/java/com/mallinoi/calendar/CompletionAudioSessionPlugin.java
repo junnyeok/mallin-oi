@@ -30,7 +30,9 @@ public class CompletionAudioSessionPlugin extends Plugin {
         int result;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            audioFocusRequest = new AudioFocusRequest.Builder(
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            )
                     .setAudioAttributes(new AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -42,7 +44,7 @@ public class CompletionAudioSessionPlugin extends Plugin {
             result = manager.requestAudioFocus(
                     focusChangeListener,
                     AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
             );
         }
 

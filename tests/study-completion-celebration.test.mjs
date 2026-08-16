@@ -424,7 +424,7 @@ test('Capacitor 네이티브 브리지는 오디오 세션 시작·반납 메서
   assert.deepEqual(calls, ['begin', 'end']);
 });
 
-test('iOS와 Android는 축하 효과음을 일시 오디오 중단으로 처리하고 종료 후 포커스를 반납한다', () => {
+test('iOS와 Android는 외부 오디오를 중단하지 않고 축하 효과음 동안만 음량을 낮춘다', () => {
   const iosPlugin = fs.readFileSync(
     path.join(rootDir, 'ios/App/App/CompletionAudioSessionPlugin.swift'),
     'utf8',
@@ -437,9 +437,20 @@ test('iOS와 Android는 축하 효과음을 일시 오디오 중단으로 처리
     'utf8',
   );
 
-  assert.match(iosPlugin, /setCategory\(\.playback/);
+  assert.match(iosPlugin, /setCategory\([\s\S]*?\.playback/);
+  assert.match(
+    iosPlugin,
+    /options:\s*\[\.mixWithOthers,\s*\.duckOthers\]/,
+  );
   assert.match(iosPlugin, /notifyOthersOnDeactivation/);
-  assert.match(androidPlugin, /AUDIOFOCUS_GAIN_TRANSIENT/);
+  assert.match(
+    androidPlugin,
+    /new AudioFocusRequest\.Builder\([\s\S]*?AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK[\s\S]*?\)/,
+  );
+  assert.match(
+    androidPlugin,
+    /AudioManager\.STREAM_MUSIC,\s*AudioManager\.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK/,
+  );
   assert.match(androidPlugin, /abandonAudioFocusRequest|abandonAudioFocus/);
 });
 
