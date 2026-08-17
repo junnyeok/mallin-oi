@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(CalendarWidgetsPlugin.class);
+        registerPlugin(CompletionAudioSessionPlugin.class);
         registerPlugin(StoreUpdatePlugin.class);
         super.onCreate(savedInstanceState);
         handleCalendarIntent(getIntent());

@@ -191,6 +191,7 @@
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetRefreshReceiver.java
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetsPlugin.java
+./android/app/src/main/java/com/mallinoi/calendar/CompletionAudioSessionPlugin.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventFourDayWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventMonthWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventTwoWeekWidgetProvider.java
@@ -479,6 +480,7 @@
 ./assets/js/modules/calendar-app-download-popup.js
 ./assets/js/modules/calendar-copy-buffer.js
 ./assets/js/modules/calendar-entry-sheet.js
+./assets/js/modules/calendar-group-backup-comparison.js
 ./assets/js/modules/calendar-group-copy-paste.js
 ./assets/js/modules/calendar-groups.js
 ./assets/js/modules/calendar-loading.js
@@ -492,6 +494,7 @@
 ./assets/js/modules/career-award-popup.js
 ./assets/js/modules/career-award-rules.js
 ./assets/js/modules/character-effects.js
+./assets/js/modules/completion-audio-session.js
 ./assets/js/modules/cursor-buddy.js
 ./assets/js/modules/daily-attendance-popup.js
 ./assets/js/modules/emoticons.js
@@ -1122,6 +1125,7 @@
 ./ios/App/App/Base.lproj/LaunchScreen.storyboard
 ./ios/App/App/Base.lproj/Main.storyboard
 ./ios/App/App/CalendarWidgetsPlugin.swift
+./ios/App/App/CompletionAudioSessionPlugin.swift
 ./ios/App/App/Info.plist
 ./ios/App/App/MainViewController.swift
 ./ios/App/App/capacitor.config.json
@@ -1406,6 +1410,7 @@
 ./tests/bg05-profile-background.test.mjs
 ./tests/burning-soul-bgm.test.mjs
 ./tests/calendar-copy-paste.test.mjs
+./tests/calendar-group-backup-state.test.mjs
 ./tests/calendar-loading.test.mjs
 ./tests/calendar-shared-personal-readonly.test.mjs
 ./tests/calendar-time-settings.test.mjs
@@ -1422,6 +1427,7 @@
 ./tests/run-muscle-night-bgm.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
 ./tests/study-completion-celebration.test.mjs
+./tests/study-widget-completion.test.mjs
 ./work.html
 ./write.html
 ./www/account/find-password.html
@@ -1490,6 +1496,7 @@
 ./www/assets/js/modules/calendar-app-download-popup.js
 ./www/assets/js/modules/calendar-copy-buffer.js
 ./www/assets/js/modules/calendar-entry-sheet.js
+./www/assets/js/modules/calendar-group-backup-comparison.js
 ./www/assets/js/modules/calendar-group-copy-paste.js
 ./www/assets/js/modules/calendar-groups.js
 ./www/assets/js/modules/calendar-loading.js
@@ -1503,6 +1510,7 @@
 ./www/assets/js/modules/career-award-popup.js
 ./www/assets/js/modules/career-award-rules.js
 ./www/assets/js/modules/character-effects.js
+./www/assets/js/modules/completion-audio-session.js
 ./www/assets/js/modules/cursor-buddy.js
 ./www/assets/js/modules/daily-attendance-popup.js
 ./www/assets/js/modules/emoticons.js
