@@ -2,6 +2,7 @@ export const STUDY_COMPLETION_IMAGE_PATH =
   './images/calendar/study-completion-celebration.png';
 export const STUDY_COMPLETION_AUDIO_PATH = './assets/mp3/mallinoi-reward.mp3';
 export const STUDY_COMPLETION_PARTICLE_LIMIT = 18;
+export const STUDY_COMPLETION_AUDIO_GAIN = 2.25;
 
 const PARTICLES = ['🎉', '🎊', '✨', '⭐', '💚'];
 
@@ -13,6 +14,58 @@ function stopAudio(audio) {
   } catch {
     // 메타데이터가 준비되기 전 currentTime 변경 실패는 무시한다.
   }
+}
+
+export function createStudyCompletionAudioOutput({
+  windowRef = window,
+  player,
+  gain = STUDY_COMPLETION_AUDIO_GAIN,
+} = {}) {
+  if (!player) return null;
+  player.volume = 1;
+
+  const AudioContextClass =
+    windowRef?.AudioContext || windowRef?.webkitAudioContext;
+  if (typeof AudioContextClass !== 'function') return null;
+
+  let context = null;
+  let source = null;
+  let compressor = null;
+  let output = null;
+
+  try {
+    context = new AudioContextClass();
+    source = context.createMediaElementSource(player);
+    compressor = context.createDynamicsCompressor();
+    output = context.createGain();
+
+    compressor.threshold.value = -18;
+    compressor.knee.value = 6;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+    output.gain.value = Math.max(1, Number(gain) || 1);
+
+    source.connect(compressor);
+    compressor.connect(output);
+    output.connect(context.destination);
+  } catch {
+    void context?.close?.();
+    return null;
+  }
+
+  return {
+    async resume() {
+      if (context.state === 'suspended') await context.resume();
+      return context.state !== 'suspended';
+    },
+    close() {
+      source?.disconnect?.();
+      compressor?.disconnect?.();
+      output?.disconnect?.();
+      return context.close?.();
+    },
+  };
 }
 
 export function createStudyCompletionCelebration({
@@ -27,6 +80,7 @@ export function createStudyCompletionCelebration({
   endAudioSession = async () => false,
   imagePath = STUDY_COMPLETION_IMAGE_PATH,
   audioPath = STUDY_COMPLETION_AUDIO_PATH,
+  audioGain = STUDY_COMPLETION_AUDIO_GAIN,
   durationMs = 3000,
   audioEndFallbackMs = 10000,
   particleLimit = STUDY_COMPLETION_PARTICLE_LIMIT,
@@ -34,6 +88,7 @@ export function createStudyCompletionCelebration({
   let overlay = null;
   let cleanupTimer = 0;
   let audio = null;
+  let audioOutput = null;
   let bgmHandle = null;
   let nativeAudioSessionActive = false;
   let pendingAudioRelease = Promise.resolve();
@@ -107,6 +162,11 @@ export function createStudyCompletionCelebration({
   function stopPlayback() {
     activePlaybackSequence = 0;
     stopAudio(audio);
+    if (audioOutput) {
+      void audioOutput.close?.();
+      audioOutput = null;
+      audio = null;
+    }
     void queueAudioRelease();
   }
 
@@ -163,7 +223,7 @@ export function createStudyCompletionCelebration({
 
     if (destroyed || sequence !== runSequence || !soundAllowed) return false;
 
-    const player = ensureAudio();
+    let player = ensureAudio();
     stopAudio(player);
     player.src = pathResolver(audioPath);
     try {
@@ -182,6 +242,41 @@ export function createStudyCompletionCelebration({
 
     if (destroyed || sequence !== runSequence) {
       stopAudio(player);
+      await queueAudioRelease();
+      return false;
+    }
+
+    audioOutput = createStudyCompletionAudioOutput({
+      windowRef,
+      player,
+      gain: audioGain,
+    });
+    if (audioOutput) {
+      try {
+        const resumed = await audioOutput.resume();
+        if (!resumed) throw new Error('audio output remained suspended');
+      } catch {
+        stopAudio(player);
+        void audioOutput.close?.();
+        audioOutput = null;
+        audio = null;
+        player = ensureAudio();
+        player.src = pathResolver(audioPath);
+        try {
+          player.load?.();
+        } catch {
+          // 증폭 경로를 열 수 없으면 기본 최대 음량으로 재생한다.
+        }
+      }
+    }
+
+    if (destroyed || sequence !== runSequence) {
+      stopAudio(player);
+      if (audioOutput) {
+        void audioOutput.close?.();
+        audioOutput = null;
+        audio = null;
+      }
       await queueAudioRelease();
       return false;
     }

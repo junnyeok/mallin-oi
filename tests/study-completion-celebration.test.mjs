@@ -6,7 +6,9 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 import {
+  STUDY_COMPLETION_AUDIO_GAIN,
   STUDY_COMPLETION_PARTICLE_LIMIT,
+  createStudyCompletionAudioOutput,
   createStudyCompletionCelebration,
 } from '../assets/js/modules/study-completion-celebration.js';
 import {
@@ -74,6 +76,7 @@ function createHarness({
   reducedMotion = false,
   playRejects = false,
   externalAudioPlaying = false,
+  audioContextClass = null,
 } = {}) {
   const body = new FakeElement('body');
   const documentRef = {
@@ -94,6 +97,7 @@ function createHarness({
       timers.delete(id);
     },
   };
+  if (audioContextClass) windowRef.AudioContext = audioContextClass;
   const sound = {
     currentTime: 0,
     loadCalls: 0,
@@ -179,6 +183,69 @@ async function flushPromises() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+function createAudioOutputHarness() {
+  const source = {
+    connections: [],
+    disconnectCalls: 0,
+    connect(node) { this.connections.push(node); },
+    disconnect() { this.disconnectCalls += 1; },
+  };
+  const compressor = {
+    threshold: { value: 0 },
+    knee: { value: 0 },
+    ratio: { value: 0 },
+    attack: { value: 0 },
+    release: { value: 0 },
+    connections: [],
+    disconnectCalls: 0,
+    connect(node) { this.connections.push(node); },
+    disconnect() { this.disconnectCalls += 1; },
+  };
+  const output = {
+    gain: { value: 0 },
+    connections: [],
+    disconnectCalls: 0,
+    connect(node) { this.connections.push(node); },
+    disconnect() { this.disconnectCalls += 1; },
+  };
+  const destination = {};
+  const contextState = { resumeCalls: 0, closeCalls: 0, player: null };
+
+  class FakeAudioContext {
+    constructor() {
+      this.state = 'suspended';
+      this.destination = destination;
+    }
+
+    createMediaElementSource(player) {
+      contextState.player = player;
+      return source;
+    }
+
+    createDynamicsCompressor() { return compressor; }
+    createGain() { return output; }
+
+    async resume() {
+      contextState.resumeCalls += 1;
+      this.state = 'running';
+    }
+
+    async close() {
+      contextState.closeCalls += 1;
+      this.state = 'closed';
+    }
+  }
+
+  return {
+    FakeAudioContext,
+    compressor,
+    contextState,
+    destination,
+    output,
+    source,
+  };
+}
+
 function decodePngAlpha(filePath) {
   const png = fs.readFileSync(filePath);
   assert.deepEqual(
@@ -255,6 +322,45 @@ function decodePngAlpha(filePath) {
   return { width, height, transparentPixels, visiblePixels, size: png.length };
 }
 
+test('효과음 출력은 원본 파일을 바꾸지 않고 압축·메이크업 게인으로 체감 음량을 높인다', async () => {
+  const harness = createAudioOutputHarness();
+  const player = { volume: 0.4 };
+  const audioOutput = createStudyCompletionAudioOutput({
+    windowRef: { AudioContext: harness.FakeAudioContext },
+    player,
+  });
+
+  assert.ok(audioOutput);
+  assert.equal(player.volume, 1);
+  assert.equal(harness.contextState.player, player);
+  assert.equal(harness.compressor.threshold.value, -18);
+  assert.equal(harness.compressor.knee.value, 6);
+  assert.equal(harness.compressor.ratio.value, 4);
+  assert.equal(harness.compressor.attack.value, 0.003);
+  assert.equal(harness.compressor.release.value, 0.25);
+  assert.equal(harness.output.gain.value, STUDY_COMPLETION_AUDIO_GAIN);
+  assert.deepEqual(harness.source.connections, [harness.compressor]);
+  assert.deepEqual(harness.compressor.connections, [harness.output]);
+  assert.deepEqual(harness.output.connections, [harness.destination]);
+  assert.equal(await audioOutput.resume(), true);
+  assert.equal(harness.contextState.resumeCalls, 1);
+
+  await audioOutput.close();
+  assert.equal(harness.contextState.closeCalls, 1);
+  assert.equal(harness.source.disconnectCalls, 1);
+  assert.equal(harness.compressor.disconnectCalls, 1);
+  assert.equal(harness.output.disconnectCalls, 1);
+});
+
+test('Web Audio를 지원하지 않아도 기본 최대 음량 재생을 유지한다', () => {
+  const player = { volume: 0.2 };
+  assert.equal(
+    createStudyCompletionAudioOutput({ windowRef: {}, player }),
+    null,
+  );
+  assert.equal(player.volume, 1);
+});
+
 test('완료 성공 효과는 이미지·상한 내 파티클·음원을 한 번 시작한다', async () => {
   const harness = createHarness();
   assert.equal(harness.controller.prepare(), true);
@@ -275,7 +381,14 @@ test('완료 성공 효과는 이미지·상한 내 파티클·음원을 한 번
 });
 
 test('외부 오디오 재생 중에는 효과음 없이 시각 축하만 표시한다', async () => {
-  const harness = createHarness({ externalAudioPlaying: true });
+  let audioContextCreations = 0;
+  class UnexpectedAudioContext {
+    constructor() { audioContextCreations += 1; }
+  }
+  const harness = createHarness({
+    externalAudioPlaying: true,
+    audioContextClass: UnexpectedAudioContext,
+  });
   assert.equal(harness.controller.celebrate(), true);
   await flushPromises();
 
@@ -284,6 +397,7 @@ test('외부 오디오 재생 중에는 효과음 없이 시각 축하만 표시
   assert.equal(harness.sound.playCalls, 0);
   assert.equal(harness.bgm.pauseCalls, 0);
   assert.equal(harness.nativeAudioSession.beginCalls, 0);
+  assert.equal(audioContextCreations, 0);
   assert.deepEqual(harness.getTimerDelays(), [3000]);
 
   harness.runTimers({ maxDelay: 3000 });
