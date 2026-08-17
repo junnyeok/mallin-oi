@@ -22,6 +22,20 @@ export async function beginCompletionAudioSession(windowRef = window) {
   }
 }
 
+export async function shouldPlayCompletionSound(windowRef = window) {
+  const plugin = getNativePlugin(windowRef);
+  if (!plugin) return true;
+  if (!plugin.isExternalAudioPlaying) return false;
+
+  try {
+    const result = await plugin.isExternalAudioPlaying();
+    return result?.playing === false;
+  } catch {
+    // 네이티브 판별에 실패하면 사용자의 외부 오디오를 보호한다.
+    return false;
+  }
+}
+
 export async function endCompletionAudioSession(windowRef = window) {
   const plugin = getNativePlugin(windowRef);
   if (!plugin?.endInterruption) return false;

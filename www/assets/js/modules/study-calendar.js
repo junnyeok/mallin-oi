@@ -16,6 +16,7 @@ import {
 import {
   beginCompletionAudioSession,
   endCompletionAudioSession,
+  shouldPlayCompletionSound,
 } from './completion-audio-session.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import {
@@ -1104,6 +1105,7 @@ async function initPageCalendar(loadingController) {
     pathResolver: resolveSitePath,
     pauseBgm: pauseBgmForExternalAudio,
     restoreBgm: restoreBgmAfterExternalAudio,
+    shouldPlaySound: shouldPlayCompletionSound,
     beginAudioSession: beginCompletionAudioSession,
     endAudioSession: endCompletionAudioSession,
   });

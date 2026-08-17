@@ -22,6 +22,7 @@ export function createStudyCompletionCelebration({
   pathResolver = (path) => new URL(path, documentRef.baseURI).href,
   pauseBgm = () => null,
   restoreBgm = async () => false,
+  shouldPlaySound = async () => true,
   beginAudioSession = async () => false,
   endAudioSession = async () => false,
   imagePath = STUDY_COMPLETION_IMAGE_PATH,
@@ -150,6 +151,18 @@ export function createStudyCompletionCelebration({
   }
 
   async function playSound(sequence) {
+    await pendingAudioRelease.catch(() => {});
+    if (destroyed || sequence !== runSequence) return false;
+
+    let soundAllowed = false;
+    try {
+      soundAllowed = Boolean(await shouldPlaySound());
+    } catch {
+      soundAllowed = false;
+    }
+
+    if (destroyed || sequence !== runSequence || !soundAllowed) return false;
+
     const player = ensureAudio();
     stopAudio(player);
     player.src = pathResolver(audioPath);
@@ -159,8 +172,6 @@ export function createStudyCompletionCelebration({
       // 일부 WebView에서는 명시적 load가 없어도 play가 가능하다.
     }
 
-    await pendingAudioRelease.catch(() => {});
-    if (destroyed || sequence !== runSequence) return false;
     bgmHandle = pauseBgm('study-completion-celebration');
 
     try {

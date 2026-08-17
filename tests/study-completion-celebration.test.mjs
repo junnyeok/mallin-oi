@@ -12,6 +12,7 @@ import {
 import {
   beginCompletionAudioSession,
   endCompletionAudioSession,
+  shouldPlayCompletionSound,
 } from '../assets/js/modules/completion-audio-session.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,7 +70,11 @@ class FakeElement {
   }
 }
 
-function createHarness({ reducedMotion = false, playRejects = false } = {}) {
+function createHarness({
+  reducedMotion = false,
+  playRejects = false,
+  externalAudioPlaying = false,
+} = {}) {
   const body = new FakeElement('body');
   const documentRef = {
     baseURI: 'http://127.0.0.1:4173/',
@@ -117,6 +122,7 @@ function createHarness({ reducedMotion = false, playRejects = false } = {}) {
   const releaseOrder = [];
   const bgm = { pauseCalls: 0, restoreCalls: 0 };
   const nativeAudioSession = { beginCalls: 0, endCalls: 0 };
+  const soundPermission = { checkCalls: 0 };
   const controller = createStudyCompletionCelebration({
     documentRef,
     windowRef,
@@ -130,6 +136,10 @@ function createHarness({ reducedMotion = false, playRejects = false } = {}) {
       bgm.restoreCalls += 1;
       releaseOrder.push('restore-bgm');
       return true;
+    },
+    shouldPlaySound: async () => {
+      soundPermission.checkCalls += 1;
+      return !externalAudioPlaying;
     },
     beginAudioSession: async () => {
       nativeAudioSession.beginCalls += 1;
@@ -150,6 +160,7 @@ function createHarness({ reducedMotion = false, playRejects = false } = {}) {
     sound,
     bgm,
     nativeAudioSession,
+    soundPermission,
     releaseOrder,
     getTimerDelays() {
       return [...timers.values()].map(({ delay }) => delay);
@@ -256,10 +267,28 @@ test('완료 성공 효과는 이미지·상한 내 파티클·음원을 한 번
     STUDY_COMPLETION_PARTICLE_LIMIT,
   );
   assert.equal(harness.sound.playCalls, 1);
+  assert.equal(harness.soundPermission.checkCalls, 1);
   assert.equal(harness.bgm.pauseCalls, 1);
   assert.equal(harness.nativeAudioSession.beginCalls, 1);
   assert.equal(harness.nativeAudioSession.endCalls, 0);
   assert.deepEqual(harness.getTimerDelays(), [10000]);
+});
+
+test('외부 오디오 재생 중에는 효과음 없이 시각 축하만 표시한다', async () => {
+  const harness = createHarness({ externalAudioPlaying: true });
+  assert.equal(harness.controller.celebrate(), true);
+  await flushPromises();
+
+  assert.equal(harness.body.children.length, 1);
+  assert.equal(harness.soundPermission.checkCalls, 1);
+  assert.equal(harness.sound.playCalls, 0);
+  assert.equal(harness.bgm.pauseCalls, 0);
+  assert.equal(harness.nativeAudioSession.beginCalls, 0);
+  assert.deepEqual(harness.getTimerDelays(), [3000]);
+
+  harness.runTimers({ maxDelay: 3000 });
+  await flushPromises();
+  assert.equal(harness.body.children.length, 0);
 });
 
 test('정상 재생은 3초에 종료하지 않고 실제 음원 ended에서 효과와 BGM을 정리한다', async () => {
@@ -292,7 +321,9 @@ test('빠른 연속 완료도 오버레이와 음원을 중첩하지 않고 현�
   await flushPromises();
 
   assert.equal(harness.body.children.length, 1);
-  assert.ok(harness.sound.pauseCalls >= 3);
+  assert.equal(harness.soundPermission.checkCalls, 1);
+  assert.equal(harness.sound.playCalls, 1);
+  assert.ok(harness.sound.pauseCalls >= 1);
   harness.sound.emit('ended');
   await flushPromises();
   assert.equal(harness.body.children.length, 0);
@@ -389,11 +420,12 @@ test('PJAX와 pagehide는 축하 DOM·타이머·음원을 정리한다', () => 
   assert.match(study, /completionCelebration\.destroy\(\)/);
 });
 
-test('자기개발 캘린더는 네이티브 오디오 세션 시작·반납 브리지를 연결한다', () => {
+test('자기개발 캘린더는 외부 오디오 판별과 네이티브 오디오 세션 브리지를 연결한다', () => {
   const study = fs.readFileSync(
     path.join(rootDir, 'assets/js/modules/study-calendar.js'),
     'utf8',
   );
+  assert.match(study, /shouldPlaySound:\s*shouldPlayCompletionSound/);
   assert.match(study, /beginAudioSession:\s*beginCompletionAudioSession/);
   assert.match(study, /endAudioSession:\s*endCompletionAudioSession/);
 });
@@ -401,6 +433,10 @@ test('자기개발 캘린더는 네이티브 오디오 세션 시작·반납 브
 test('Capacitor 네이티브 브리지는 오디오 세션 시작·반납 메서드를 호출한다', async () => {
   const calls = [];
   const plugin = {
+    async isExternalAudioPlaying() {
+      calls.push('check');
+      return { playing: false };
+    },
     async beginInterruption() {
       calls.push('begin');
       return { active: true };
@@ -419,12 +455,29 @@ test('Capacitor 네이티브 브리지는 오디오 세션 시작·반납 메서
     },
   };
 
+  assert.equal(await shouldPlayCompletionSound(windowRef), true);
   assert.equal(await beginCompletionAudioSession(windowRef), true);
   assert.equal(await endCompletionAudioSession(windowRef), true);
-  assert.deepEqual(calls, ['begin', 'end']);
+  assert.deepEqual(calls, ['check', 'begin', 'end']);
 });
 
-test('iOS와 Android는 외부 오디오를 중단하지 않고 축하 효과음 동안만 음량을 낮춘다', () => {
+test('Capacitor 외부 오디오 판별 실패 시에는 효과음을 안전하게 생략한다', async () => {
+  const windowRef = {
+    Capacitor: {
+      isNativePlatform: () => true,
+      registerPlugin: () => ({
+        async isExternalAudioPlaying() {
+          throw new Error('unavailable');
+        },
+      }),
+    },
+  };
+
+  assert.equal(await shouldPlayCompletionSound(windowRef), false);
+  assert.equal(await shouldPlayCompletionSound({}), true);
+});
+
+test('iOS와 Android는 외부 오디오를 감지하고 없을 때만 기존 효과음 세션을 연다', () => {
   const iosPlugin = fs.readFileSync(
     path.join(rootDir, 'ios/App/App/CompletionAudioSessionPlugin.swift'),
     'utf8',
@@ -437,12 +490,16 @@ test('iOS와 Android는 외부 오디오를 중단하지 않고 축하 효과음
     'utf8',
   );
 
+  assert.match(iosPlugin, /isExternalAudioPlaying/);
+  assert.match(iosPlugin, /session\.isOtherAudioPlaying/);
   assert.match(iosPlugin, /setCategory\([\s\S]*?\.playback/);
   assert.match(
     iosPlugin,
     /options:\s*\[\.mixWithOthers,\s*\.duckOthers\]/,
   );
   assert.match(iosPlugin, /notifyOthersOnDeactivation/);
+  assert.match(androidPlugin, /isExternalAudioPlaying/);
+  assert.match(androidPlugin, /getAudioManager\(\)\.isMusicActive\(\)/);
   assert.match(
     androidPlugin,
     /new AudioFocusRequest\.Builder\([\s\S]*?AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK[\s\S]*?\)/,

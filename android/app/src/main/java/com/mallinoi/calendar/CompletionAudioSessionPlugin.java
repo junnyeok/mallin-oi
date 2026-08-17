@@ -25,6 +25,13 @@ public class CompletionAudioSessionPlugin extends Plugin {
     };
 
     @PluginMethod
+    public void isExternalAudioPlaying(PluginCall call) {
+        JSObject response = new JSObject();
+        response.put("playing", getAudioManager().isMusicActive());
+        call.resolve(response);
+    }
+
+    @PluginMethod
     public void beginInterruption(PluginCall call) {
         AudioManager manager = getAudioManager();
         int result;

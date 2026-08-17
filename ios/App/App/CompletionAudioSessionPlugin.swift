@@ -6,11 +6,17 @@ public class CompletionAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CompletionAudioSessionPlugin"
     public let jsName = "CompletionAudioSession"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isExternalAudioPlaying", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "beginInterruption", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endInterruption", returnType: CAPPluginReturnPromise)
     ]
 
     private var isActive = false
+
+    @objc func isExternalAudioPlaying(_ call: CAPPluginCall) {
+        let session = AVAudioSession.sharedInstance()
+        call.resolve(["playing": session.isOtherAudioPlaying])
+    }
 
     @objc func beginInterruption(_ call: CAPPluginCall) {
         do {
