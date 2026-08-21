@@ -17,6 +17,7 @@ const {
   EAT_EMOTICON_PACK,
   MOVED_EMOTICON_PACK,
   CUCUMBER_GIRL_EMOTICON_PACK,
+  CUCUMBER_BOY_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -32,6 +33,7 @@ const EMOTICON_MAP = new Map(
     ...EAT_EMOTICON_PACK,
     ...MOVED_EMOTICON_PACK,
     ...CUCUMBER_GIRL_EMOTICON_PACK,
+    ...CUCUMBER_BOY_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -114,6 +116,13 @@ const PACK_META = [
     label: '오이소녀',
     iconPath: CUCUMBER_GIRL_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'cucumbergirl-',
+  },
+  {
+    key: 'cucumberboy',
+    itemId: 'emo-cucumberboy-01',
+    label: '오이소년',
+    iconPath: CUCUMBER_BOY_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'cucumberboy-',
   },
 ];
 
@@ -261,6 +270,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo_cucumbergirl_01') {
     return CUCUMBER_GIRL_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-cucumberboy-01') {
+    return CUCUMBER_BOY_EMOTICON_PACK;
   }
 
   return [];

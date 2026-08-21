@@ -986,6 +986,16 @@
 ./images/emoticons/eat-7.png
 ./images/emoticons/eat-8.png
 ./images/emoticons/eat-9.png
+./images/emoticons/emo-cucumberboy-01.png
+./images/emoticons/emo-cucumberboy-02.png
+./images/emoticons/emo-cucumberboy-03.png
+./images/emoticons/emo-cucumberboy-04.png
+./images/emoticons/emo-cucumberboy-05.png
+./images/emoticons/emo-cucumberboy-06.png
+./images/emoticons/emo-cucumberboy-07.png
+./images/emoticons/emo-cucumberboy-08.png
+./images/emoticons/emo-cucumberboy-09.png
+./images/emoticons/emo-cucumberboy-10.png
 ./images/emoticons/emo_cucumbergirl_1.png
 ./images/emoticons/emo_cucumbergirl_10.png
 ./images/emoticons/emo_cucumbergirl_2.png
@@ -1359,6 +1369,7 @@
 ./supabase-SQLEditor/20260808-run-muscle-night-bgm.sql
 ./supabase-SQLEditor/20260809-socceroi-summerboy-skins.sql
 ./supabase-SQLEditor/20260812-cucumber-girl-stage-profile-background.sql
+./supabase-SQLEditor/20260821-cucumber-boy-emoticon-pack.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1400,6 +1411,7 @@
 ./supabase/migrations/20260808000000_run_muscle_night_bgm.sql
 ./supabase/migrations/20260809000000_socceroi_summerboy_skins.sql
 ./supabase/migrations/20260812000000_bg05_cucumber_girl_stage_profile_background.sql
+./supabase/migrations/20260821000000_cucumber_boy_emoticon_pack.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1412,6 +1424,7 @@
 ./tests/career-monthly-awards.test.mjs
 ./tests/character-effects-fire.test.mjs
 ./tests/character-effects-spider-web.test.mjs
+./tests/cucumber-boy-emoticon-pack.test.mjs
 ./tests/empty-road-bgm.test.mjs
 ./tests/fixtures/app-update-popup-browser.html
 ./tests/fixtures/calendar-copy-paste-conflict-browser.html
@@ -1421,6 +1434,7 @@
 ./tests/profile-bio-contrast.test.mjs
 ./tests/run-muscle-night-bgm.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
+./tests/store-description-placement.test.mjs
 ./tests/study-completion-celebration.test.mjs
 ./work.html
 ./write.html
@@ -1572,6 +1586,16 @@
 ./www/images/character-effects/spider-web-effect-01.png
 ./www/images/characters/brocolli.png
 ./www/images/characters/tomato.png
+./www/images/emoticons/emo-cucumberboy-01.png
+./www/images/emoticons/emo-cucumberboy-02.png
+./www/images/emoticons/emo-cucumberboy-03.png
+./www/images/emoticons/emo-cucumberboy-04.png
+./www/images/emoticons/emo-cucumberboy-05.png
+./www/images/emoticons/emo-cucumberboy-06.png
+./www/images/emoticons/emo-cucumberboy-07.png
+./www/images/emoticons/emo-cucumberboy-08.png
+./www/images/emoticons/emo-cucumberboy-09.png
+./www/images/emoticons/emo-cucumberboy-10.png
 ./www/images/favicon-16x16.png
 ./www/images/favicon-32x32.png
 ./www/images/favicon.ico

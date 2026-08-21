@@ -75,8 +75,8 @@ test('BG-05 상품과 프로필배경 카탈로그가 지정값으로 한 번씩
   assert.equal(getProfileBackgroundByItemId(ITEM_ID)?.itemId, ITEM_ID);
 });
 
-test('BG-05는 주요 상품 첫 번째이고 전체 상품 ID에는 중복이 없다', () => {
-  assert.equal(getFeaturedStoreItems(15)[0].id, ITEM_ID);
+test('BG-05는 오이소년 이모티콘팩 다음이고 전체 상품 ID에는 중복이 없다', () => {
+  assert.equal(getFeaturedStoreItems(15)[1].id, ITEM_ID);
 
   const itemIds = STORE_ITEMS.map((item) => item.id);
   const backgroundIds = PROFILE_BACKGROUND_CATALOG.map((item) => item.itemId);
@@ -121,7 +121,7 @@ test('구매 SQL 네 관리 지점은 626 고정가·보유·원장·엄격 잔�
   ]);
 
   assert.equal(sqlEditor, migration);
-  assert.ok(backup.endsWith(sqlEditor));
+  assert.ok(backup.includes(sqlEditor));
   assert.equal([...purchaseSql.matchAll(/'BG-05'/g)].length, 5);
   assert.match(
     purchaseSql,

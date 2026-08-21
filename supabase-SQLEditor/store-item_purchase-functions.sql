@@ -396,6 +396,11 @@ begin
     v_name := '오이소녀 이모티콘팩';
     v_category := 'emoticon';
 
+  elsif p_item_id = 'emo-cucumberboy-01' then
+    v_price := 391;
+    v_name := '오이소년 이모티콘팩';
+    v_category := 'emoticon';
+
   else
     return query
     select
@@ -1291,6 +1296,23 @@ begin
       (v_user_id, 'emo_cucumbergirl_01', 'cucumbergirl-9', '오이소녀 이모티콘 9', './images/emoticons/emo_cucumbergirl_9.png', 1009),
       (v_user_id, 'emo_cucumbergirl_01', 'cucumbergirl-10', '오이소녀 이모티콘 10', './images/emoticons/emo_cucumbergirl_10.png', 1010)
     on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-cucumberboy-01' then
+    insert into public.user_emoticons (
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order, is_equipped
+    )
+    values
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-1', '오이소년 이모티콘 1', './images/emoticons/emo-cucumberboy-01.png', 1101, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-2', '오이소년 이모티콘 2', './images/emoticons/emo-cucumberboy-02.png', 1102, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-3', '오이소년 이모티콘 3', './images/emoticons/emo-cucumberboy-03.png', 1103, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-4', '오이소년 이모티콘 4', './images/emoticons/emo-cucumberboy-04.png', 1104, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-5', '오이소년 이모티콘 5', './images/emoticons/emo-cucumberboy-05.png', 1105, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-6', '오이소년 이모티콘 6', './images/emoticons/emo-cucumberboy-06.png', 1106, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-7', '오이소년 이모티콘 7', './images/emoticons/emo-cucumberboy-07.png', 1107, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-8', '오이소년 이모티콘 8', './images/emoticons/emo-cucumberboy-08.png', 1108, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-9', '오이소년 이모티콘 9', './images/emoticons/emo-cucumberboy-09.png', 1109, true),
+      (v_user_id, 'emo-cucumberboy-01', 'cucumberboy-10', '오이소년 이모티콘 10', './images/emoticons/emo-cucumberboy-10.png', 1110, true)
+    on conflict (user_id, emoticon_code) do nothing;
   end if;
 
   if v_price > 0 then
@@ -1424,6 +1446,8 @@ begin
         then '감동/감격오이 이모티콘팩 구매가 완료됐어. 260피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo_cucumbergirl_01'
         then '오이소녀 이모티콘팩 구매가 완료됐어. 380피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-cucumberboy-01'
+        then '오이소년 이모티콘팩 구매가 완료됐어. 391피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'
         then '구운계란 트레이너 스킨 구매가 완료됐어. 466피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-soldier-01'

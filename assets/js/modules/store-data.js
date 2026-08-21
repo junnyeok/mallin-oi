@@ -417,6 +417,23 @@ export const CUCUMBER_GIRL_EMOTICON_PACK = Array.from(
   },
 );
 
+export const CUCUMBER_BOY_EMOTICON_PACK = Array.from(
+  { length: 10 },
+  (_, index) => {
+    const order = index + 1;
+    const paddedOrder = String(order).padStart(2, '0');
+
+    return {
+      code: `cucumberboy-${order}`,
+      label: `오이소년 이모티콘 ${order}`,
+      imagePath: withAssetVersion(
+        `./images/emoticons/emo-cucumberboy-${paddedOrder}.png`,
+      ),
+      displayOrder: 1100 + order,
+    };
+  },
+);
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -1035,6 +1052,23 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'emo-cucumberboy-01',
+    name: '오이소년 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🥒👦',
+    thumbImagePath: withAssetVersion(
+      './images/emoticons/emo-cucumberboy-01.png',
+    ),
+    price: 391,
+    state: '판매 중',
+    description: '오이소년의 스티커 느낌의 이모티콘 팩이야.',
+    detailDescription: '오이소년의 스티커 느낌의 이모티콘 팩이야.',
+    previewImages: CUCUMBER_BOY_EMOTICON_PACK,
+    releaseDate: '2026-08-21',
+    isPurchasable: true,
+  },
   {
     id: 'BF-02',
     name: '말린오이 테마 빛나는 테두리',
@@ -2036,6 +2070,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'emo-cucumberboy-01',
   'BG-05',
   'skin-cucumber-05',
   'skin-cucumberboy-02',

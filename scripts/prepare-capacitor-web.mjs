@@ -66,6 +66,11 @@ const nativeCharacterEffectImageFiles = [
   'images/character-effects/fire-effect-01.png',
   'images/character-effects/spider-web-effect-01.png',
 ];
+const nativeEmoticonImageFiles = Array.from(
+  { length: 10 },
+  (_, index) =>
+    `images/emoticons/emo-cucumberboy-${String(index + 1).padStart(2, '0')}.png`,
+);
 const nativeCareerAwardImageFiles = [
   'images/reward/reward-career-1st.png',
   'images/reward/reward-career-2nd.png',
@@ -232,6 +237,7 @@ function assertRequiredFiles() {
     ...nativeProfileFrameImageFiles,
     ...nativeSkinImageFiles,
     ...nativeCharacterEffectImageFiles,
+    ...nativeEmoticonImageFiles,
     ...nativeCareerAwardImageFiles,
     ...nativeCareerAwardAudioFiles,
     ...getMainModuleImports(),
@@ -310,6 +316,7 @@ function assertPreparedOutput() {
     ...nativeProfileFrameImageFiles,
     ...nativeSkinImageFiles,
     ...nativeCharacterEffectImageFiles,
+    ...nativeEmoticonImageFiles,
     ...nativeCareerAwardImageFiles,
     ...nativeCareerAwardAudioFiles,
     ...listFilesByExtension('assets/js/modules', '.js'),
@@ -348,6 +355,7 @@ nativeProfileBackgroundImageFiles.forEach(copyFile);
 nativeProfileFrameImageFiles.forEach(copyFile);
 nativeSkinImageFiles.forEach(copyFile);
 nativeCharacterEffectImageFiles.forEach(copyFile);
+nativeEmoticonImageFiles.forEach(copyFile);
 nativeCareerAwardAudioFiles.forEach(copyFile);
 copyRequiredAssetDirs();
 

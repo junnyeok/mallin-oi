@@ -1136,7 +1136,6 @@ async function initStoreItemPage() {
           </div>
 
                     <h1 class="store-item-detail__title">${item.name}</h1>
-          <p class="store-item-detail__desc">${item.description}</p>
           <p class="store-item-detail__desc">${item.detailDescription}</p>
 
           <section class="store-item-preview">
