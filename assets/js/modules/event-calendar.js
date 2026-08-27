@@ -26,6 +26,7 @@ import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
 import {
+  clampCalendarEndDateTime,
   formatCalendarTimeLabel,
   joinLocalDateTimeValue,
   normalizeCalendarTime,
@@ -1250,6 +1251,25 @@ async function initPageCalendar(loadingController) {
         : `${formatEntrySheetDate(startDateKey)} ~ ${formatEntrySheetDate(endDateKey)}`;
   }
 
+  function syncEventFormEndToStart() {
+    if (!endDateInput.value && startDateInput.value) {
+      endDateInput.value = startDateInput.value;
+    }
+    const adjustedEnd = clampCalendarEndDateTime({
+      startDate: startDateInput.value,
+      startTime: timeInput.dataset.time,
+      endDate: endDateInput.value,
+      endTime: endTimeInput.dataset.time,
+    });
+
+    endDateInput.min = startDateInput.value;
+    if (adjustedEnd.adjusted) {
+      endDateInput.value = adjustedEnd.date;
+      setOptionalTimeInputValue(endTimeInput, adjustedEnd.time);
+    }
+    updateDateToggleLabel();
+  }
+
   timeInput.addEventListener('click', () => {
     openEventTimePicker({
       anchorEl: timeInput,
@@ -1258,6 +1278,7 @@ async function initPageCalendar(loadingController) {
       clearLabel: '시작시간 해제',
       onChange: (nextTime) => {
         setTimeInputValue(timeInput, nextTime);
+        syncEventFormEndToStart();
       },
     });
   });
@@ -1270,6 +1291,7 @@ async function initPageCalendar(loadingController) {
       clearLabel: '종료시간 해제',
       onChange: (nextTime) => {
         setOptionalTimeInputValue(endTimeInput, nextTime);
+        syncEventFormEndToStart();
       },
     });
   });
@@ -1298,15 +1320,11 @@ async function initPageCalendar(loadingController) {
   });
 
   startDateInput.addEventListener('change', () => {
-    endDateInput.min = startDateInput.value;
-    if (!endDateInput.value || endDateInput.value < startDateInput.value) {
-      endDateInput.value = startDateInput.value;
-    }
-    updateDateToggleLabel();
+    syncEventFormEndToStart();
   });
 
   endDateInput.addEventListener('change', () => {
-    updateDateToggleLabel();
+    syncEventFormEndToStart();
   });
 
   const today = new Date();
@@ -1478,10 +1496,16 @@ async function initPageCalendar(loadingController) {
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
     const nextStartDate = String(eventStartDate || target.date || '').trim();
-    const nextEndDate = String(eventEndDate || nextStartDate).trim();
-    const nextDateKeys = getDateRangeKeys(nextStartDate, nextEndDate);
     const nextTime = normalizeEventTime(eventTime);
-    const nextEndTime = normalizeOptionalEventTime(eventEndTime);
+    const adjustedEnd = clampCalendarEndDateTime({
+      startDate: nextStartDate,
+      startTime: nextTime,
+      endDate: String(eventEndDate || nextStartDate).trim(),
+      endTime: eventEndTime,
+    });
+    const nextEndDate = adjustedEnd.date || nextStartDate;
+    const nextEndTime = adjustedEnd.time;
+    const nextDateKeys = getDateRangeKeys(nextStartDate, nextEndDate);
 
     if (!nextText || !nextStartDate || !nextCategory?.id) return;
 
@@ -1545,48 +1569,82 @@ async function initPageCalendar(loadingController) {
     const endTime = normalizeOptionalEventTime(
       isEdit ? todo.eventEndTime : '',
     );
+    const fields = [
+      { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
+      {
+        key: 'categoryId',
+        label: '카테고리',
+        type: 'select',
+        value: isEdit
+          ? getTodoCategorySelectValue(todo, state.categories)
+          : category?.id || '',
+        options: state.categories.map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+        onSettings: openCategoryModal,
+      },
+      {
+        key: 'eventStart',
+        label: '시작',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(startDate, startTime),
+        required: true,
+        allowEmptyTime: true,
+        timePlaceholder: '시작시간 지정',
+      },
+      {
+        key: 'eventEnd',
+        label: '종료',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(endDate, endTime),
+        required: true,
+        allowEmptyTime: true,
+        timePlaceholder: '종료시간 지정',
+      },
+      {
+        key: 'memo',
+        label: '메모',
+        type: 'textarea',
+        value: isEdit ? todo.memo || '' : '',
+      },
+    ];
 
-    openCalendarDetailSheet({
+    function syncEventEndToStart() {
+      const startField = fields.find((field) => field.key === 'eventStart');
+      const endField = fields.find((field) => field.key === 'eventEnd');
+      if (!startField?.input || !endField?.input) return;
+
+      const nextStart = splitLocalDateTimeValue(startField.input.value);
+      const nextEnd = splitLocalDateTimeValue(endField.input.value);
+      const adjustedEnd = clampCalendarEndDateTime({
+        startDate: nextStart.date,
+        startTime: nextStart.time,
+        endDate: nextEnd.date,
+        endTime: nextEnd.time,
+      });
+
+      if (endField.dateInput) endField.dateInput.min = nextStart.date;
+      if (adjustedEnd.adjusted) {
+        endField.input.value = joinLocalDateTimeValue(
+          adjustedEnd.date,
+          adjustedEnd.time,
+        );
+      }
+    }
+
+    fields.find((field) => field.key === 'eventStart').onChange =
+      syncEventEndToStart;
+    fields.find((field) => field.key === 'eventEnd').onChange =
+      syncEventEndToStart;
+
+    const sheet = openCalendarDetailSheet({
       calendarType: 'event',
       mode: isEdit ? 'edit' : 'create',
       title: isEdit ? '일정' : '일정 추가',
       submitLabel: isEdit ? '저장' : '완료',
       opener,
-      fields: [
-        { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
-        {
-          key: 'categoryId',
-          label: '카테고리',
-          type: 'select',
-          value: isEdit
-            ? getTodoCategorySelectValue(todo, state.categories)
-            : category?.id || '',
-          options: state.categories.map((item) => ({
-            value: item.id,
-            label: item.name,
-          })),
-          onSettings: openCategoryModal,
-        },
-        {
-          key: 'eventStart',
-          label: '시작',
-          type: 'calendar-datetime',
-          value: joinLocalDateTimeValue(startDate, startTime),
-          required: true,
-          allowEmptyTime: true,
-          timePlaceholder: '시작시간 지정',
-        },
-        {
-          key: 'eventEnd',
-          label: '종료',
-          type: 'calendar-datetime',
-          value: joinLocalDateTimeValue(endDate, endTime),
-          required: true,
-          allowEmptyTime: true,
-          timePlaceholder: '종료시간 지정',
-        },
-        { key: 'memo', label: '메모', type: 'textarea', value: isEdit ? todo.memo || '' : '' },
-      ],
+      fields,
       onSave: async (values) => {
         const nextCategory =
           state.categories.find((item) => item.id === values.categoryId) ||
@@ -1597,11 +1655,17 @@ async function initPageCalendar(loadingController) {
           time: startTime,
         });
         const rawEnd = String(values.eventEnd || '').trim();
-        const nextEnd = rawEnd
+        const parsedEnd = rawEnd
           ? splitLocalDateTimeValue(rawEnd, {
               date: nextStart.date,
             })
           : { date: nextStart.date, time: '' };
+        const nextEnd = clampCalendarEndDateTime({
+          startDate: nextStart.date,
+          startTime: nextStart.time,
+          endDate: parsedEnd.date,
+          endTime: parsedEnd.time,
+        });
         const nextText = String(values.title || '').trim();
         const dateKeys = getDateRangeKeys(nextStart.date, nextEnd.date);
 
@@ -1681,6 +1745,9 @@ async function initPageCalendar(loadingController) {
         : null,
       deleteDescription: isEdit ? getDeleteDescription(todo) : '',
     });
+
+    syncEventEndToStart();
+    return sheet;
   }
 
   entrySheetOpen?.addEventListener('click', () => {
@@ -1968,9 +2035,15 @@ async function initPageCalendar(loadingController) {
     const text = input.value.trim();
     const memo = memoInput.value.trim();
     const eventTime = normalizeEventTime(timeInput.dataset.time);
-    const eventEndTime = normalizeOptionalEventTime(endTimeInput.dataset.time);
     const startDateKey = startDateInput.value || state.selectedDateKey;
-    const endDateKey = endDateInput.value || startDateKey;
+    const adjustedEnd = clampCalendarEndDateTime({
+      startDate: startDateKey,
+      startTime: eventTime,
+      endDate: endDateInput.value || startDateKey,
+      endTime: endTimeInput.dataset.time,
+    });
+    const eventEndTime = adjustedEnd.time;
+    const endDateKey = adjustedEnd.date || startDateKey;
     const dateKeys = getDateRangeKeys(startDateKey, endDateKey);
     const selectedCategoryId = typeSelect.value;
 

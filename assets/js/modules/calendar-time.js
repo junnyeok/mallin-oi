@@ -57,11 +57,17 @@ export function resolveWorkCalendarTimeRange({ todo = {}, category = {} } = {}) 
       ? todo.endTime ?? todo.end_time
       : category.end_time ?? category.endTime,
   );
+  const storedEndsNextDay = hasTimeOverride
+    ? todo.endsNextDay ?? todo.ends_next_day
+    : category.endsNextDay ?? category.ends_next_day;
 
   return {
     startTime,
     endTime: startTime ? endTime : '',
-    endsNextDay: isOvernightTimeRange(startTime, endTime),
+    endsNextDay:
+      typeof storedEndsNextDay === 'boolean'
+        ? storedEndsNextDay
+        : isOvernightTimeRange(startTime, endTime),
     hasTimeOverride,
   };
 }
@@ -88,6 +94,45 @@ export function joinLocalDateTimeValue(date, time = '') {
 
   if (!safeDate) return '';
   return safeTime ? `${safeDate}T${safeTime}` : safeDate;
+}
+
+export function clampCalendarEndDateTime({
+  startDate,
+  startTime,
+  endDate,
+  endTime,
+} = {}) {
+  const safeStartDate = /^\d{4}-\d{2}-\d{2}$/.test(String(startDate || ''))
+    ? String(startDate)
+    : '';
+  const safeEndDate = /^\d{4}-\d{2}-\d{2}$/.test(String(endDate || ''))
+    ? String(endDate)
+    : '';
+  const safeStartTime = normalizeCalendarTime(startTime);
+  const safeEndTime = normalizeCalendarTime(endTime);
+  const endPrecedesStart = Boolean(
+    safeStartDate &&
+      safeEndDate &&
+      (safeEndDate < safeStartDate ||
+        (safeEndDate === safeStartDate &&
+          safeStartTime &&
+          safeEndTime &&
+          safeEndTime < safeStartTime)),
+  );
+
+  if (!endPrecedesStart) {
+    return {
+      date: safeEndDate,
+      time: safeEndTime,
+      adjusted: false,
+    };
+  }
+
+  return {
+    date: safeStartDate,
+    time: safeStartTime,
+    adjusted: true,
+  };
 }
 
 function convertPickerTimeTo24Hour({ period, hour, minute }) {
@@ -142,6 +187,9 @@ export function openCalendarTimePicker({
   initialTime,
   onChange,
   allowEmpty = false,
+  allowNextDay = false,
+  nextDay = false,
+  onNextDayChange,
   ariaLabel = '일정 시간 선택',
   clearLabel = '시간 없음',
 } = {}) {
@@ -159,6 +207,24 @@ export function openCalendarTimePicker({
   const title = document.createElement('strong');
   title.className = 'calendar-time-picker__title';
   title.textContent = '시간 선택';
+  const heading = document.createElement('div');
+  heading.className = 'calendar-time-picker__heading';
+  heading.append(title);
+  let nextDayInput = null;
+
+  if (allowNextDay) {
+    const nextDayLabel = document.createElement('label');
+    nextDayLabel.className = 'calendar-time-picker__next-day';
+    nextDayInput = document.createElement('input');
+    nextDayInput.type = 'checkbox';
+    nextDayInput.checked = Boolean(nextDay);
+    nextDayInput.setAttribute('aria-label', '다음 날(익일) 종료');
+
+    const nextDayText = document.createElement('span');
+    nextDayText.textContent = '다음 날(익일)';
+    nextDayLabel.append(nextDayInput, nextDayText);
+    heading.append(nextDayLabel);
+  }
   const fields = document.createElement('div');
   fields.className = 'calendar-time-picker__fields';
 
@@ -254,7 +320,9 @@ export function openCalendarTimePicker({
     if (event.key !== 'Tab') return;
 
     const focusable = [
-      ...popover.querySelectorAll('select, button:not([disabled])'),
+      ...popover.querySelectorAll(
+        'select, input[type="checkbox"], button:not([disabled])',
+      ),
     ];
     if (focusable.length === 0) {
       event.preventDefault();
@@ -296,11 +364,18 @@ export function openCalendarTimePicker({
   periodField.select.addEventListener('change', applySelectedTime);
   hourField.select.addEventListener('change', applySelectedTime);
   minuteField.select.addEventListener('change', applySelectedTime);
+  nextDayInput?.addEventListener('change', async () => {
+    await onNextDayChange?.(nextDayInput.checked);
+  });
   closeButton.addEventListener('click', () => closePicker({ restoreFocus: true }));
   clearButton.addEventListener('click', async () => {
     if (isSaving) return;
     isSaving = true;
     try {
+      if (nextDayInput?.checked) {
+        nextDayInput.checked = false;
+        await onNextDayChange?.(false);
+      }
       await onChange?.('');
       closePicker({ restoreFocus: true });
     } finally {
@@ -309,7 +384,7 @@ export function openCalendarTimePicker({
   });
 
   fields.append(periodField.wrap, hourField.wrap, minuteField.wrap);
-  panel.append(title, fields);
+  panel.append(heading, fields);
   if (allowEmpty) panel.append(clearButton);
   panel.append(closeButton);
   popover.append(panel);

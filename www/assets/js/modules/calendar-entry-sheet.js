@@ -16,7 +16,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 let activeSheet = null;
-let activeDeleteConfirmation = null;
+let activeCalendarConfirmation = null;
 let lockCount = 0;
 let lockedScrollY = 0;
 
@@ -66,14 +66,18 @@ function makeId(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function openDeleteConfirmation({
+export function openCalendarConfirmation({
   opener,
+  title = '확인',
   description,
+  cancelLabel = '취소',
+  confirmLabel = '예',
+  pendingLabel = '처리 중',
   onConfirm,
   onConfirmed,
   onClose,
 } = {}) {
-  activeDeleteConfirmation?.close?.({
+  activeCalendarConfirmation?.close?.({
     restoreFocus: false,
     force: true,
   });
@@ -94,14 +98,12 @@ function openDeleteConfirmation({
   const heading = document.createElement('h3');
   heading.id = titleId;
   heading.className = 'calendar-entry-delete-confirm__title';
-  heading.textContent = '일정 삭제';
+  heading.textContent = String(title || '확인');
 
   const message = document.createElement('p');
   message.id = descriptionId;
   message.className = 'calendar-entry-delete-confirm__description';
-  message.textContent =
-    description ||
-    '정말 이 일정을 삭제하시겠습니까? 삭제한 일정은 복구할 수 없습니다.';
+  message.textContent = String(description || '계속 진행하시겠습니까?');
 
   const actions = document.createElement('div');
   actions.className = 'calendar-entry-delete-confirm__actions';
@@ -110,13 +112,13 @@ function openDeleteConfirmation({
   cancelButton.type = 'button';
   cancelButton.className =
     'calendar-entry-delete-confirm__button calendar-entry-delete-confirm__cancel';
-  cancelButton.textContent = '아니오';
+  cancelButton.textContent = String(cancelLabel || '취소');
 
   const confirmButton = document.createElement('button');
   confirmButton.type = 'button';
   confirmButton.className =
     'calendar-entry-delete-confirm__button calendar-entry-delete-confirm__confirm';
-  confirmButton.textContent = '예, 삭제';
+  confirmButton.textContent = String(confirmLabel || '예');
 
   actions.append(cancelButton, confirmButton);
   dialog.append(heading, message, actions);
@@ -125,18 +127,24 @@ function openDeleteConfirmation({
   let isOpen = true;
   let isSubmitting = false;
 
-  function close({ restoreFocus = true, force = false } = {}) {
+  function close({
+    restoreFocus = true,
+    force = false,
+    confirmed = false,
+  } = {}) {
     if (!isOpen || (isSubmitting && !force)) return;
 
     isOpen = false;
     document.removeEventListener('keydown', handleKeydown, true);
+    window.removeEventListener('mallin:before-pjax-swap', handlePageExit);
+    window.removeEventListener('pagehide', handlePageExit);
     overlay.remove();
     unlockBodyScroll();
 
-    if (activeDeleteConfirmation === api) {
-      activeDeleteConfirmation = null;
+    if (activeCalendarConfirmation === api) {
+      activeCalendarConfirmation = null;
     }
-    onClose?.();
+    onClose?.({ confirmed });
 
     if (restoreFocus) {
       requestAnimationFrame(() => opener?.focus?.({ preventScroll: true }));
@@ -173,6 +181,10 @@ function openDeleteConfirmation({
     }
   }
 
+  function handlePageExit() {
+    close({ restoreFocus: false, force: true });
+  }
+
   cancelButton.addEventListener('click', () => close());
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) close();
@@ -184,7 +196,7 @@ function openDeleteConfirmation({
     dialog.setAttribute('aria-busy', 'true');
     cancelButton.disabled = true;
     confirmButton.disabled = true;
-    confirmButton.textContent = '삭제 중';
+    confirmButton.textContent = String(pendingLabel || '처리 중');
 
     let didDelete;
     try {
@@ -194,12 +206,16 @@ function openDeleteConfirmation({
       dialog.removeAttribute('aria-busy');
       cancelButton.disabled = false;
       confirmButton.disabled = false;
-      confirmButton.textContent = '예, 삭제';
+      confirmButton.textContent = String(confirmLabel || '예');
       cancelButton.focus({ preventScroll: true });
       return;
     }
 
-    close({ restoreFocus: didDelete === false, force: true });
+    close({
+      restoreFocus: didDelete === false,
+      force: true,
+      confirmed: didDelete !== false,
+    });
     if (didDelete !== false) onConfirmed?.();
   });
 
@@ -211,10 +227,27 @@ function openDeleteConfirmation({
   document.body.append(overlay);
   lockBodyScroll();
   document.addEventListener('keydown', handleKeydown, true);
-  activeDeleteConfirmation = api;
+  window.addEventListener('mallin:before-pjax-swap', handlePageExit, {
+    once: true,
+  });
+  window.addEventListener('pagehide', handlePageExit, { once: true });
+  activeCalendarConfirmation = api;
   requestAnimationFrame(() => cancelButton.focus({ preventScroll: true }));
 
   return api;
+}
+
+function openDeleteConfirmation({ description, ...options } = {}) {
+  return openCalendarConfirmation({
+    ...options,
+    title: '일정 삭제',
+    description:
+      description ||
+      '정말 이 일정을 삭제하시겠습니까? 삭제한 일정은 복구할 수 없습니다.',
+    cancelLabel: '아니오',
+    confirmLabel: '예, 삭제',
+    pendingLabel: '삭제 중',
+  });
 }
 
 function wrapField(control, label) {
@@ -304,6 +337,86 @@ function createCalendarDateTimeControl(field) {
   field.dateInput = dateInput;
   field.timeInput = timeInput;
   field.input = control;
+  return control;
+}
+
+function createCalendarTimeControl(field) {
+  const control = document.createElement('div');
+  control.className = 'calendar-entry-sheet__time';
+  let nextDayMarker = null;
+
+  if (field.showNextDayMarker) {
+    nextDayMarker = document.createElement('span');
+    nextDayMarker.className = 'calendar-entry-sheet__time-next-day';
+    nextDayMarker.textContent = '익)';
+  }
+
+  const timeInput = document.createElement('input');
+  timeInput.type = 'text';
+  timeInput.readOnly = true;
+  timeInput.inputMode = 'none';
+  timeInput.setAttribute('aria-label', `${field.label} 시간`);
+  timeInput.placeholder = field.timePlaceholder || `${field.label}시간 지정`;
+
+  function updateNextDayMarker() {
+    if (!nextDayMarker) return;
+
+    const isNextDay = Boolean(field.getNextDay?.() ?? field.nextDay);
+    nextDayMarker.hidden = !isNextDay;
+    timeInput.setAttribute(
+      'aria-label',
+      isNextDay ? `${field.label} 시간, 다음 날` : `${field.label} 시간`,
+    );
+  }
+
+  function setValue(value) {
+    setCalendarTimeInputValue(timeInput, value, {
+      emptyLabel: field.timePlaceholder || `${field.label}시간 지정`,
+    });
+  }
+
+  Object.defineProperty(control, 'value', {
+    configurable: true,
+    get() {
+      return timeInput.dataset.time || '';
+    },
+    set: setValue,
+  });
+  control.focus = () => timeInput.focus();
+  if (nextDayMarker) control.append(nextDayMarker);
+  control.append(timeInput);
+  setValue(field.value || '');
+  updateNextDayMarker();
+
+  timeInput.addEventListener('click', () => {
+    openCalendarTimePicker({
+      anchorEl: timeInput,
+      initialTime: timeInput.dataset.time,
+      allowEmpty: Boolean(field.allowEmptyTime),
+      allowNextDay: Boolean(field.allowNextDay),
+      nextDay: Boolean(field.getNextDay?.() ?? field.nextDay),
+      ariaLabel: `${field.label} 시간 선택`,
+      clearLabel: `${field.label}시간 해제`,
+      onNextDayChange: (nextDay) => {
+        field.onNextDayChange?.(nextDay, { control, timeInput });
+        updateNextDayMarker();
+      },
+      onChange: (nextTime) => {
+        setCalendarTimeInputValue(timeInput, nextTime, {
+          emptyLabel: field.timePlaceholder || `${field.label}시간 지정`,
+        });
+        field.onChange?.({
+          time: timeInput.dataset.time || '',
+          control,
+          timeInput,
+        });
+      },
+    });
+  });
+
+  field.timeInput = timeInput;
+  field.input = control;
+  field.updateNextDayMarker = updateNextDayMarker;
   return control;
 }
 
@@ -635,7 +748,6 @@ export function openCalendarDetailSheet({
   opener,
   fields = [],
   helpText = '',
-  characterImage = '',
   deleteDescription = '',
   onSave,
   onDelete,
@@ -704,6 +816,15 @@ export function openCalendarDetailSheet({
   fields
     .filter((field) => field.key !== 'title')
     .forEach((field) => {
+      if (!isReadonly && field.type === 'hidden') {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.value = String(field.value ?? '');
+        field.input = input;
+        body.append(input);
+        return;
+      }
+
       const isOptional = !isReadonly && Boolean(field.optional);
       const row = document.createElement(isOptional ? 'div' : 'label');
       row.className = 'calendar-entry-sheet__field';
@@ -719,6 +840,8 @@ export function openCalendarDetailSheet({
         control.textContent = field.display || field.value || '없음';
       } else if (field.type === 'calendar-datetime') {
         control = createCalendarDateTimeControl(field);
+      } else if (field.type === 'calendar-time') {
+        control = createCalendarTimeControl(field);
       } else if (field.type === 'textarea') {
         row.classList.add('calendar-entry-sheet__textarea-field');
         control = document.createElement('textarea');
@@ -848,7 +971,8 @@ export function openCalendarDetailSheet({
         !isReadonly &&
         field.onChange &&
         field.type !== 'select' &&
-        field.type !== 'calendar-datetime'
+        field.type !== 'calendar-datetime' &&
+        field.type !== 'calendar-time'
       ) {
         control.addEventListener('change', () => {
           field.onChange?.(control.value, { field, control, fields });
@@ -883,19 +1007,6 @@ export function openCalendarDetailSheet({
       });
     });
     body.append(deleteButton);
-  }
-
-  if (calendarType === 'work' && characterImage) {
-    const character = document.createElement('div');
-    character.className = 'calendar-entry-sheet__character';
-    character.setAttribute('aria-hidden', 'true');
-
-    const image = document.createElement('img');
-    image.className = 'calendar-entry-sheet__character-image';
-    image.src = characterImage;
-    image.alt = '';
-    character.append(image);
-    body.append(character);
   }
 
   header.append(closeButton, heading, submitButton);

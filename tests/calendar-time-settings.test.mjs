@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  clampCalendarEndDateTime,
   formatCalendarTimeLabel,
   isOvernightTimeRange,
   joinLocalDateTimeValue,
@@ -36,6 +37,56 @@ test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 �
       time: '',
     },
   );
+});
+
+test('시작 일시가 종료 일시를 넘으면 종료 일시를 시작값으로 자동 보정한다', () => {
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-22',
+      endTime: '',
+    }),
+    { date: '2026-08-23', time: '19:30', adjusted: true },
+  );
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-23',
+      endTime: '18:00',
+    }),
+    { date: '2026-08-23', time: '19:30', adjusted: true },
+  );
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-24',
+      endTime: '06:00',
+    }),
+    { date: '2026-08-24', time: '06:00', adjusted: false },
+  );
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-23',
+      endTime: '',
+    }),
+    { date: '2026-08-23', time: '', adjusted: false },
+  );
+
+  const studySource = read('assets/js/modules/study-calendar.js');
+  const workSource = read('assets/js/modules/work-calendar.js');
+  const eventSource = read('assets/js/modules/event-calendar.js');
+  assert.match(studySource, /function syncStudyEndToStart/);
+  assert.match(eventSource, /function syncEventEndToStart/);
+  assert.match(eventSource, /function syncEventFormEndToStart/);
+  for (const source of [studySource, eventSource]) {
+    assert.match(source, /clampCalendarEndDateTime/);
+  }
+  assert.doesNotMatch(workSource, /clampCalendarEndDateTime/);
 });
 
 test('업무 야간 범위는 종료가 시작보다 이르면 익일 종료로 해석한다', () => {
@@ -78,6 +129,54 @@ test('업무 일정별 시간이 있으면 카테고리 기본 시간보다 우�
     endsNextDay: false,
     hasTimeOverride: true,
   });
+  assert.deepEqual(resolveWorkCalendarTimeRange({
+    todo: {
+      has_time_override: true,
+      start_time: '09:00:00',
+      end_time: '18:00:00',
+      ends_next_day: true,
+    },
+    category,
+  }), {
+    startTime: '09:00',
+    endTime: '18:00',
+    endsNextDay: true,
+    hasTimeOverride: true,
+  });
+});
+
+test('업무 날짜 충돌은 날짜를 표시한 예·취소 확인창에서만 덮어쓰기를 실행한다', () => {
+  const workSource = read('assets/js/modules/work-calendar.js');
+  const sheetSource = read('assets/js/modules/calendar-entry-sheet.js');
+  const editBody = workSource.match(
+    /async function saveTodoEdit\([\s\S]*?\n  \}\n\n  function openTodoDetail/,
+  )?.[0];
+
+  assert.ok(editBody, '업무 일정 수정 함수 본문을 찾을 수 있어야 한다');
+  assert.match(workSource, /title:\s*'업무 일정 덮어쓰기'/);
+  assert.match(
+    workSource,
+    /description:\s*`\$\{getReadableDate\(dateKey\)\}에는 이미 업무 일정이 있습니다\. 기존 일정을 덮어쓰시겠습니까\?`/,
+  );
+  assert.match(workSource, /cancelLabel:\s*'취소'/);
+  assert.match(workSource, /confirmLabel:\s*'예'/);
+  assert.doesNotMatch(editBody, /window\.confirm/);
+  assert.match(
+    editBody,
+    /await saveTodoAtomic\(payload\)[\s\S]*?isWorkDateConflict\(error\)[\s\S]*?await confirmWorkDateOverwrite\([\s\S]*?if \(!overwrite\)[\s\S]*?overwrite cancelled[\s\S]*?saveTodoAtomic\(\{ \.\.\.payload, overwrite: true \}\)/,
+  );
+
+  assert.match(sheetSource, /export function openCalendarConfirmation/);
+  assert.match(sheetSource, /setAttribute\('role', 'dialog'\)/);
+  assert.match(sheetSource, /setAttribute\('aria-modal', 'true'\)/);
+  assert.match(sheetSource, /event\.key === 'Escape'/);
+  assert.match(sheetSource, /event\.key !== 'Tab'/);
+  assert.match(sheetSource, /mallin:before-pjax-swap/);
+  assert.match(sheetSource, /pagehide/);
+  assert.match(
+    sheetSource,
+    /requestAnimationFrame\(\(\) => cancelButton\.focus/,
+  );
 });
 
 test('자기개발 생성·조회·수정은 nullable 시작/종료 필드를 모두 전달한다', () => {
@@ -129,7 +228,7 @@ test('시작·종료 행은 한 줄 공통 컨트롤을 사용하고 시간 해�
   assert.doesNotMatch(eventSource, /optionalLabel:\s*'종료시간 지정'/);
   assert.match(
     css,
-    /\.calendar-entry-sheet__datetime\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(104px,\s*0\.82fr\)/s,
+    /\.calendar-entry-sheet__datetime,\s*\.calendar-entry-sheet__time\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(104px,\s*0\.82fr\)/s,
   );
   assert.match(
     css,
@@ -156,9 +255,54 @@ test('업무 시간은 새 일정과 개별 수정 일정에 스냅샷으로 저
   assert.match(source, /has_time_override:\s*true/);
   assert.match(source, /p_start_time:/);
   assert.match(source, /p_end_time:/);
-  assert.match(source, /key:\s*'workStart'[\s\S]*?type:\s*'calendar-datetime'/);
-  assert.match(source, /key:\s*'workEnd'[\s\S]*?type:\s*'calendar-datetime'/);
-  assert.match(source, /useCategoryTimeDefaults:\s*true/);
+  assert.match(source, /p_ends_next_day:\s*times\.endsNextDay/);
+  assert.match(source, /key:\s*'workEndsNextDay'[\s\S]*?type:\s*'hidden'/);
+  assert.match(source, /key:\s*'workStart'[\s\S]*?type:\s*'calendar-time'/);
+  assert.match(source, /key:\s*'workEnd'[\s\S]*?type:\s*'calendar-time'[\s\S]*?allowNextDay:\s*true/);
+  assert.match(source, /showNextDayMarker:\s*true/);
+  assert.match(
+    read('assets/js/modules/calendar-entry-sheet.js'),
+    /calendar-entry-sheet__time-next-day[\s\S]*?textContent = '익\)'/,
+  );
+  assert.match(
+    source,
+    /field\.key === 'workEnd'\)[\s\S]*?updateNextDayMarker\?\.\(\)/,
+  );
+  assert.match(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /\.calendar-entry-sheet__time-next-day\s*\{[^}]*margin-inline-end:\s*calc\(-1 \* var\(--space-24\)\)[^}]*pointer-events:\s*none[^}]*white-space:\s*nowrap/s,
+  );
+  assert.match(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /\.calendar-entry-sheet__time\s*\{[^}]*gap:\s*var\(--space-4\)/s,
+  );
+  assert.match(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /\.calendar-entry-sheet__time > input\s*\{[^}]*width:\s*96px/s,
+  );
+  assert.doesNotMatch(source, /characterImage:/);
+  assert.doesNotMatch(
+    read('assets/js/modules/calendar-entry-sheet.js'),
+    /calendar-entry-sheet__character|characterImage/,
+  );
+  assert.doesNotMatch(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /calendar-entry-sheet__character/,
+  );
+});
+
+test('업무 일정 카테고리를 변경하면 편집 중에도 해당 카테고리 시간으로 교체한다', () => {
+  const source = read('assets/js/modules/work-calendar.js');
+  const fieldsBody = source.match(
+    /function getWorkEntryFields\([\s\S]*?\n  }\n\n  function openTodoCreate/,
+  )?.[0];
+
+  assert.ok(fieldsBody, '업무 일정 필드 생성 함수 본문을 찾을 수 있어야 한다');
+  assert.doesNotMatch(fieldsBody, /useCategoryTimeDefaults/);
+  assert.match(
+    fieldsBody,
+    /onChange:\s*\(nextCategoryId\)[\s\S]*?resolveWorkCalendarTimeRange\(\{ category: nextCategory \}\)[\s\S]*?startField\.input\.value\s*=\s*nextStartTime[\s\S]*?endField\.input\.value\s*=\s*nextEndTime[\s\S]*?setEndsNextDay\(nextEndsNextDay\)/,
+  );
 });
 
 test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 UI를 유지한다', () => {
@@ -214,11 +358,13 @@ test('시간 선택기는 닫기 전에 포커스를 해제하고 iOS 자동 확
 
   assert.match(timeSource, /popover\.contains\(activeElement\)[\s\S]*activeElement\.blur\(\)/);
   assert.match(timeSource, /activeCalendarTimePicker\?\.close/);
+  assert.match(timeSource, /nextDayText\.textContent = '다음 날\(익일\)'/);
+  assert.match(timeSource, /onNextDayChange\?\.\(nextDayInput\.checked\)/);
   assert.match(sheetSource, /closeActiveCalendarTimePicker\(\{ restoreFocus: false \}\)/);
   assert.match(sheetSource, /blurFocusedControl\(dialog\)/);
   assert.match(
     css,
-    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__datetime > input\[readonly\] \{[^}]*font-size:\s*var\(--text-body\)/s,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__time > input\[readonly\] \{[^}]*font-size:\s*var\(--text-body\)/s,
   );
   assert.match(
     css,
@@ -240,6 +386,43 @@ test('운영 마이그레이션은 기존 데이터를 채우지 않고 검증�
   assert.match(sql, /to authenticated/);
 });
 
+test('자기개발 일정 날짜 이동은 시작·종료 일시와 카테고리를 한 문장에서 원자적으로 저장한다', () => {
+  const editorSql = read(
+    'supabase-SQLEditor/20260826-fix-study-calendar-date-move.sql',
+  );
+  const migrationSql = read(
+    'supabase/migrations/20260826000000_fix_study_calendar_date_move.sql',
+  );
+  const functionBody = editorSql.match(
+    /create or replace function public\.save_study_calendar_todo\([\s\S]*?as \$\$([\s\S]*?)\$\$;/i,
+  )?.[1];
+
+  assert.equal(migrationSql, editorSql);
+  assert.ok(functionBody, 'save_study_calendar_todo 함수 본문을 찾을 수 있어야 한다');
+  assert.equal(
+    functionBody.match(/update\s+public\.study_calendar_todos/gi)?.length,
+    1,
+  );
+  assert.match(
+    functionBody,
+    /update public\.study_calendar_todos\s+set[\s\S]*?todo_date = p_todo_date,[\s\S]*?todo_time = p_todo_time,[\s\S]*?todo_end_date = p_todo_end_date,[\s\S]*?todo_end_time = p_todo_end_time,[\s\S]*?category_id = v_category\.id/s,
+  );
+  assert.doesNotMatch(functionBody, /update_study_shared_personal_todo/);
+  assert.doesNotMatch(
+    functionBody,
+    /update_study_calendar_todo_category_with_shared_personal/,
+  );
+  assert.match(editorSql, /security definer/);
+  assert.match(editorSql, /from public, anon/);
+  assert.match(editorSql, /to authenticated/);
+
+  const backup = read('supabase-SQLEditor/99_all_backup.sql');
+  assert.ok(
+    backup.includes(editorSql),
+    'SQL 누적본에 이번 운영 SQL이 그대로 포함되어야 한다',
+  );
+});
+
 test('업무 일정별 시간 마이그레이션은 기존 행을 수정하지 않고 재정의 우선순위를 저장한다', () => {
   const sql = read('supabase-SQLEditor/20260801-work-calendar-todo-times.sql');
   assert.match(sql, /start_time time without time zone/);
@@ -253,6 +436,25 @@ test('업무 일정별 시간 마이그레이션은 기존 행을 수정하지 �
   assert.doesNotMatch(sql, /update\s+public\.work_calendar_todos\s+set\s+start_time\s*=\s*[^p]/i);
   assert.match(sql, /from public, anon/);
   assert.match(sql, /to authenticated/);
+});
+
+test('업무 일정 익일 지정은 기존 데이터를 수정하지 않고 명시 상태와 호환 저장 함수를 제공한다', () => {
+  const editorSql = read(
+    'supabase-SQLEditor/20260827-work-calendar-explicit-next-day.sql',
+  );
+  const migrationSql = read(
+    'supabase/migrations/20260827000000_work_calendar_explicit_next_day.sql',
+  );
+  const backup = read('supabase-SQLEditor/99_all_backup.sql');
+
+  assert.equal(migrationSql, editorSql);
+  assert.ok(backup.includes(editorSql));
+  assert.match(editorSql, /ends_next_day = true or end_time >= start_time/);
+  assert.match(editorSql, /p_ends_next_day boolean/);
+  assert.match(editorSql, /v_ends_next_day boolean := coalesce\(p_ends_next_day, false\)/);
+  assert.match(editorSql, /boolean, boolean\s*\) to authenticated/);
+  assert.match(editorSql, /p_end_time < p_start_time,[\s\S]*?p_overwrite/);
+  assert.doesNotMatch(editorSql, /update\s+public\.work_calendar_todos\s+set\s+ends_next_day\s*=/i);
 });
 
 test('이벤트 시작시간 마이그레이션은 기존 함수의 00:00 강제값만 제거한다', () => {

@@ -121,7 +121,7 @@ test('구매 SQL 네 관리 지점은 626 고정가·보유·원장·엄격 잔�
   ]);
 
   assert.equal(sqlEditor, migration);
-  assert.ok(backup.endsWith(sqlEditor));
+  assert.ok(backup.includes(sqlEditor));
   assert.equal([...purchaseSql.matchAll(/'BG-05'/g)].length, 5);
   assert.match(
     purchaseSql,

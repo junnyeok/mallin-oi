@@ -1363,6 +1363,8 @@
 ./supabase-SQLEditor/20260808-run-muscle-night-bgm.sql
 ./supabase-SQLEditor/20260809-socceroi-summerboy-skins.sql
 ./supabase-SQLEditor/20260812-cucumber-girl-stage-profile-background.sql
+./supabase-SQLEditor/20260826-fix-study-calendar-date-move.sql
+./supabase-SQLEditor/20260827-work-calendar-explicit-next-day.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1404,6 +1406,8 @@
 ./supabase/migrations/20260808000000_run_muscle_night_bgm.sql
 ./supabase/migrations/20260809000000_socceroi_summerboy_skins.sql
 ./supabase/migrations/20260812000000_bg05_cucumber_girl_stage_profile_background.sql
+./supabase/migrations/20260826000000_fix_study_calendar_date_move.sql
+./supabase/migrations/20260827000000_work_calendar_explicit_next_day.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs

@@ -290,7 +290,8 @@ body.calendar-entry-sheet-open {
   text-align: right;
 }
 
-.calendar-entry-sheet__datetime {
+.calendar-entry-sheet__datetime,
+.calendar-entry-sheet__time {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(104px, 0.82fr);
   align-items: center;
@@ -299,7 +300,15 @@ body.calendar-entry-sheet-open {
   width: 100%;
 }
 
-.calendar-entry-sheet__datetime > input {
+.calendar-entry-sheet__time {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.calendar-entry-sheet__datetime > input,
+.calendar-entry-sheet__time > input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -312,7 +321,27 @@ body.calendar-entry-sheet-open {
   text-align: right;
 }
 
-.calendar-entry-sheet__datetime > input[readonly] {
+.calendar-entry-sheet__time > input {
+  flex: 0 1 96px;
+  width: 96px;
+}
+
+.calendar-entry-sheet__time-next-day {
+  flex: 0 0 auto;
+  margin-inline-end: calc(-1 * var(--space-24));
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  font-weight: 800;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.calendar-entry-sheet__time-next-day[hidden] {
+  display: none;
+}
+
+.calendar-entry-sheet__datetime > input[readonly],
+.calendar-entry-sheet__time > input[readonly] {
   min-height: 44px;
   padding: 0 var(--space-8);
   border: 1px solid transparent;
@@ -324,7 +353,8 @@ body.calendar-entry-sheet-open {
   cursor: pointer;
 }
 
-.calendar-entry-sheet__datetime > input:focus {
+.calendar-entry-sheet__datetime > input:focus,
+.calendar-entry-sheet__time > input:focus {
   outline: 2px solid var(--color-primary-sub);
   outline-offset: 2px;
 }
@@ -343,12 +373,40 @@ body.calendar-entry-sheet-open {
   box-shadow: var(--shadow-card);
 }
 
-.calendar-time-picker__title {
-  display: block;
+.calendar-time-picker__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
   margin-bottom: var(--space-8);
+}
+
+.calendar-time-picker__title {
   color: var(--color-text);
   font-size: var(--text-small);
   font-weight: 900;
+}
+
+.calendar-time-picker__next-day {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.calendar-time-picker__next-day > input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.calendar-time-picker__next-day > input:focus-visible {
+  outline: 2px solid var(--color-primary-sub);
+  outline-offset: 2px;
 }
 
 .calendar-time-picker__fields {
@@ -487,7 +545,9 @@ body.calendar-entry-sheet-open {
   }
 
   .calendar-entry-sheet__datetime > input,
-  .calendar-entry-sheet__datetime > input[readonly] {
+  .calendar-entry-sheet__datetime > input[readonly],
+  .calendar-entry-sheet__time > input,
+  .calendar-entry-sheet__time > input[readonly] {
     font-size: var(--text-body);
   }
 
@@ -619,27 +679,6 @@ body.calendar-entry-sheet-open {
   color: var(--color-text-sub);
   font-size: 12px;
   line-height: var(--line-body);
-}
-
-.calendar-entry-sheet[data-calendar-type='work']
-  .calendar-entry-sheet__body {
-  display: flex;
-  flex-direction: column;
-}
-
-.calendar-entry-sheet__character {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  flex: 1 0 160px;
-  min-height: 160px;
-  padding-top: var(--space-24);
-}
-
-.calendar-entry-sheet__character-image {
-  display: block;
-  width: 60px;
-  height: auto;
 }
 
 .study-todo-item__open,
