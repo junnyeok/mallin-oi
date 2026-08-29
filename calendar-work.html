@@ -105,14 +105,6 @@
                   걱정마세요!
                 </p>
               </div>
-              <button
-                type="button"
-                class="calendar-add-button"
-                id="workEntrySheetOpen"
-                aria-label="업무 일정 추가"
-              >
-                +
-              </button>
             </div>
 
             <div class="work-calendar-layout">
@@ -159,13 +151,23 @@
 
               <aside class="panel work-calendar-todo-panel">
                 <div class="work-calendar-selected">
-                  <p class="work-calendar-selected__label">선택한 날짜</p>
-                  <h2
-                    class="work-calendar-selected__date"
-                    id="workSelectedDate"
+                  <div class="calendar-selected-date-copy">
+                    <p class="work-calendar-selected__label">선택한 날짜</p>
+                    <h2
+                      class="work-calendar-selected__date"
+                      id="workSelectedDate"
+                    >
+                      -
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    class="calendar-add-button"
+                    id="workEntrySheetOpen"
+                    aria-label="업무 일정 추가"
                   >
-                    -
-                  </h2>
+                    +
+                  </button>
                 </div>
 
                 <form class="work-todo-form" id="workTodoForm">

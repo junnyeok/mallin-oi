@@ -6,10 +6,7 @@ function prefersReducedMotion() {
   );
 }
 
-export function scheduleCalendarSelectionScroll({
-  target,
-  hasRenderedItems,
-} = {}) {
+export function scheduleCalendarSelectionScroll({ target } = {}) {
   if (!target) return;
 
   const requestToken = Symbol('calendar-selection-scroll');
@@ -19,8 +16,6 @@ export function scheduleCalendarSelectionScroll({
     window.requestAnimationFrame(() => {
       if (pendingScrolls.get(target) !== requestToken) return;
       pendingScrolls.delete(target);
-
-      if (!hasRenderedItems?.()) return;
 
       target.scrollIntoView({
         behavior: prefersReducedMotion() ? 'auto' : 'smooth',

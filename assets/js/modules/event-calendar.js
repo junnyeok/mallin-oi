@@ -1424,9 +1424,6 @@ async function initPageCalendar(loadingController) {
     renderAll();
     scheduleCalendarSelectionScroll({
       target: document.querySelector('.event-calendar-todo-panel'),
-      hasRenderedItems: () => Boolean(
-        document.getElementById('eventTodoList')?.children.length,
-      ),
     });
   }
 

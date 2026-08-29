@@ -604,6 +604,15 @@ test('세 캘린더의 최초·이전·다음·그룹 적용 로딩 경로와 �
   assert.match(groups, /refreshCalendar\(\{ reason: 'group-backup' \}\)/);
   assert.match(groups, /loadId !== state\.groupLoadId/);
   assert.match(groups, /selectedGroup\.id !== state\.selectedGroup\?\.id/);
+  const panelOpenHandler = groups.match(
+    /function setGroupPanelOpen\(isOpen\) \{[\s\S]*?\n  \}\n\n  toggleButton/,
+  )?.[0];
+  assert.ok(panelOpenHandler);
+  assert.match(
+    panelOpenHandler,
+    /window\.requestAnimationFrame\(\(\) => \{\s*dialog\.focus\(\{ preventScroll: true \}\)/,
+  );
+  assert.doesNotMatch(panelOpenHandler, /select\?\.focus/);
   const openHandler = groups.match(
     /toggleButton\?\.addEventListener\('click',[\s\S]*?\n\s*\}\);/,
   )?.[0];

@@ -1201,9 +1201,6 @@ async function initPageCalendar(loadingController) {
     renderAll();
     scheduleCalendarSelectionScroll({
       target: document.querySelector('.study-calendar-todo-panel'),
-      hasRenderedItems: () => Boolean(
-        document.getElementById('studyTodoList')?.children.length,
-      ),
     });
   }
 

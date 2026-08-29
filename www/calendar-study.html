@@ -112,14 +112,6 @@
                   걱정마세요!
                 </p>
               </div>
-              <button
-                type="button"
-                class="calendar-add-button"
-                id="studyEntrySheetOpen"
-                aria-label="할 일 추가"
-              >
-                +
-              </button>
             </div>
 
             <div class="study-calendar-layout">
@@ -166,13 +158,23 @@
 
               <aside class="panel study-calendar-todo-panel">
                 <div class="study-calendar-selected">
-                  <p class="study-calendar-selected__label">선택한 날짜</p>
-                  <h2
-                    class="study-calendar-selected__date"
-                    id="studySelectedDate"
+                  <div class="calendar-selected-date-copy">
+                    <p class="study-calendar-selected__label">선택한 날짜</p>
+                    <h2
+                      class="study-calendar-selected__date"
+                      id="studySelectedDate"
+                    >
+                      -
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    class="calendar-add-button"
+                    id="studyEntrySheetOpen"
+                    aria-label="할 일 추가"
                   >
-                    -
-                  </h2>
+                    +
+                  </button>
                 </div>
 
                 <form class="study-todo-form" id="studyTodoForm">

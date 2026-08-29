@@ -13,6 +13,7 @@ import {
   resolveWorkCalendarTimeRange,
   splitLocalDateTimeValue,
 } from '../assets/js/modules/calendar-time.js';
+import { scheduleCalendarSelectionScroll } from '../assets/js/modules/calendar-selection-scroll.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
@@ -333,22 +334,71 @@ test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 U
   );
 });
 
-test('날짜 직접 선택만 렌더 후 일정 목록 스크롤을 예약한다', () => {
+test('날짜 직접 선택은 일정 유무와 관계없이 렌더 후 목록 스크롤을 예약한다', () => {
   const scrollSource = read('assets/js/modules/calendar-selection-scroll.js');
+  const sheetCss = read('assets/css/components/calendar-entry-sheet.css');
 
   assert.match(scrollSource, /requestAnimationFrame[\s\S]*requestAnimationFrame/);
-  assert.match(scrollSource, /hasRenderedItems\?\.\(\)/);
+  assert.doesNotMatch(scrollSource, /hasRenderedItems/);
   assert.match(scrollSource, /prefers-reduced-motion:\s*reduce/);
   assert.match(scrollSource, /scrollIntoView/);
+  assert.match(
+    sheetCss,
+    /\.study-calendar-selected,[\s\S]*?\.event-calendar-selected \{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/,
+  );
 
   for (const calendarType of ['study', 'work', 'event']) {
     const source = read(`assets/js/modules/${calendarType}-calendar.js`);
+    const html = read(`calendar-${calendarType}.html`);
     const selectDateBody = source.match(
       /function selectDate\(dateKey\) \{([\s\S]*?)\n  \}/,
     )?.[1] || '';
     assert.match(selectDateBody, /renderAll\(\)/);
     assert.match(selectDateBody, /scheduleCalendarSelectionScroll/);
+    assert.doesNotMatch(selectDateBody, /hasRenderedItems/);
+
+    const selectedStart = html.indexOf(
+      `class="${calendarType}-calendar-selected"`,
+    );
+    const addButton = html.indexOf(`id="${calendarType}EntrySheetOpen"`);
+    const formStart = html.indexOf(`id="${calendarType}TodoForm"`);
+    assert.ok(selectedStart >= 0);
+    assert.ok(addButton > selectedStart && addButton < formStart);
+    assert.equal(
+      html.match(new RegExp(`id="${calendarType}EntrySheetOpen"`, 'g'))?.length,
+      1,
+    );
   }
+});
+
+test('빈 일정 목록도 선택 날짜 패널로 실제 스크롤한다', () => {
+  const previousWindow = globalThis.window;
+  const scrollCalls = [];
+  let frameCount = 0;
+
+  globalThis.window = {
+    matchMedia: () => ({ matches: false }),
+    requestAnimationFrame(callback) {
+      frameCount += 1;
+      callback();
+      return frameCount;
+    },
+  };
+
+  try {
+    scheduleCalendarSelectionScroll({
+      target: {
+        scrollIntoView(options) {
+          scrollCalls.push(options);
+        },
+      },
+    });
+  } finally {
+    globalThis.window = previousWindow;
+  }
+
+  assert.equal(frameCount, 2);
+  assert.deepEqual(scrollCalls, [{ behavior: 'smooth', block: 'start' }]);
 });
 
 test('시간 선택기는 닫기 전에 포커스를 해제하고 iOS 자동 확대를 피한다', () => {

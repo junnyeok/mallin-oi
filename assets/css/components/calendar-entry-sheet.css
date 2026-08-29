@@ -813,12 +813,31 @@ body.calendar-entry-sheet-open {
   grid-template-columns: 1fr;
 }
 
+.study-calendar-selected,
+.work-calendar-selected,
+.event-calendar-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.calendar-selected-date-copy {
+  min-width: 0;
+}
+
+.study-calendar-selected > .calendar-add-button,
+.work-calendar-selected > .calendar-add-button,
+.event-calendar-selected > .calendar-add-button {
+  align-self: center;
+  margin-left: auto;
+}
+
 .calendar-add-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  order: 4;
   min-width: 48px;
   height: 40px;
   padding: 0 var(--space-16);
@@ -998,20 +1017,6 @@ body.theme-work[data-page='calendar-work']
 
   .work-calendar-page__head > .work-repeat {
     order: 3;
-  }
-
-  .study-calendar-page__head > .calendar-add-button,
-  .event-calendar-page__head > .calendar-add-button,
-  .work-calendar-page__head > .calendar-add-button {
-    order: 3;
-    margin-left: auto;
-  }
-
-  .work-calendar-page__head > .calendar-add-button {
-    order: 4;
-    width: 48px;
-    max-width: 48px;
-    margin-left: auto;
   }
 
   .work-calendar-page__head {

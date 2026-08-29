@@ -1528,9 +1528,6 @@ async function initPageCalendar(loadingController) {
     renderAll();
     scheduleCalendarSelectionScroll({
       target: document.querySelector('.work-calendar-todo-panel'),
-      hasRenderedItems: () => Boolean(
-        document.getElementById('workTodoList')?.children.length,
-      ),
     });
   }
 

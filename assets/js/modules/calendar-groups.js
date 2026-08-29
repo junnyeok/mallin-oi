@@ -1135,7 +1135,7 @@ export async function initCalendarGroupBar({
       lockPageScroll();
       document.addEventListener('keydown', handlePanelKeydown);
       window.requestAnimationFrame(() => {
-        select?.focus({ preventScroll: true });
+        dialog.focus({ preventScroll: true });
       });
     } else {
       panel.hidden = true;
