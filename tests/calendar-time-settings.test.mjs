@@ -410,6 +410,12 @@ test('시간 선택기는 닫기 전에 포커스를 해제하고 iOS 자동 확
   assert.match(timeSource, /activeCalendarTimePicker\?\.close/);
   assert.match(timeSource, /nextDayText\.textContent = '다음 날\(익일\)'/);
   assert.match(timeSource, /onNextDayChange\?\.\(nextDayInput\.checked\)/);
+  assert.match(timeSource, /popover\.tabIndex = -1/);
+  assert.match(
+    timeSource,
+    /anchorEl\.blur\(\);\s*popover\.focus\(\{ preventScroll: true \}\)/,
+  );
+  assert.doesNotMatch(timeSource, /periodField\.select\.focus/);
   assert.match(sheetSource, /closeActiveCalendarTimePicker\(\{ restoreFocus: false \}\)/);
   assert.match(sheetSource, /blurFocusedControl\(dialog\)/);
   assert.match(

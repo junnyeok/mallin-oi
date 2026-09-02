@@ -201,6 +201,7 @@ export function openCalendarTimePicker({
   popover.className = 'calendar-time-picker';
   popover.setAttribute('role', 'dialog');
   popover.setAttribute('aria-label', ariaLabel);
+  popover.tabIndex = -1;
 
   const panel = document.createElement('div');
   panel.className = 'calendar-time-picker__panel';
@@ -404,7 +405,7 @@ export function openCalendarTimePicker({
     window.addEventListener('resize', positionPicker);
     window.addEventListener('scroll', positionPicker, true);
     anchorEl.blur();
-    periodField.select.focus({ preventScroll: true });
+    popover.focus({ preventScroll: true });
   }, 0);
 
   return api;
