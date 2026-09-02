@@ -75,6 +75,23 @@ body.service-menu-open .scroll-fab {
   flex: 0 0 18px;
 }
 
+.scroll-fab__btn[data-scroll-fab='top'] .scroll-fab__icon,
+.scroll-fab__btn[data-scroll-fab='bottom'] .scroll-fab__icon {
+  height: 24px;
+}
+
+.scroll-fab__logo {
+  display: block;
+  width: 18px;
+  height: 24px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.scroll-fab__logo--end {
+  transform: rotate(180deg);
+}
+
 .scroll-fab__text {
   letter-spacing: 0.4px;
   white-space: nowrap;

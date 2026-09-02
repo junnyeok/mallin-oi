@@ -52,6 +52,10 @@ const [
     restoreBgmAfterExternalAudio,
   },
   {
+    configureSecondaryAudioSession,
+    shouldPlaySecondaryAudio,
+  },
+  {
     prepareCharacterEffects,
     renderCharacterEffectHtml,
     replaceCharacterEffect,
@@ -67,6 +71,7 @@ const [
   import(`./equipment-events.js?v=${MODULE_VERSION}`),
   import(`./bgm-preferences.js?v=${MODULE_VERSION}`),
   import(`./bgm-player.js?v=${MODULE_VERSION}`),
+  import(`./completion-audio-session.js?v=${MODULE_VERSION}`),
   import(`./character-effects.js?v=${MODULE_VERSION}`),
   import(`./profile-background-contrast.js?v=${MODULE_VERSION}`),
 ]);
@@ -405,6 +410,12 @@ async function initProfileFeaturedBgm(
     { signal, once: true },
   );
 
+  const shouldAutoPlay = await shouldPlaySecondaryAudio(window);
+  if (profileFeaturedBgmState !== state || !shouldAutoPlay) return;
+
+  // 일반 웹/PWA는 다른 앱의 재생 상태를 조회할 수 없다. 지원되는
+  // WebKit에서는 ambient 세션으로 재생해 기존 외부 오디오를 중단하지 않는다.
+  configureSecondaryAudioSession(window);
   await playProfileFeaturedBgm(state);
 }
 

@@ -191,6 +191,7 @@
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetRefreshReceiver.java
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetsPlugin.java
+./android/app/src/main/java/com/mallinoi/calendar/CompletionAudioSessionPlugin.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventFourDayWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventMonthWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventTwoWeekWidgetProvider.java
@@ -492,6 +493,7 @@
 ./assets/js/modules/career-award-popup.js
 ./assets/js/modules/career-award-rules.js
 ./assets/js/modules/character-effects.js
+./assets/js/modules/completion-audio-session.js
 ./assets/js/modules/cursor-buddy.js
 ./assets/js/modules/daily-attendance-popup.js
 ./assets/js/modules/emoticons.js
@@ -1132,6 +1134,7 @@
 ./ios/App/App/Base.lproj/LaunchScreen.storyboard
 ./ios/App/App/Base.lproj/Main.storyboard
 ./ios/App/App/CalendarWidgetsPlugin.swift
+./ios/App/App/CompletionAudioSessionPlugin.swift
 ./ios/App/App/Info.plist
 ./ios/App/App/MainViewController.swift
 ./ios/App/App/capacitor.config.json
@@ -1432,6 +1435,7 @@
 ./tests/fixtures/study-completion-celebration-browser.html
 ./tests/new-character-skins.test.mjs
 ./tests/profile-bio-contrast.test.mjs
+./tests/profile-featured-bgm-autoplay.test.mjs
 ./tests/run-muscle-night-bgm.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
 ./tests/store-description-placement.test.mjs
@@ -1517,6 +1521,7 @@
 ./www/assets/js/modules/career-award-popup.js
 ./www/assets/js/modules/career-award-rules.js
 ./www/assets/js/modules/character-effects.js
+./www/assets/js/modules/completion-audio-session.js
 ./www/assets/js/modules/cursor-buddy.js
 ./www/assets/js/modules/daily-attendance-popup.js
 ./www/assets/js/modules/emoticons.js

@@ -35,6 +35,10 @@
 ================================================= */
 
 let scrollFabCleanup = null;
+const SCROLL_FAB_LOGO_URL = new URL(
+  '../../../images/logo-home.png',
+  import.meta.url,
+).href;
 
 function cleanupScrollFabEvents() {
   if (typeof scrollFabCleanup === 'function') {
@@ -285,10 +289,27 @@ function createFabButton(type, text, icon, ariaLabel) {
   btn.className = 'scroll-fab__btn';
   btn.setAttribute('data-scroll-fab', type);
   btn.setAttribute('aria-label', ariaLabel);
-  btn.innerHTML = `
-    <span class="scroll-fab__icon" aria-hidden="true">${icon}</span>
-    <span class="scroll-fab__text">${text}</span>
-  `;
+
+  const iconEl = document.createElement('span');
+  iconEl.className = 'scroll-fab__icon';
+  iconEl.setAttribute('aria-hidden', 'true');
+
+  if (type === 'top' || type === 'bottom') {
+    const logo = document.createElement('img');
+    logo.className = 'scroll-fab__logo';
+    if (type === 'bottom') logo.classList.add('scroll-fab__logo--end');
+    logo.src = SCROLL_FAB_LOGO_URL;
+    logo.alt = '';
+    iconEl.appendChild(logo);
+  } else {
+    iconEl.textContent = icon;
+  }
+
+  const textEl = document.createElement('span');
+  textEl.className = 'scroll-fab__text';
+  textEl.textContent = text;
+
+  btn.append(iconEl, textEl);
   return btn;
 }
 
@@ -335,8 +356,8 @@ export function initScrollButtons(options = {}) {
   wrap.className = 'scroll-fab';
   wrap.setAttribute('data-scroll-fab', 'wrap');
 
-  const btnTop = createFabButton('top', 'TOP', '↑', '상단으로 이동');
-  const btnBottom = createFabButton('bottom', 'END', '↓', '하단으로 이동');
+  const btnTop = createFabButton('top', 'TOP', '', '상단으로 이동');
+  const btnBottom = createFabButton('bottom', 'END', '', '하단으로 이동');
 
   let btnMajor = null;
   let btnComment = null;

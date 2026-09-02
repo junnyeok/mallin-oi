@@ -12,6 +12,7 @@
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		77A1001F2C19A00100100001 /* CalendarWidgetsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A1001E2C19A00100100001 /* CalendarWidgetsPlugin.swift */; };
+		77A100412C19A00100100001 /* CompletionAudioSessionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A100402C19A00100100001 /* CompletionAudioSessionPlugin.swift */; };
 		77A1003A2C19A00100100001 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A100392C19A00100100001 /* MainViewController.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -52,6 +53,7 @@
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		77A1001D2C19A00100100001 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		77A1001E2C19A00100100001 /* CalendarWidgetsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarWidgetsPlugin.swift; sourceTree = "<group>"; };
+		77A100402C19A00100100001 /* CompletionAudioSessionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionAudioSessionPlugin.swift; sourceTree = "<group>"; };
 		77A100392C19A00100100001 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				77A100392C19A00100100001 /* MainViewController.swift */,
 				77A1001E2C19A00100100001 /* CalendarWidgetsPlugin.swift */,
+				77A100402C19A00100100001 /* CompletionAudioSessionPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -246,6 +249,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				77A1003A2C19A00100100001 /* MainViewController.swift in Sources */,
 				77A1001F2C19A00100100001 /* CalendarWidgetsPlugin.swift in Sources */,
+				77A100412C19A00100100001 /* CompletionAudioSessionPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
