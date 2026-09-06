@@ -66,11 +66,18 @@ const nativeCharacterEffectImageFiles = [
   'images/character-effects/fire-effect-01.png',
   'images/character-effects/spider-web-effect-01.png',
 ];
-const nativeEmoticonImageFiles = Array.from(
-  { length: 10 },
-  (_, index) =>
-    `images/emoticons/emo-cucumberboy-${String(index + 1).padStart(2, '0')}.png`,
-);
+const nativeEmoticonImageFiles = [
+  ...Array.from(
+    { length: 10 },
+    (_, index) =>
+      `images/emoticons/emo-cucumberboy-${String(index + 1).padStart(2, '0')}.png`,
+  ),
+  ...Array.from(
+    { length: 10 },
+    (_, index) =>
+      `images/emoticons/${String(index + 1).padStart(2, '0')}-broccoli-girl.png`,
+  ),
+];
 const nativeCareerAwardImageFiles = [
   'images/reward/reward-career-1st.png',
   'images/reward/reward-career-2nd.png',

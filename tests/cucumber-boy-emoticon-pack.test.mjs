@@ -64,8 +64,8 @@ test('오이소년 이모티콘팩 상품과 10개 미리보기가 지정 내용
   });
 });
 
-test('오이소년 이모티콘팩이 주요 상품의 첫 번째에 노출된다', () => {
-  assert.equal(getFeaturedStoreItems(1)[0]?.id, ITEM_ID);
+test('오이소년 이모티콘팩이 브로콜리 알바생과 PIXEL HEART 다음에 노출된다', () => {
+  assert.equal(getFeaturedStoreItems(3)[2]?.id, ITEM_ID);
 });
 
 test('루트·앱 이미지와 공통 이모티콘 선택기 연결이 모두 포함된다', async () => {

@@ -48,7 +48,7 @@ test('불꽃 상품과 카탈로그 메타데이터가 한 번만 정의된다',
   assert.equal(products[0].category, 'cha-effects');
   assert.equal(products[0].previewImages.length, 1);
   assert.deepEqual(effects[0].sprite, FIRE_SPRITE);
-  assert.equal(getFeaturedStoreItems(13)[12].id, FIRE_ITEM_ID);
+  assert.equal(getFeaturedStoreItems(15)[14].id, FIRE_ITEM_ID);
 });
 
 test('장착 화면은 발 기준 반응형 크기, 상품 기준 화면은 기존 크기를 유지한다', () => {

@@ -381,6 +381,11 @@ begin
     v_name := 'MUSCLE NIGHT';
     v_category := 'bgm';
 
+  elsif p_item_id = 'bgm-cucumbergirl-03' then
+    v_price := 588;
+    v_name := 'PIXEL HEART';
+    v_category := 'bgm';
+
   elsif p_item_id = 'emo-eat-01' then
     v_price := 220;
     v_name := '먹방오이 이모티콘팩';
@@ -399,6 +404,11 @@ begin
   elsif p_item_id = 'emo-cucumberboy-01' then
     v_price := 391;
     v_name := '오이소년 이모티콘팩';
+    v_category := 'emoticon';
+
+  elsif p_item_id = 'emo-broccoli-girl-01' then
+    v_price := 443;
+    v_name := '브로콜리 알바생 이모티콘팩';
     v_category := 'emoticon';
 
   else
@@ -498,6 +508,7 @@ begin
            'bgm-potato-02',
            'bgm-cucumbergirl-02',
            'bgm-grilledegg-02',
+           'bgm-cucumbergirl-03',
            'BF-02'
          ) then
         perform public.ensure_user_pickles(
@@ -1205,6 +1216,9 @@ begin
   elsif p_item_id = 'bgm-grilledegg-02' then
     null;
 
+  elsif p_item_id = 'bgm-cucumbergirl-03' then
+    null;
+
   elsif p_item_id = 'cha-effects-cucumberheart-01' then
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -1295,6 +1309,23 @@ begin
       (v_user_id, 'emo_cucumbergirl_01', 'cucumbergirl-8', '오이소녀 이모티콘 8', './images/emoticons/emo_cucumbergirl_8.png', 1008),
       (v_user_id, 'emo_cucumbergirl_01', 'cucumbergirl-9', '오이소녀 이모티콘 9', './images/emoticons/emo_cucumbergirl_9.png', 1009),
       (v_user_id, 'emo_cucumbergirl_01', 'cucumbergirl-10', '오이소녀 이모티콘 10', './images/emoticons/emo_cucumbergirl_10.png', 1010)
+    on conflict (user_id, emoticon_code) do nothing;
+
+  elsif p_item_id = 'emo-broccoli-girl-01' then
+    insert into public.user_emoticons (
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order, is_equipped
+    )
+    values
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-1', '브로콜리 알바생 이모티콘 1', './images/emoticons/01-broccoli-girl.png', 1201, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-2', '브로콜리 알바생 이모티콘 2', './images/emoticons/02-broccoli-girl.png', 1202, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-3', '브로콜리 알바생 이모티콘 3', './images/emoticons/03-broccoli-girl.png', 1203, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-4', '브로콜리 알바생 이모티콘 4', './images/emoticons/04-broccoli-girl.png', 1204, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-5', '브로콜리 알바생 이모티콘 5', './images/emoticons/05-broccoli-girl.png', 1205, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-6', '브로콜리 알바생 이모티콘 6', './images/emoticons/06-broccoli-girl.png', 1206, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-7', '브로콜리 알바생 이모티콘 7', './images/emoticons/07-broccoli-girl.png', 1207, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-8', '브로콜리 알바생 이모티콘 8', './images/emoticons/08-broccoli-girl.png', 1208, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-9', '브로콜리 알바생 이모티콘 9', './images/emoticons/09-broccoli-girl.png', 1209, true),
+      (v_user_id, 'emo-broccoli-girl-01', 'broccoli-girl-10', '브로콜리 알바생 이모티콘 10', './images/emoticons/10-broccoli-girl.png', 1210, true)
     on conflict (user_id, emoticon_code) do nothing;
 
   elsif p_item_id = 'emo-cucumberboy-01' then
@@ -1420,6 +1451,8 @@ begin
         then 'まだいけるよ 구매가 완료됐어. 721피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-grilledegg-02'
         then 'MUSCLE NIGHT 구매가 완료됐어. 653피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-cucumbergirl-03'
+        then 'PIXEL HEART 구매가 완료됐어. 588피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'cha-effects-fire-01'
@@ -1448,6 +1481,8 @@ begin
         then '오이소녀 이모티콘팩 구매가 완료됐어. 380피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-cucumberboy-01'
         then '오이소년 이모티콘팩 구매가 완료됐어. 391피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-broccoli-girl-01'
+        then '브로콜리 알바생 이모티콘팩 구매가 완료됐어. 443피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'
         then '구운계란 트레이너 스킨 구매가 완료됐어. 466피클이 차감됐고 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-soldier-01'

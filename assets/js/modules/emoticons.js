@@ -18,6 +18,7 @@ const {
   MOVED_EMOTICON_PACK,
   CUCUMBER_GIRL_EMOTICON_PACK,
   CUCUMBER_BOY_EMOTICON_PACK,
+  BROCCOLI_GIRL_EMOTICON_PACK,
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -34,6 +35,7 @@ const EMOTICON_MAP = new Map(
     ...MOVED_EMOTICON_PACK,
     ...CUCUMBER_GIRL_EMOTICON_PACK,
     ...CUCUMBER_BOY_EMOTICON_PACK,
+    ...BROCCOLI_GIRL_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -123,6 +125,13 @@ const PACK_META = [
     label: '오이소년',
     iconPath: CUCUMBER_BOY_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'cucumberboy-',
+  },
+  {
+    key: 'broccoli-girl',
+    itemId: 'emo-broccoli-girl-01',
+    label: '브로콜리 알바생',
+    iconPath: BROCCOLI_GIRL_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'broccoli-girl-',
   },
 ];
 
@@ -274,6 +283,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-cucumberboy-01') {
     return CUCUMBER_BOY_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-broccoli-girl-01') {
+    return BROCCOLI_GIRL_EMOTICON_PACK;
   }
 
   return [];

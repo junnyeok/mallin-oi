@@ -135,6 +135,15 @@ export const MUSCLE_NIGHT_BGM_PREVIEW = [
   },
 ];
 
+export const PIXEL_HEART_BGM_PREVIEW = [
+  {
+    code: 'bgm-pixel-heart',
+    label: 'PIXEL HEART LP',
+    imagePath: withAssetVersion('./images/BGM/Pixel-Heart_LP.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -288,6 +297,16 @@ export const BGM_CATALOG = [
     isDefault: false,
     displayOrder: 15,
   },
+  {
+    id: 'mallin-oi-pixel-heart',
+    storeItemId: 'bgm-cucumbergirl-03',
+    title: 'PIXEL HEART',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/Pixel-Heart.mp3'),
+    coverPath: withAssetVersion('./images/BGM/Pixel-Heart_LP.png'),
+    isDefault: false,
+    displayOrder: 16,
+  },
 ];
 
 export const BASIC_EMOTICON_PACK = Array.from({ length: 7 }, (_, index) => {
@@ -430,6 +449,23 @@ export const CUCUMBER_BOY_EMOTICON_PACK = Array.from(
         `./images/emoticons/emo-cucumberboy-${paddedOrder}.png`,
       ),
       displayOrder: 1100 + order,
+    };
+  },
+);
+
+export const BROCCOLI_GIRL_EMOTICON_PACK = Array.from(
+  { length: 10 },
+  (_, index) => {
+    const order = index + 1;
+    const paddedOrder = String(order).padStart(2, '0');
+
+    return {
+      code: `broccoli-girl-${order}`,
+      label: `브로콜리 알바생 이모티콘 ${order}`,
+      imagePath: withAssetVersion(
+        `./images/emoticons/${paddedOrder}-broccoli-girl.png`,
+      ),
+      displayOrder: 1200 + order,
     };
   },
 );
@@ -1052,6 +1088,38 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'emo-broccoli-girl-01',
+    name: '브로콜리 알바생 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🥦👧🏼',
+    thumbImagePath: withAssetVersion('./images/emoticons/01-broccoli-girl.png'),
+    price: 443,
+    state: '판매 중',
+    description: '브로콜리 알바생의 스티커 느낌의 이모티콘 팩이야.',
+    detailDescription: '브로콜리 알바생의 스티커 느낌의 이모티콘 팩이야.',
+    previewImages: BROCCOLI_GIRL_EMOTICON_PACK,
+    releaseDate: '2026-09-06',
+    isPurchasable: true,
+  },
+  {
+    id: 'bgm-cucumbergirl-03',
+    name: 'PIXEL HEART',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒👧🏼🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/Pixel-Heart_LP.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/Pixel-Heart.mp3'),
+    price: 588,
+    state: '판매 중',
+    description: '오이소녀 컨셉의 귀여운 곡이야.',
+    detailDescription:
+      '오이소녀 컨셉의 귀여운 곡이야. <br>구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: PIXEL_HEART_BGM_PREVIEW,
+    releaseDate: '2026-09-06',
+    isPurchasable: true,
+  },
   {
     id: 'emo-cucumberboy-01',
     name: '오이소년 이모티콘팩',
@@ -2070,6 +2138,8 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'emo-broccoli-girl-01',
+  'bgm-cucumbergirl-03',
   'emo-cucumberboy-01',
   'BG-05',
   'skin-cucumber-05',
