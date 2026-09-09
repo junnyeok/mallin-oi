@@ -356,6 +356,7 @@
 #featuredStoreSection .store-showcase__viewport {
   overflow: hidden;
   min-width: 0;
+  touch-action: pan-y pinch-zoom;
 }
 
 #featuredStoreSection .store-showcase__track {
@@ -363,7 +364,15 @@
   gap: 16px;
   transition: transform 0.45s ease;
   will-change: transform;
-  touch-action: pan-y;
+}
+
+#featuredStoreSection .store-showcase__track.is-dragging,
+#featuredStoreSection .store-showcase__track.is-instant {
+  transition: none;
+}
+
+#featuredStoreSection .store-showcase__track.is-dragging {
+  user-select: none;
 }
 
 #featuredStoreSection .store-card {
@@ -1168,6 +1177,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  #featuredStoreSection .store-showcase__track {
+    transition: none;
+  }
+
   .store-mallin-shiny-frame > img {
     animation: none;
     opacity: 1;

@@ -1455,6 +1455,7 @@
 ./tests/run-muscle-night-bgm.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
 ./tests/store-description-placement.test.mjs
+./tests/store-showcase-swipe.test.mjs
 ./tests/study-completion-celebration.test.mjs
 ./work.html
 ./write.html

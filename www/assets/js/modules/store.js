@@ -54,6 +54,7 @@ const HOME_STORE_MOBILE_BREAKPOINT = 768;
 const HOME_STORE_DESKTOP_VISIBLE = 5;
 const HOME_STORE_MOBILE_VISIBLE = 1;
 const HOME_STORE_AUTOPLAY_MS = 5000;
+let homeStoreCleanup = null;
 const MALLIN_SHINY_FRAME_ITEM_ID = 'BF-02';
 const STORE_MALLIN_SHINY_SPARKLE_COUNT = 4;
 let storeItemPreviewAudio = null;
@@ -388,6 +389,9 @@ function renderStoreCard(item, { compact = false } = {}) {
 }
 
 function initHomeStoreSection() {
+  homeStoreCleanup?.();
+  homeStoreCleanup = null;
+
   const trackEl = $('#storeFeaturedGrid');
   const viewportEl = $('#storeFeaturedViewport');
   const prevBtn = $('#storePrevBtn');
@@ -408,8 +412,11 @@ function initHomeStoreSection() {
   let visibleCount = getVisibleCount();
   let currentStep = 0;
   let autoTimer = null;
-  let touchStartX = 0;
-  let touchStartY = 0;
+  let gesture = null;
+  let suppressClickUntil = 0;
+  const controller = new AbortController();
+  const { signal } = controller;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function getVisibleCount() {
     return window.innerWidth <= HOME_STORE_MOBILE_BREAKPOINT
@@ -444,7 +451,8 @@ function initHomeStoreSection() {
     const startIndex = getStartIndex();
     const targetCard = cardEls[startIndex] || cardEls[0];
 
-    trackEl.style.transition = animate ? 'transform 0.45s ease' : 'none';
+    trackEl.classList.remove('is-dragging');
+    trackEl.classList.toggle('is-instant', !animate || reducedMotion.matches);
     trackEl.style.transform = `translate3d(-${targetCard.offsetLeft}px, 0, 0)`;
 
     updateStatus();
@@ -454,7 +462,7 @@ function initHomeStoreSection() {
   function startAutoPlay() {
     clearInterval(autoTimer);
 
-    if (getStepCount() <= 1) return;
+    if (getStepCount() <= 1 || gesture || document.hidden || reducedMotion.matches) return;
 
     autoTimer = window.setInterval(() => {
       goToStep(currentStep + 1, { resetTimer: false });
@@ -463,6 +471,7 @@ function initHomeStoreSection() {
 
   function stopAutoPlay() {
     clearInterval(autoTimer);
+    autoTimer = null;
   }
 
   function goToStep(step, { animate = true, resetTimer = true } = {}) {
@@ -474,6 +483,7 @@ function initHomeStoreSection() {
   }
 
   function handleResize() {
+    finishGesture({ cancelled: true, animate: false, resetTimer: false });
     const previousVisibleCount = visibleCount;
     const previousStartIndex = getStartIndex();
 
@@ -490,47 +500,137 @@ function initHomeStoreSection() {
     startAutoPlay();
   }
 
-  prevBtn.addEventListener('click', () => goToStep(currentStep - 1));
-  nextBtn.addEventListener('click', () => goToStep(currentStep + 1));
+  function getRenderedOffset() {
+    const transform = window.getComputedStyle(trackEl).transform;
+    const matrix = transform.match(/^matrix(3d)?\(([^)]+)\)$/);
+    if (!matrix) return -(cardEls[getStartIndex()] || cardEls[0]).offsetLeft;
+    const values = matrix[2].split(',').map(Number);
+    return values[matrix[1] ? 12 : 4];
+  }
 
-  viewportEl.addEventListener('mouseenter', stopAutoPlay);
-  viewportEl.addEventListener('mouseleave', startAutoPlay);
+  function finishGesture({ cancelled = false, animate = true, resetTimer = true } = {}) {
+    if (!gesture) return;
+    const finished = gesture;
+    gesture = null;
 
-  viewportEl.addEventListener(
-    'touchstart',
-    (event) => {
-      const touch = event.changedTouches[0];
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
-    },
-    { passive: true },
-  );
+    if (viewportEl.hasPointerCapture(finished.id)) {
+      viewportEl.releasePointerCapture(finished.id);
+    }
+    if (finished.axis === 'horizontal') {
+      suppressClickUntil = Date.now() + 400;
+      // 손을 떼기 직전의 위치를 확정한 다음 남은 거리만 애니메이션한다.
+      trackEl.getBoundingClientRect();
+      if (!cancelled && Math.abs(finished.deltaX) >= 45) {
+        const nextStep = currentStep + (finished.deltaX < 0 ? 1 : -1);
+        const wraps = nextStep < 0 || nextStep >= getStepCount();
+        goToStep(nextStep, { animate: animate && !wraps, resetTimer });
+        return;
+      }
+      updateSlider({ animate });
+    }
+    if (resetTimer) startAutoPlay();
+  }
 
-  viewportEl.addEventListener(
-    'touchend',
-    (event) => {
-      if (visibleCount !== HOME_STORE_MOBILE_VISIBLE) return;
+  function handlePointerDown(event) {
+    if (event.isPrimary === false) {
+      finishGesture({ cancelled: true });
+      return;
+    }
+    if (visibleCount !== HOME_STORE_MOBILE_VISIBLE || getStepCount() <= 1) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (gesture) return;
 
-      const touch = event.changedTouches[0];
-      const diffX = touch.clientX - touchStartX;
-      const diffY = touch.clientY - touchStartY;
+    suppressClickUntil = 0;
+    stopAutoPlay();
+    gesture = {
+      id: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offset: getRenderedOffset(),
+      deltaX: 0,
+      axis: null,
+    };
+  }
 
-      if (Math.abs(diffX) < 45 || Math.abs(diffX) <= Math.abs(diffY)) return;
-      if (diffX < 0) goToStep(currentStep + 1);
-      else goToStep(currentStep - 1);
-    },
-    { passive: true },
-  );
+  function handlePointerMove(event) {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+
+    if (!gesture.axis) {
+      if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 8) return;
+      gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
+      if (gesture.axis === 'horizontal') {
+        viewportEl.setPointerCapture(event.pointerId);
+        trackEl.classList.add('is-dragging');
+      }
+    }
+    if (gesture.axis !== 'horizontal') return;
+    if (event.cancelable) event.preventDefault();
+
+    gesture.deltaX = deltaX;
+    const distance = Math.max(-viewportEl.clientWidth, Math.min(viewportEl.clientWidth, deltaX));
+    let offset = gesture.offset + distance;
+    const minOffset = -cardEls[cardEls.length - 1].offsetLeft;
+    const maxOffset = -cardEls[0].offsetLeft;
+    // 양 끝에서는 저항을 줘 빈 영역이 과도하게 드러나지 않도록 한다.
+    if (offset > maxOffset) offset = maxOffset + (offset - maxOffset) * 0.25;
+    if (offset < minOffset) offset = minOffset + (offset - minOffset) * 0.25;
+    trackEl.style.transform = `translate3d(${offset}px, 0, 0)`;
+  }
+
+  prevBtn.addEventListener('click', () => goToStep(currentStep - 1), { signal });
+  nextBtn.addEventListener('click', () => goToStep(currentStep + 1), { signal });
+
+  viewportEl.addEventListener('mouseenter', stopAutoPlay, { signal });
+  viewportEl.addEventListener('mouseleave', startAutoPlay, { signal });
+  viewportEl.addEventListener('pointerdown', handlePointerDown, { passive: true, signal });
+  window.addEventListener('pointermove', handlePointerMove, { passive: false, signal });
+  window.addEventListener('pointerup', (event) => {
+    if (event.pointerId === gesture?.id) finishGesture();
+  }, { signal });
+  window.addEventListener('pointercancel', (event) => {
+    if (event.pointerId === gesture?.id) finishGesture({ cancelled: true });
+  }, { signal });
+  viewportEl.addEventListener('lostpointercapture', (event) => {
+    if (event.pointerId === gesture?.id) finishGesture({ cancelled: true });
+  }, { signal });
+  viewportEl.addEventListener('dragstart', (event) => {
+    if (visibleCount === HOME_STORE_MOBILE_VISIBLE) event.preventDefault();
+  }, { signal });
+  viewportEl.addEventListener('click', (event) => {
+    if (event.detail !== 0 && Date.now() < suppressClickUntil) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, { capture: true, signal });
 
   document.addEventListener('visibilitychange', () => {
+    finishGesture({ cancelled: true, animate: false, resetTimer: false });
     if (document.hidden) {
       stopAutoPlay();
       return;
     }
     startAutoPlay();
-  });
+  }, { signal });
 
-  window.addEventListener('resize', handleResize);
+  window.addEventListener('resize', handleResize, { signal });
+  window.addEventListener('pagehide', () => {
+    finishGesture({ cancelled: true, animate: false, resetTimer: false });
+    stopAutoPlay();
+  }, { signal });
+  window.addEventListener('pageshow', startAutoPlay, { signal });
+  reducedMotion.addEventListener('change', () => {
+    updateSlider({ animate: false });
+    startAutoPlay();
+  }, { signal });
+
+  homeStoreCleanup = () => {
+    finishGesture({ cancelled: true, animate: false, resetTimer: false });
+    stopAutoPlay();
+    controller.abort();
+  };
+  window.addEventListener(BEFORE_PJAX_SWAP_EVENT, homeStoreCleanup, { signal });
 
   updateSlider({ animate: false });
   startAutoPlay();
