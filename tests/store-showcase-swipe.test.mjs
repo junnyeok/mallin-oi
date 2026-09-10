@@ -15,6 +15,7 @@ function createHarness({ width = 390, count = 15, reduced = false } = {}) {
     textContent = '';
     disabled = false;
     captures = new Set();
+    listeners = [];
     classes = new Set();
     classList = {
       add: (name) => this.classes.add(name),
@@ -22,6 +23,10 @@ function createHarness({ width = 390, count = 15, reduced = false } = {}) {
       toggle: (name, enabled) => enabled ? this.classes.add(name) : this.classes.delete(name),
       contains: (name) => this.classes.has(name),
     };
+    addEventListener(type, listener, options) {
+      this.listeners.push({ type, options });
+      super.addEventListener(type, listener, options);
+    }
     setPointerCapture(id) { this.captures.add(id); }
     hasPointerCapture(id) { return this.captures.has(id); }
     releasePointerCapture(id) { this.captures.delete(id); }
@@ -69,8 +74,13 @@ function createHarness({ width = 390, count = 15, reduced = false } = {}) {
   vm.runInContext(`let homeStoreCleanup = null; ${initSource};`, context);
   const init = () => vm.runInContext('initHomeStoreSection()', context);
   function fire(target, type, props = {}) {
-    const event = new Event(type, { cancelable: true });
-    Object.assign(event, props);
+    const { cancelable = true, ...eventProps } = props;
+    const event = new Event(type, { cancelable });
+    Object.assign(event, eventProps);
+    event.stopPropagation = () => {
+      event.propagationStopped = true;
+      Event.prototype.stopPropagation.call(event);
+    };
     target.dispatchEvent(event);
     return event;
   }
@@ -80,8 +90,11 @@ function createHarness({ width = 390, count = 15, reduced = false } = {}) {
     { pointerId: 1, pointerType: 'touch', isPrimary: true, button: 0, clientX: x, clientY: y, ...props },
   );
   const click = (direction) => fire(elements[direction === 'next' ? 'storeNextBtn' : 'storePrevBtn'], 'click', { detail: 1 });
+  const touchMove = (x, y = 100, props = {}) => fire(viewport, 'touchmove', {
+    touches: [{ identifier: 0, clientX: x, clientY: y }], ...props,
+  });
   init();
-  return { window, document, media, elements, track, viewport, timers, offset, pointer, click, fire, init,
+  return { window, document, media, elements, track, viewport, timers, offset, pointer, touchMove, click, fire, init,
     status: () => elements.storeFeaturedStatus.textContent,
     setRenderedOffset: (value) => { renderedOffset = value; },
   };
@@ -129,6 +142,85 @@ test('세로 방향으로 시작한 스크롤은 가로로 바꾸거나 기본 �
   h.pointer('up', 90, 180);
   assert.equal(h.status(), '1 / 15');
   assert.equal(h.fire(h.viewport, 'click', { detail: 1 }).defaultPrevented, false);
+});
+
+test('첫 미세한 가로 touchmove부터 세로 스크롤과 상위 새로고침을 막는다', () => {
+  const h = createHarness();
+  const listener = h.viewport.listeners.find(({ type }) => type === 'touchmove');
+  assert.equal(listener.options.passive, false);
+  assert.equal(listener.options.capture, true);
+  assert.ok(listener.options.signal);
+  h.pointer('down', 220, 100);
+  h.pointer('move', 218, 101);
+  const firstMove = h.touchMove(218, 101);
+  assert.equal(firstMove.defaultPrevented, true);
+  assert.equal(firstMove.propagationStopped, true);
+  assert.equal(h.viewport.hasPointerCapture(1), true);
+
+  // 가로로 시작한 뒤 세로 이동량이 더 커져도 방향은 바뀌지 않는다.
+  h.pointer('move', 190, 175);
+  const diagonalMove = h.touchMove(190, 175);
+  assert.equal(diagonalMove.defaultPrevented, true);
+  assert.equal(h.offset(), -30);
+  h.pointer('move', 120, 185);
+  assert.equal(h.touchMove(120, 185).defaultPrevented, true);
+  assert.equal(h.offset(), -100);
+  h.pointer('up', 120, 185);
+  assert.equal(h.status(), '2 / 15');
+  assert.equal(h.touchMove(100, 200).defaultPrevented, false);
+});
+
+test('세로 터치로 시작한 입력과 다음 새 제스처의 일반 스크롤은 유지한다', () => {
+  const h = createHarness();
+  h.pointer('down', 200, 100);
+  const verticalMove = h.touchMove(199, 104);
+  assert.equal(verticalMove.defaultPrevented, false);
+  assert.equal(verticalMove.propagationStopped, undefined);
+  h.pointer('move', 110, 150);
+  assert.equal(h.touchMove(110, 150).defaultPrevented, false);
+  assert.equal(h.offset(), 0);
+  h.pointer('cancel', 110, 150);
+  h.pointer('down', 200, 100);
+  assert.equal(h.touchMove(180, 101).defaultPrevented, true);
+  h.pointer('cancel', 180, 101);
+  h.pointer('down', 200, 100);
+  assert.equal(h.touchMove(201, 120).defaultPrevented, false);
+});
+
+test('두 손가락 확대·비활성 슬라이더·마우스 입력은 터치 스크롤 잠금에서 제외한다', () => {
+  const h = createHarness();
+  h.pointer('down', 200);
+  assert.equal(h.touchMove(180).defaultPrevented, true);
+  h.pointer('move', 100);
+  const multi = h.touchMove(100, 100, { touches: [{}, {}] });
+  assert.equal(multi.defaultPrevented, false);
+  assert.equal(multi.propagationStopped, undefined);
+  assert.equal(h.viewport.captures.size, 0);
+  assert.equal(h.status(), '1 / 15');
+  assert.equal(h.offset(), 0);
+  assert.equal(h.touchMove(80).defaultPrevented, false);
+
+  for (const options of [{ width: 1200 }, { count: 1 }]) {
+    const inactive = createHarness(options);
+    inactive.pointer('down', 200);
+    assert.equal(inactive.touchMove(100).defaultPrevented, false);
+  }
+  const mouse = createHarness();
+  mouse.pointer('down', 200, 100, { pointerType: 'mouse' });
+  assert.equal(mouse.touchMove(100).defaultPrevented, false);
+});
+
+test('취소 불가 터치에서 preventDefault 경고를 내지 않고 PJAX 뒤 잠금 리스너를 해제한다', () => {
+  const h = createHarness();
+  h.pointer('down', 200);
+  assert.equal(h.touchMove(180, 100, { cancelable: false }).defaultPrevented, false);
+  h.fire(h.window, 'mallin:before-pjax-swap');
+  assert.equal(h.viewport.captures.size, 0);
+  h.pointer('down', 200);
+  assert.equal(h.touchMove(180).defaultPrevented, false);
+  h.init();
+  h.pointer('down', 200);
+  assert.equal(h.touchMove(180).defaultPrevented, true);
 });
 
 test('취소·포인터 캡처 유실·두 손가락 입력은 품목을 바꾸지 않는다', () => {

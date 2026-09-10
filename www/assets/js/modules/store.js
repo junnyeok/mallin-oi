@@ -544,6 +544,7 @@ function initHomeStoreSection() {
     stopAutoPlay();
     gesture = {
       id: event.pointerId,
+      pointerType: event.pointerType,
       startX: event.clientX,
       startY: event.clientY,
       offset: getRenderedOffset(),
@@ -552,19 +553,23 @@ function initHomeStoreSection() {
     };
   }
 
+  function lockGestureAxis(deltaX, deltaY, threshold = 8) {
+    if (!gesture.axis) {
+      if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < threshold) return;
+      gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
+      if (gesture.axis === 'horizontal') {
+        viewportEl.setPointerCapture(gesture.id);
+        trackEl.classList.add('is-dragging');
+      }
+    }
+  }
+
   function handlePointerMove(event) {
     if (!gesture || event.pointerId !== gesture.id) return;
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
-    if (!gesture.axis) {
-      if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 8) return;
-      gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
-      if (gesture.axis === 'horizontal') {
-        viewportEl.setPointerCapture(event.pointerId);
-        trackEl.classList.add('is-dragging');
-      }
-    }
+    lockGestureAxis(deltaX, deltaY);
     if (gesture.axis !== 'horizontal') return;
     if (event.cancelable) event.preventDefault();
 
@@ -579,12 +584,35 @@ function initHomeStoreSection() {
     trackEl.style.transform = `translate3d(${offset}px, 0, 0)`;
   }
 
+  function handleTouchMove(event) {
+    if (!gesture || gesture.pointerType !== 'touch') return;
+    if (event.touches.length !== 1) {
+      finishGesture({ cancelled: true });
+      return;
+    }
+
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - gesture.startX;
+    const deltaY = touch.clientY - gesture.startY;
+    if (!deltaX && !deltaY) return;
+
+    // pointermove의 preventDefault는 브라우저 스크롤을 막지 못한다.
+    // 첫 touchmove부터 가로 입력을 잠가 세로 팬에 의한 pointercancel을 방지한다.
+    lockGestureAxis(deltaX, deltaY, 0);
+    if (gesture.axis === 'horizontal') {
+      if (event.cancelable) event.preventDefault();
+      // 상위의 당겨서 새로고침도 이 가로 제스처를 가져가지 않도록 한다.
+      event.stopPropagation();
+    }
+  }
+
   prevBtn.addEventListener('click', () => goToStep(currentStep - 1), { signal });
   nextBtn.addEventListener('click', () => goToStep(currentStep + 1), { signal });
 
   viewportEl.addEventListener('mouseenter', stopAutoPlay, { signal });
   viewportEl.addEventListener('mouseleave', startAutoPlay, { signal });
   viewportEl.addEventListener('pointerdown', handlePointerDown, { passive: true, signal });
+  viewportEl.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true, signal });
   window.addEventListener('pointermove', handlePointerMove, { passive: false, signal });
   window.addEventListener('pointerup', (event) => {
     if (event.pointerId === gesture?.id) finishGesture();
