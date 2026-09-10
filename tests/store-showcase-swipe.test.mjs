@@ -74,9 +74,10 @@ function createHarness({ width = 390, count = 15, reduced = false } = {}) {
   vm.runInContext(`let homeStoreCleanup = null; ${initSource};`, context);
   const init = () => vm.runInContext('initHomeStoreSection()', context);
   function fire(target, type, props = {}) {
-    const { cancelable = true, ...eventProps } = props;
+    const { cancelable = true, originTarget, ...eventProps } = props;
     const event = new Event(type, { cancelable });
     Object.assign(event, eventProps);
+    if (originTarget) Object.defineProperty(event, 'target', { value: originTarget });
     event.stopPropagation = () => {
       event.propagationStopped = true;
       Event.prototype.stopPropagation.call(event);
@@ -221,6 +222,39 @@ test('취소 불가 터치에서 preventDefault 경고를 내지 않고 PJAX 뒤
   h.init();
   h.pointer('down', 200);
   assert.equal(h.touchMove(180).defaultPrevented, true);
+});
+
+test('카드 자식의 암묵적 캡처를 슬라이더로 넘길 때 터치 드래그를 취소하지 않는다', () => {
+  const h = createHarness();
+  h.pointer('down', 220);
+  h.pointer('move', 200);
+  assert.equal(h.offset(), -20);
+  // 실제 터치는 누른 이미지/링크가 먼저 암묵적으로 캡처한다.
+  // viewport로 캡처를 넘기면 자식에서 발생한 lostpointercapture가 버블링한다.
+  h.fire(h.viewport, 'lostpointercapture', {
+    pointerId: 1, originTarget: { id: 'product-image' },
+  });
+  assert.equal(h.offset(), -20);
+  assert.equal(h.viewport.hasPointerCapture(1), true);
+  h.pointer('move', 120, 130);
+  assert.equal(h.touchMove(120, 130).defaultPrevented, true);
+  assert.equal(h.offset(), -100);
+  h.pointer('up', 120, 130);
+  assert.equal(h.status(), '2 / 15');
+});
+
+test('주소 표시줄에 의한 높이 전용 resize는 진행 중인 드래그를 되돌리지 않는다', () => {
+  const h = createHarness();
+  h.pointer('down', 220);
+  h.pointer('move', 200);
+  h.window.innerHeight = 740;
+  h.fire(h.window, 'resize');
+  assert.equal(h.offset(), -20);
+  assert.equal(h.viewport.hasPointerCapture(1), true);
+  assert.equal(h.timers.size, 0);
+  h.pointer('move', 120);
+  h.pointer('up', 120);
+  assert.equal(h.status(), '2 / 15');
 });
 
 test('취소·포인터 캡처 유실·두 손가락 입력은 품목을 바꾸지 않는다', () => {

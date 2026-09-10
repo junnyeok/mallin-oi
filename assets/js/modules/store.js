@@ -410,6 +410,7 @@ function initHomeStoreSection() {
   if (!cardEls.length) return;
 
   let visibleCount = getVisibleCount();
+  let viewportWidth = viewportEl.clientWidth;
   let currentStep = 0;
   let autoTimer = null;
   let gesture = null;
@@ -483,11 +484,16 @@ function initHomeStoreSection() {
   }
 
   function handleResize() {
+    const nextVisibleCount = getVisibleCount();
+    const nextViewportWidth = viewportEl.clientWidth;
+    // 모바일 주소 표시줄 등 높이만 달라지는 resize는 드래그를 취소하지 않는다.
+    if (nextVisibleCount === visibleCount && nextViewportWidth === viewportWidth) return;
+    viewportWidth = nextViewportWidth;
     finishGesture({ cancelled: true, animate: false, resetTimer: false });
     const previousVisibleCount = visibleCount;
     const previousStartIndex = getStartIndex();
 
-    visibleCount = getVisibleCount();
+    visibleCount = nextVisibleCount;
 
     if (previousVisibleCount !== visibleCount) {
       currentStep =
@@ -621,6 +627,9 @@ function initHomeStoreSection() {
     if (event.pointerId === gesture?.id) finishGesture({ cancelled: true });
   }, { signal });
   viewportEl.addEventListener('lostpointercapture', (event) => {
+    // 터치한 자식의 암묵적 캡처를 viewport로 옮길 때도 이 이벤트가 버블링한다.
+    // viewport 자신의 캡처가 해제된 경우에만 현재 드래그를 취소한다.
+    if (event.target !== viewportEl) return;
     if (event.pointerId === gesture?.id) finishGesture({ cancelled: true });
   }, { signal });
   viewportEl.addEventListener('dragstart', (event) => {
