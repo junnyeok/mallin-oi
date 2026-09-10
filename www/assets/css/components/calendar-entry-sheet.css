@@ -876,6 +876,38 @@ body.theme-event[data-page='calendar-event'] .calendar-add-button {
   color: var(--color-text);
 }
 
+.study-calendar-grid--page.is-calendar-month-swipe-enabled,
+.work-calendar-grid--page.is-calendar-month-swipe-enabled,
+.event-calendar-grid--page.is-calendar-month-swipe-enabled {
+  touch-action: pan-y pinch-zoom;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.calendar-loading-region__grid.calendar-month-preview {
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto auto 0;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.study-calendar-grid--page.is-calendar-month-dragging,
+.work-calendar-grid--page.is-calendar-month-dragging,
+.event-calendar-grid--page.is-calendar-month-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.study-calendar-grid--page.is-calendar-month-transitioning,
+.work-calendar-grid--page.is-calendar-month-transitioning,
+.event-calendar-grid--page.is-calendar-month-transitioning {
+  pointer-events: none;
+}
+
 .study-calendar-page__head,
 .work-calendar-page__head,
 .event-calendar-page__head {
@@ -906,6 +938,14 @@ body.theme-event[data-page='calendar-event'] .calendar-add-button {
 .work-calendar-page__head > .work-repeat {
   flex: 0 0 auto;
   order: 3;
+}
+
+.study-calendar-page__head > .calendar-group-bar__backup--header,
+.work-calendar-page__head > .calendar-group-bar__backup--header,
+.event-calendar-page__head > .calendar-group-bar__backup--header {
+  flex: 0 0 auto;
+  order: 4;
+  margin-left: auto;
 }
 
 .work-calendar-page__head > .work-repeat .work-repeat__trigger {
@@ -1019,6 +1059,13 @@ body.theme-work[data-page='calendar-work']
     order: 3;
   }
 
+  .study-calendar-page__head > .calendar-group-bar__backup--header,
+  .work-calendar-page__head > .calendar-group-bar__backup--header,
+  .event-calendar-page__head > .calendar-group-bar__backup--header {
+    order: 4;
+    margin-left: auto;
+  }
+
   .work-calendar-page__head {
     margin-bottom: var(--space-4);
   }
@@ -1032,5 +1079,12 @@ body.theme-work[data-page='calendar-work']
   .calendar-entry-sheet,
   .calendar-entry-sheet__panel {
     transition-duration: 0.01ms;
+  }
+
+  .study-calendar-grid--page.is-calendar-month-swipe-enabled,
+  .work-calendar-grid--page.is-calendar-month-swipe-enabled,
+  .event-calendar-grid--page.is-calendar-month-swipe-enabled {
+    transform: none;
+    opacity: 1;
   }
 }

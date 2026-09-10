@@ -13,10 +13,74 @@ import {
   resolveWorkCalendarTimeRange,
   splitLocalDateTimeValue,
 } from '../assets/js/modules/calendar-time.js';
-import { scheduleCalendarSelectionScroll } from '../assets/js/modules/calendar-selection-scroll.js';
+import {
+  enableCalendarMonthSwipe,
+  getCalendarMonthSwipeAxis,
+  getCalendarMonthSwipeOffset,
+  scheduleCalendarSelectionScroll,
+} from '../assets/js/modules/calendar-selection-scroll.js';
+import { getKoreanPublicHoliday } from '../assets/js/modules/calendar-holidays.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
+
+test('대한민국 공휴일과 음력 명절 및 대체공휴일을 계산한다', () => {
+  const expected2026 = new Map([
+    ['2026-01-01', '신정'],
+    ['2026-02-16', '설날 연휴'],
+    ['2026-02-17', '설날'],
+    ['2026-02-18', '설날 연휴'],
+    ['2026-03-01', '삼일절'],
+    ['2026-03-02', '삼일절 대체공휴일'],
+    ['2026-05-01', '노동절'],
+    ['2026-05-05', '어린이날'],
+    ['2026-05-24', '부처님오신날'],
+    ['2026-05-25', '부처님오신날 대체공휴일'],
+    ['2026-06-03', '지방선거'],
+    ['2026-06-06', '현충일'],
+    ['2026-07-17', '제헌절'],
+    ['2026-08-15', '광복절'],
+    ['2026-08-17', '광복절 대체공휴일'],
+    ['2026-09-24', '추석 연휴'],
+    ['2026-09-25', '추석'],
+    ['2026-09-26', '추석 연휴'],
+    ['2026-10-03', '개천절'],
+    ['2026-10-05', '개천절 대체공휴일'],
+    ['2026-10-09', '한글날'],
+    ['2026-12-25', '성탄절'],
+  ]);
+
+  expected2026.forEach((name, dateKey) => {
+    assert.equal(getKoreanPublicHoliday(dateKey)?.name, name, dateKey);
+  });
+  assert.equal(getKoreanPublicHoliday('2026-09-10'), null);
+
+  assert.equal(getKoreanPublicHoliday('2027-02-09')?.name, '설날 대체공휴일');
+  assert.equal(getKoreanPublicHoliday('2027-05-03')?.name, '노동절 대체공휴일');
+  assert.equal(getKoreanPublicHoliday('2027-07-19')?.name, '제헌절 대체공휴일');
+  assert.equal(getKoreanPublicHoliday('2027-12-27')?.name, '성탄절 대체공휴일');
+
+  for (const calendarFile of [
+    'assets/js/modules/study-calendar.js',
+    'assets/js/modules/work-calendar.js',
+    'assets/js/modules/event-calendar.js',
+  ]) {
+    const source = read(calendarFile);
+    assert.match(source, /appendKoreanHolidayBadge/);
+  }
+
+  const groupSource = read('assets/js/modules/calendar-groups.js');
+  const workSource = read('assets/js/modules/work-calendar.js');
+  const sharedCss = read('assets/css/main/calendar-groups-main.css');
+  assert.match(groupSource, /calendar-group-schedule__date-label/);
+  assert.match(groupSource, /appendKoreanHolidayBadge\(head, item\?\.dateKey\)/);
+  assert.match(
+    workSource,
+    /appendTypeBadges\(dayButton, todos, categories\);\s*appendKoreanHolidayBadge\(dayButton, cell\.dateKey\);/,
+  );
+  assert.match(sharedCss, /\.calendar-holiday-badge/);
+  assert.match(sharedCss, /color:\s*#c62828/);
+});
 
 test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 문자열로 정규화한다', () => {
   assert.equal(normalizeCalendarTime('09:05:30'), '09:05');
@@ -401,6 +465,259 @@ test('빈 일정 목록도 선택 날짜 패널로 실제 스크롤한다', () =
   assert.deepEqual(scrollCalls, [{ behavior: 'smooth', block: 'start' }]);
 });
 
+test('가로 스와이프만 이전·다음 달 이동으로 판정한다', () => {
+  assert.equal(getCalendarMonthSwipeOffset(-80, 8), 1);
+  assert.equal(getCalendarMonthSwipeOffset(76, -12), -1);
+  assert.equal(getCalendarMonthSwipeOffset(-40, 2), 0);
+  assert.equal(getCalendarMonthSwipeOffset(80, 70), 0);
+  assert.equal(getCalendarMonthSwipeOffset(Number.NaN, 0), 0);
+  assert.equal(getCalendarMonthSwipeAxis(10, 11), 'horizontal');
+  assert.equal(getCalendarMonthSwipeAxis(3, 14), 'vertical');
+  assert.equal(getCalendarMonthSwipeAxis(3, 4), null);
+
+  const sheetCss = read('assets/css/components/calendar-entry-sheet.css');
+  assert.match(
+    sheetCss,
+    /is-calendar-month-swipe-enabled[\s\S]*touch-action: pan-y pinch-zoom;/,
+  );
+  assert.match(sheetCss, /is-calendar-month-dragging/);
+  assert.match(sheetCss, /is-calendar-month-transitioning/);
+  assert.match(sheetCss, /calendar-month-preview/);
+  assert.match(
+    sheetCss,
+    /prefers-reduced-motion: reduce[\s\S]*is-calendar-month-swipe-enabled[\s\S]*transform: none;/,
+  );
+
+  for (const calendarType of ['study', 'work', 'event']) {
+    const source = read(`assets/js/modules/${calendarType}-calendar.js`);
+    assert.match(source, /enableCalendarMonthSwipe/);
+    assert.match(
+      source,
+      new RegExp(`target: monthSwipeTarget,[\\s\\S]*onNavigate: changeMonth`),
+    );
+    assert.match(source, /createMonthPreview:/);
+    assert.match(source, /monthSwipe\.navigate\(-1\)/);
+    assert.match(source, /monthSwipe\.navigate\(1\)/);
+  }
+});
+
+test('달력은 손가락 이동량을 따라가고 버튼도 같은 월 전환 효과를 사용한다', async () => {
+  const previousWindow = globalThis.window;
+  const listeners = new Map();
+  const classes = new Set();
+  const navigations = [];
+  const previewStyles = [];
+  const capturedPointerIds = [];
+  const style = {
+    transform: '',
+    opacity: '',
+    removeProperty(property) {
+      this[property] = '';
+    },
+  };
+  const target = {
+    style,
+    classList: {
+      add(...names) {
+        names.forEach((name) => classes.add(name));
+      },
+      remove(...names) {
+        names.forEach((name) => classes.delete(name));
+      },
+    },
+    addEventListener(type, listener) {
+      listeners.set(type, listener);
+    },
+    removeEventListener(type) {
+      listeners.delete(type);
+    },
+    getBoundingClientRect() {
+      return { width: 320 };
+    },
+    setPointerCapture(pointerId) {
+      capturedPointerIds.push(pointerId);
+    },
+    hasPointerCapture() {
+      return false;
+    },
+  };
+  const parent = {
+    insertBefore() {},
+    querySelector() {
+      return null;
+    },
+  };
+  target.parentElement = parent;
+
+  function createPreview() {
+    const previewClasses = new Set();
+    const previewStyle = {
+      transform: '',
+      removeProperty(property) {
+        this[property] = '';
+      },
+    };
+    previewStyles.push(previewStyle);
+    return {
+      style: previewStyle,
+      classList: {
+        add(...names) {
+          names.forEach((name) => previewClasses.add(name));
+        },
+        remove(...names) {
+          names.forEach((name) => previewClasses.delete(name));
+        },
+      },
+      removeAttribute() {},
+      querySelectorAll() {
+        return [];
+      },
+      setAttribute() {},
+      remove() {},
+    };
+  }
+
+  globalThis.window = {
+    innerWidth: 320,
+    matchMedia: () => ({ matches: false }),
+  };
+
+  try {
+    const monthSwipe = enableCalendarMonthSwipe({
+      target,
+      onNavigate(offset) {
+        navigations.push(offset);
+      },
+      createMonthPreview: createPreview,
+    });
+
+    assert.equal(previewStyles.at(-2).transform, 'translate3d(-320px, 0, 0)');
+    assert.equal(previewStyles.at(-1).transform, 'translate3d(320px, 0, 0)');
+
+    listeners.get('pointerdown')({
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 240,
+      clientY: 200,
+    });
+    assert.deepEqual(capturedPointerIds, []);
+    listeners.get('pointermove')({
+      pointerId: 1,
+      clientX: 230,
+      clientY: 211,
+      cancelable: true,
+      preventDefault() {},
+    });
+    assert.deepEqual(capturedPointerIds, [1]);
+    assert.equal(style.transform, 'translate3d(-10px, 0, 0)');
+    listeners.get('pointermove')({
+      pointerId: 1,
+      clientX: 150,
+      clientY: 220,
+      cancelable: true,
+      preventDefault() {},
+    });
+    assert.equal(style.transform, 'translate3d(-90px, 0, 0)');
+    assert.equal(previewStyles.at(-2).transform, 'translate3d(-410px, 0, 0)');
+    assert.equal(previewStyles.at(-1).transform, 'translate3d(230px, 0, 0)');
+    assert.equal(classes.has('is-calendar-month-dragging'), true);
+
+    listeners.get('pointerup')({
+      pointerId: 1,
+      clientX: 150,
+      clientY: 220,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(navigations, [1]);
+
+    let suppressedSwipeClick = false;
+    listeners.get('click')({
+      preventDefault() {
+        suppressedSwipeClick = true;
+      },
+      stopPropagation() {},
+    });
+    assert.equal(suppressedSwipeClick, true);
+
+    const previewsBeforeTap = previewStyles.length;
+    const transformBeforeTap = style.transform;
+    listeners.get('pointerdown')({
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: 120,
+      clientY: 180,
+    });
+    listeners.get('pointerup')({
+      pointerId: 2,
+      clientX: 120,
+      clientY: 180,
+    });
+    assert.equal(previewStyles.length, previewsBeforeTap);
+    assert.equal(style.transform, transformBeforeTap);
+    let suppressedTapClick = false;
+    listeners.get('click')({
+      preventDefault() {
+        suppressedTapClick = true;
+      },
+      stopPropagation() {},
+    });
+    assert.equal(suppressedTapClick, false);
+    assert.deepEqual(capturedPointerIds, [1]);
+    assert.equal(previewStyles.length, previewsBeforeTap);
+    assert.equal(style.transform, transformBeforeTap);
+
+    listeners.get('pointerdown')({
+      pointerId: 3,
+      pointerType: 'touch',
+      clientX: 240,
+      clientY: 180,
+    });
+    listeners.get('pointerup')({
+      pointerId: 3,
+      clientX: 150,
+      clientY: 180,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(navigations, [1, 1]);
+
+    await monthSwipe.navigate(-1);
+    assert.deepEqual(navigations, [1, 1, -1]);
+    assert.equal(style.transform, '');
+    assert.equal(classes.has('is-calendar-month-transitioning'), false);
+
+    let preventedHorizontalScroll = false;
+    listeners.get('touchstart')({
+      touches: [{ clientX: 240, clientY: 200 }],
+    });
+    listeners.get('touchmove')({
+      touches: [{ clientX: 225, clientY: 213 }],
+      cancelable: true,
+      preventDefault() {
+        preventedHorizontalScroll = true;
+      },
+    });
+    assert.equal(preventedHorizontalScroll, true);
+
+    let preventedVerticalScroll = false;
+    listeners.get('touchstart')({
+      touches: [{ clientX: 240, clientY: 200 }],
+    });
+    listeners.get('touchmove')({
+      touches: [{ clientX: 237, clientY: 230 }],
+      cancelable: true,
+      preventDefault() {
+        preventedVerticalScroll = true;
+      },
+    });
+    assert.equal(preventedVerticalScroll, false);
+    monthSwipe.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
 test('시간 선택기는 닫기 전에 포커스를 해제하고 iOS 자동 확대를 피한다', () => {
   const timeSource = read('assets/js/modules/calendar-time.js');
   const sheetSource = read('assets/js/modules/calendar-entry-sheet.js');
@@ -547,7 +864,9 @@ test('루트·www·Android·iOS 시간 기능 자산은 바이트 단위로 일�
     'assets/css/components/calendar-entry-sheet.css',
     'assets/css/components/calendar-loading.css',
     'assets/css/main/calendar-event-main.css',
+    'assets/css/main/calendar-groups-main.css',
     'assets/css/main/calendar-work-main.css',
+    'assets/js/modules/calendar-holidays.js',
     'assets/js/modules/calendar-time.js',
     'assets/js/modules/calendar-selection-scroll.js',
     'assets/js/modules/calendar-entry-sheet.js',

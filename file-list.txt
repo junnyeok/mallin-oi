@@ -91,6 +91,7 @@
 ./android/app/src/main/assets/public/assets/js/modules/calendar-entry-sheet.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-group-copy-paste.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-groups.js
+./android/app/src/main/assets/public/assets/js/modules/calendar-holidays.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-native-widgets.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-selection-scroll.js
 ./android/app/src/main/assets/public/assets/js/modules/calendar-shared-personal-readonly-collector.js
@@ -483,6 +484,7 @@
 ./assets/js/modules/calendar-group-backup-comparison.js
 ./assets/js/modules/calendar-group-copy-paste.js
 ./assets/js/modules/calendar-groups.js
+./assets/js/modules/calendar-holidays.js
 ./assets/js/modules/calendar-loading.js
 ./assets/js/modules/calendar-native-widgets.js
 ./assets/js/modules/calendar-selection-scroll.js
@@ -1195,6 +1197,7 @@
 ./ios/App/App/public/assets/js/modules/calendar-entry-sheet.js
 ./ios/App/App/public/assets/js/modules/calendar-group-copy-paste.js
 ./ios/App/App/public/assets/js/modules/calendar-groups.js
+./ios/App/App/public/assets/js/modules/calendar-holidays.js
 ./ios/App/App/public/assets/js/modules/calendar-native-widgets.js
 ./ios/App/App/public/assets/js/modules/calendar-selection-scroll.js
 ./ios/App/App/public/assets/js/modules/calendar-shared-personal-readonly-collector.js
@@ -1503,6 +1506,7 @@
 ./www/assets/js/modules/calendar-group-backup-comparison.js
 ./www/assets/js/modules/calendar-group-copy-paste.js
 ./www/assets/js/modules/calendar-groups.js
+./www/assets/js/modules/calendar-holidays.js
 ./www/assets/js/modules/calendar-loading.js
 ./www/assets/js/modules/calendar-native-widgets.js
 ./www/assets/js/modules/calendar-selection-scroll.js

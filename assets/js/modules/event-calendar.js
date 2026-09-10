@@ -24,7 +24,11 @@ import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
-import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
+import { appendKoreanHolidayBadge } from './calendar-holidays.js';
+import {
+  enableCalendarMonthSwipe,
+  scheduleCalendarSelectionScroll,
+} from './calendar-selection-scroll.js';
 import {
   clampCalendarEndDateTime,
   formatCalendarTimeLabel,
@@ -823,6 +827,7 @@ async function renderPreviewCalendar() {
     number.textContent = String(item.date.getDate());
 
     dayEl.append(number);
+    appendKoreanHolidayBadge(dayEl, dateKey);
     appendTypeBadges(dayEl, todos, categories);
     grid.append(dayEl);
   });
@@ -865,6 +870,7 @@ function createDayButton({
   number.textContent = String(date.getDate());
 
   button.append(number);
+  appendKoreanHolidayBadge(button, dateKey);
   appendTypeBadges(button, todos, categories);
 
   button.addEventListener('click', () => {
@@ -1080,18 +1086,24 @@ function renderCategoryList({
   });
 }
 
-function renderPageCalendar(state) {
-  const grid = document.getElementById('eventCalendarGrid');
-  const monthLabel = document.getElementById('eventCalendarMonthLabel');
+function renderPageCalendar(
+  state,
+  {
+    grid = document.getElementById('eventCalendarGrid'),
+    monthLabel = document.getElementById('eventCalendarMonthLabel'),
+    viewDate = state.viewDate,
+    updateMonthLabel = true,
+  } = {},
+) {
 
-  if (!grid || !monthLabel) return;
+  if (!grid || (updateMonthLabel && !monthLabel)) return;
 
   grid.innerHTML = '';
   const isGroupMode = isCalendarGroupActive(state.group?.state);
   grid.classList.toggle('is-calendar-group-mode', isGroupMode);
-  monthLabel.textContent = getMonthTitle(state.viewDate);
+  if (updateMonthLabel) monthLabel.textContent = getMonthTitle(viewDate);
 
-  const dates = getMonthDates(state.viewDate, { includeOutside: true });
+  const dates = getMonthDates(viewDate, { includeOutside: true });
 
   if (!isGroupMode) {
     renderWeekdays(grid);
@@ -1193,6 +1205,7 @@ async function initPageCalendar(loadingController) {
 
   const prevBtn = document.getElementById('eventCalendarPrevBtn');
   const nextBtn = document.getElementById('eventCalendarNextBtn');
+  const monthSwipeTarget = document.getElementById('eventCalendarGrid');
   const form = document.getElementById('eventTodoForm');
   const input = document.getElementById('eventTodoInput');
   const typeSelect = document.getElementById('eventTodoType');
@@ -2018,12 +2031,32 @@ async function initPageCalendar(loadingController) {
     }
   }
 
+  const monthSwipe = enableCalendarMonthSwipe({
+    target: monthSwipeTarget,
+    onNavigate: changeMonth,
+    createMonthPreview: (offset) => {
+      const preview = monthSwipeTarget.cloneNode(false);
+      const viewDate = new Date(
+        state.viewDate.getFullYear(),
+        state.viewDate.getMonth() + offset,
+        1,
+      );
+      renderPageCalendar(state, {
+        grid: preview,
+        monthLabel: null,
+        viewDate,
+        updateMonthLabel: false,
+      });
+      return preview;
+    },
+  });
+
   prevBtn.addEventListener('click', () => {
-    void changeMonth(-1);
+    void monthSwipe.navigate(-1);
   });
 
   nextBtn.addEventListener('click', () => {
-    void changeMonth(1);
+    void monthSwipe.navigate(1);
   });
 
   form.addEventListener('submit', async (event) => {

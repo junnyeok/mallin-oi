@@ -93,3 +93,51 @@ test('캘린더 그룹 코드와 배포 번들이 순수 비교 모듈을 함께
     }
   }
 });
+
+test('백업 버튼은 그룹 팝업 밖의 캘린더 상단에 두고 그룹 연동 중에만 표시한다', () => {
+  const groupsSource = fs.readFileSync(
+    path.join(rootDir, 'assets/js/modules/calendar-groups.js'),
+    'utf8',
+  );
+  const copyPasteSource = fs.readFileSync(
+    path.join(rootDir, 'assets/js/modules/calendar-group-copy-paste.js'),
+    'utf8',
+  );
+  const entrySheetCss = fs.readFileSync(
+    path.join(rootDir, 'assets/css/components/calendar-entry-sheet.css'),
+    'utf8',
+  );
+  const groupsCss = fs.readFileSync(
+    path.join(rootDir, 'assets/css/main/calendar-groups-main.css'),
+    'utf8',
+  );
+
+  assert.match(
+    groupsSource,
+    /head\.append\(bar, backupButton\)/,
+  );
+  assert.match(
+    groupsSource,
+    /backupButton\.hidden = !isActive/,
+  );
+  assert.doesNotMatch(
+    groupsSource,
+    /<button class="calendar-group-bar__backup" type="button">백업<\/button>/,
+  );
+  assert.match(
+    copyPasteSource,
+    /closeButton\.insertAdjacentElement\('beforebegin', button\)/,
+  );
+  assert.match(
+    entrySheetCss,
+    /calendar-group-bar__backup--header[\s\S]*order: 4;[\s\S]*margin-left: auto;/,
+  );
+  assert.match(
+    groupsCss,
+    /calendar-group-bar__backup--header \{[\s\S]*min-height: 40px;[\s\S]*padding: 0 var\(--space-16\);[\s\S]*border-radius: var\(--radius-pill\);[\s\S]*font-weight: 900;/,
+  );
+  assert.match(
+    groupsCss,
+    /calendar-group-bar__backup\.is-backup-needed:not\(:disabled\) \{[\s\S]*animation: calendar-group-backup-needed 1\.8s ease-in-out infinite;/,
+  );
+});

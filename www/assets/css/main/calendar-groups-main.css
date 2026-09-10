@@ -193,6 +193,10 @@ body.calendar-group-modal-open {
   cursor: pointer;
 }
 
+.calendar-group-bar__main > .calendar-group-bar__copy-paste {
+  grid-column: 1 / -1;
+}
+
 .calendar-group-bar__close {
   grid-column: 1 / -1;
   border-color: var(--color-text);
@@ -203,6 +207,17 @@ body.calendar-group-modal-open {
 .calendar-group-bar__backup {
   border-color: var(--color-primary);
   background: var(--color-primary-sub);
+}
+
+.calendar-group-bar__backup--header {
+  min-height: 40px;
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-pill);
+  font-weight: 900;
+}
+
+.calendar-group-bar__backup--header[hidden] {
+  display: none;
 }
 
 .calendar-group-bar__backup.is-backup-needed:not(:disabled) {
@@ -337,6 +352,47 @@ body.calendar-group-modal-open {
   font-size: 11px;
   font-weight: 900;
   text-align: center;
+}
+
+.calendar-holiday-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 18px;
+  padding: 1px var(--space-4);
+  border: 1px solid #e59a9a;
+  border-radius: var(--radius-pill);
+  background: #fff4f4;
+  color: #c62828;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.calendar-group-schedule__date-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.calendar-group-schedule__date-label {
+  white-space: nowrap;
+}
+
+.calendar-group-schedule__date-head .calendar-holiday-badge {
+  min-height: 14px;
+  padding: 1px 2px;
+  border-color: #f2b8b5;
+  background: #ffffff;
+  font-size: 8px;
+  line-height: 1.05;
 }
 
 .calendar-group-schedule__corner {
@@ -1153,6 +1209,18 @@ body.calendar-group-modal-open {
   .calendar-group-schedule__date-head {
     padding: var(--space-4) 2px;
     font-size: 10px;
+  }
+
+  .calendar-holiday-badge {
+    min-height: 16px;
+    padding: 1px 3px;
+    font-size: 9px;
+  }
+
+  .calendar-group-schedule__date-head .calendar-holiday-badge {
+    min-height: 13px;
+    padding: 1px;
+    font-size: 7px;
   }
 
   .calendar-group-schedule__name {

@@ -594,8 +594,8 @@ test('세 캘린더의 최초·이전·다음·그룹 적용 로딩 경로와 �
     );
     assert.match(source, /createCalendarLoadingController\(\{ root: loadingRegion \}\)/);
     assert.match(source, new RegExp(`key: '${type}:initial-load'`));
-    assert.match(source, /void changeMonth\(-1\)/);
-    assert.match(source, /void changeMonth\(1\)/);
+    assert.match(source, /void monthSwipe\.navigate\(-1\)/);
+    assert.match(source, /void monthSwipe\.navigate\(1\)/);
     assert.match(source, /await state\.group\?\.refresh\?\.\(\{ reason: 'month-navigation' \}\)/);
     assert.match(source, /runCalendarLoad: loadingController\?\.runLatest/);
   }
@@ -604,6 +604,8 @@ test('세 캘린더의 최초·이전·다음·그룹 적용 로딩 경로와 �
   assert.match(groups, /refreshCalendar\(\{ reason: 'group-backup' \}\)/);
   assert.match(groups, /loadId !== state\.groupLoadId/);
   assert.match(groups, /selectedGroup\.id !== state\.selectedGroup\?\.id/);
+  assert.match(groups, /viewDate\.getMonth\(\) - 1/);
+  assert.match(groups, /viewDate\.getMonth\(\) \+ 2/);
   const panelOpenHandler = groups.match(
     /function setGroupPanelOpen\(isOpen\) \{[\s\S]*?\n  \}\n\n  toggleButton/,
   )?.[0];

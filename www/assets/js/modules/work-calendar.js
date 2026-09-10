@@ -20,7 +20,11 @@ import {
 } from './calendar-shared-personal-readonly.js';
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
-import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
+import { appendKoreanHolidayBadge } from './calendar-holidays.js';
+import {
+  enableCalendarMonthSwipe,
+  scheduleCalendarSelectionScroll,
+} from './calendar-selection-scroll.js';
 import {
   formatCalendarTimeLabel,
   isOvernightTimeRange,
@@ -1178,6 +1182,7 @@ function renderCalendarGrid({
 
       dayButton.append(number);
       appendTypeBadges(dayButton, todos, categories);
+      appendKoreanHolidayBadge(dayButton, cell.dateKey);
 
       dayButton.addEventListener('click', () => {
         onSelect?.(cell.dateKey);
@@ -1263,22 +1268,28 @@ function renderTodoList({
   });
 }
 
-function renderPageCalendar(state) {
-  const monthLabel = document.getElementById('workCalendarMonthLabel');
-  const grid = document.getElementById('workCalendarGrid');
-  const selectedDate = document.getElementById('workSelectedDate');
+function renderPageCalendar(
+  state,
+  {
+    monthLabel = document.getElementById('workCalendarMonthLabel'),
+    grid = document.getElementById('workCalendarGrid'),
+    selectedDate = document.getElementById('workSelectedDate'),
+    viewDate = state.viewDate,
+    updatePageLabels = true,
+  } = {},
+) {
 
-  if (monthLabel) {
-    monthLabel.textContent = getMonthTitle(state.viewDate);
+  if (updatePageLabels && monthLabel) {
+    monthLabel.textContent = getMonthTitle(viewDate);
   }
 
-  if (selectedDate) {
+  if (updatePageLabels && selectedDate) {
     selectedDate.textContent = getReadableDate(state.selectedDateKey);
   }
 
   renderCalendarGrid({
     root: grid,
-    viewDate: state.viewDate,
+    viewDate,
     selectedDateKey: state.selectedDateKey,
     store: state.store,
     categories: state.categories,
@@ -1380,6 +1391,7 @@ async function initPageCalendar(loadingController) {
 
   const prevBtn = document.getElementById('workCalendarPrevBtn');
   const nextBtn = document.getElementById('workCalendarNextBtn');
+  const monthSwipeTarget = document.getElementById('workCalendarGrid');
   const form = document.getElementById('workTodoForm');
   const typeSelect = document.getElementById('workTodoType');
   const memoInput = document.getElementById('workTodoMemo');
@@ -2148,12 +2160,33 @@ async function initPageCalendar(loadingController) {
     }
   }
 
+  const monthSwipe = enableCalendarMonthSwipe({
+    target: monthSwipeTarget,
+    onNavigate: changeMonth,
+    createMonthPreview: (offset) => {
+      const preview = monthSwipeTarget.cloneNode(false);
+      const viewDate = new Date(
+        state.viewDate.getFullYear(),
+        state.viewDate.getMonth() + offset,
+        1,
+      );
+      renderPageCalendar(state, {
+        monthLabel: null,
+        grid: preview,
+        selectedDate: null,
+        viewDate,
+        updatePageLabels: false,
+      });
+      return preview;
+    },
+  });
+
   prevBtn.addEventListener('click', () => {
-    void changeMonth(-1);
+    void monthSwipe.navigate(-1);
   });
 
   nextBtn.addEventListener('click', () => {
-    void changeMonth(1);
+    void monthSwipe.navigate(1);
   });
 
   async function addTodo({
