@@ -22,11 +22,11 @@ const { renderTextWithEmoticons, renderOwnedEmoticonPicker, createInlineEmoticon
   `data:text/javascript;base64,${Buffer.from(sourceForNode).toString('base64')}`
 );
 
-test('브로콜리 알바생은 주요 상품 첫 번째이며 지정 문구·443피클·10종이 정확하다', () => {
+test('브로콜리 알바생은 토마토 스킨 다음이며 지정 문구·443피클·10종이 정확하다', () => {
   const matches = STORE_ITEMS.filter((item) => item.id === ITEM_ID);
   assert.equal(matches.length, 1);
   const [item] = matches;
-  assert.equal(getFeaturedStoreItems(1)[0].id, ITEM_ID);
+  assert.equal(getFeaturedStoreItems(6)[5].id, ITEM_ID);
   assert.equal(item.name, '브로콜리 알바생 이모티콘팩');
   assert.equal(item.icon, '🥦👧🏼');
   assert.equal(item.category, 'emoticon');

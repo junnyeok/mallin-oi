@@ -551,6 +551,15 @@ export const SOCCEROI_CUCUMBER_SKIN_PREVIEW = [
   },
 ];
 
+export const DAEGU_CUCUMBER_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-daegu',
+    label: '대구FC 오이',
+    imagePath: withAssetVersion('./images/skins/cucumber-daegu.png'),
+    displayOrder: 1,
+  },
+];
+
 export const SUMMER_CUCUMBER_BOY_SKIN_PREVIEW = [
   {
     code: 'char-cucumber-boy-summer',
@@ -601,6 +610,24 @@ export const EGGPOTATO_POLICE_SKIN_PREVIEW = [
     code: 'char-egg-potato-police',
     label: '경찰학교 알감자교수님 스킨',
     imagePath: withAssetVersion('./images/skins/eggpotato-police.png'),
+    displayOrder: 1,
+  },
+];
+
+export const TOMATO_GANG_SKIN_PREVIEW = [
+  {
+    code: 'char-tomato-gang',
+    label: '방울토마(피아)토리토',
+    imagePath: withAssetVersion('./images/skins/tomato-gang.png'),
+    displayOrder: 1,
+  },
+];
+
+export const TOMATO_MEXICO_SKIN_PREVIEW = [
+  {
+    code: 'char-tomato-mexico',
+    label: '멕시코 방울토마토리토',
+    imagePath: withAssetVersion('./images/skins/tomato_mexico.png'),
     displayOrder: 1,
   },
 ];
@@ -1003,6 +1030,26 @@ export const PROFILE_BACKGROUND_CATALOG = [
       './images/profile-background/idolstage.webp',
     ),
     displayOrder: 5,
+  },
+  {
+    itemId: 'BG-06',
+    name: 'DGB PARK',
+    pcImagePath: withAssetVersion('./images/profile-background/DAEGU.png'),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/DAEGU-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion('./images/profile-background/DAEGU.png'),
+    displayOrder: 6,
+  },
+  {
+    itemId: 'BG-07',
+    name: '방울토마토리토 아지트',
+    pcImagePath: withAssetVersion('./images/profile-background/mafia.png'),
+    mobileImagePath: withAssetVersion(
+      './images/profile-background/mafia-mobile.png',
+    ),
+    thumbImagePath: withAssetVersion('./images/profile-background/mafia.png'),
+    displayOrder: 7,
   },
 ];
 
@@ -2129,6 +2176,118 @@ export const STORE_ITEMS = [
     releaseDate: '2026-08-09',
     isPurchasable: true,
   },
+  {
+    id: 'BG-07',
+    name: '방울토마토리토 아지트',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '🚬🏠',
+    thumbImagePath: withAssetVersion('./images/profile-background/mafia.png'),
+    price: 625,
+    state: '판매 중',
+    description: '방울토마토리토의 아지트야.',
+    detailDescription:
+      '구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-07-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion('./images/profile-background/mafia.png'),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-07-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/mafia-mobile.png',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    releaseDate: '2026-09-13',
+    isPurchasable: true,
+  },
+  {
+    id: 'BG-06',
+    name: 'DGB PARK',
+    category: 'profile',
+    itemType: 'profile-background',
+    badge: '프로필배경',
+    icon: '🏟️',
+    thumbImagePath: withAssetVersion('./images/profile-background/DAEGU.png'),
+    price: 538,
+    state: '판매 중',
+    description: '대구FC의 경기장이야.',
+    detailDescription:
+      '구매하면 인벤토리의 프로필배경 항목에 추가되고, 장착하면 프로필카드 배경에 표시돼.',
+    previewImages: [
+      {
+        code: 'BG-06-pc',
+        label: 'PC 버전 미리보기',
+        imagePath: withAssetVersion('./images/profile-background/DAEGU.png'),
+        displayOrder: 1,
+      },
+      {
+        code: 'BG-06-mobile',
+        label: '모바일 버전 미리보기',
+        imagePath: withAssetVersion(
+          './images/profile-background/DAEGU-mobile.png',
+        ),
+        displayOrder: 2,
+      },
+    ],
+    releaseDate: '2026-09-13',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-cucumber-07',
+    name: '대구FC 오이',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🏟️🥒',
+    thumbImagePath: withAssetVersion('./images/skins/cucumber-daegu.png'),
+    price: 389,
+    state: '판매 중',
+    description: '주인장의 사심이 들어간 스킨이야.',
+    detailDescription:
+      '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: DAEGU_CUCUMBER_SKIN_PREVIEW,
+    releaseDate: '2026-09-13',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-tomato-01',
+    name: '방울토마(피아)토리토',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🍅🚬',
+    thumbImagePath: withAssetVersion('./images/skins/tomato-gang.png'),
+    price: 521,
+    state: '판매 중',
+    description: '방울토마(피아)토리토야.',
+    detailDescription:
+      '한국에 찐감자가 있다면 멕시코엔 방울토마토리토가 있어.<br>구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: TOMATO_GANG_SKIN_PREVIEW,
+    releaseDate: '2026-09-13',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-tomato-02',
+    name: '멕시코 방울토마토리토',
+    category: 'skin',
+    badge: '스킨',
+    icon: '🍅🌮',
+    thumbImagePath: withAssetVersion('./images/skins/tomato_mexico.png'),
+    price: 87,
+    state: '판매 중',
+    description: '멕시코 풍 모자를 쓴 방울토마토리토야.',
+    detailDescription:
+      '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: TOMATO_MEXICO_SKIN_PREVIEW,
+    releaseDate: '2026-09-13',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -2138,6 +2297,11 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'BG-07',
+  'BG-06',
+  'skin-cucumber-07',
+  'skin-tomato-01',
+  'skin-tomato-02',
   'emo-broccoli-girl-01',
   'bgm-cucumbergirl-03',
   'emo-cucumberboy-01',
@@ -2291,6 +2455,14 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: 'skin-cucumber-05',
   },
   {
+    character_code: 'char-cucumber',
+    skin_code: 'char-cucumber-daegu',
+    skin_name: '대구FC 오이',
+    image_path: withAssetVersion('./images/skins/cucumber-daegu.png'),
+    display_order: 7,
+    store_item_id: 'skin-cucumber-07',
+  },
+  {
     character_code: 'char-cucumber-girl',
     skin_code: 'char-cucumber-girl-basic',
     skin_name: '오이소녀 캐릭터',
@@ -2425,6 +2597,22 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/tomato.png'),
     display_order: 701,
     store_item_id: 'character-tomato-01',
+  },
+  {
+    character_code: 'char-tomato',
+    skin_code: 'char-tomato-gang',
+    skin_name: '방울토마(피아)토리토',
+    image_path: withAssetVersion('./images/skins/tomato-gang.png'),
+    display_order: 702,
+    store_item_id: 'skin-tomato-01',
+  },
+  {
+    character_code: 'char-tomato',
+    skin_code: 'char-tomato-mexico',
+    skin_name: '멕시코 방울토마토리토',
+    image_path: withAssetVersion('./images/skins/tomato_mexico.png'),
+    display_order: 703,
+    store_item_id: 'skin-tomato-02',
   },
   {
     character_code: 'char-brocolli',

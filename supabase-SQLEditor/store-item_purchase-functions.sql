@@ -130,6 +130,27 @@ begin
     v_name := '방울토마토리토';
     v_category := 'character';
 
+  elsif p_item_id = 'skin-tomato-01' then
+    v_price := 521;
+    v_name := '방울토마(피아)토리토';
+    v_category := 'skin';
+    v_required_character_code := 'char-tomato';
+    v_required_character_name := '방울토마토리토';
+
+  elsif p_item_id = 'skin-tomato-02' then
+    v_price := 87;
+    v_name := '멕시코 방울토마토리토';
+    v_category := 'skin';
+    v_required_character_code := 'char-tomato';
+    v_required_character_name := '방울토마토리토';
+
+  elsif p_item_id = 'skin-cucumber-07' then
+    v_price := 389;
+    v_name := '대구FC 오이';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
   elsif p_item_id = 'character-brocolli-01' then
     v_price := 682;
     v_name := '브로콜리 알바생';
@@ -248,6 +269,16 @@ begin
   elsif p_item_id = 'BG-05' then
     v_price := 626;
     v_name := '오이소녀의 스테이지';
+    v_category := 'profile';
+
+  elsif p_item_id = 'BG-06' then
+    v_price := 538;
+    v_name := 'DGB PARK';
+    v_category := 'profile';
+
+  elsif p_item_id = 'BG-07' then
+    v_price := 625;
+    v_name := '방울토마토리토 아지트';
     v_category := 'profile';
 
   elsif p_item_id = 'skin-cucumbergirl-01' then
@@ -471,6 +502,8 @@ begin
         'BG-03',
         'BG-04',
         'BG-05',
+        'skin-tomato-01',
+        'skin-tomato-02',
         'skin-cucumber-03',
         'skin-cucumber-04',
         'skin-cucumber-05',
@@ -490,14 +523,38 @@ begin
           and permission.can_bypass_store_balance = true
       );
 
+    if p_item_id in ('skin-tomato-01', 'skin-tomato-02') then
+      v_can_bypass_store_balance := false;
+    end if;
+
+    if p_item_id = 'skin-cucumber-07' then
+      v_can_bypass_store_balance := false;
+    end if;
+
+    if p_item_id = 'BG-06' then
+      v_can_bypass_store_balance := false;
+    end if;
+
+    if p_item_id = 'BG-07' then
+      v_can_bypass_store_balance := false;
+    end if;
+
     if not v_can_bypass_store_balance then
-      v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);
+      v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id)
+        and p_item_id <> 'BG-06';
+
+      if p_item_id = 'BG-07' then
+        v_is_auto_topup_admin := false;
+      end if;
 
       if coalesce(v_is_auto_topup_admin, false)
+         and p_item_id <> 'skin-cucumber-07'
          and p_item_id not in (
            'BG-03',
            'BG-04',
            'BG-05',
+           'skin-tomato-01',
+           'skin-tomato-02',
            'skin-cucumber-03',
            'skin-cucumber-04',
            'skin-cucumber-05',
@@ -726,6 +783,65 @@ begin
       '방울토마토리토',
       './images/characters/tomato.png',
       701,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-tomato-01' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-tomato',
+      'char-tomato-gang',
+      '방울토마(피아)토리토',
+      './images/skins/tomato-gang.png',
+      702,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-tomato-02' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-tomato',
+      'char-tomato-mexico',
+      '멕시코 방울토마토리토',
+      './images/skins/tomato_mexico.png',
+      703,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-cucumber-07' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'default_grant'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-daegu',
+      '대구FC 오이',
+      './images/skins/cucumber-daegu.png',
+      7,
       'store_purchase'
     )
     on conflict (user_id, skin_code) do nothing;
@@ -1259,6 +1375,14 @@ begin
     -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'BG-06' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+  elsif p_item_id = 'BG-07' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
   elsif p_item_id = 'emo-eat-01' then
     insert into public.user_emoticons (
       user_id, item_id, emoticon_code, emoticon_label, image_path, display_order
@@ -1401,6 +1525,12 @@ begin
         then '테토당근 캐릭터 구매가 완료됐어. 530피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-tomato-01'
         then '방울토마토리토 구매가 완료됐어. 543피클이 차감됐고 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-tomato-01'
+        then '방울토마(피아)토리토 구매가 완료됐어. 521피클이 차감됐고 방울토마토리토 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-tomato-02'
+        then '멕시코 방울토마토리토 구매가 완료됐어. 87피클이 차감됐고 방울토마토리토 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumber-07'
+        then '대구FC 오이 구매가 완료됐어. 389피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-brocolli-01'
         then '브로콜리 알바생 구매가 완료됐어. 682피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'emo-heart-01'
@@ -1473,6 +1603,10 @@ begin
         then '기동인의 행정당직 프로필배경 구매가 완료됐어. 593피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-05'
         then '오이소녀의 스테이지 구매가 완료됐어. 626피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-06'
+        then 'DGB PARK 구매가 완료됐어. 538피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BG-07'
+        then '방울토마토리토 아지트 구매가 완료됐어. 625피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'emo-eat-01'
         then '먹방오이 이모티콘팩 구매가 완료됐어. 220피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-moved-01'

@@ -51,24 +51,29 @@ test('텅 빈 거리 상품과 BGM 카탈로그가 정확히 한 번 연결된�
 });
 
 test('텅 빈 거리가 이번 신규 스킨 2종과 기존 우선 상품 다음 New 상품이다', () => {
-  assert.equal(getFeaturedStoreItems(12)[11].id, ITEM_ID);
+  assert.equal(getFeaturedStoreItems(17)[16].id, ITEM_ID);
 
   const newest = STORE_ITEMS.toSorted((left, right) => {
     return Date.parse(right.releaseDate) - Date.parse(left.releaseDate);
   });
 
-  assert.equal(newest[0].id, 'emo-broccoli-girl-01');
-  assert.equal(newest[1].id, 'bgm-cucumbergirl-03');
-  assert.equal(newest[2].id, 'emo-cucumberboy-01');
-  assert.equal(newest[3].id, 'BG-05');
-  assert.equal(newest[4].id, 'skin-cucumber-05');
-  assert.equal(newest[5].id, 'skin-cucumberboy-02');
-  assert.equal(newest[6].id, 'bgm-cucumbergirl-02');
-  assert.equal(newest[7].id, 'bgm-grilledegg-02');
-  assert.equal(newest[8].id, 'cha-effects-web-01');
-  assert.equal(newest[9].id, 'skin-cucumber-04');
-  assert.equal(newest[10].id, 'skin-grilled-egg-02');
-  assert.equal(newest[11].id, ITEM_ID);
+  assert.equal(newest[0].id, 'BG-07');
+  assert.equal(newest[1].id, 'BG-06');
+  assert.equal(newest[2].id, 'skin-cucumber-07');
+  assert.equal(newest[3].id, 'skin-tomato-01');
+  assert.equal(newest[4].id, 'skin-tomato-02');
+  assert.equal(newest[5].id, 'emo-broccoli-girl-01');
+  assert.equal(newest[6].id, 'bgm-cucumbergirl-03');
+  assert.equal(newest[7].id, 'emo-cucumberboy-01');
+  assert.equal(newest[8].id, 'BG-05');
+  assert.equal(newest[9].id, 'skin-cucumber-05');
+  assert.equal(newest[10].id, 'skin-cucumberboy-02');
+  assert.equal(newest[11].id, 'bgm-cucumbergirl-02');
+  assert.equal(newest[12].id, 'bgm-grilledegg-02');
+  assert.equal(newest[13].id, 'cha-effects-web-01');
+  assert.equal(newest[14].id, 'skin-cucumber-04');
+  assert.equal(newest[15].id, 'skin-grilled-egg-02');
+  assert.equal(newest[16].id, ITEM_ID);
 });
 
 test('상품·카탈로그 ID와 BGM displayOrder에 중복이 없다', () => {

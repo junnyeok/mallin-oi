@@ -41,6 +41,10 @@ const nativeCharacterImageFiles = [
   'images/characters/brocolli.png',
 ];
 const nativeProfileBackgroundImageFiles = [
+  'images/profile-background/mafia.png',
+  'images/profile-background/mafia-mobile.png',
+  'images/profile-background/DAEGU.png',
+  'images/profile-background/DAEGU-mobile.png',
   'images/profile-background/refrigerator.png',
   'images/profile-background/refrigerator-mobile.png',
   'images/profile-background/changsin.png',
@@ -55,11 +59,14 @@ const nativeProfileFrameImageFiles = [
   'images/profile-frame/mallin-shiny-mobile.png',
 ];
 const nativeSkinImageFiles = [
+  'images/skins/cucumber-daegu.png',
   'images/skins/ozyo.png',
   'images/skins/spioi.png',
   'images/skins/inomske.png',
   'images/skins/socceroi.png',
   'images/skins/summerboy.png',
+  'images/skins/tomato-gang.png',
+  'images/skins/tomato_mexico.png',
 ];
 const nativeCharacterEffectImageFiles = [
   'images/character-effects/cucumber-heart.png',

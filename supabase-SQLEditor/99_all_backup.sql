@@ -38160,3 +38160,626 @@ end;
 $broccoli_girl_permissions$;
 
 commit;
+
+-- 2026-09-13 방울토마토리토 전용 스킨 2종
+-- skin-tomato-01: 방울토마(피아)토리토, 521피클, char-tomato-gang
+-- skin-tomato-02: 멕시코 방울토마토리토, 87피클, char-tomato-mexico
+-- 현재 구매 함수를 부분 갱신한다. 기존 상품·계정·보유 데이터는 변경하지 않는다.
+-- 두 상품은 테스트 잔액 우회와 관리자 자동충전을 허용하지 않는다.
+begin;
+
+do $tomato_skins$
+declare
+  v_sql text;
+  v_anchor text;
+  v_count integer;
+  v_price_anchor text := $a$  elsif p_item_id = 'character-brocolli-01' then
+    v_price := 682;$a$;
+  v_inventory_anchor text := $a$  elsif p_item_id = 'character-brocolli-01' then
+    insert into public.user_characters ($a$;
+  v_message_anchor text := $a$      when p_item_id = 'character-brocolli-01'$a$;
+  v_balance_anchor text := $a$    if not v_can_bypass_store_balance then$a$;
+  v_price text := $b$  elsif p_item_id = 'skin-tomato-01' then
+    v_price := 521;
+    v_name := '방울토마(피아)토리토';
+    v_category := 'skin';
+    v_required_character_code := 'char-tomato';
+    v_required_character_name := '방울토마토리토';
+
+  elsif p_item_id = 'skin-tomato-02' then
+    v_price := 87;
+    v_name := '멕시코 방울토마토리토';
+    v_category := 'skin';
+    v_required_character_code := 'char-tomato';
+    v_required_character_name := '방울토마토리토';
+
+$b$;
+  v_inventory text := $b$  elsif p_item_id = 'skin-tomato-01' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-tomato',
+      'char-tomato-gang',
+      '방울토마(피아)토리토',
+      './images/skins/tomato-gang.png',
+      702,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-tomato-02' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-tomato',
+      'char-tomato-mexico',
+      '멕시코 방울토마토리토',
+      './images/skins/tomato_mexico.png',
+      703,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+$b$;
+  v_message text := $b$      when p_item_id = 'skin-tomato-01'
+        then '방울토마(피아)토리토 구매가 완료됐어. 521피클이 차감됐고 방울토마토리토 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-tomato-02'
+        then '멕시코 방울토마토리토 구매가 완료됐어. 87피클이 차감됐고 방울토마토리토 스킨 인벤토리에서 착용할 수 있어.'
+$b$;
+  v_balance text := $b$    if p_item_id in ('skin-tomato-01', 'skin-tomato-02') then
+      v_can_bypass_store_balance := false;
+    end if;
+
+$b$;
+  v_list_pattern text := $p$'BG-05',([[:space:]]*)'skin-cucumber-03'$p$;
+  v_list_replacement text := $r$'BG-05',\1'skin-tomato-01',\1'skin-tomato-02',\1'skin-cucumber-03'$r$;
+begin
+  if to_regprocedure('public.purchase_store_item(text)') is null
+     or to_regprocedure('public.enforce_equipped_character_ownership()') is null
+     or to_regclass('public.profiles') is null
+     or to_regclass('public.user_store_items') is null
+     or to_regclass('public.user_character_skins') is null
+     or to_regclass('public.user_characters') is null
+     or to_regclass('public.pickle_ledger') is null then
+    raise exception 'TOMATO_SKINS_DEPENDENCY_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_store_items'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, item_id)'
+  ) or not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_character_skins'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, skin_code)'
+  ) then
+    raise exception 'TOMATO_SKINS_UNIQUE_CONSTRAINT_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.profiles'::regclass
+      and tgname = 'trg_enforce_equipped_character_ownership'
+      and tgfoid = 'public.enforce_equipped_character_ownership()'::regprocedure
+      and tgenabled <> 'D' and not tgisinternal
+  ) or position('join public.user_characters c' in pg_get_functiondef(
+    'public.enforce_equipped_character_ownership()'::regprocedure)) = 0
+     or position('c.character_code = s.character_code' in pg_get_functiondef(
+    'public.enforce_equipped_character_ownership()'::regprocedure)) = 0
+     or position('s.image_path = new.equipped_character_image_url' in pg_get_functiondef(
+    'public.enforce_equipped_character_ownership()'::regprocedure)) = 0 then
+    raise exception 'TOMATO_SKINS_EQUIP_TRIGGER_MISMATCH';
+  end if;
+
+  if exists (
+    select 1 from public.user_store_items
+    where (item_id = 'skin-tomato-01' and (
+      item_name is distinct from '방울토마(피아)토리토'
+      or item_category is distinct from 'skin' or purchase_price is distinct from 521))
+       or (item_id = 'skin-tomato-02' and (
+      item_name is distinct from '멕시코 방울토마토리토'
+      or item_category is distinct from 'skin' or purchase_price is distinct from 87))
+  ) then
+    raise exception 'TOMATO_SKINS_ITEM_ID_CONFLICT';
+  end if;
+
+  if exists (
+    select 1 from public.user_character_skins
+    where (skin_code = 'char-tomato-gang' and (
+      character_code is distinct from 'char-tomato'
+      or skin_name is distinct from '방울토마(피아)토리토'
+      or image_path is distinct from './images/skins/tomato-gang.png'
+      or display_order is distinct from 702))
+       or (skin_code = 'char-tomato-mexico' and (
+      character_code is distinct from 'char-tomato'
+      or skin_name is distinct from '멕시코 방울토마토리토'
+      or image_path is distinct from './images/skins/tomato_mexico.png'
+      or display_order is distinct from 703))
+  ) then
+    raise exception 'TOMATO_SKINS_SKIN_CODE_CONFLICT';
+  end if;
+
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure) into v_sql;
+  if position('skin-tomato-' in v_sql) = 0 then
+    foreach v_anchor in array array[
+      v_price_anchor, v_inventory_anchor, v_message_anchor, v_balance_anchor
+    ] loop
+      if (length(v_sql) - length(replace(v_sql, v_anchor, ''))) / length(v_anchor) <> 1 then
+        raise exception 'TOMATO_SKINS_PURCHASE_ANCHOR_MISMATCH';
+      end if;
+    end loop;
+    select count(*) into v_count from regexp_matches(v_sql, v_list_pattern, 'g');
+    if v_count not in (1, 2) then
+      raise exception 'TOMATO_SKINS_BALANCE_POLICY_ANCHOR_MISMATCH';
+    end if;
+    v_sql := replace(v_sql, v_price_anchor, v_price || v_price_anchor);
+    v_sql := replace(v_sql, v_inventory_anchor, v_inventory || v_inventory_anchor);
+    v_sql := replace(v_sql, v_message_anchor, v_message || v_message_anchor);
+    v_sql := replace(v_sql, v_balance_anchor, v_balance || v_balance_anchor);
+    v_sql := regexp_replace(v_sql, v_list_pattern, v_list_replacement, 'g');
+    execute v_sql;
+  end if;
+
+  if position(v_price in v_sql) = 0 or position(v_inventory in v_sql) = 0
+     or position(v_message in v_sql) = 0 or position(v_balance in v_sql) = 0
+     or v_sql !~ $p$'BG-05',[[:space:]]*'skin-tomato-01',[[:space:]]*'skin-tomato-02',[[:space:]]*'skin-cucumber-03'$p$
+     or position('for update' in lower(v_sql)) = 0
+     or position('if v_exists then' in v_sql) = 0
+     or position('character_code = v_required_character_code' in v_sql) = 0
+     or position('set pickles = coalesce(pickles, 0) - v_price' in v_sql) = 0
+     or position('and coalesce(pickles, 0) >= v_price' in v_sql) = 0
+     or position('insert into public.user_store_items' in v_sql) = 0
+     or position('insert into public.pickle_ledger' in v_sql) = 0
+     or position('-v_charged_amount' in v_sql) = 0
+     or position('public.seoul_today()' in v_sql) = 0 then
+    raise exception 'TOMATO_SKINS_PURCHASE_VERIFY_FAILED';
+  end if;
+  if pg_get_function_result('public.purchase_store_item(text)'::regprocedure)
+       <> 'TABLE(success boolean, message text, balance integer)'
+     or not (select prosecdef from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure)
+     or not ('search_path=public' = any (
+       select unnest(proconfig) from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure
+     ))
+     or has_function_privilege('anon', 'public.purchase_store_item(text)', 'execute')
+     or not has_function_privilege('authenticated', 'public.purchase_store_item(text)', 'execute') then
+    raise exception 'TOMATO_SKINS_PURCHASE_SECURITY_MISMATCH';
+  end if;
+end;
+$tomato_skins$;
+
+commit;
+
+-- 2026-09-13 대구FC 오이: 기본오이 전용 스킨, skin-cucumber-07, 389피클
+-- 현재 구매 함수에서 이번 상품 분기만 추가한다. 기존 상품 및 보유 데이터는 변경하지 않는다.
+-- 테스트 잔액 우회/관리자 자동충전 제외. 실제 구매 시에만 기본오이·스킨·원장을 지급한다.
+begin;
+
+do $daegu_skin$
+declare
+  v_sql text;
+  v_anchor text;
+  v_price_anchor text := $a$  elsif p_item_id = 'character-brocolli-01' then
+    v_price := 682;$a$;
+  v_inventory_anchor text := $a$  elsif p_item_id = 'character-brocolli-01' then
+    insert into public.user_characters ($a$;
+  v_message_anchor text := $a$      when p_item_id = 'character-brocolli-01'$a$;
+  v_balance_anchor text := $a$    if not v_can_bypass_store_balance then$a$;
+  v_topup_anchor text := $a$      if coalesce(v_is_auto_topup_admin, false)
+         and p_item_id not in ($a$;
+  v_price text := $b$  elsif p_item_id = 'skin-cucumber-07' then
+    v_price := 389;
+    v_name := '대구FC 오이';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber';
+    v_required_character_name := '기본오이';
+
+$b$;
+  v_inventory text := $b$  elsif p_item_id = 'skin-cucumber-07' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      '기본오이',
+      './images/characters/cucumber.png',
+      './images/characters/cucumber.png',
+      1,
+      'default_grant'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber',
+      'char-cucumber-daegu',
+      '대구FC 오이',
+      './images/skins/cucumber-daegu.png',
+      7,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+$b$;
+  v_message text := $b$      when p_item_id = 'skin-cucumber-07'
+        then '대구FC 오이 구매가 완료됐어. 389피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+$b$;
+  v_balance text := $b$    if p_item_id = 'skin-cucumber-07' then
+      v_can_bypass_store_balance := false;
+    end if;
+
+$b$;
+  v_topup text := $b$      if coalesce(v_is_auto_topup_admin, false)
+         and p_item_id <> 'skin-cucumber-07'
+         and p_item_id not in ($b$;
+begin
+  if to_regprocedure('public.purchase_store_item(text)') is null
+     or to_regprocedure('public.enforce_equipped_character_ownership()') is null
+     or to_regclass('public.profiles') is null
+     or to_regclass('public.user_store_items') is null
+     or to_regclass('public.user_character_skins') is null
+     or to_regclass('public.user_characters') is null
+     or to_regclass('public.pickle_ledger') is null then
+    raise exception 'DAEGU_SKIN_DEPENDENCY_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_store_items'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, item_id)'
+  ) or not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_character_skins'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, skin_code)'
+  ) or not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_characters'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, character_code)'
+  ) then
+    raise exception 'DAEGU_SKIN_UNIQUE_CONSTRAINT_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.profiles'::regclass
+      and tgname = 'trg_enforce_equipped_character_ownership'
+      and tgfoid = 'public.enforce_equipped_character_ownership()'::regprocedure
+      and tgenabled <> 'D' and not tgisinternal
+  ) or position('c.character_code = s.character_code' in pg_get_functiondef(
+    'public.enforce_equipped_character_ownership()'::regprocedure)) = 0
+     or position('s.image_path = new.equipped_character_image_url' in pg_get_functiondef(
+    'public.enforce_equipped_character_ownership()'::regprocedure)) = 0 then
+    raise exception 'DAEGU_SKIN_EQUIP_TRIGGER_MISMATCH';
+  end if;
+
+  if exists (
+    select 1 from public.user_store_items
+    where item_id = 'skin-cucumber-07' and (
+      item_name is distinct from '대구FC 오이'
+      or item_category is distinct from 'skin' or purchase_price is distinct from 389)
+  ) or exists (
+    select 1 from public.user_character_skins
+    where skin_code = 'char-cucumber-daegu' and (
+      character_code is distinct from 'char-cucumber'
+      or skin_name is distinct from '대구FC 오이'
+      or image_path is distinct from './images/skins/cucumber-daegu.png'
+      or display_order is distinct from 7)
+  ) or exists (
+    select 1 from public.user_character_skins
+    where skin_code <> 'char-cucumber-daegu'
+      and (image_path = './images/skins/cucumber-daegu.png' or display_order = 7)
+  ) then
+    raise exception 'DAEGU_SKIN_ID_CONFLICT';
+  end if;
+
+  select pg_get_functiondef('public.purchase_store_item(text)'::regprocedure) into v_sql;
+  if position('skin-cucumber-07' in v_sql) = 0 then
+    foreach v_anchor in array array[
+      v_price_anchor, v_inventory_anchor, v_message_anchor, v_balance_anchor, v_topup_anchor
+    ] loop
+      if (length(v_sql) - length(replace(v_sql, v_anchor, ''))) / length(v_anchor) <> 1 then
+        raise exception 'DAEGU_SKIN_PURCHASE_ANCHOR_MISMATCH';
+      end if;
+    end loop;
+    v_sql := replace(v_sql, v_price_anchor, v_price || v_price_anchor);
+    v_sql := replace(v_sql, v_inventory_anchor, v_inventory || v_inventory_anchor);
+    v_sql := replace(v_sql, v_message_anchor, v_message || v_message_anchor);
+    v_sql := replace(v_sql, v_balance_anchor, v_balance || v_balance_anchor);
+    v_sql := replace(v_sql, v_topup_anchor, v_topup);
+    execute v_sql;
+  end if;
+
+  if position(v_price in v_sql) = 0 or position(v_inventory in v_sql) = 0
+     or position(v_message in v_sql) = 0 or position(v_balance in v_sql) = 0
+     or position(v_topup in v_sql) = 0
+     or position('for update' in lower(v_sql)) = 0
+     or position('if v_exists then' in v_sql) = 0
+     or position('v_required_character_code <> ''char-cucumber''' in v_sql) = 0
+     or position('set pickles = coalesce(pickles, 0) - v_price' in v_sql) = 0
+     or position('and coalesce(pickles, 0) >= v_price' in v_sql) = 0
+     or position('insert into public.user_store_items' in v_sql) = 0
+     or position('insert into public.pickle_ledger' in v_sql) = 0
+     or position('-v_charged_amount' in v_sql) = 0
+     or position('public.seoul_today()' in v_sql) = 0 then
+    raise exception 'DAEGU_SKIN_PURCHASE_VERIFY_FAILED';
+  end if;
+  if pg_get_function_result('public.purchase_store_item(text)'::regprocedure)
+       <> 'TABLE(success boolean, message text, balance integer)'
+     or not (select prosecdef from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure)
+     or not ('search_path=public' = any (
+       select unnest(proconfig) from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure
+     ))
+     or has_function_privilege('anon', 'public.purchase_store_item(text)', 'execute')
+     or not has_function_privilege('authenticated', 'public.purchase_store_item(text)', 'execute') then
+    raise exception 'DAEGU_SKIN_PURCHASE_SECURITY_MISMATCH';
+  end if;
+end;
+$daegu_skin$;
+
+commit;
+
+-- 2026-09-13 (KST) BG-06 DGB PARK 프로필배경 판매: 서버 고정 가격 538피클
+-- 기존 구매 함수의 이번 상품 분기만 추가한다. 기존 계정/상품 보유 데이터는 변경하지 않는다.
+-- user_store_items 보유 기록으로 인벤토리 장착, pickle_ledger에 실제 차감액 기록.
+-- BG-06은 테스트 잔액 우회와 관리자 자동충전을 허용하지 않는다.
+begin;
+
+do $dgb_park_background$
+declare
+  v_sql text;
+  v_anchor text;
+  v_owner oid;
+  v_price_anchor text := $a$  elsif p_item_id = 'skin-cucumbergirl-01' then
+    v_price := 923;$a$;
+  v_inventory_anchor text := $a$  elsif p_item_id = 'emo-eat-01' then
+    insert into public.user_emoticons ($a$;
+  v_message_anchor text := $a$      when p_item_id = 'emo-eat-01'$a$;
+  v_balance_anchor text := $a$    if not v_can_bypass_store_balance then$a$;
+  v_topup_anchor text := $a$      v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id);$a$;
+  v_price text := $b$  elsif p_item_id = 'BG-06' then
+    v_price := 538;
+    v_name := 'DGB PARK';
+    v_category := 'profile';
+
+$b$;
+  v_inventory text := $b$  elsif p_item_id = 'BG-06' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+$b$;
+  v_message text := $b$      when p_item_id = 'BG-06'
+        then 'DGB PARK 구매가 완료됐어. 538피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+$b$;
+  v_balance text := $b$    if p_item_id = 'BG-06' then
+      v_can_bypass_store_balance := false;
+    end if;
+
+$b$;
+  v_topup text := $b$      v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id)
+        and p_item_id <> 'BG-06';$b$;
+begin
+  if to_regprocedure('public.purchase_store_item(text)') is null
+     or to_regprocedure('public.enforce_equipped_profile_background_ownership()') is null
+     or to_regclass('public.profiles') is null
+     or to_regclass('public.user_store_items') is null
+     or to_regclass('public.pickle_ledger') is null then
+    raise exception 'BG06_DEPENDENCY_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_store_items'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, item_id)'
+  ) then
+    raise exception 'BG06_UNIQUE_CONSTRAINT_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.profiles'::regclass
+      and tgname = 'trg_enforce_equipped_profile_background_ownership'
+      and tgfoid = 'public.enforce_equipped_profile_background_ownership()'::regprocedure
+      and tgenabled <> 'D' and not tgisinternal
+  ) or position('usi.user_id = new.id' in pg_get_functiondef(
+    'public.enforce_equipped_profile_background_ownership()'::regprocedure)) = 0
+     or position('usi.item_id = new.equipped_profile_background_item_id' in pg_get_functiondef(
+    'public.enforce_equipped_profile_background_ownership()'::regprocedure)) = 0
+     or position('usi.item_category = ''profile''' in pg_get_functiondef(
+    'public.enforce_equipped_profile_background_ownership()'::regprocedure)) = 0 then
+    raise exception 'BG06_EQUIP_OWNERSHIP_TRIGGER_MISMATCH';
+  end if;
+
+  if exists (
+    select 1 from public.user_store_items
+    where item_id = 'BG-06' and (
+      item_name is distinct from 'DGB PARK'
+      or item_category is distinct from 'profile' or purchase_price is distinct from 538)
+  ) then
+    raise exception 'BG06_ITEM_ID_CONFLICT';
+  end if;
+
+  select pg_get_functiondef(oid), proowner into v_sql, v_owner
+  from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure;
+  if position('BG-06' in v_sql) = 0 then
+    foreach v_anchor in array array[
+      v_price_anchor, v_inventory_anchor, v_message_anchor, v_balance_anchor, v_topup_anchor
+    ] loop
+      if (length(v_sql) - length(replace(v_sql, v_anchor, ''))) / length(v_anchor) <> 1 then
+        raise exception 'BG06_PURCHASE_ANCHOR_MISMATCH';
+      end if;
+    end loop;
+    v_sql := replace(v_sql, v_price_anchor, v_price || v_price_anchor);
+    v_sql := replace(v_sql, v_inventory_anchor, v_inventory || v_inventory_anchor);
+    v_sql := replace(v_sql, v_message_anchor, v_message || v_message_anchor);
+    v_sql := replace(v_sql, v_balance_anchor, v_balance || v_balance_anchor);
+    v_sql := replace(v_sql, v_topup_anchor, v_topup);
+    execute v_sql;
+  end if;
+
+  if position(v_price in v_sql) = 0 or position(v_inventory in v_sql) = 0
+     or position(v_message in v_sql) = 0 or position(v_balance in v_sql) = 0
+     or position(v_topup in v_sql) = 0
+     or position('for update' in lower(v_sql)) = 0
+     or position('if v_exists then' in v_sql) = 0
+     or position('set pickles = coalesce(pickles, 0) - v_price' in v_sql) = 0
+     or position('and coalesce(pickles, 0) >= v_price' in v_sql) = 0
+     or position('insert into public.user_store_items' in v_sql) = 0
+     or position('insert into public.pickle_ledger' in v_sql) = 0
+     or position('-v_charged_amount' in v_sql) = 0
+     or position('public.seoul_today()' in v_sql) = 0 then
+    raise exception 'BG06_PURCHASE_VERIFY_FAILED';
+  end if;
+  if pg_get_function_result('public.purchase_store_item(text)'::regprocedure)
+       <> 'TABLE(success boolean, message text, balance integer)'
+     or not (select prosecdef from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure)
+     or (select proowner from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure)
+       is distinct from v_owner
+     or not ('search_path=public' = any (
+       select unnest(proconfig) from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure
+     ))
+     or has_function_privilege('anon', 'public.purchase_store_item(text)', 'execute')
+     or not has_function_privilege('authenticated', 'public.purchase_store_item(text)', 'execute') then
+    raise exception 'BG06_PURCHASE_SECURITY_MISMATCH';
+  end if;
+end;
+$dgb_park_background$;
+
+commit;
+
+-- 2026-09-13 (KST) BG-07 방울토마토리토 아지트 프로필배경 판매: 서버 고정 가격 625피클
+-- 기존 구매 함수의 이번 상품 분기만 추가한다. 기존 계정/상품 보유 데이터는 변경하지 않는다.
+-- user_store_items 보유 기록으로 인벤토리 장착, pickle_ledger에 실제 차감액 기록.
+-- BG-07은 테스트 잔액 우회와 관리자 자동충전을 허용하지 않는다.
+begin;
+
+do $mafia_background$
+declare
+  v_sql text;
+  v_anchor text;
+  v_owner oid;
+  v_price_anchor text := $a$  elsif p_item_id = 'skin-cucumbergirl-01' then
+    v_price := 923;$a$;
+  v_inventory_anchor text := $a$  elsif p_item_id = 'emo-eat-01' then
+    insert into public.user_emoticons ($a$;
+  v_message_anchor text := $a$      when p_item_id = 'emo-eat-01'$a$;
+  v_balance_anchor text := $a$    if not v_can_bypass_store_balance then$a$;
+  v_topup_anchor text := $a$      if coalesce(v_is_auto_topup_admin, false)$a$;
+  v_price text := $b$  elsif p_item_id = 'BG-07' then
+    v_price := 625;
+    v_name := '방울토마토리토 아지트';
+    v_category := 'profile';
+
+$b$;
+  v_inventory text := $b$  elsif p_item_id = 'BG-07' then
+    -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
+    null;
+
+$b$;
+  v_message text := $b$      when p_item_id = 'BG-07'
+        then '방울토마토리토 아지트 구매가 완료됐어. 625피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
+$b$;
+  v_balance text := $b$    if p_item_id = 'BG-07' then
+      v_can_bypass_store_balance := false;
+    end if;
+
+$b$;
+  v_topup text := $b$      if p_item_id = 'BG-07' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if coalesce(v_is_auto_topup_admin, false)$b$;
+begin
+  if to_regprocedure('public.purchase_store_item(text)') is null
+     or to_regprocedure('public.enforce_equipped_profile_background_ownership()') is null
+     or to_regclass('public.profiles') is null
+     or to_regclass('public.user_store_items') is null
+     or to_regclass('public.pickle_ledger') is null then
+    raise exception 'BG07_DEPENDENCY_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.user_store_items'::regclass and contype = 'u'
+      and pg_get_constraintdef(oid) = 'UNIQUE (user_id, item_id)'
+  ) then
+    raise exception 'BG07_UNIQUE_CONSTRAINT_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.profiles'::regclass
+      and tgname = 'trg_enforce_equipped_profile_background_ownership'
+      and tgfoid = 'public.enforce_equipped_profile_background_ownership()'::regprocedure
+      and tgenabled <> 'D' and not tgisinternal
+  ) or position('usi.user_id = new.id' in pg_get_functiondef(
+    'public.enforce_equipped_profile_background_ownership()'::regprocedure)) = 0
+     or position('usi.item_id = new.equipped_profile_background_item_id' in pg_get_functiondef(
+    'public.enforce_equipped_profile_background_ownership()'::regprocedure)) = 0
+     or position('usi.item_category = ''profile''' in pg_get_functiondef(
+    'public.enforce_equipped_profile_background_ownership()'::regprocedure)) = 0 then
+    raise exception 'BG07_EQUIP_OWNERSHIP_TRIGGER_MISMATCH';
+  end if;
+
+  if exists (
+    select 1 from public.user_store_items
+    where item_id = 'BG-07' and (
+      item_name is distinct from '방울토마토리토 아지트'
+      or item_category is distinct from 'profile' or purchase_price is distinct from 625)
+  ) then
+    raise exception 'BG07_ITEM_ID_CONFLICT';
+  end if;
+
+  select pg_get_functiondef(oid), proowner into v_sql, v_owner
+  from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure;
+  if position('BG-07' in v_sql) = 0 then
+    foreach v_anchor in array array[
+      v_price_anchor, v_inventory_anchor, v_message_anchor, v_balance_anchor, v_topup_anchor
+    ] loop
+      if (length(v_sql) - length(replace(v_sql, v_anchor, ''))) / length(v_anchor) <> 1 then
+        raise exception 'BG07_PURCHASE_ANCHOR_MISMATCH';
+      end if;
+    end loop;
+    v_sql := replace(v_sql, v_price_anchor, v_price || v_price_anchor);
+    v_sql := replace(v_sql, v_inventory_anchor, v_inventory || v_inventory_anchor);
+    v_sql := replace(v_sql, v_message_anchor, v_message || v_message_anchor);
+    v_sql := replace(v_sql, v_balance_anchor, v_balance || v_balance_anchor);
+    v_sql := replace(v_sql, v_topup_anchor, v_topup);
+    execute v_sql;
+  end if;
+
+  if position(v_price in v_sql) = 0 or position(v_inventory in v_sql) = 0
+     or position(v_message in v_sql) = 0 or position(v_balance in v_sql) = 0
+     or position(v_topup in v_sql) = 0
+     or position('for update' in lower(v_sql)) = 0
+     or position('if v_exists then' in v_sql) = 0
+     or position('set pickles = coalesce(pickles, 0) - v_price' in v_sql) = 0
+     or position('and coalesce(pickles, 0) >= v_price' in v_sql) = 0
+     or position('insert into public.user_store_items' in v_sql) = 0
+     or position('insert into public.pickle_ledger' in v_sql) = 0
+     or position('-v_charged_amount' in v_sql) = 0
+     or position('public.seoul_today()' in v_sql) = 0 then
+    raise exception 'BG07_PURCHASE_VERIFY_FAILED';
+  end if;
+  if pg_get_function_result('public.purchase_store_item(text)'::regprocedure)
+       <> 'TABLE(success boolean, message text, balance integer)'
+     or not (select prosecdef from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure)
+     or (select proowner from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure)
+       is distinct from v_owner
+     or not ('search_path=public' = any (
+       select unnest(proconfig) from pg_proc where oid = 'public.purchase_store_item(text)'::regprocedure
+     ))
+     or has_function_privilege('anon', 'public.purchase_store_item(text)', 'execute')
+     or not has_function_privilege('authenticated', 'public.purchase_store_item(text)', 'execute') then
+    raise exception 'BG07_PURCHASE_SECURITY_MISMATCH';
+  end if;
+end;
+$mafia_background$;
+
+commit;

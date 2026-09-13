@@ -76,7 +76,7 @@ test('BG-05 상품과 프로필배경 카탈로그가 지정값으로 한 번씩
 });
 
 test('BG-05는 오이소년 이모티콘팩 다음이고 전체 상품 ID에는 중복이 없다', () => {
-  assert.equal(getFeaturedStoreItems(16)[3].id, ITEM_ID);
+  assert.equal(getFeaturedStoreItems(18)[8].id, ITEM_ID);
 
   const itemIds = STORE_ITEMS.map((item) => item.id);
   const backgroundIds = PROFILE_BACKGROUND_CATALOG.map((item) => item.itemId);
@@ -138,7 +138,7 @@ test('구매 SQL 네 관리 지점은 626 고정가·보유·원장·엄격 잔�
   assert.equal(
     [
       ...purchaseSql.matchAll(
-        /'BG-03',\s*'BG-04',\s*'BG-05',\s*'skin-cucumber-03'/g,
+        /'BG-03',\s*'BG-04',\s*'BG-05',\s*'skin-tomato-01',\s*'skin-tomato-02',\s*'skin-cucumber-03'/g,
       ),
     ].length,
     2,

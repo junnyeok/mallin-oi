@@ -29,7 +29,7 @@ test('PIXEL HEART는 브로콜리 알바생 다음 상품이며 588피클·설�
   assert.equal(tracks.length, 1);
   const [item] = items;
   const [track] = tracks;
-  assert.equal(getFeaturedStoreItems(2)[1].id, ITEM_ID);
+  assert.equal(getFeaturedStoreItems(7)[6].id, ITEM_ID);
   assert.equal(item.name, 'PIXEL HEART');
   assert.equal(item.category, 'bgm');
   assert.equal(item.price, 588);
