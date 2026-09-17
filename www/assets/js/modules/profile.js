@@ -2606,12 +2606,9 @@ function renderBgmSection({
 
 function renderEmoticonPackCard(pack) {
   const isEquipped = pack?.isEquipped === true;
-  const isDefault = pack?.isDefault === true;
-  const metaText = isDefault
-    ? '기본팩 · 항상 사용 가능'
-    : isEquipped
-      ? '장착됨 · 클릭하면 해제'
-      : '미장착 · 클릭하면 장착';
+  const metaText = isEquipped
+    ? '장착됨 · 클릭하면 해제'
+    : '미장착 · 클릭하면 장착';
 
   return `
     <button
@@ -2619,7 +2616,7 @@ function renderEmoticonPackCard(pack) {
       class="profile-character-card profile-emoticon-card ${isEquipped ? 'is-equipped' : ''}"
       data-emoticon-pack-item-id="${escapeHtml(pack?.itemId || '')}"
       data-equipped="${isEquipped ? 'true' : 'false'}"
-      data-default="${isDefault ? 'true' : 'false'}"
+      aria-pressed="${isEquipped ? 'true' : 'false'}"
     >
       <img
         class="profile-character-card__thumb profile-emoticon-card__thumb"
@@ -2675,10 +2672,9 @@ async function renderEmoticonInventorySection({
     (button) => {
       button.addEventListener('click', async () => {
         const itemId = String(button.dataset.emoticonPackItemId || '').trim();
-        const isDefault = button.dataset.default === 'true';
         const isEquipped = button.dataset.equipped === 'true';
 
-        if (!itemId || isDefault) return;
+        if (!itemId) return;
 
         setMsg(isEquipped ? '이모티콘팩 해제 중...' : '이모티콘팩 장착 중...');
 

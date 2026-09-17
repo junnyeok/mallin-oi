@@ -175,7 +175,11 @@ function normalizeEmoticonRow(row = {}) {
     emoticon_label: String(row?.emoticon_label || '이모티콘').trim(),
     image_path: withAssetVersion(String(row?.image_path || '').trim()),
     display_order: Number(row?.display_order || 0),
-    is_equipped: isBasicEmoticonPack(itemId) || row?.is_equipped === true,
+    // 구형 스키마에서 장착 정보가 없는 기본팩만 기본 장착으로 취급한다.
+    // 저장된 false는 무료팩도 그대로 반영해야 해제 상태가 유지된다.
+    is_equipped:
+      row?.is_equipped === true ||
+      (row?.is_equipped == null && isBasicEmoticonPack(itemId)),
   };
 }
 
@@ -331,7 +335,7 @@ export async function loadOwnedEmoticonPacks(userId) {
           iconPath: withAssetVersion(meta?.iconPath || first.image_path || ''),
           count: packRows.length,
           isDefault: isBasic,
-          isEquipped: isBasic || packRows.some((row) => row.is_equipped),
+          isEquipped: packRows.some((row) => row.is_equipped),
           displayOrder: Number(first.display_order || 9999),
         };
       })
@@ -346,7 +350,7 @@ export async function setEmoticonPackEquipped(userId, itemId, isEquipped) {
   const safeUserId = String(userId || '').trim();
   const safeItemId = String(itemId || '').trim();
 
-  if (!safeUserId || !safeItemId || isBasicEmoticonPack(safeItemId)) return;
+  if (!safeUserId || !safeItemId) return;
 
   const { error } = await supabase
     .from('user_emoticons')

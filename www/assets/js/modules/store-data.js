@@ -1790,7 +1790,7 @@ export const STORE_ITEMS = [
     state: '무료 지급',
     description: '사이트 기본 지급용 이모티콘 7종 묶음.',
     detailDescription:
-      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 게시글/댓글/답글 작성할 때 항상 사용할 수 있어.',
+      '말린오이닷컴 기본 이모티콘팩이야. 가입 후 누구나 무료로 받을 수 있고, 인벤토리에서 장착하면 게시글/댓글/답글 작성할 때 사용할 수 있어.',
     previewImages: BASIC_EMOTICON_PACK,
     isPurchasable: true,
   },

@@ -1466,6 +1466,7 @@
 ./tests/fixtures/calendar-copy-paste-conflict-browser.html
 ./tests/fixtures/calendar-shared-personal-readonly-browser.html
 ./tests/fixtures/study-completion-celebration-browser.html
+./tests/free-emoticon-equipment.test.mjs
 ./tests/new-character-skins.test.mjs
 ./tests/pixel-heart-bgm.test.mjs
 ./tests/profile-bio-contrast.test.mjs
