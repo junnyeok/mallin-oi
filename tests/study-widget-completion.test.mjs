@@ -45,3 +45,66 @@ test('Android 자기개발 위젯은 완료 일정 제목에 취소선 span을 �
   );
   assert.match(source, /new StrikethroughSpan\(\)/);
 });
+
+test('공통 위젯 payload는 앱과 같은 대한민국 공휴일 정보를 날짜별로 포함한다', () => {
+  const source = read('assets/js/modules/calendar-widget-data.js');
+
+  assert.match(
+    source,
+    /import \{ getKoreanPublicHoliday \} from '\.\/calendar-holidays\.js';/,
+  );
+  assert.match(
+    source,
+    /function getWidgetDayHoliday\(dateKey\)[\s\S]*?badgeLabel: holiday\.badgeLabel,[\s\S]*?isSubstitute: Boolean\(holiday\.isSubstitute\)/,
+  );
+  assert.match(source, /holiday:\s*getWidgetDayHoliday\(dateKey\)/);
+});
+
+test('iOS 위젯은 캘린더 종류에 따라 공휴일 배지를 요구 순서로 표시한다', () => {
+  const source = read(
+    'ios/App/MallinoiCalendarWidgets/MallinoiCalendarWidgets.swift',
+  );
+  const studyHolidayIndex = source.indexOf(
+    'if calendarType != "work", let holiday = day.holiday',
+  );
+  const itemListIndex = source.indexOf(
+    'ForEach(Array(visibleItems.prefix(maxVisibleItems)))',
+  );
+  const workMemoIndex = source.indexOf('if hasWorkMemo, let item = visibleItems.first');
+  const workHolidayIndex = source.indexOf(
+    'if calendarType == "work", let holiday = day.holiday',
+  );
+
+  assert.match(source, /let holiday:\s*CalendarWidgetHoliday\?/);
+  assert.ok(studyHolidayIndex > 0 && studyHolidayIndex < itemListIndex);
+  assert.ok(workHolidayIndex > workMemoIndex);
+  assert.match(
+    source,
+    /if calendarType != "work" && day\.holiday != nil \{ return 1 \}/,
+  );
+  assert.match(source, /Color\(red: 198 \/ 255, green: 40 \/ 255, blue: 40 \/ 255\)/);
+});
+
+test('Android 위젯도 캘린더 종류에 따라 공휴일을 일정 앞뒤의 전용 배지로 표시한다', () => {
+  const provider = read(
+    'android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetProvider.java',
+  );
+  const layout = read('android/app/src/main/res/layout/widget_calendar_day.xml');
+  const badge = read(
+    'android/app/src/main/res/drawable/widget_holiday_badge_background.xml',
+  );
+
+  assert.match(provider, /day\.optJSONObject\("holiday"\)/);
+  assert.match(provider, /holiday\.optString\("badgeLabel", holiday\.optString\("name", ""\)\)/);
+  assert.match(provider, /hasHoliday && !"work"\.equals\(calendarType\)/);
+  assert.match(provider, /hasHoliday && "work"\.equals\(calendarType\)/);
+  assert.ok(
+    layout.indexOf('widgetDayHolidayBefore') < layout.indexOf('widgetDayEventRow1'),
+  );
+  assert.ok(
+    layout.indexOf('widgetDayEventRow2') < layout.indexOf('widgetDayHolidayAfter'),
+  );
+  assert.match(badge, /android:color="#FFF4F4"/);
+  assert.match(badge, /android:color="#E59A9A"/);
+  assert.match(provider, /Color\.rgb\(198, 40, 40\)/);
+});

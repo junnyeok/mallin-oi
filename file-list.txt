@@ -220,6 +220,7 @@
 ./android/app/src/main/res/drawable/widget_background.xml
 ./android/app/src/main/res/drawable/widget_day_background.xml
 ./android/app/src/main/res/drawable/widget_event_row_background.xml
+./android/app/src/main/res/drawable/widget_holiday_badge_background.xml
 ./android/app/src/main/res/drawable/widget_preview_chip_event.xml
 ./android/app/src/main/res/drawable/widget_preview_chip_study.xml
 ./android/app/src/main/res/drawable/widget_preview_chip_work.xml

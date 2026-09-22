@@ -1,6 +1,7 @@
 // assets/js/modules/calendar-widget-data.js
 
 import { supabase } from './supabase-client.js';
+import { getKoreanPublicHoliday } from './calendar-holidays.js';
 import { resolveWorkCalendarTimeRange } from './calendar-time.js';
 
 export const CALENDAR_WIDGET_TYPES = ['study', 'work', 'event'];
@@ -279,6 +280,17 @@ function getWidgetDayItems(calendarType, items = []) {
   return items;
 }
 
+function getWidgetDayHoliday(dateKey) {
+  const holiday = getKoreanPublicHoliday(dateKey);
+  if (!holiday) return null;
+
+  return {
+    name: holiday.name,
+    badgeLabel: holiday.badgeLabel,
+    isSubstitute: Boolean(holiday.isSubstitute),
+  };
+}
+
 function getRangeDateKeys(range, baseDate) {
   if (range === 'fourDays') return getDateKeys(baseDate, 4);
   if (range === 'twoWeeks') return getDateKeys(getTwoWeekRange(baseDate).startDate, 14);
@@ -332,6 +344,7 @@ export function buildCalendarWidgetPayload(items = [], options = {}) {
             weekday: KOREAN_WEEKDAYS[(parseDateKey(dateKey) || baseDate).getDay()],
             isToday: dateKey === today,
             isCurrentMonth,
+            holiday: getWidgetDayHoliday(dateKey),
             items:
               range === 'month' && !isCurrentMonth
                 ? []

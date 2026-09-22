@@ -243,16 +243,32 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 weekday = weekdayFormat.format(localDate);
             }
             JSONArray items = day.optJSONArray("items");
+            JSONObject holiday = day.optJSONObject("holiday");
+            String holidayLabel = holiday == null
+                    ? ""
+                    : sanitizeDisplayTitle(holiday.optString("badgeLabel", holiday.optString("name", "")));
+            boolean hasHoliday = !holidayLabel.isEmpty();
             boolean isToday = todayKey.equals(date);
             boolean isCurrentMonth = day.optBoolean("isCurrentMonth", true);
             boolean shouldShowItems = !"month".equals(range) || isCurrentMonth;
             int itemCount = !shouldShowItems || items == null ? 0 : items.length();
-            int maxVisibleItems = isCompactTwoWeek ? 1 : "work".equals(calendarType) ? 1 : getMaxVisibleItems();
+            JSONObject workItem = "work".equals(calendarType) && itemCount > 0
+                    ? items.optJSONObject(0)
+                    : null;
+            String workMemo = workItem == null
+                    ? ""
+                    : sanitizeDisplayTitle(workItem.optString("memo", ""));
+            boolean hasWorkMemo = !workMemo.isEmpty();
+            int maxVisibleItems = isCompactTwoWeek || "work".equals(calendarType) || hasHoliday
+                    ? 1
+                    : getMaxVisibleItems();
             int visibleCount = Math.min(itemCount, maxVisibleItems);
             int moreCount = isCompactTwoWeek || "work".equals(calendarType)
                     ? 0
                     : Math.max(itemCount - visibleCount, 0);
-            int layoutItemCount = "work".equals(calendarType) && itemCount > 0 ? 1 : itemCount;
+            int layoutItemCount = "work".equals(calendarType)
+                    ? visibleCount + (hasWorkMemo ? 1 : 0) + (hasHoliday ? 1 : 0)
+                    : itemCount + (hasHoliday ? 1 : 0);
 
             RemoteViews dayViews = new RemoteViews(context.getPackageName(), R.layout.widget_calendar_day);
             String fullDateText = dateText;
@@ -283,6 +299,18 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int[] eventRowIds = { R.id.widgetDayEventRow1, R.id.widgetDayEventRow2 };
             int[] eventBackgroundIds = { R.id.widgetDayEventBackground1, R.id.widgetDayEventBackground2 };
             int[] eventTextIds = { R.id.widgetDayEventText1, R.id.widgetDayEventText2 };
+
+            if (hasHoliday && !"work".equals(calendarType)) {
+                bindHolidayBadge(
+                        context,
+                        dayViews,
+                        R.id.widgetDayHolidayBefore,
+                        R.id.widgetDayHolidayTextBefore,
+                        holidayLabel,
+                        layoutItemCount,
+                        isCompactTwoWeek
+                );
+            }
 
             for (int itemIndex = 0; itemIndex < visibleCount; itemIndex += 1) {
                 JSONObject item = items.optJSONObject(itemIndex);
@@ -325,19 +353,36 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 dayViews.setViewVisibility(rowId, View.VISIBLE);
             }
 
-            if (!isCompactTwoWeek && "work".equals(calendarType) && visibleCount > 0) {
-                JSONObject workItem = items.optJSONObject(0);
-                String memo = workItem == null ? "" : sanitizeDisplayTitle(workItem.optString("memo", ""));
-
-                if (!memo.isEmpty()) {
-                    dayViews.setTextViewText(R.id.widgetDayEventText2, memo);
-                    dayViews.setTextViewTextSize(R.id.widgetDayEventText2, TypedValue.COMPLEX_UNIT_SP, getMemoTextSize());
+            if ("work".equals(calendarType) && visibleCount > 0) {
+                if (hasWorkMemo) {
+                    dayViews.setTextViewText(R.id.widgetDayEventText2, workMemo);
+                    dayViews.setTextViewTextSize(
+                            R.id.widgetDayEventText2,
+                            TypedValue.COMPLEX_UNIT_SP,
+                            getCompactSafeTextSize(
+                                    context,
+                                    getMemoTextSize(layoutItemCount, isCompactTwoWeek),
+                                    isCompactTwoWeek
+                            )
+                    );
                     dayViews.setTextColor(R.id.widgetDayEventText2, isToday ? Color.WHITE : theme.mutedText);
                     dayViews.setBoolean(R.id.widgetDayEventText2, "setSingleLine", true);
                     dayViews.setInt(R.id.widgetDayEventText2, "setMaxLines", 1);
                     dayViews.setViewVisibility(R.id.widgetDayEventBackground2, View.GONE);
                     dayViews.setViewVisibility(R.id.widgetDayEventRow2, View.VISIBLE);
                 }
+            }
+
+            if (hasHoliday && "work".equals(calendarType)) {
+                bindHolidayBadge(
+                        context,
+                        dayViews,
+                        R.id.widgetDayHolidayAfter,
+                        R.id.widgetDayHolidayTextAfter,
+                        holidayLabel,
+                        layoutItemCount,
+                        isCompactTwoWeek
+                );
             }
 
             if (moreCount > 0) {
@@ -371,9 +416,35 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return 2;
     }
 
+    void bindHolidayBadge(
+            Context context,
+            RemoteViews views,
+            int rowId,
+            int textId,
+            String label,
+            int layoutItemCount,
+            boolean isCompactTwoWeek
+    ) {
+        views.setTextViewText(textId, label);
+        views.setTextViewTextSize(
+                textId,
+                TypedValue.COMPLEX_UNIT_SP,
+                getCompactSafeTextSize(
+                        context,
+                        getHolidayTextSize(layoutItemCount, isCompactTwoWeek),
+                        isCompactTwoWeek
+                )
+        );
+        views.setTextColor(textId, Color.rgb(198, 40, 40));
+        views.setBoolean(textId, "setSingleLine", true);
+        views.setInt(textId, "setMaxLines", 1);
+        views.setContentDescription(textId, label + " 공휴일");
+        views.setViewVisibility(rowId, View.VISIBLE);
+    }
+
     float getDateTextSize(int itemCount, boolean isCompactTwoWeek) {
         if ("fourDays".equals(range)) return itemCount <= 1 ? 13.5f : 12.2f;
-        if (isCompactTwoWeek) return 8.5f;
+        if (isCompactTwoWeek) return itemCount >= 3 ? 7.0f : 8.5f;
         if ("twoWeeks".equals(range)) return 8.8f;
         return 8.5f;
     }
@@ -385,7 +456,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             return 10.5f;
         }
 
-        if (isCompactTwoWeek) return 9.0f;
+        if (isCompactTwoWeek) return itemCount >= 3 ? 7.2f : 9.0f;
 
         if ("twoWeeks".equals(range)) {
             if (itemCount <= 1) return 11.2f;
@@ -411,10 +482,18 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return 9.0f;
     }
 
-    float getMemoTextSize() {
-        if ("fourDays".equals(range)) return 11.0f;
-        if ("twoWeeks".equals(range)) return 8.5f;
-        return 8.2f;
+    float getMemoTextSize(int itemCount, boolean isCompactTwoWeek) {
+        if (isCompactTwoWeek) return itemCount >= 3 ? 6.8f : 8.0f;
+        if ("fourDays".equals(range)) return itemCount >= 3 ? 8.5f : 11.0f;
+        if ("twoWeeks".equals(range)) return itemCount >= 3 ? 7.2f : 8.5f;
+        return itemCount >= 3 ? 7.0f : 8.2f;
+    }
+
+    float getHolidayTextSize(int itemCount, boolean isCompactTwoWeek) {
+        if (isCompactTwoWeek) return itemCount >= 3 ? 6.5f : 7.2f;
+        if ("fourDays".equals(range)) return itemCount >= 3 ? 8.0f : 9.0f;
+        if ("twoWeeks".equals(range)) return itemCount >= 3 ? 6.8f : 7.4f;
+        return itemCount >= 3 ? 6.8f : 7.5f;
     }
 
     int getCellTopPadding(int itemCount, int monthRows, boolean isCompactTwoWeek) {

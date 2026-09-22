@@ -20,6 +20,12 @@ struct CalendarWidgetItem: Decodable, Identifiable {
     let createdAt: String?
 }
 
+struct CalendarWidgetHoliday: Decodable {
+    let name: String
+    let badgeLabel: String
+    let isSubstitute: Bool?
+}
+
 struct CalendarWidgetTheme {
     let primary: Color
     let secondary: Color
@@ -67,6 +73,7 @@ struct CalendarWidgetDay: Decodable, Identifiable {
     let weekday: String?
     let isToday: Bool
     let isCurrentMonth: Bool
+    let holiday: CalendarWidgetHoliday?
     let items: [CalendarWidgetItem]
 
     var id: String { date }
@@ -437,6 +444,10 @@ struct DayCellView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
+            if calendarType != "work", let holiday = day.holiday {
+                holidayBadge(holiday)
+            }
+
             ForEach(Array(visibleItems.prefix(maxVisibleItems))) { item in
                 Text(displayTitle(for: item))
                     .strikethrough(calendarType == "study" && item.isDone == true)
@@ -462,6 +473,10 @@ struct DayCellView: View {
                     .frame(maxWidth: .infinity)
             }
 
+            if calendarType == "work", let holiday = day.holiday {
+                holidayBadge(holiday)
+            }
+
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
                     .font(.system(size: moreFontSize, weight: .bold))
@@ -470,7 +485,7 @@ struct DayCellView: View {
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
                     .frame(height: moreIndicatorHeight)
-            } else if visibleItems.isEmpty {
+            } else if visibleItems.isEmpty && day.holiday == nil {
                 Text(" ")
                     .font(.system(size: badgeFontSize))
                     .lineLimit(1)
@@ -485,6 +500,7 @@ struct DayCellView: View {
     }
 
     private var maxVisibleItems: Int {
+        if calendarType != "work" && day.holiday != nil { return 1 }
         if range == "fourDays" { return 2 }
         return calendarType == "work" ? 1 : 2
     }
@@ -511,7 +527,9 @@ struct DayCellView: View {
     private var badgeFontSize: CGFloat {
         let size: CGFloat
 
-        if range == "fourDays" {
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 9 : 8
+        } else if range == "fourDays" {
             size = itemCount <= 1 ? 12 : itemCount == 2 ? 10 : 9
         } else if range == "twoWeeks" {
             size = itemCount <= 1 ? 9.5 : itemCount == 2 ? 9 : 8.5
@@ -530,7 +548,9 @@ struct DayCellView: View {
     private var memoFontSize: CGFloat {
         let size: CGFloat
 
-        if range == "fourDays" {
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 8.5 : range == "twoWeeks" ? 7.2 : 7
+        } else if range == "fourDays" {
             size = 10.5
         } else if range == "twoWeeks" {
             size = 8.5
@@ -544,7 +564,9 @@ struct DayCellView: View {
     private var dateFontSize: CGFloat {
         let size: CGFloat
 
-        if range == "fourDays" {
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 9.5 : range == "twoWeeks" ? 7.5 : 8
+        } else if range == "fourDays" {
             size = itemCount <= 1 ? 11.5 : itemCount == 2 ? 10 : 8.5
         } else if range == "twoWeeks" {
             size = 8
@@ -565,6 +587,7 @@ struct DayCellView: View {
     private var badgeVerticalPadding: CGFloat {
         if range == "fourDays" { return 0 }
         if hasWorkMemo { return 0.5 * monthContentScale }
+        if day.holiday != nil { return 0.5 * monthContentScale }
 
         let padding: CGFloat = itemCount <= 1 ? 1.5 : itemCount == 2 ? 1 : 0
         return padding * monthContentScale
@@ -572,6 +595,7 @@ struct DayCellView: View {
 
     private var badgeHeight: CGFloat? {
         guard range == "fourDays" else { return nil }
+        if day.holiday != nil { return itemCount <= 1 ? 14 : 12 }
         if itemCount <= 1 { return 18 }
         if itemCount == 2 { return 14 }
         return 12
@@ -584,7 +608,7 @@ struct DayCellView: View {
     private var itemSpacing: CGFloat {
         let spacing: CGFloat
 
-        if hasWorkMemo {
+        if day.holiday != nil || hasWorkMemo {
             spacing = 1
         } else if range == "fourDays" {
             spacing = itemCount <= 1 ? 4 : itemCount == 2 ? 2 : 1
@@ -617,12 +641,67 @@ struct DayCellView: View {
         return calendarType == "work" && hasMemo
     }
 
+    private var hasDenseWorkHoliday: Bool {
+        calendarType == "work" && day.holiday != nil && hasWorkMemo
+    }
+
     private var dayNumber: String {
         if range != "month", let weekday = day.weekday, !weekday.isEmpty {
             return "\(Int(day.date.suffix(2)) ?? 0) \(weekday)"
         }
 
         return String(Int(day.date.suffix(2)) ?? 0)
+    }
+
+    private func holidayBadge(_ holiday: CalendarWidgetHoliday) -> some View {
+        Text(holiday.badgeLabel)
+            .font(.system(size: holidayFontSize, weight: .semibold))
+            .foregroundStyle(holidayTextColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)
+            .truncationMode(.tail)
+            .padding(.horizontal, 3 * monthContentScale)
+            .padding(.vertical, holidayVerticalPadding)
+            .background(holidayBackgroundColor)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(holidayBorderColor, lineWidth: max(0.5, 0.8 * monthContentScale))
+            )
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("\(holiday.name) 공휴일")
+    }
+
+    private var holidayFontSize: CGFloat {
+        let size: CGFloat
+
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 7 : 6.8
+        } else if range == "fourDays" {
+            size = 8
+        } else if range == "twoWeeks" {
+            size = 7.2
+        } else {
+            size = 7.3
+        }
+
+        return size * monthContentScale
+    }
+
+    private var holidayVerticalPadding: CGFloat {
+        (hasDenseWorkHoliday ? 0.25 : 0.5) * monthContentScale
+    }
+
+    private var holidayTextColor: Color {
+        Color(red: 198 / 255, green: 40 / 255, blue: 40 / 255)
+    }
+
+    private var holidayBackgroundColor: Color {
+        Color(red: 1, green: 244 / 255, blue: 244 / 255)
+    }
+
+    private var holidayBorderColor: Color {
+        Color(red: 229 / 255, green: 154 / 255, blue: 154 / 255)
     }
 
     private func displayTitle(for item: CalendarWidgetItem) -> String {
@@ -689,6 +768,7 @@ struct SampleData {
                 weekday: koreanWeekdays[calendar.component(.weekday, from: date) - 1],
                 isToday: index == 0,
                 isCurrentMonth: true,
+                holiday: nil,
                 items: item.map { [$0] } ?? []
             )
         }
