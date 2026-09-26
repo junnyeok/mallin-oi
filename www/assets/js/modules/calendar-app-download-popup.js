@@ -3,6 +3,10 @@
 const APP_STORE_URL = 'https://apps.apple.com/kr/app/%EB%A7%90%EB%A6%B0%EC%98%A4%EC%9D%B4-%EC%BA%98%EB%A6%B0%EB%8D%94/id6774468038';
 const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.mallinoi.calendar&pcampaignid=web_share';
 
+export function getCalendarAppStoreUrl(userAgent = navigator.userAgent) {
+  return /Android/i.test(userAgent) ? GOOGLE_PLAY_URL : APP_STORE_URL;
+}
+
 const POPUP_ID = 'calendarAppDownloadPopup';
 const SESSION_DISMISS_KEY =
   'mallinoi_calendar_app_download_popup_session_dismissed';

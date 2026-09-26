@@ -1759,7 +1759,6 @@ async function initPageCalendar(loadingController) {
           renderAll();
           refreshGroupBackupNeeded();
           if (result.skipped) alert('일정을 저장했어요. 이미 지난 알람 시각은 제외하고 등록했어요.');
-          if (result.web) alert('일정을 저장했어요. 받은 알림 파일을 캘린더 앱으로 가져와 저장해 주세요.');
         } catch (error) {
           if (eventSaved) {
             renderAll();

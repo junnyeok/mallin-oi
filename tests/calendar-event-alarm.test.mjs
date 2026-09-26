@@ -1,14 +1,33 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { getCalendarAppStoreUrl } from '../assets/js/modules/calendar-app-download-popup.js';
 import {
   EVENT_ALARM_PRESETS, getEventAlarmPlugin,
   normalizeAlarmSelection, makeEventAlarmSet, alarmMessage,
-  makeAlarmCalendarFile, makeEventAlarm, parseAlarmDateTime, toAlarmDateTimeValue,
+  makeEventAlarm, parseAlarmDateTime, toAlarmDateTimeValue,
 } from '../assets/js/modules/event-alarm.js';
 
 process.env.TZ = 'Asia/Seoul';
 const epoch = (value) => parseAlarmDateTime(value).getTime();
 const example = { title: '가족식사참치회', startValue: '2026-09-27T18:00', now: epoch('2026-09-26T16:00') };
+
+test('Android 웹의 다운로드 동의는 캘린더 Google Play 페이지로 연결된다', () => {
+  const url = new URL(getCalendarAppStoreUrl('Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36'));
+  assert.equal(url.origin, 'https://play.google.com');
+  assert.equal(url.pathname, '/store/apps/details');
+  assert.equal(url.searchParams.get('id'), 'com.mallinoi.calendar');
+});
+
+test('iPhone·iPad 및 PC 웹의 다운로드 동의는 캘린더 App Store 페이지로 연결된다', () => {
+  for (const ua of ['Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)',
+    'Mozilla/5.0 (iPad; CPU OS 26_0 like Mac OS X)',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '']) {
+    const url = new URL(getCalendarAppStoreUrl(ua));
+    assert.equal(url.origin, 'https://apps.apple.com');
+    assert.ok(url.pathname.endsWith('/id6774468038'));
+  }
+});
 
 test('요청한 모든 분 전 선택과 제목을 보존하며 18:00의 5분 전은 같은 날짜 17:55다', () => {
   assert.deepEqual(EVENT_ALARM_PRESETS.map((item) => item.minutes), [0, 5, 10, 15, 30, 60, 120, 1440, 2880, 10080]);
@@ -43,18 +62,6 @@ test('잘못된 날짜·빈 제목·시간 미지정·이미 지난 시각은 �
   }
 });
 
-test('캘린더 파일은 날짜·알람·한글 제목을 UTC로 전달하고 문법 주입을 방지한다', () => {
-  const alarm = makeEventAlarm({ ...example, minutes: 5, title: '가족식사참치회, 메모; \\ \nBEGIN:VEVENT ' + '오이'.repeat(60) });
-  const ics = makeAlarmCalendarFile(alarm, { uid: 'test-alarm', now: example.now });
-  assert.match(ics, /DTSTART:20260927T090000Z\r\n/);
-  assert.match(ics, /TRIGGER;VALUE=DATE-TIME:20260927T085500Z\r\n/);
-  assert.equal(ics.split('\r\n').filter((line) => line === 'BEGIN:VEVENT').length, 1);
-  const unfolded = ics.replace(/\r\n /g, '');
-  assert.ok(unfolded.includes('SUMMARY:가족식사참치회\\, 메모\\; \\\\ \\nBEGIN:VEVENT'));
-  assert.ok(ics.split('\r\n').every((line) => Buffer.byteLength(line) <= 75));
-  assert.throws(() => makeAlarmCalendarFile(alarm, { uid: 'bad\nUID:bad' }));
-});
-
 test('웹은 네이티브 브리지로 오인하지 않고 앱에서는 EventAlarms를 등록한다', () => {
   assert.equal(getEventAlarmPlugin({}), null);
   assert.equal(getEventAlarmPlugin({ Capacitor: { isNativePlatform: () => false } }), null);
@@ -84,13 +91,4 @@ test('두 알람은 정확한 문구와 각각의 날짜를 갖고 지난 시각
   assert.deepEqual(partlyExpired.selection, [5, 10080]);
   assert.equal(partlyExpired.alarms.length, 1);
   assert.deepEqual(makeEventAlarmSet({ title: '', startValue: '' }, []), { selection: [], alarms: [], skipped: 0 });
-});
-
-test('웹 알림 파일에 서로 다른 두 VALARM과 남은 시간 문구가 포함된다', () => {
-  const pair = makeEventAlarmSet(example, [5, 10], example.now);
-  const ics = makeAlarmCalendarFile(pair.alarms[0], { uid: 'two-alarms', alarms: pair.alarms, now: example.now });
-  assert.equal(ics.match(/BEGIN:VALARM/g).length, 2);
-  assert.match(ics, /20260927T085500Z/);
-  assert.match(ics, /20260927T085000Z/);
-  assert.ok(ics.replace(/\r\n /g, '').includes('일정이 5분 남았어요!'));
 });

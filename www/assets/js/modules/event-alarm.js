@@ -80,45 +80,6 @@ export function makeEventAlarm({ title, startValue, endValue, minutes, now = Dat
   return { title: text, fireAt: fire.getTime(), startAt: start.getTime(), endAt: end.getTime() };
 }
 
-function escapeICal(value) {
-  return String(value).replace(/\\/g, '\\\\').replace(/\r\n|\r|\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
-}
-
-function foldICalLine(line) {
-  const encoder = new TextEncoder();
-  const parts = [];
-  let part = '';
-  let length = 0;
-  for (const character of line) {
-    const size = encoder.encode(character).length;
-    if (length + size > 75) {
-      parts.push(part);
-      part = ' ';
-      length = 1;
-    }
-    part += character;
-    length += size;
-  }
-  parts.push(part);
-  return parts.join('\r\n');
-}
-
-export function makeAlarmCalendarFile(alarm, { uid, now = Date.now(), alarms = [alarm] }) {
-  if (!/^[a-zA-Z0-9-]+$/.test(uid || '')) throw new Error('Invalid calendar identifier');
-  const stamp = (value) => new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-  return [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mallinoi//Event Alarm//KO',
-    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
-    `UID:${uid}@mallinoi.calendar`, `DTSTAMP:${stamp(now)}`,
-    `DTSTART:${stamp(alarm.startAt)}`, `DTEND:${stamp(alarm.endAt)}`,
-    `SUMMARY:${escapeICal(alarm.title)}`,
-    ...alarms.flatMap((item) => [
-      'BEGIN:VALARM', 'ACTION:DISPLAY', `TRIGGER;VALUE=DATE-TIME:${stamp(item.fireAt)}`,
-      `DESCRIPTION:${escapeICal(item.message || item.title)}`, 'END:VALARM',
-    ]), 'END:VEVENT', 'END:VCALENDAR',
-  ].map(foldICalLine).join('\r\n') + '\r\n';
-}
-
 export function getEventAlarmPlugin(windowRef = window) {
   const capacitor = windowRef.Capacitor;
   if (!capacitor?.isNativePlatform?.()) return null;

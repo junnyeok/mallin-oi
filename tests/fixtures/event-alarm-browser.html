@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>이벤트 알람 로컬 검증</title>
   <link rel="stylesheet" href="../../assets/css/01-tokens.css">
-  <link rel="stylesheet" href="../../assets/css/components/calendar-entry-sheet.css?alarm-fixture=5">
+  <link rel="stylesheet" href="../../assets/css/components/calendar-entry-sheet.css?alarm-fixture=7">
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: var(--font-base); background: var(--color-bg); color: var(--color-text); }
@@ -19,12 +19,17 @@
     <button id="open" type="button">일정 열기</button><button id="inspect" type="button">저장된 알람 확인</button><button id="clear" type="button">테스트 알람 해제</button><p id="result" role="status"></p></main>
   <script type="module">
     import { openCalendarDetailSheet } from '../../assets/js/modules/calendar-entry-sheet.js?alarm-fixture=6';
-    import { createEventAlarmEditor, cancelEventAlarms } from '../../assets/js/modules/event-alarm-picker.js?alarm-fixture=5';
+    import { createEventAlarmEditor, cancelEventAlarms } from '../../assets/js/modules/event-alarm-picker.js?alarm-fixture=7';
     import { toAlarmDateTimeValue, getEventAlarmPlugin } from '../../assets/js/modules/event-alarm.js';
     const query = new URLSearchParams(location.search);
     const mode = query.get('mock');
     const key = 'event:local-fixture:alarm-test-v2';
+    const webKey = `mallinoi.event-alarm.v2:${key}`;
+    if (query.has('legacy')) localStorage.setItem(webKey, '{old-invalid-web-alarm');
+    const initialWebAlarm = localStorage.getItem(webKey);
     let record = null, dbWrites = 0, alarmWrites = 0, settingsOpened = 0;
+    let downloads = 0;
+    document.addEventListener('click', (event) => { if (event.target.closest('a[download]')) downloads++; });
     const result = document.querySelector('#result');
     if (mode) window.Capacitor = { isNativePlatform: () => true, registerPlugin: () => ({
       getPermission: async () => ({ allowed: mode !== 'denied' }),
@@ -58,6 +63,8 @@
             if (mode === 'save-error') throw new Error('일정 저장 실패 (검증용)');
             dbWrites++;
             await editor.commit(key, event, prepared);
+            result.textContent = JSON.stringify({ dbWrites, alarmWrites, settingsOpened, downloads,
+              webStorageUnchanged: localStorage.getItem(webKey) === initialWebAlarm, ...prepared });
           } catch (error) { editor.showError(error); throw error; }
         },
         fields: [

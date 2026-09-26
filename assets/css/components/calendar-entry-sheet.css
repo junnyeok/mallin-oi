@@ -595,7 +595,9 @@ body.calendar-entry-sheet-open {
 .event-alarm-picker__dialog p { font-size: var(--text-small); line-height: var(--line-body); }
 .event-alarm-picker__menu { padding: var(--space-8); width: min(100%, 300px); }
 .event-alarm-picker__list { max-height: min(60vh, 480px); overflow-y: auto; overscroll-behavior: contain; }
-.event-alarm-picker button {
+.event-alarm-picker button,
+.event-alarm-picker__actions a {
+  box-sizing: border-box;
   min-height: 48px;
   padding: var(--space-12);
   border: 1px solid var(--color-border);
@@ -606,7 +608,8 @@ body.calendar-entry-sheet-open {
   cursor: pointer;
 }
 .event-alarm-picker button:disabled { opacity: 0.55; cursor: default; }
-.event-alarm-picker button:focus-visible { outline: 2px solid var(--color-primary-sub); outline-offset: -2px; }
+.event-alarm-picker button:focus-visible,
+.event-alarm-picker__actions a:focus-visible { outline: 2px solid var(--color-primary-sub); outline-offset: -2px; }
 .event-alarm-picker .event-alarm-picker__option {
   display: grid;
   grid-template-columns: 20px 1fr;
@@ -621,12 +624,12 @@ body.calendar-entry-sheet-open {
 .event-alarm-picker__option:first-child { margin-bottom: var(--space-8); border-bottom: 1px solid var(--color-border); border-radius: 0; }
 .event-alarm-picker__option[aria-checked='true'] { background: var(--color-primary); font-weight: 700; }
 .event-alarm-picker__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); }
+.event-alarm-picker__actions a { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .event-alarm-picker__actions [data-action='allow'] { background: var(--color-primary); border-color: var(--color-primary-sub); font-weight: 700; }
 .event-alarm-fields [hidden] { display: none; }
 .event-alarm-fields .calendar-entry-sheet__field { grid-template-columns: max-content minmax(0, 1fr); }
 .event-alarm-fields .calendar-entry-sheet__label { white-space: nowrap; }
-.event-alarm-fields__status,
-.event-alarm-fields__note { color: var(--color-text-sub); font-size: var(--text-small); line-height: var(--line-body); margin: var(--space-8) 0; }
+.event-alarm-fields__status { color: var(--color-text-sub); font-size: var(--text-small); line-height: var(--line-body); margin: var(--space-8) 0; }
 .event-alarm-fields__status:empty { display: none; }
 .event-alarm-fields__status[data-error='true'] { color: #a91f1f; }
 

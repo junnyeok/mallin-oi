@@ -1,11 +1,11 @@
 import {
   EVENT_ALARM_PRESETS, alarmOptionLabel, getEventAlarmPlugin, makeEventAlarmSet,
-  makeAlarmCalendarFile, normalizeAlarmSelection, parseAlarmDateTime,
+  normalizeAlarmSelection, parseAlarmDateTime,
 } from './event-alarm.js';
+import { getCalendarAppStoreUrl } from './calendar-app-download-popup.js';
 
 let activePicker = null;
 const consentKey = 'mallinoi.event-alarm-consent.v2';
-const webKey = (key) => `mallinoi.event-alarm.v2:${key}`;
 
 function createPopover(opener, label) {
   activePicker?.close();
@@ -40,7 +40,7 @@ function createPopover(opener, label) {
       event.preventDefault(); event.stopImmediatePropagation(); close();
     } else if (event.key === 'Tab') {
       event.stopImmediatePropagation();
-      const targets = [...dialog.querySelectorAll('button:not(:disabled)')].filter((item) => item.getClientRects().length);
+      const targets = [...dialog.querySelectorAll('button:not(:disabled), a[href]')].filter((item) => item.getClientRects().length);
       const first = targets[0], last = targets.at(-1);
       if (!first) { event.preventDefault(); dialog.focus(); }
       else if (!dialog.contains(document.activeElement) || document.activeElement === dialog) {
@@ -120,6 +120,18 @@ function openPermissionPrompt({ opener, plugin, onAllowed }) {
   return api;
 }
 
+function openAppDownloadPrompt(opener) {
+  const api = createPopover(opener, '알람 기능 안내');
+  api.dialog.innerHTML = '<h3>알람 기능 안내</h3><p>알람 기능은 말린오이 캘린더 앱에서만 사용할 수 있어요. 앱을 다운로드하시겠어요?</p><div class="event-alarm-picker__actions"><button type="button">아니오</button><a data-action="allow" target="_blank" rel="noopener noreferrer">예</a></div>';
+  const no = api.dialog.querySelector('button');
+  const yes = api.dialog.querySelector('a');
+  yes.href = getCalendarAppStoreUrl();
+  yes.addEventListener('click', () => api.close());
+  no.addEventListener('click', () => api.close());
+  no.focus({ preventScroll: true });
+  return api;
+}
+
 export function createEventAlarmEditor({ key = null, getEvent }) {
   const plugin = getEventAlarmPlugin();
   const element = document.createElement('div');
@@ -155,9 +167,13 @@ export function createEventAlarmEditor({ key = null, getEvent }) {
     label.textContent = index ? '두 번째 알람' : '알람';
     const button = document.createElement('button'); button.type = 'button';
     button.setAttribute('aria-label', index ? '두 번째 알람 설정' : '알람 설정');
-    button.setAttribute('aria-haspopup', 'menu');
+    button.setAttribute('aria-haspopup', plugin ? 'menu' : 'dialog');
     button.addEventListener('click', async () => {
       if (locked) return;
+      if (!plugin) {
+        popover = openAppDownloadPrompt(button);
+        return;
+      }
       try {
         if (plugin) {
           const permissions = await plugin.getPermission();
@@ -175,15 +191,10 @@ export function createEventAlarmEditor({ key = null, getEvent }) {
     row.append(label, button); rows.push(row); buttons.push(button); element.append(row);
   }
   element.append(status);
-  if (!plugin) {
-    const note = document.createElement('p'); note.className = 'event-alarm-fields__note';
-    note.textContent = '웹에서는 저장 후 알림 파일을 캘린더 앱으로 가져와 주세요. 휴대폰 앱에서는 기기에 알람을 등록해요.';
-    element.append(note);
-  }
   render();
   const ready = (async () => {
-    if (key) {
-      existing = plugin ? await plugin.getSettings({ key }) : JSON.parse(localStorage.getItem(webKey(key)) || 'null');
+    if (plugin && key) {
+      existing = await plugin.getSettings({ key });
       if (existing?.selection) selection = normalizeAlarmSelection(existing.selection);
       else if (existing?.legacyAlarm) {
         try {
@@ -201,6 +212,7 @@ export function createEventAlarmEditor({ key = null, getEvent }) {
     setLocked(value) { locked = value; render(); },
     async prepare(event) {
       await ready;
+      if (!plugin) return { selection: [], alarms: [], skipped: 0 };
       const prepared = makeEventAlarmSet(event, selection);
       if (plugin && prepared.alarms.length) {
         const permission = await plugin.getPermission();
@@ -209,25 +221,13 @@ export function createEventAlarmEditor({ key = null, getEvent }) {
       return prepared;
     },
     async commit(savedKey, event, prepared) {
-      if (plugin) {
-        const result = await plugin.replace({ key: savedKey, previousKey: key || savedKey, ...prepared,
-          title: event.title, startAt: prepared.alarms[0]?.startAt || 0 });
-        if (!result?.scheduled) throw new Error('알람 등록을 확인하지 못했어요. 저장을 눌러 다시 시도해 주세요.');
-      } else {
-        const uid = existing?.uid || crypto.randomUUID();
-        if (prepared.selection.length || existing?.selection?.length) {
-          const base = makeEventAlarmSet(event, [0], -Infinity).alarms[0];
-          const content = makeAlarmCalendarFile(base, { uid, alarms: prepared.alarms });
-          const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
-          const link = document.createElement('a'); link.href = url; link.download = '말린오이-일정알림.ics';
-          document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
-        }
-        localStorage.setItem(webKey(savedKey), JSON.stringify({ selection: prepared.selection, uid }));
-        if (key && key !== savedKey) localStorage.removeItem(webKey(key));
-      }
+      if (!plugin) return { skipped: 0 };
+      const result = await plugin.replace({ key: savedKey, previousKey: key || savedKey, ...prepared,
+        title: event.title, startAt: prepared.alarms[0]?.startAt || 0 });
+      if (!result?.scheduled) throw new Error('알람 등록을 확인하지 못했어요. 저장을 눌러 다시 시도해 주세요.');
       key = savedKey;
       existing = { ...existing, selection: prepared.selection };
-      return { skipped: prepared.skipped, web: !plugin && Boolean(prepared.selection.length) };
+      return { skipped: prepared.skipped };
     },
     showError(error) { message(error.message || String(error), true); },
   };
@@ -236,5 +236,4 @@ export function createEventAlarmEditor({ key = null, getEvent }) {
 export async function cancelEventAlarms(key) {
   const plugin = getEventAlarmPlugin();
   if (plugin) await plugin.replace({ key, previousKey: key, alarms: [], selection: [], title: '', startAt: 0 });
-  else localStorage.removeItem(webKey(key));
 }
