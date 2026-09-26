@@ -85,12 +85,13 @@ function makeDialog() {
 }
 
 export function initCalendarCopyPaste({ bar, calendarType, onPasted }) {
-  const backupButton = bar?.querySelector('.calendar-group-bar__backup');
-  if (!backupButton) return null;
+  const main = bar?.querySelector('.calendar-group-bar__main');
+  const closeButton = main?.querySelector('.calendar-group-bar__close');
+  if (!main || !closeButton) return null;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'calendar-group-bar__copy-paste';
-  backupButton.insertAdjacentElement('beforebegin', button);
+  closeButton.insertAdjacentElement('beforebegin', button);
   let selectedGroup = null;
   const pasteFlight = createSingleFlight();
 

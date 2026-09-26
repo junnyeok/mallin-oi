@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  clampCalendarEndDateTime,
   formatCalendarTimeLabel,
   isOvernightTimeRange,
   joinLocalDateTimeValue,
@@ -12,9 +13,74 @@ import {
   resolveWorkCalendarTimeRange,
   splitLocalDateTimeValue,
 } from '../assets/js/modules/calendar-time.js';
+import {
+  enableCalendarMonthSwipe,
+  getCalendarMonthSwipeAxis,
+  getCalendarMonthSwipeOffset,
+  scheduleCalendarSelectionScroll,
+} from '../assets/js/modules/calendar-selection-scroll.js';
+import { getKoreanPublicHoliday } from '../assets/js/modules/calendar-holidays.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
+
+test('대한민국 공휴일과 음력 명절 및 대체공휴일을 계산한다', () => {
+  const expected2026 = new Map([
+    ['2026-01-01', '신정'],
+    ['2026-02-16', '설날 연휴'],
+    ['2026-02-17', '설날'],
+    ['2026-02-18', '설날 연휴'],
+    ['2026-03-01', '삼일절'],
+    ['2026-03-02', '삼일절 대체공휴일'],
+    ['2026-05-01', '노동절'],
+    ['2026-05-05', '어린이날'],
+    ['2026-05-24', '부처님오신날'],
+    ['2026-05-25', '부처님오신날 대체공휴일'],
+    ['2026-06-03', '지방선거'],
+    ['2026-06-06', '현충일'],
+    ['2026-07-17', '제헌절'],
+    ['2026-08-15', '광복절'],
+    ['2026-08-17', '광복절 대체공휴일'],
+    ['2026-09-24', '추석 연휴'],
+    ['2026-09-25', '추석'],
+    ['2026-09-26', '추석 연휴'],
+    ['2026-10-03', '개천절'],
+    ['2026-10-05', '개천절 대체공휴일'],
+    ['2026-10-09', '한글날'],
+    ['2026-12-25', '성탄절'],
+  ]);
+
+  expected2026.forEach((name, dateKey) => {
+    assert.equal(getKoreanPublicHoliday(dateKey)?.name, name, dateKey);
+  });
+  assert.equal(getKoreanPublicHoliday('2026-09-10'), null);
+
+  assert.equal(getKoreanPublicHoliday('2027-02-09')?.name, '설날 대체공휴일');
+  assert.equal(getKoreanPublicHoliday('2027-05-03')?.name, '노동절 대체공휴일');
+  assert.equal(getKoreanPublicHoliday('2027-07-19')?.name, '제헌절 대체공휴일');
+  assert.equal(getKoreanPublicHoliday('2027-12-27')?.name, '성탄절 대체공휴일');
+
+  for (const calendarFile of [
+    'assets/js/modules/study-calendar.js',
+    'assets/js/modules/work-calendar.js',
+    'assets/js/modules/event-calendar.js',
+  ]) {
+    const source = read(calendarFile);
+    assert.match(source, /appendKoreanHolidayBadge/);
+  }
+
+  const groupSource = read('assets/js/modules/calendar-groups.js');
+  const workSource = read('assets/js/modules/work-calendar.js');
+  const sharedCss = read('assets/css/main/calendar-groups-main.css');
+  assert.match(groupSource, /calendar-group-schedule__date-label/);
+  assert.match(groupSource, /appendKoreanHolidayBadge\(head, item\?\.dateKey\)/);
+  assert.match(
+    workSource,
+    /appendTypeBadges\(dayButton, todos, categories\);\s*appendKoreanHolidayBadge\(dayButton, cell\.dateKey\);/,
+  );
+  assert.match(sharedCss, /\.calendar-holiday-badge/);
+  assert.match(sharedCss, /color:\s*#c62828/);
+});
 
 test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 문자열로 정규화한다', () => {
   assert.equal(normalizeCalendarTime('09:05:30'), '09:05');
@@ -36,6 +102,56 @@ test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 �
       time: '',
     },
   );
+});
+
+test('시작 일시가 종료 일시를 넘으면 종료 일시를 시작값으로 자동 보정한다', () => {
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-22',
+      endTime: '',
+    }),
+    { date: '2026-08-23', time: '19:30', adjusted: true },
+  );
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-23',
+      endTime: '18:00',
+    }),
+    { date: '2026-08-23', time: '19:30', adjusted: true },
+  );
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-24',
+      endTime: '06:00',
+    }),
+    { date: '2026-08-24', time: '06:00', adjusted: false },
+  );
+  assert.deepEqual(
+    clampCalendarEndDateTime({
+      startDate: '2026-08-23',
+      startTime: '19:30',
+      endDate: '2026-08-23',
+      endTime: '',
+    }),
+    { date: '2026-08-23', time: '', adjusted: false },
+  );
+
+  const studySource = read('assets/js/modules/study-calendar.js');
+  const workSource = read('assets/js/modules/work-calendar.js');
+  const eventSource = read('assets/js/modules/event-calendar.js');
+  assert.match(studySource, /function syncStudyEndToStart/);
+  assert.match(eventSource, /function syncEventEndToStart/);
+  assert.match(eventSource, /function syncEventFormEndToStart/);
+  for (const source of [studySource, eventSource]) {
+    assert.match(source, /clampCalendarEndDateTime/);
+  }
+  assert.doesNotMatch(workSource, /clampCalendarEndDateTime/);
 });
 
 test('업무 야간 범위는 종료가 시작보다 이르면 익일 종료로 해석한다', () => {
@@ -78,6 +194,54 @@ test('업무 일정별 시간이 있으면 카테고리 기본 시간보다 우�
     endsNextDay: false,
     hasTimeOverride: true,
   });
+  assert.deepEqual(resolveWorkCalendarTimeRange({
+    todo: {
+      has_time_override: true,
+      start_time: '09:00:00',
+      end_time: '18:00:00',
+      ends_next_day: true,
+    },
+    category,
+  }), {
+    startTime: '09:00',
+    endTime: '18:00',
+    endsNextDay: true,
+    hasTimeOverride: true,
+  });
+});
+
+test('업무 날짜 충돌은 날짜를 표시한 예·취소 확인창에서만 덮어쓰기를 실행한다', () => {
+  const workSource = read('assets/js/modules/work-calendar.js');
+  const sheetSource = read('assets/js/modules/calendar-entry-sheet.js');
+  const editBody = workSource.match(
+    /async function saveTodoEdit\([\s\S]*?\n  \}\n\n  function openTodoDetail/,
+  )?.[0];
+
+  assert.ok(editBody, '업무 일정 수정 함수 본문을 찾을 수 있어야 한다');
+  assert.match(workSource, /title:\s*'업무 일정 덮어쓰기'/);
+  assert.match(
+    workSource,
+    /description:\s*`\$\{getReadableDate\(dateKey\)\}에는 이미 업무 일정이 있습니다\. 기존 일정을 덮어쓰시겠습니까\?`/,
+  );
+  assert.match(workSource, /cancelLabel:\s*'취소'/);
+  assert.match(workSource, /confirmLabel:\s*'예'/);
+  assert.doesNotMatch(editBody, /window\.confirm/);
+  assert.match(
+    editBody,
+    /await saveTodoAtomic\(payload\)[\s\S]*?isWorkDateConflict\(error\)[\s\S]*?await confirmWorkDateOverwrite\([\s\S]*?if \(!overwrite\)[\s\S]*?overwrite cancelled[\s\S]*?saveTodoAtomic\(\{ \.\.\.payload, overwrite: true \}\)/,
+  );
+
+  assert.match(sheetSource, /export function openCalendarConfirmation/);
+  assert.match(sheetSource, /setAttribute\('role', 'dialog'\)/);
+  assert.match(sheetSource, /setAttribute\('aria-modal', 'true'\)/);
+  assert.match(sheetSource, /event\.key === 'Escape'/);
+  assert.match(sheetSource, /event\.key !== 'Tab'/);
+  assert.match(sheetSource, /mallin:before-pjax-swap/);
+  assert.match(sheetSource, /pagehide/);
+  assert.match(
+    sheetSource,
+    /requestAnimationFrame\(\(\) => cancelButton\.focus/,
+  );
 });
 
 test('자기개발 생성·조회·수정은 nullable 시작/종료 필드를 모두 전달한다', () => {
@@ -129,7 +293,7 @@ test('시작·종료 행은 한 줄 공통 컨트롤을 사용하고 시간 해�
   assert.doesNotMatch(eventSource, /optionalLabel:\s*'종료시간 지정'/);
   assert.match(
     css,
-    /\.calendar-entry-sheet__datetime\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(104px,\s*0\.82fr\)/s,
+    /\.calendar-entry-sheet__datetime,\s*\.calendar-entry-sheet__time\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(104px,\s*0\.82fr\)/s,
   );
   assert.match(
     css,
@@ -156,9 +320,54 @@ test('업무 시간은 새 일정과 개별 수정 일정에 스냅샷으로 저
   assert.match(source, /has_time_override:\s*true/);
   assert.match(source, /p_start_time:/);
   assert.match(source, /p_end_time:/);
-  assert.match(source, /key:\s*'workStart'[\s\S]*?type:\s*'calendar-datetime'/);
-  assert.match(source, /key:\s*'workEnd'[\s\S]*?type:\s*'calendar-datetime'/);
-  assert.match(source, /useCategoryTimeDefaults:\s*true/);
+  assert.match(source, /p_ends_next_day:\s*times\.endsNextDay/);
+  assert.match(source, /key:\s*'workEndsNextDay'[\s\S]*?type:\s*'hidden'/);
+  assert.match(source, /key:\s*'workStart'[\s\S]*?type:\s*'calendar-time'/);
+  assert.match(source, /key:\s*'workEnd'[\s\S]*?type:\s*'calendar-time'[\s\S]*?allowNextDay:\s*true/);
+  assert.match(source, /showNextDayMarker:\s*true/);
+  assert.match(
+    read('assets/js/modules/calendar-entry-sheet.js'),
+    /calendar-entry-sheet__time-next-day[\s\S]*?textContent = '익\)'/,
+  );
+  assert.match(
+    source,
+    /field\.key === 'workEnd'\)[\s\S]*?updateNextDayMarker\?\.\(\)/,
+  );
+  assert.match(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /\.calendar-entry-sheet__time-next-day\s*\{[^}]*margin-inline-end:\s*calc\(-1 \* var\(--space-24\)\)[^}]*pointer-events:\s*none[^}]*white-space:\s*nowrap/s,
+  );
+  assert.match(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /\.calendar-entry-sheet__time\s*\{[^}]*gap:\s*var\(--space-4\)/s,
+  );
+  assert.match(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /\.calendar-entry-sheet__time > input\s*\{[^}]*width:\s*96px/s,
+  );
+  assert.doesNotMatch(source, /characterImage:/);
+  assert.doesNotMatch(
+    read('assets/js/modules/calendar-entry-sheet.js'),
+    /calendar-entry-sheet__character|characterImage/,
+  );
+  assert.doesNotMatch(
+    read('assets/css/components/calendar-entry-sheet.css'),
+    /calendar-entry-sheet__character/,
+  );
+});
+
+test('업무 일정 카테고리를 변경하면 편집 중에도 해당 카테고리 시간으로 교체한다', () => {
+  const source = read('assets/js/modules/work-calendar.js');
+  const fieldsBody = source.match(
+    /function getWorkEntryFields\([\s\S]*?\n  }\n\n  function openTodoCreate/,
+  )?.[0];
+
+  assert.ok(fieldsBody, '업무 일정 필드 생성 함수 본문을 찾을 수 있어야 한다');
+  assert.doesNotMatch(fieldsBody, /useCategoryTimeDefaults/);
+  assert.match(
+    fieldsBody,
+    /onChange:\s*\(nextCategoryId\)[\s\S]*?resolveWorkCalendarTimeRange\(\{ category: nextCategory \}\)[\s\S]*?startField\.input\.value\s*=\s*nextStartTime[\s\S]*?endField\.input\.value\s*=\s*nextEndTime[\s\S]*?setEndsNextDay\(nextEndsNextDay\)/,
+  );
 });
 
 test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 UI를 유지한다', () => {
@@ -189,21 +398,323 @@ test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 U
   );
 });
 
-test('날짜 직접 선택만 렌더 후 일정 목록 스크롤을 예약한다', () => {
+test('날짜 직접 선택은 일정 유무와 관계없이 렌더 후 목록 스크롤을 예약한다', () => {
   const scrollSource = read('assets/js/modules/calendar-selection-scroll.js');
+  const sheetCss = read('assets/css/components/calendar-entry-sheet.css');
 
   assert.match(scrollSource, /requestAnimationFrame[\s\S]*requestAnimationFrame/);
-  assert.match(scrollSource, /hasRenderedItems\?\.\(\)/);
+  assert.doesNotMatch(scrollSource, /hasRenderedItems/);
   assert.match(scrollSource, /prefers-reduced-motion:\s*reduce/);
   assert.match(scrollSource, /scrollIntoView/);
+  assert.match(
+    sheetCss,
+    /\.study-calendar-selected,[\s\S]*?\.event-calendar-selected \{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/,
+  );
 
   for (const calendarType of ['study', 'work', 'event']) {
     const source = read(`assets/js/modules/${calendarType}-calendar.js`);
+    const html = read(`calendar-${calendarType}.html`);
     const selectDateBody = source.match(
       /function selectDate\(dateKey\) \{([\s\S]*?)\n  \}/,
     )?.[1] || '';
     assert.match(selectDateBody, /renderAll\(\)/);
     assert.match(selectDateBody, /scheduleCalendarSelectionScroll/);
+    assert.doesNotMatch(selectDateBody, /hasRenderedItems/);
+
+    const selectedStart = html.indexOf(
+      `class="${calendarType}-calendar-selected"`,
+    );
+    const addButton = html.indexOf(`id="${calendarType}EntrySheetOpen"`);
+    const formStart = html.indexOf(`id="${calendarType}TodoForm"`);
+    assert.ok(selectedStart >= 0);
+    assert.ok(addButton > selectedStart && addButton < formStart);
+    assert.equal(
+      html.match(new RegExp(`id="${calendarType}EntrySheetOpen"`, 'g'))?.length,
+      1,
+    );
+  }
+});
+
+test('빈 일정 목록도 선택 날짜 패널로 실제 스크롤한다', () => {
+  const previousWindow = globalThis.window;
+  const scrollCalls = [];
+  let frameCount = 0;
+
+  globalThis.window = {
+    matchMedia: () => ({ matches: false }),
+    requestAnimationFrame(callback) {
+      frameCount += 1;
+      callback();
+      return frameCount;
+    },
+  };
+
+  try {
+    scheduleCalendarSelectionScroll({
+      target: {
+        scrollIntoView(options) {
+          scrollCalls.push(options);
+        },
+      },
+    });
+  } finally {
+    globalThis.window = previousWindow;
+  }
+
+  assert.equal(frameCount, 2);
+  assert.deepEqual(scrollCalls, [{ behavior: 'smooth', block: 'start' }]);
+});
+
+test('가로 스와이프만 이전·다음 달 이동으로 판정한다', () => {
+  assert.equal(getCalendarMonthSwipeOffset(-80, 8), 1);
+  assert.equal(getCalendarMonthSwipeOffset(76, -12), -1);
+  assert.equal(getCalendarMonthSwipeOffset(-40, 2), 0);
+  assert.equal(getCalendarMonthSwipeOffset(80, 70), 0);
+  assert.equal(getCalendarMonthSwipeOffset(Number.NaN, 0), 0);
+  assert.equal(getCalendarMonthSwipeAxis(10, 11), 'horizontal');
+  assert.equal(getCalendarMonthSwipeAxis(3, 14), 'vertical');
+  assert.equal(getCalendarMonthSwipeAxis(3, 4), null);
+
+  const sheetCss = read('assets/css/components/calendar-entry-sheet.css');
+  assert.match(
+    sheetCss,
+    /is-calendar-month-swipe-enabled[\s\S]*touch-action: pan-y pinch-zoom;/,
+  );
+  assert.match(sheetCss, /is-calendar-month-dragging/);
+  assert.match(sheetCss, /is-calendar-month-transitioning/);
+  assert.match(sheetCss, /calendar-month-preview/);
+  assert.match(
+    sheetCss,
+    /prefers-reduced-motion: reduce[\s\S]*is-calendar-month-swipe-enabled[\s\S]*transform: none;/,
+  );
+
+  for (const calendarType of ['study', 'work', 'event']) {
+    const source = read(`assets/js/modules/${calendarType}-calendar.js`);
+    assert.match(source, /enableCalendarMonthSwipe/);
+    assert.match(
+      source,
+      new RegExp(`target: monthSwipeTarget,[\\s\\S]*onNavigate: changeMonth`),
+    );
+    assert.match(source, /createMonthPreview:/);
+    assert.match(source, /monthSwipe\.navigate\(-1\)/);
+    assert.match(source, /monthSwipe\.navigate\(1\)/);
+  }
+});
+
+test('달력은 손가락 이동량을 따라가고 버튼도 같은 월 전환 효과를 사용한다', async () => {
+  const previousWindow = globalThis.window;
+  const listeners = new Map();
+  const classes = new Set();
+  const navigations = [];
+  const previewStyles = [];
+  const capturedPointerIds = [];
+  const style = {
+    transform: '',
+    opacity: '',
+    removeProperty(property) {
+      this[property] = '';
+    },
+  };
+  const target = {
+    style,
+    classList: {
+      add(...names) {
+        names.forEach((name) => classes.add(name));
+      },
+      remove(...names) {
+        names.forEach((name) => classes.delete(name));
+      },
+    },
+    addEventListener(type, listener) {
+      listeners.set(type, listener);
+    },
+    removeEventListener(type) {
+      listeners.delete(type);
+    },
+    getBoundingClientRect() {
+      return { width: 320 };
+    },
+    setPointerCapture(pointerId) {
+      capturedPointerIds.push(pointerId);
+    },
+    hasPointerCapture() {
+      return false;
+    },
+  };
+  const parent = {
+    insertBefore() {},
+    querySelector() {
+      return null;
+    },
+  };
+  target.parentElement = parent;
+
+  function createPreview() {
+    const previewClasses = new Set();
+    const previewStyle = {
+      transform: '',
+      removeProperty(property) {
+        this[property] = '';
+      },
+    };
+    previewStyles.push(previewStyle);
+    return {
+      style: previewStyle,
+      classList: {
+        add(...names) {
+          names.forEach((name) => previewClasses.add(name));
+        },
+        remove(...names) {
+          names.forEach((name) => previewClasses.delete(name));
+        },
+      },
+      removeAttribute() {},
+      querySelectorAll() {
+        return [];
+      },
+      setAttribute() {},
+      remove() {},
+    };
+  }
+
+  globalThis.window = {
+    innerWidth: 320,
+    matchMedia: () => ({ matches: false }),
+  };
+
+  try {
+    const monthSwipe = enableCalendarMonthSwipe({
+      target,
+      onNavigate(offset) {
+        navigations.push(offset);
+      },
+      createMonthPreview: createPreview,
+    });
+
+    assert.equal(previewStyles.at(-2).transform, 'translate3d(-320px, 0, 0)');
+    assert.equal(previewStyles.at(-1).transform, 'translate3d(320px, 0, 0)');
+
+    listeners.get('pointerdown')({
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 240,
+      clientY: 200,
+    });
+    assert.deepEqual(capturedPointerIds, []);
+    listeners.get('pointermove')({
+      pointerId: 1,
+      clientX: 230,
+      clientY: 211,
+      cancelable: true,
+      preventDefault() {},
+    });
+    assert.deepEqual(capturedPointerIds, [1]);
+    assert.equal(style.transform, 'translate3d(-10px, 0, 0)');
+    listeners.get('pointermove')({
+      pointerId: 1,
+      clientX: 150,
+      clientY: 220,
+      cancelable: true,
+      preventDefault() {},
+    });
+    assert.equal(style.transform, 'translate3d(-90px, 0, 0)');
+    assert.equal(previewStyles.at(-2).transform, 'translate3d(-410px, 0, 0)');
+    assert.equal(previewStyles.at(-1).transform, 'translate3d(230px, 0, 0)');
+    assert.equal(classes.has('is-calendar-month-dragging'), true);
+
+    listeners.get('pointerup')({
+      pointerId: 1,
+      clientX: 150,
+      clientY: 220,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(navigations, [1]);
+
+    let suppressedSwipeClick = false;
+    listeners.get('click')({
+      preventDefault() {
+        suppressedSwipeClick = true;
+      },
+      stopPropagation() {},
+    });
+    assert.equal(suppressedSwipeClick, true);
+
+    const previewsBeforeTap = previewStyles.length;
+    const transformBeforeTap = style.transform;
+    listeners.get('pointerdown')({
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: 120,
+      clientY: 180,
+    });
+    listeners.get('pointerup')({
+      pointerId: 2,
+      clientX: 120,
+      clientY: 180,
+    });
+    assert.equal(previewStyles.length, previewsBeforeTap);
+    assert.equal(style.transform, transformBeforeTap);
+    let suppressedTapClick = false;
+    listeners.get('click')({
+      preventDefault() {
+        suppressedTapClick = true;
+      },
+      stopPropagation() {},
+    });
+    assert.equal(suppressedTapClick, false);
+    assert.deepEqual(capturedPointerIds, [1]);
+    assert.equal(previewStyles.length, previewsBeforeTap);
+    assert.equal(style.transform, transformBeforeTap);
+
+    listeners.get('pointerdown')({
+      pointerId: 3,
+      pointerType: 'touch',
+      clientX: 240,
+      clientY: 180,
+    });
+    listeners.get('pointerup')({
+      pointerId: 3,
+      clientX: 150,
+      clientY: 180,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(navigations, [1, 1]);
+
+    await monthSwipe.navigate(-1);
+    assert.deepEqual(navigations, [1, 1, -1]);
+    assert.equal(style.transform, '');
+    assert.equal(classes.has('is-calendar-month-transitioning'), false);
+
+    let preventedHorizontalScroll = false;
+    listeners.get('touchstart')({
+      touches: [{ clientX: 240, clientY: 200 }],
+    });
+    listeners.get('touchmove')({
+      touches: [{ clientX: 225, clientY: 213 }],
+      cancelable: true,
+      preventDefault() {
+        preventedHorizontalScroll = true;
+      },
+    });
+    assert.equal(preventedHorizontalScroll, true);
+
+    let preventedVerticalScroll = false;
+    listeners.get('touchstart')({
+      touches: [{ clientX: 240, clientY: 200 }],
+    });
+    listeners.get('touchmove')({
+      touches: [{ clientX: 237, clientY: 230 }],
+      cancelable: true,
+      preventDefault() {
+        preventedVerticalScroll = true;
+      },
+    });
+    assert.equal(preventedVerticalScroll, false);
+    monthSwipe.destroy();
+  } finally {
+    globalThis.window = previousWindow;
   }
 });
 
@@ -214,11 +725,19 @@ test('시간 선택기는 닫기 전에 포커스를 해제하고 iOS 자동 확
 
   assert.match(timeSource, /popover\.contains\(activeElement\)[\s\S]*activeElement\.blur\(\)/);
   assert.match(timeSource, /activeCalendarTimePicker\?\.close/);
+  assert.match(timeSource, /nextDayText\.textContent = '다음 날\(익일\)'/);
+  assert.match(timeSource, /onNextDayChange\?\.\(nextDayInput\.checked\)/);
+  assert.match(timeSource, /popover\.tabIndex = -1/);
+  assert.match(
+    timeSource,
+    /anchorEl\.blur\(\);\s*popover\.focus\(\{ preventScroll: true \}\)/,
+  );
+  assert.doesNotMatch(timeSource, /periodField\.select\.focus/);
   assert.match(sheetSource, /closeActiveCalendarTimePicker\(\{ restoreFocus: false \}\)/);
   assert.match(sheetSource, /blurFocusedControl\(dialog\)/);
   assert.match(
     css,
-    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__datetime > input\[readonly\] \{[^}]*font-size:\s*var\(--text-body\)/s,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.calendar-entry-sheet__time > input\[readonly\] \{[^}]*font-size:\s*var\(--text-body\)/s,
   );
   assert.match(
     css,
@@ -240,6 +759,43 @@ test('운영 마이그레이션은 기존 데이터를 채우지 않고 검증�
   assert.match(sql, /to authenticated/);
 });
 
+test('자기개발 일정 날짜 이동은 시작·종료 일시와 카테고리를 한 문장에서 원자적으로 저장한다', () => {
+  const editorSql = read(
+    'supabase-SQLEditor/20260826-fix-study-calendar-date-move.sql',
+  );
+  const migrationSql = read(
+    'supabase/migrations/20260826000000_fix_study_calendar_date_move.sql',
+  );
+  const functionBody = editorSql.match(
+    /create or replace function public\.save_study_calendar_todo\([\s\S]*?as \$\$([\s\S]*?)\$\$;/i,
+  )?.[1];
+
+  assert.equal(migrationSql, editorSql);
+  assert.ok(functionBody, 'save_study_calendar_todo 함수 본문을 찾을 수 있어야 한다');
+  assert.equal(
+    functionBody.match(/update\s+public\.study_calendar_todos/gi)?.length,
+    1,
+  );
+  assert.match(
+    functionBody,
+    /update public\.study_calendar_todos\s+set[\s\S]*?todo_date = p_todo_date,[\s\S]*?todo_time = p_todo_time,[\s\S]*?todo_end_date = p_todo_end_date,[\s\S]*?todo_end_time = p_todo_end_time,[\s\S]*?category_id = v_category\.id/s,
+  );
+  assert.doesNotMatch(functionBody, /update_study_shared_personal_todo/);
+  assert.doesNotMatch(
+    functionBody,
+    /update_study_calendar_todo_category_with_shared_personal/,
+  );
+  assert.match(editorSql, /security definer/);
+  assert.match(editorSql, /from public, anon/);
+  assert.match(editorSql, /to authenticated/);
+
+  const backup = read('supabase-SQLEditor/99_all_backup.sql');
+  assert.ok(
+    backup.includes(editorSql),
+    'SQL 누적본에 이번 운영 SQL이 그대로 포함되어야 한다',
+  );
+});
+
 test('업무 일정별 시간 마이그레이션은 기존 행을 수정하지 않고 재정의 우선순위를 저장한다', () => {
   const sql = read('supabase-SQLEditor/20260801-work-calendar-todo-times.sql');
   assert.match(sql, /start_time time without time zone/);
@@ -253,6 +809,25 @@ test('업무 일정별 시간 마이그레이션은 기존 행을 수정하지 �
   assert.doesNotMatch(sql, /update\s+public\.work_calendar_todos\s+set\s+start_time\s*=\s*[^p]/i);
   assert.match(sql, /from public, anon/);
   assert.match(sql, /to authenticated/);
+});
+
+test('업무 일정 익일 지정은 기존 데이터를 수정하지 않고 명시 상태와 호환 저장 함수를 제공한다', () => {
+  const editorSql = read(
+    'supabase-SQLEditor/20260827-work-calendar-explicit-next-day.sql',
+  );
+  const migrationSql = read(
+    'supabase/migrations/20260827000000_work_calendar_explicit_next_day.sql',
+  );
+  const backup = read('supabase-SQLEditor/99_all_backup.sql');
+
+  assert.equal(migrationSql, editorSql);
+  assert.ok(backup.includes(editorSql));
+  assert.match(editorSql, /ends_next_day = true or end_time >= start_time/);
+  assert.match(editorSql, /p_ends_next_day boolean/);
+  assert.match(editorSql, /v_ends_next_day boolean := coalesce\(p_ends_next_day, false\)/);
+  assert.match(editorSql, /boolean, boolean\s*\) to authenticated/);
+  assert.match(editorSql, /p_end_time < p_start_time,[\s\S]*?p_overwrite/);
+  assert.doesNotMatch(editorSql, /update\s+public\.work_calendar_todos\s+set\s+ends_next_day\s*=/i);
 });
 
 test('이벤트 시작시간 마이그레이션은 기존 함수의 00:00 강제값만 제거한다', () => {
@@ -289,7 +864,9 @@ test('루트·www·Android·iOS 시간 기능 자산은 바이트 단위로 일�
     'assets/css/components/calendar-entry-sheet.css',
     'assets/css/components/calendar-loading.css',
     'assets/css/main/calendar-event-main.css',
+    'assets/css/main/calendar-groups-main.css',
     'assets/css/main/calendar-work-main.css',
+    'assets/js/modules/calendar-holidays.js',
     'assets/js/modules/calendar-time.js',
     'assets/js/modules/calendar-selection-scroll.js',
     'assets/js/modules/calendar-entry-sheet.js',

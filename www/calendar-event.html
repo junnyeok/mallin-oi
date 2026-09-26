@@ -107,14 +107,6 @@
                   걱정마세요!
                 </p>
               </div>
-              <button
-                type="button"
-                class="calendar-add-button"
-                id="eventEntrySheetOpen"
-                aria-label="이벤트 일정 추가"
-              >
-                +
-              </button>
             </div>
 
             <div class="event-calendar-layout">
@@ -161,13 +153,23 @@
 
               <aside class="panel event-calendar-todo-panel">
                 <div class="event-calendar-selected">
-                  <p class="event-calendar-selected__label">선택한 날짜</p>
-                  <h2
-                    class="event-calendar-selected__date"
-                    id="eventSelectedDate"
+                  <div class="calendar-selected-date-copy">
+                    <p class="event-calendar-selected__label">선택한 날짜</p>
+                    <h2
+                      class="event-calendar-selected__date"
+                      id="eventSelectedDate"
+                    >
+                      -
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    class="calendar-add-button"
+                    id="eventEntrySheetOpen"
+                    aria-label="이벤트 일정 추가"
                   >
-                    -
-                  </h2>
+                    +
+                  </button>
                 </div>
 
                 <form class="event-todo-form" id="eventTodoForm">

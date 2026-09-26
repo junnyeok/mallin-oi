@@ -8,6 +8,8 @@ import {
   showLoginRequiredPopup,
 } from './auth-store.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
+import { normalizeBackupPayload } from './calendar-group-backup-comparison.js';
+import { appendKoreanHolidayBadge } from './calendar-holidays.js';
 import { openCalendarManagePopup } from './service-menu.js';
 
 let calendarCopyPasteModulePromise = null;
@@ -51,11 +53,6 @@ const BACKUP_STATUS = {
   CHECKING: 'checking',
   RUNNING: 'running',
 };
-const BACKUP_BOOLEAN_PAYLOAD_KEYS = new Set([
-  'isDone',
-  'is_shared_copy',
-  'categoryEndsNextDay',
-]);
 const BACKUP_SOURCE_CONFIG = {
   study: {
     table: 'study_calendar_todos',
@@ -125,8 +122,8 @@ function toDateKey(date) {
 }
 
 function getMonthRange(viewDate) {
-  const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
-  const end = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+  const start = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+  const end = new Date(viewDate.getFullYear(), viewDate.getMonth() + 2, 0);
   return {
     startDate: toDateKey(start),
     endDate: toDateKey(end),
@@ -490,41 +487,6 @@ async function rpc(name, params = {}) {
 function getRelatedCategory(row, relation) {
   const category = row?.[relation];
   return Array.isArray(category) ? category[0] || null : category || null;
-}
-
-function normalizeBackupPayload(payload = {}, calendarType = '') {
-  const comparableKeys = {
-    study: new Set([
-      'isDone',
-      'categoryName',
-      'todoTime',
-      'todoEndDate',
-      'todoEndTime',
-    ]),
-    work: new Set([
-      'isDone',
-      'workText',
-      'categoryName',
-      'categoryStartTime',
-      'categoryEndTime',
-      'categoryEndsNextDay',
-    ]),
-  }[calendarType];
-
-  return Object.keys(payload)
-    .filter((key) => !comparableKeys || comparableKeys.has(key))
-    .sort()
-    .reduce((result, key) => {
-      const value = payload[key];
-      if (BACKUP_BOOLEAN_PAYLOAD_KEYS.has(key)) {
-        result[key] =
-          value === true || value === 'true' || value === 1 || value === '1';
-        return result;
-      }
-
-      result[key] = value ?? null;
-      return result;
-    }, {});
 }
 
 function makeBackupComparable(event, calendarType = '') {
@@ -954,7 +916,11 @@ export function appendCalendarGroupBoard(
       if (!item?.isCurrentMonth) {
         head.classList.add('is-muted');
       }
-      head.textContent = `${item?.weekday || ''} ${item?.dateNumber || ''}`.trim();
+      const dateLabel = document.createElement('span');
+      dateLabel.className = 'calendar-group-schedule__date-label';
+      dateLabel.textContent = `${item?.weekday || ''} ${item?.dateNumber || ''}`.trim();
+      head.append(dateLabel);
+      appendKoreanHolidayBadge(head, item?.dateKey);
       header.append(head);
     });
 
@@ -1044,6 +1010,13 @@ export async function initCalendarGroupBar({
     </div>
   `;
 
+  const backupButton = document.createElement('button');
+  backupButton.type = 'button';
+  backupButton.className =
+    'calendar-group-bar__backup calendar-group-bar__backup--header';
+  backupButton.textContent = '백업';
+  backupButton.hidden = true;
+
   const panel = document.createElement('div');
   panel.className = 'calendar-group-bar__panel';
   panel.id = panelId;
@@ -1068,7 +1041,6 @@ export async function initCalendarGroupBar({
             <option value="">그룹 연동 OFF</option>
           </select>
         </label>
-        <button class="calendar-group-bar__backup" type="button">백업</button>
         <button class="calendar-group-bar__close" type="button">닫기</button>
       </div>
       <div class="calendar-group-bar__status" id="${panelStatusId}" aria-live="polite">
@@ -1078,9 +1050,10 @@ export async function initCalendarGroupBar({
   `;
 
   if (head) {
-    head.append(bar);
+    head.append(bar, backupButton);
   } else {
     pageRoot.prepend(bar);
+    bar.querySelector('.calendar-group-bar__actions')?.append(backupButton);
   }
   bar.append(panel);
 
@@ -1089,7 +1062,6 @@ export async function initCalendarGroupBar({
 
   const dialog = panel.querySelector('.calendar-group-bar__dialog');
   const select = panel.querySelector('.calendar-group-bar__select');
-  const backupButton = panel.querySelector('.calendar-group-bar__backup');
   const status = panel.querySelector('.calendar-group-bar__status-main');
   const toggleButton = bar.querySelector('.calendar-group-bar__toggle');
   const closeButton = panel.querySelector('.calendar-group-bar__close');
@@ -1174,7 +1146,7 @@ export async function initCalendarGroupBar({
       lockPageScroll();
       document.addEventListener('keydown', handlePanelKeydown);
       window.requestAnimationFrame(() => {
-        select?.focus({ preventScroll: true });
+        dialog.focus({ preventScroll: true });
       });
     } else {
       panel.hidden = true;
@@ -1213,8 +1185,8 @@ export async function initCalendarGroupBar({
   }
 
   function updateBackupButtonState() {
-    backupButton.hidden = false;
     const isActive = isCalendarGroupActive(state);
+    backupButton.hidden = !isActive;
     const isChecking = state.backupStatus === BACKUP_STATUS.CHECKING;
     const isRunning = state.backupStatus === BACKUP_STATUS.RUNNING;
     const hasPendingPersonalCalendarChanges =

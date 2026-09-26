@@ -480,8 +480,10 @@
 ./assets/js/modules/calendar-app-download-popup.js
 ./assets/js/modules/calendar-copy-buffer.js
 ./assets/js/modules/calendar-entry-sheet.js
+./assets/js/modules/calendar-group-backup-comparison.js
 ./assets/js/modules/calendar-group-copy-paste.js
 ./assets/js/modules/calendar-groups.js
+./assets/js/modules/calendar-holidays.js
 ./assets/js/modules/calendar-loading.js
 ./assets/js/modules/calendar-native-widgets.js
 ./assets/js/modules/calendar-selection-scroll.js
@@ -498,6 +500,8 @@
 ./assets/js/modules/daily-attendance-popup.js
 ./assets/js/modules/emoticons.js
 ./assets/js/modules/equipment-events.js
+./assets/js/modules/event-alarm-picker.js
+./assets/js/modules/event-alarm.js
 ./assets/js/modules/event-calendar.js
 ./assets/js/modules/inquiry-board-repo.js
 ./assets/js/modules/inquiry-board.js
@@ -567,6 +571,8 @@
 ./calendar-work.html
 ./capacitor.config.json
 ./career.html
+./docs/calendar-event-alarms.md
+./docs/calendar-production-sync.md
 ./event.html
 ./file-list.txt
 ./games/cucumber-grow/README.md
@@ -1390,6 +1396,8 @@
 ./supabase-SQLEditor/20260809-socceroi-summerboy-skins.sql
 ./supabase-SQLEditor/20260812-cucumber-girl-stage-profile-background.sql
 ./supabase-SQLEditor/20260821-cucumber-boy-emoticon-pack.sql
+./supabase-SQLEditor/20260826-fix-study-calendar-date-move.sql
+./supabase-SQLEditor/20260827-work-calendar-explicit-next-day.sql
 ./supabase-SQLEditor/20260906-broccoli-girl-emoticon-pack.sql
 ./supabase-SQLEditor/20260906-pixel-heart-bgm.sql
 ./supabase-SQLEditor/20260913-daegu-cucumber-skin.sql
@@ -1438,6 +1446,8 @@
 ./supabase/migrations/20260809000000_socceroi_summerboy_skins.sql
 ./supabase/migrations/20260812000000_bg05_cucumber_girl_stage_profile_background.sql
 ./supabase/migrations/20260821000000_cucumber_boy_emoticon_pack.sql
+./supabase/migrations/20260826000000_fix_study_calendar_date_move.sql
+./supabase/migrations/20260827000000_work_calendar_explicit_next_day.sql
 ./supabase/migrations/20260906000000_pixel_heart_bgm.sql
 ./supabase/migrations/20260906010000_broccoli_girl_emoticon_pack.sql
 ./supabase/migrations/20260913000000_tomato_skins.sql
@@ -1453,6 +1463,8 @@
 ./tests/broccoli-girl-emoticon-pack.test.mjs
 ./tests/burning-soul-bgm.test.mjs
 ./tests/calendar-copy-paste.test.mjs
+./tests/calendar-event-alarm.test.mjs
+./tests/calendar-group-backup-state.test.mjs
 ./tests/calendar-loading.test.mjs
 ./tests/calendar-shared-personal-readonly.test.mjs
 ./tests/calendar-time-settings.test.mjs
@@ -1465,6 +1477,7 @@
 ./tests/fixtures/app-update-popup-browser.html
 ./tests/fixtures/calendar-copy-paste-conflict-browser.html
 ./tests/fixtures/calendar-shared-personal-readonly-browser.html
+./tests/fixtures/event-alarm-browser.html
 ./tests/fixtures/study-completion-celebration-browser.html
 ./tests/free-emoticon-equipment.test.mjs
 ./tests/new-character-skins.test.mjs
@@ -1545,8 +1558,10 @@
 ./www/assets/js/modules/calendar-app-download-popup.js
 ./www/assets/js/modules/calendar-copy-buffer.js
 ./www/assets/js/modules/calendar-entry-sheet.js
+./www/assets/js/modules/calendar-group-backup-comparison.js
 ./www/assets/js/modules/calendar-group-copy-paste.js
 ./www/assets/js/modules/calendar-groups.js
+./www/assets/js/modules/calendar-holidays.js
 ./www/assets/js/modules/calendar-loading.js
 ./www/assets/js/modules/calendar-native-widgets.js
 ./www/assets/js/modules/calendar-selection-scroll.js
@@ -1563,6 +1578,8 @@
 ./www/assets/js/modules/daily-attendance-popup.js
 ./www/assets/js/modules/emoticons.js
 ./www/assets/js/modules/equipment-events.js
+./www/assets/js/modules/event-alarm-picker.js
+./www/assets/js/modules/event-alarm.js
 ./www/assets/js/modules/event-calendar.js
 ./www/assets/js/modules/inquiry-board-repo.js
 ./www/assets/js/modules/inquiry-board.js

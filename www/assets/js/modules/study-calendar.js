@@ -13,6 +13,11 @@ import {
   pauseBgmForExternalAudio,
   restoreBgmAfterExternalAudio,
 } from './bgm-player.js';
+import {
+  beginCompletionAudioSession,
+  endCompletionAudioSession,
+  shouldPlayCompletionSound,
+} from './completion-audio-session.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import {
   createCalendarScheduleListContent,
@@ -24,8 +29,13 @@ import {
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { createStudyCompletionCelebration } from './study-completion-celebration.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
-import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
+import { appendKoreanHolidayBadge } from './calendar-holidays.js';
 import {
+  enableCalendarMonthSwipe,
+  scheduleCalendarSelectionScroll,
+} from './calendar-selection-scroll.js';
+import {
+  clampCalendarEndDateTime,
   formatCalendarTimeLabel,
   joinLocalDateTimeValue,
   normalizeCalendarTime,
@@ -698,6 +708,7 @@ async function renderPreviewCalendar() {
     number.textContent = String(item.date.getDate());
 
     dayEl.append(number);
+    appendKoreanHolidayBadge(dayEl, dateKey);
     appendTypeBadges(dayEl, todos, categories);
     grid.append(dayEl);
   });
@@ -740,6 +751,7 @@ function createDayButton({
   number.textContent = String(date.getDate());
 
   button.append(number);
+  appendKoreanHolidayBadge(button, dateKey);
   appendTypeBadges(button, todos, categories);
 
   button.addEventListener('click', () => {
@@ -951,18 +963,24 @@ function renderCategoryList({
   });
 }
 
-function renderPageCalendar(state) {
-  const grid = document.getElementById('studyCalendarGrid');
-  const monthLabel = document.getElementById('studyCalendarMonthLabel');
+function renderPageCalendar(
+  state,
+  {
+    grid = document.getElementById('studyCalendarGrid'),
+    monthLabel = document.getElementById('studyCalendarMonthLabel'),
+    viewDate = state.viewDate,
+    updateMonthLabel = true,
+  } = {},
+) {
 
-  if (!grid || !monthLabel) return;
+  if (!grid || (updateMonthLabel && !monthLabel)) return;
 
   grid.innerHTML = '';
   const isGroupMode = isCalendarGroupActive(state.group?.state);
   grid.classList.toggle('is-calendar-group-mode', isGroupMode);
-  monthLabel.textContent = getMonthTitle(state.viewDate);
+  if (updateMonthLabel) monthLabel.textContent = getMonthTitle(viewDate);
 
-  const dates = getMonthDates(state.viewDate, { includeOutside: true });
+  const dates = getMonthDates(viewDate, { includeOutside: true });
 
   if (!isGroupMode) {
     renderWeekdays(grid);
@@ -1064,6 +1082,7 @@ async function initPageCalendar(loadingController) {
 
   const prevBtn = document.getElementById('studyCalendarPrevBtn');
   const nextBtn = document.getElementById('studyCalendarNextBtn');
+  const monthSwipeTarget = document.getElementById('studyCalendarGrid');
   const form = document.getElementById('studyTodoForm');
   const input = document.getElementById('studyTodoInput');
   const typeSelect = document.getElementById('studyTodoType');
@@ -1100,6 +1119,9 @@ async function initPageCalendar(loadingController) {
     pathResolver: resolveSitePath,
     pauseBgm: pauseBgmForExternalAudio,
     restoreBgm: restoreBgmAfterExternalAudio,
+    shouldPlaySound: shouldPlayCompletionSound,
+    beginAudioSession: beginCompletionAudioSession,
+    endAudioSession: endCompletionAudioSession,
   });
   const pendingCompletionTodoIds = new Set();
   const cleanupCompletionCelebration = () => {
@@ -1192,9 +1214,6 @@ async function initPageCalendar(loadingController) {
     renderAll();
     scheduleCalendarSelectionScroll({
       target: document.querySelector('.study-calendar-todo-panel'),
-      hasRenderedItems: () => Boolean(
-        document.getElementById('studyTodoList')?.children.length,
-      ),
     });
   }
 
@@ -1309,8 +1328,14 @@ async function initPageCalendar(loadingController) {
     const nextMemo = String(memo || '');
     const nextDateKey = String(dateKey || target.date || state.selectedDateKey);
     const nextTime = normalizeCalendarTime(todoTime);
-    const nextEndDate = String(todoEndDate || '');
-    const nextEndTime = normalizeCalendarTime(todoEndTime);
+    const nextEnd = clampCalendarEndDateTime({
+      startDate: nextDateKey,
+      startTime: nextTime,
+      endDate: String(todoEndDate || ''),
+      endTime: todoEndTime,
+    });
+    const nextEndDate = nextEnd.date;
+    const nextEndTime = nextEnd.time;
 
     if (!nextText || !nextCategory?.id || !isValidDateKey(nextDateKey)) {
       alert('올바른 날짜와 제목을 입력해줘.');
@@ -1358,53 +1383,82 @@ async function initPageCalendar(loadingController) {
     const startTime = isEdit ? normalizeCalendarTime(todo.todoTime) : '';
     const endDate = isEdit ? String(todo.todoEndDate || '') : '';
     const endTime = isEdit ? normalizeCalendarTime(todo.todoEndTime) : '';
+    const fields = [
+      { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
+      {
+        key: 'categoryId',
+        label: '카테고리',
+        type: 'select',
+        value: isEdit
+          ? getTodoCategorySelectValue(todo, state.categories)
+          : category?.id || '',
+        options: state.categories.map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+        onSettings: openCategoryModal,
+      },
+      {
+        key: 'studyStart',
+        label: '시작',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(startDate, startTime),
+        required: true,
+        allowEmptyTime: true,
+        timePlaceholder: '시작시간 지정',
+      },
+      {
+        key: 'studyEnd',
+        label: '종료',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(endDate || startDate, endTime),
+        required: true,
+        allowEmptyTime: true,
+        timePlaceholder: '종료시간 지정',
+      },
+      {
+        key: 'memo',
+        label: '메모',
+        type: 'textarea',
+        value: isEdit ? todo.memo || '' : '',
+      },
+    ];
 
-    openCalendarDetailSheet({
+    function syncStudyEndToStart() {
+      const startField = fields.find((field) => field.key === 'studyStart');
+      const endField = fields.find((field) => field.key === 'studyEnd');
+      if (!startField?.input || !endField?.input) return;
+
+      const nextStart = splitLocalDateTimeValue(startField.input.value);
+      const nextEnd = splitLocalDateTimeValue(endField.input.value);
+      const adjustedEnd = clampCalendarEndDateTime({
+        startDate: nextStart.date,
+        startTime: nextStart.time,
+        endDate: nextEnd.date,
+        endTime: nextEnd.time,
+      });
+
+      if (endField.dateInput) endField.dateInput.min = nextStart.date;
+      if (adjustedEnd.adjusted) {
+        endField.input.value = joinLocalDateTimeValue(
+          adjustedEnd.date,
+          adjustedEnd.time,
+        );
+      }
+    }
+
+    fields.find((field) => field.key === 'studyStart').onChange =
+      syncStudyEndToStart;
+    fields.find((field) => field.key === 'studyEnd').onChange =
+      syncStudyEndToStart;
+
+    const sheet = openCalendarDetailSheet({
       calendarType: 'study',
       mode: isEdit ? 'edit' : 'create',
       title: isEdit ? '할 일' : '할 일 추가',
       submitLabel: isEdit ? '저장' : '완료',
       opener,
-      fields: [
-        { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
-        {
-          key: 'categoryId',
-          label: '카테고리',
-          type: 'select',
-          value: isEdit
-            ? getTodoCategorySelectValue(todo, state.categories)
-            : category?.id || '',
-          options: state.categories.map((item) => ({
-            value: item.id,
-            label: item.name,
-          })),
-          onSettings: openCategoryModal,
-        },
-        {
-          key: 'studyStart',
-          label: '시작',
-          type: 'calendar-datetime',
-          value: joinLocalDateTimeValue(startDate, startTime),
-          required: true,
-          allowEmptyTime: true,
-          timePlaceholder: '시작시간 지정',
-        },
-        {
-          key: 'studyEnd',
-          label: '종료',
-          type: 'calendar-datetime',
-          value: joinLocalDateTimeValue(endDate || startDate, endTime),
-          required: true,
-          allowEmptyTime: true,
-          timePlaceholder: '종료시간 지정',
-        },
-        {
-          key: 'memo',
-          label: '메모',
-          type: 'textarea',
-          value: isEdit ? todo.memo || '' : '',
-        },
-      ],
+      fields,
       onSave: async (values) => {
         const nextCategory =
           state.categories.find((item) => item.id === values.categoryId) ||
@@ -1414,7 +1468,13 @@ async function initPageCalendar(loadingController) {
           date: startDate,
           time: startTime,
         });
-        const nextEnd = splitLocalDateTimeValue(values.studyEnd);
+        const rawEnd = splitLocalDateTimeValue(values.studyEnd);
+        const nextEnd = clampCalendarEndDateTime({
+          startDate: nextStart.date,
+          startTime: nextStart.time,
+          endDate: rawEnd.date,
+          endTime: rawEnd.time,
+        });
         const nextText = String(values.title || '').trim();
 
         if (!nextText) {
@@ -1484,6 +1544,9 @@ async function initPageCalendar(loadingController) {
         ? async () => deleteTodo(todo.id)
         : undefined,
     });
+
+    syncStudyEndToStart();
+    return sheet;
   }
 
   function openTodoDetail(todo, opener) {
@@ -1724,12 +1787,32 @@ async function initPageCalendar(loadingController) {
     }
   }
 
+  const monthSwipe = enableCalendarMonthSwipe({
+    target: monthSwipeTarget,
+    onNavigate: changeMonth,
+    createMonthPreview: (offset) => {
+      const preview = monthSwipeTarget.cloneNode(false);
+      const viewDate = new Date(
+        state.viewDate.getFullYear(),
+        state.viewDate.getMonth() + offset,
+        1,
+      );
+      renderPageCalendar(state, {
+        grid: preview,
+        monthLabel: null,
+        viewDate,
+        updateMonthLabel: false,
+      });
+      return preview;
+    },
+  });
+
   prevBtn.addEventListener('click', () => {
-    void changeMonth(-1);
+    void monthSwipe.navigate(-1);
   });
 
   nextBtn.addEventListener('click', () => {
-    void changeMonth(1);
+    void monthSwipe.navigate(1);
   });
 
   entrySheetOpen?.addEventListener('click', () => {

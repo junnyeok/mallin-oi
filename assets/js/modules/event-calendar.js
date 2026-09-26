@@ -23,9 +23,15 @@ import {
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
+import { createEventAlarmEditor, cancelEventAlarms } from './event-alarm-picker.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
-import { scheduleCalendarSelectionScroll } from './calendar-selection-scroll.js';
+import { appendKoreanHolidayBadge } from './calendar-holidays.js';
 import {
+  enableCalendarMonthSwipe,
+  scheduleCalendarSelectionScroll,
+} from './calendar-selection-scroll.js';
+import {
+  clampCalendarEndDateTime,
   formatCalendarTimeLabel,
   joinLocalDateTimeValue,
   normalizeCalendarTime,
@@ -606,7 +612,7 @@ async function createTodoRange({
 }) {
   const safeCategory = category || getFallbackCategory([]);
 
-  const { error } = await supabase.rpc('create_event_calendar_todo_range', {
+  const { data, error } = await supabase.rpc('create_event_calendar_todo_range', {
     p_start_date: startDateKey,
     p_end_date: endDateKey || startDateKey,
     p_category_id: safeCategory?.id || null,
@@ -620,6 +626,7 @@ async function createTodoRange({
     console.error('[event-calendar] createTodoRange error:', error.message);
     throw error;
   }
+  return data;
 }
 
 async function saveTodoRange({
@@ -822,6 +829,7 @@ async function renderPreviewCalendar() {
     number.textContent = String(item.date.getDate());
 
     dayEl.append(number);
+    appendKoreanHolidayBadge(dayEl, dateKey);
     appendTypeBadges(dayEl, todos, categories);
     grid.append(dayEl);
   });
@@ -864,6 +872,7 @@ function createDayButton({
   number.textContent = String(date.getDate());
 
   button.append(number);
+  appendKoreanHolidayBadge(button, dateKey);
   appendTypeBadges(button, todos, categories);
 
   button.addEventListener('click', () => {
@@ -1079,18 +1088,24 @@ function renderCategoryList({
   });
 }
 
-function renderPageCalendar(state) {
-  const grid = document.getElementById('eventCalendarGrid');
-  const monthLabel = document.getElementById('eventCalendarMonthLabel');
+function renderPageCalendar(
+  state,
+  {
+    grid = document.getElementById('eventCalendarGrid'),
+    monthLabel = document.getElementById('eventCalendarMonthLabel'),
+    viewDate = state.viewDate,
+    updateMonthLabel = true,
+  } = {},
+) {
 
-  if (!grid || !monthLabel) return;
+  if (!grid || (updateMonthLabel && !monthLabel)) return;
 
   grid.innerHTML = '';
   const isGroupMode = isCalendarGroupActive(state.group?.state);
   grid.classList.toggle('is-calendar-group-mode', isGroupMode);
-  monthLabel.textContent = getMonthTitle(state.viewDate);
+  if (updateMonthLabel) monthLabel.textContent = getMonthTitle(viewDate);
 
-  const dates = getMonthDates(state.viewDate, { includeOutside: true });
+  const dates = getMonthDates(viewDate, { includeOutside: true });
 
   if (!isGroupMode) {
     renderWeekdays(grid);
@@ -1192,6 +1207,7 @@ async function initPageCalendar(loadingController) {
 
   const prevBtn = document.getElementById('eventCalendarPrevBtn');
   const nextBtn = document.getElementById('eventCalendarNextBtn');
+  const monthSwipeTarget = document.getElementById('eventCalendarGrid');
   const form = document.getElementById('eventTodoForm');
   const input = document.getElementById('eventTodoInput');
   const typeSelect = document.getElementById('eventTodoType');
@@ -1250,6 +1266,25 @@ async function initPageCalendar(loadingController) {
         : `${formatEntrySheetDate(startDateKey)} ~ ${formatEntrySheetDate(endDateKey)}`;
   }
 
+  function syncEventFormEndToStart() {
+    if (!endDateInput.value && startDateInput.value) {
+      endDateInput.value = startDateInput.value;
+    }
+    const adjustedEnd = clampCalendarEndDateTime({
+      startDate: startDateInput.value,
+      startTime: timeInput.dataset.time,
+      endDate: endDateInput.value,
+      endTime: endTimeInput.dataset.time,
+    });
+
+    endDateInput.min = startDateInput.value;
+    if (adjustedEnd.adjusted) {
+      endDateInput.value = adjustedEnd.date;
+      setOptionalTimeInputValue(endTimeInput, adjustedEnd.time);
+    }
+    updateDateToggleLabel();
+  }
+
   timeInput.addEventListener('click', () => {
     openEventTimePicker({
       anchorEl: timeInput,
@@ -1258,6 +1293,7 @@ async function initPageCalendar(loadingController) {
       clearLabel: '시작시간 해제',
       onChange: (nextTime) => {
         setTimeInputValue(timeInput, nextTime);
+        syncEventFormEndToStart();
       },
     });
   });
@@ -1270,6 +1306,7 @@ async function initPageCalendar(loadingController) {
       clearLabel: '종료시간 해제',
       onChange: (nextTime) => {
         setOptionalTimeInputValue(endTimeInput, nextTime);
+        syncEventFormEndToStart();
       },
     });
   });
@@ -1298,15 +1335,11 @@ async function initPageCalendar(loadingController) {
   });
 
   startDateInput.addEventListener('change', () => {
-    endDateInput.min = startDateInput.value;
-    if (!endDateInput.value || endDateInput.value < startDateInput.value) {
-      endDateInput.value = startDateInput.value;
-    }
-    updateDateToggleLabel();
+    syncEventFormEndToStart();
   });
 
   endDateInput.addEventListener('change', () => {
-    updateDateToggleLabel();
+    syncEventFormEndToStart();
   });
 
   const today = new Date();
@@ -1406,9 +1439,6 @@ async function initPageCalendar(loadingController) {
     renderAll();
     scheduleCalendarSelectionScroll({
       target: document.querySelector('.event-calendar-todo-panel'),
-      hasRenderedItems: () => Boolean(
-        document.getElementById('eventTodoList')?.children.length,
-      ),
     });
   }
 
@@ -1446,6 +1476,8 @@ async function initPageCalendar(loadingController) {
 
     try {
       await deleteTodoRange(todoId);
+      try { await cancelEventAlarms(`event:${state.userId}:${target.eventRangeId || target.id}`); }
+      catch { alert('일정은 삭제됐지만 이 기기의 알람 해제를 확인하지 못했어요. 휴대폰 설정에서 알람을 확인해 주세요.'); }
       await reloadStoreForMode();
       renderAll();
       refreshGroupBackupNeeded();
@@ -1478,10 +1510,16 @@ async function initPageCalendar(loadingController) {
     const nextText = String(text || '').trim();
     const nextMemo = String(memo || '');
     const nextStartDate = String(eventStartDate || target.date || '').trim();
-    const nextEndDate = String(eventEndDate || nextStartDate).trim();
-    const nextDateKeys = getDateRangeKeys(nextStartDate, nextEndDate);
     const nextTime = normalizeEventTime(eventTime);
-    const nextEndTime = normalizeOptionalEventTime(eventEndTime);
+    const adjustedEnd = clampCalendarEndDateTime({
+      startDate: nextStartDate,
+      startTime: nextTime,
+      endDate: String(eventEndDate || nextStartDate).trim(),
+      endTime: eventEndTime,
+    });
+    const nextEndDate = adjustedEnd.date || nextStartDate;
+    const nextEndTime = adjustedEnd.time;
+    const nextDateKeys = getDateRangeKeys(nextStartDate, nextEndDate);
 
     if (!nextText || !nextStartDate || !nextCategory?.id) return;
 
@@ -1545,48 +1583,96 @@ async function initPageCalendar(loadingController) {
     const endTime = normalizeOptionalEventTime(
       isEdit ? todo.eventEndTime : '',
     );
+    let alarmEditor;
+    let savedTodoId = todo?.id || null;
+    let savedAlarmKey = todo ? `event:${state.userId}:${todo.eventRangeId || todo.id}` : null;
+    let createdOnce = false;
+    const fields = [
+      { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
+      {
+        key: 'categoryId',
+        label: '카테고리',
+        type: 'select',
+        value: isEdit
+          ? getTodoCategorySelectValue(todo, state.categories)
+          : category?.id || '',
+        options: state.categories.map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+        onSettings: openCategoryModal,
+      },
+      {
+        key: 'eventStart',
+        label: '시작',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(startDate, startTime),
+        required: true,
+        allowEmptyTime: true,
+        timePlaceholder: '시작시간 지정',
+      },
+      {
+        key: 'eventEnd',
+        label: '종료',
+        type: 'calendar-datetime',
+        value: joinLocalDateTimeValue(endDate, endTime),
+        required: true,
+        allowEmptyTime: true,
+        timePlaceholder: '종료시간 지정',
+      },
+      {
+        key: 'memo',
+        label: '메모',
+        type: 'textarea',
+        value: isEdit ? todo.memo || '' : '',
+      },
+      {
+        key: 'alarm', type: 'custom',
+        render: ({ getValue }) => {
+          alarmEditor = createEventAlarmEditor({
+            key: savedAlarmKey,
+            getEvent: () => ({ title: getValue('title'), startValue: getValue('eventStart'), endValue: getValue('eventEnd') }),
+          });
+          return alarmEditor;
+        },
+      },
+    ];
 
-    openCalendarDetailSheet({
+    function syncEventEndToStart() {
+      const startField = fields.find((field) => field.key === 'eventStart');
+      const endField = fields.find((field) => field.key === 'eventEnd');
+      if (!startField?.input || !endField?.input) return;
+
+      const nextStart = splitLocalDateTimeValue(startField.input.value);
+      const nextEnd = splitLocalDateTimeValue(endField.input.value);
+      const adjustedEnd = clampCalendarEndDateTime({
+        startDate: nextStart.date,
+        startTime: nextStart.time,
+        endDate: nextEnd.date,
+        endTime: nextEnd.time,
+      });
+
+      if (endField.dateInput) endField.dateInput.min = nextStart.date;
+      if (adjustedEnd.adjusted) {
+        endField.input.value = joinLocalDateTimeValue(
+          adjustedEnd.date,
+          adjustedEnd.time,
+        );
+      }
+    }
+
+    fields.find((field) => field.key === 'eventStart').onChange =
+      syncEventEndToStart;
+    fields.find((field) => field.key === 'eventEnd').onChange =
+      syncEventEndToStart;
+
+    const sheet = openCalendarDetailSheet({
       calendarType: 'event',
       mode: isEdit ? 'edit' : 'create',
       title: isEdit ? '일정' : '일정 추가',
       submitLabel: isEdit ? '저장' : '완료',
       opener,
-      fields: [
-        { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
-        {
-          key: 'categoryId',
-          label: '카테고리',
-          type: 'select',
-          value: isEdit
-            ? getTodoCategorySelectValue(todo, state.categories)
-            : category?.id || '',
-          options: state.categories.map((item) => ({
-            value: item.id,
-            label: item.name,
-          })),
-          onSettings: openCategoryModal,
-        },
-        {
-          key: 'eventStart',
-          label: '시작',
-          type: 'calendar-datetime',
-          value: joinLocalDateTimeValue(startDate, startTime),
-          required: true,
-          allowEmptyTime: true,
-          timePlaceholder: '시작시간 지정',
-        },
-        {
-          key: 'eventEnd',
-          label: '종료',
-          type: 'calendar-datetime',
-          value: joinLocalDateTimeValue(endDate, endTime),
-          required: true,
-          allowEmptyTime: true,
-          timePlaceholder: '종료시간 지정',
-        },
-        { key: 'memo', label: '메모', type: 'textarea', value: isEdit ? todo.memo || '' : '' },
-      ],
+      fields,
       onSave: async (values) => {
         const nextCategory =
           state.categories.find((item) => item.id === values.categoryId) ||
@@ -1597,11 +1683,17 @@ async function initPageCalendar(loadingController) {
           time: startTime,
         });
         const rawEnd = String(values.eventEnd || '').trim();
-        const nextEnd = rawEnd
+        const parsedEnd = rawEnd
           ? splitLocalDateTimeValue(rawEnd, {
               date: nextStart.date,
             })
           : { date: nextStart.date, time: '' };
+        const nextEnd = clampCalendarEndDateTime({
+          startDate: nextStart.date,
+          startTime: nextStart.time,
+          endDate: parsedEnd.date,
+          endTime: parsedEnd.time,
+        });
         const nextText = String(values.title || '').trim();
         const dateKeys = getDateRangeKeys(nextStart.date, nextEnd.date);
 
@@ -1625,54 +1717,62 @@ async function initPageCalendar(loadingController) {
           throw new Error('Invalid event time range');
         }
 
-        if (isEdit) {
-          try {
-            await saveTodoEdit(todo.id, {
-              text: nextText,
-              memo: values.memo,
-              category: nextCategory,
-              eventStartDate: nextStart.date,
-              eventEndDate: nextEnd.date,
-              eventTime: nextStart.time,
-              eventEndTime: nextEnd.time,
-            });
-          } catch (error) {
-            alert('일정 저장에 실패했어. 잠시 후 다시 시도해줘.');
-            throw error;
-          }
-          return;
-        }
-
-        if (state.isAddingTodo) {
-          throw new Error('Event todo save in progress.');
-        }
+        const alarmEvent = { title: nextText,
+          startValue: joinLocalDateTimeValue(nextStart.date, nextStart.time),
+          endValue: joinLocalDateTimeValue(nextEnd.date, nextEnd.time) };
+        let prepared;
+        try { prepared = await alarmEditor.prepare(alarmEvent); }
+        catch (error) { alarmEditor.showError(error); throw error; }
+        if (state.isAddingTodo) throw new Error('Event todo save in progress.');
         state.isAddingTodo = true;
+        alarmEditor.setLocked(true);
+        let eventSaved = false;
         try {
-          await createTodoRange({
-            startDateKey: nextStart.date,
-            endDateKey: nextEnd.date,
-            text: nextText,
-            memo: String(values.memo || ''),
-            eventTime: nextStart.time,
-            eventEndTime: normalizeOptionalEventTime(nextEnd.time),
-            category: nextCategory,
-          });
+          if (savedTodoId) {
+            await saveTodoRange({ todoId: savedTodoId, text: nextText, memo: values.memo,
+              category: nextCategory, startDateKey: nextStart.date, endDateKey: nextEnd.date,
+              eventTime: nextStart.time, eventEndTime: nextEnd.time });
+          } else {
+            if (createdOnce) throw new Error('일정은 저장됐어요. 캘린더를 다시 열어 알람을 설정해 주세요.');
+            const created = await createTodoRange({ startDateKey: nextStart.date, endDateKey: nextEnd.date,
+              text: nextText, memo: String(values.memo || ''), eventTime: nextStart.time,
+              eventEndTime: normalizeOptionalEventTime(nextEnd.time), category: nextCategory });
+            createdOnce = true;
+            const row = (Array.isArray(created) ? created : [created]).find((item) => item?.user_id === state.userId);
+            if (!row?.id) throw new Error('일정은 저장됐지만 알람 연결 정보를 확인하지 못했어요. 일정을 다시 열어 주세요.');
+            savedTodoId = row.id;
+            savedAlarmKey = `event:${state.userId}:${row.event_range_id || row.id}`;
+          }
+          eventSaved = true;
           await reloadStoreForMode();
+          const savedRows = Object.values(state.store).flat();
+          const saved = savedRows.find((item) => item.id === savedTodoId) || savedRows.find((item) =>
+            item.eventRangeId && savedAlarmKey === `event:${state.userId}:${item.eventRangeId}`);
+          if (saved) savedTodoId = saved.id;
+          if (saved) savedAlarmKey = `event:${state.userId}:${saved.eventRangeId || saved.id}`;
+          const result = await alarmEditor.commit(savedAlarmKey, alarmEvent, prepared);
+          if (!dateKeys.includes(state.selectedDateKey)) {
+            state.selectedDateKey = nextStart.date;
+            const [year, month] = nextStart.date.split('-').map(Number);
+            state.viewDate = new Date(year, month - 1, 1);
+          }
+          renderAll();
+          refreshGroupBackupNeeded();
+          if (result.skipped) alert('일정을 저장했어요. 이미 지난 알람 시각은 제외하고 등록했어요.');
         } catch (error) {
-          alert('일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
+          if (eventSaved) {
+            renderAll();
+            refreshGroupBackupNeeded();
+          }
+          const detail = eventSaved
+            ? `일정은 저장됐지만 알람 반영을 완료하지 못했어요. ${error.message || ''} 저장을 눌러 다시 시도해 주세요.`
+            : error.message || '일정 저장에 실패했어요. 다시 시도해 주세요.';
+          alarmEditor.showError(new Error(detail));
           throw error;
         } finally {
           state.isAddingTodo = false;
+          alarmEditor.setLocked(false);
         }
-
-        if (!dateKeys.includes(state.selectedDateKey)) {
-          state.selectedDateKey = nextStart.date;
-          const [year, month] = nextStart.date.split('-').map(Number);
-          state.viewDate = new Date(year, month - 1, 1);
-        }
-
-        renderAll();
-        refreshGroupBackupNeeded();
       },
       onDelete: isEdit
         ? async () => {
@@ -1681,6 +1781,9 @@ async function initPageCalendar(loadingController) {
         : null,
       deleteDescription: isEdit ? getDeleteDescription(todo) : '',
     });
+
+    syncEventEndToStart();
+    return sheet;
   }
 
   entrySheetOpen?.addEventListener('click', () => {
@@ -1954,12 +2057,32 @@ async function initPageCalendar(loadingController) {
     }
   }
 
+  const monthSwipe = enableCalendarMonthSwipe({
+    target: monthSwipeTarget,
+    onNavigate: changeMonth,
+    createMonthPreview: (offset) => {
+      const preview = monthSwipeTarget.cloneNode(false);
+      const viewDate = new Date(
+        state.viewDate.getFullYear(),
+        state.viewDate.getMonth() + offset,
+        1,
+      );
+      renderPageCalendar(state, {
+        grid: preview,
+        monthLabel: null,
+        viewDate,
+        updateMonthLabel: false,
+      });
+      return preview;
+    },
+  });
+
   prevBtn.addEventListener('click', () => {
-    void changeMonth(-1);
+    void monthSwipe.navigate(-1);
   });
 
   nextBtn.addEventListener('click', () => {
-    void changeMonth(1);
+    void monthSwipe.navigate(1);
   });
 
   form.addEventListener('submit', async (event) => {
@@ -1968,9 +2091,15 @@ async function initPageCalendar(loadingController) {
     const text = input.value.trim();
     const memo = memoInput.value.trim();
     const eventTime = normalizeEventTime(timeInput.dataset.time);
-    const eventEndTime = normalizeOptionalEventTime(endTimeInput.dataset.time);
     const startDateKey = startDateInput.value || state.selectedDateKey;
-    const endDateKey = endDateInput.value || startDateKey;
+    const adjustedEnd = clampCalendarEndDateTime({
+      startDate: startDateKey,
+      startTime: eventTime,
+      endDate: endDateInput.value || startDateKey,
+      endTime: endTimeInput.dataset.time,
+    });
+    const eventEndTime = adjustedEnd.time;
+    const endDateKey = adjustedEnd.date || startDateKey;
     const dateKeys = getDateRangeKeys(startDateKey, endDateKey);
     const selectedCategoryId = typeSelect.value;
 
