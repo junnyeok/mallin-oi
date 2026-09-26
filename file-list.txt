@@ -2,6 +2,7 @@
 ./.gitignore
 ./.nojekyll
 ./.vscode/settings.json
+./AGENTS.md
 ./APP_RELEASE_GUIDE.md
 ./CNAME
 ./README.md
@@ -23,6 +24,7 @@
 ./android/app/capacitor.build.gradle
 ./android/app/proguard-rules.pro
 ./android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java
+./android/app/src/androidTest/java/com/mallinoi/calendar/EventAlarmInstrumentedTest.java
 ./android/app/src/main/AndroidManifest.xml
 ./android/app/src/main/assets/capacitor.config.json
 ./android/app/src/main/assets/capacitor.plugins.json
@@ -193,6 +195,9 @@
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetRefreshReceiver.java
 ./android/app/src/main/java/com/mallinoi/calendar/CalendarWidgetsPlugin.java
 ./android/app/src/main/java/com/mallinoi/calendar/CompletionAudioSessionPlugin.java
+./android/app/src/main/java/com/mallinoi/calendar/EventAlarmReceiver.java
+./android/app/src/main/java/com/mallinoi/calendar/EventAlarmStore.java
+./android/app/src/main/java/com/mallinoi/calendar/EventAlarmsPlugin.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventFourDayWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventMonthWidgetProvider.java
 ./android/app/src/main/java/com/mallinoi/calendar/EventTwoWeekWidgetProvider.java
@@ -215,6 +220,7 @@
 ./android/app/src/main/res/drawable-port-xxhdpi/splash.png
 ./android/app/src/main/res/drawable-port-xxxhdpi/splash.png
 ./android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml
+./android/app/src/main/res/drawable/ic_event_alarm.xml
 ./android/app/src/main/res/drawable/ic_launcher_background.xml
 ./android/app/src/main/res/drawable/splash.png
 ./android/app/src/main/res/drawable/widget_background.xml
@@ -502,6 +508,8 @@
 ./assets/js/modules/daily-attendance-popup.js
 ./assets/js/modules/emoticons.js
 ./assets/js/modules/equipment-events.js
+./assets/js/modules/event-alarm-picker.js
+./assets/js/modules/event-alarm.js
 ./assets/js/modules/event-calendar.js
 ./assets/js/modules/inquiry-board-repo.js
 ./assets/js/modules/inquiry-board.js
@@ -571,6 +579,8 @@
 ./calendar-work.html
 ./capacitor.config.json
 ./career.html
+./docs/calendar-event-alarms.md
+./docs/handoffs/mallinoi-calendar.md
 ./event.html
 ./file-list.txt
 ./games/cucumber-grow/README.md
@@ -1129,6 +1139,7 @@
 ./ios/App/App/Base.lproj/Main.storyboard
 ./ios/App/App/CalendarWidgetsPlugin.swift
 ./ios/App/App/CompletionAudioSessionPlugin.swift
+./ios/App/App/EventAlarmsPlugin.swift
 ./ios/App/App/Info.plist
 ./ios/App/App/MainViewController.swift
 ./ios/App/App/capacitor.config.json
@@ -1418,6 +1429,7 @@
 ./tests/bg05-profile-background.test.mjs
 ./tests/burning-soul-bgm.test.mjs
 ./tests/calendar-copy-paste.test.mjs
+./tests/calendar-event-alarm.test.mjs
 ./tests/calendar-group-backup-state.test.mjs
 ./tests/calendar-loading.test.mjs
 ./tests/calendar-shared-personal-readonly.test.mjs
@@ -1429,6 +1441,7 @@
 ./tests/fixtures/app-update-popup-browser.html
 ./tests/fixtures/calendar-copy-paste-conflict-browser.html
 ./tests/fixtures/calendar-shared-personal-readonly-browser.html
+./tests/fixtures/event-alarm-browser.html
 ./tests/fixtures/study-completion-celebration-browser.html
 ./tests/new-character-skins.test.mjs
 ./tests/profile-bio-contrast.test.mjs
@@ -1524,6 +1537,8 @@
 ./www/assets/js/modules/daily-attendance-popup.js
 ./www/assets/js/modules/emoticons.js
 ./www/assets/js/modules/equipment-events.js
+./www/assets/js/modules/event-alarm-picker.js
+./www/assets/js/modules/event-alarm.js
 ./www/assets/js/modules/event-calendar.js
 ./www/assets/js/modules/inquiry-board-repo.js
 ./www/assets/js/modules/inquiry-board.js

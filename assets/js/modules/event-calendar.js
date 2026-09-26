@@ -23,6 +23,7 @@ import {
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
+import { createEventAlarmEditor, cancelEventAlarms } from './event-alarm-picker.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { appendKoreanHolidayBadge } from './calendar-holidays.js';
 import {
@@ -611,7 +612,7 @@ async function createTodoRange({
 }) {
   const safeCategory = category || getFallbackCategory([]);
 
-  const { error } = await supabase.rpc('create_event_calendar_todo_range', {
+  const { data, error } = await supabase.rpc('create_event_calendar_todo_range', {
     p_start_date: startDateKey,
     p_end_date: endDateKey || startDateKey,
     p_category_id: safeCategory?.id || null,
@@ -625,6 +626,7 @@ async function createTodoRange({
     console.error('[event-calendar] createTodoRange error:', error.message);
     throw error;
   }
+  return data;
 }
 
 async function saveTodoRange({
@@ -1474,6 +1476,8 @@ async function initPageCalendar(loadingController) {
 
     try {
       await deleteTodoRange(todoId);
+      try { await cancelEventAlarms(`event:${state.userId}:${target.eventRangeId || target.id}`); }
+      catch { alert('일정은 삭제됐지만 이 기기의 알람 해제를 확인하지 못했어요. 휴대폰 설정에서 알람을 확인해 주세요.'); }
       await reloadStoreForMode();
       renderAll();
       refreshGroupBackupNeeded();
@@ -1579,6 +1583,10 @@ async function initPageCalendar(loadingController) {
     const endTime = normalizeOptionalEventTime(
       isEdit ? todo.eventEndTime : '',
     );
+    let alarmEditor;
+    let savedTodoId = todo?.id || null;
+    let savedAlarmKey = todo ? `event:${state.userId}:${todo.eventRangeId || todo.id}` : null;
+    let createdOnce = false;
     const fields = [
       { key: 'title', label: '제목', value: isEdit ? todo.text || '' : '' },
       {
@@ -1617,6 +1625,16 @@ async function initPageCalendar(loadingController) {
         label: '메모',
         type: 'textarea',
         value: isEdit ? todo.memo || '' : '',
+      },
+      {
+        key: 'alarm', type: 'custom',
+        render: ({ getValue }) => {
+          alarmEditor = createEventAlarmEditor({
+            key: savedAlarmKey,
+            getEvent: () => ({ title: getValue('title'), startValue: getValue('eventStart'), endValue: getValue('eventEnd') }),
+          });
+          return alarmEditor;
+        },
       },
     ];
 
@@ -1699,54 +1717,63 @@ async function initPageCalendar(loadingController) {
           throw new Error('Invalid event time range');
         }
 
-        if (isEdit) {
-          try {
-            await saveTodoEdit(todo.id, {
-              text: nextText,
-              memo: values.memo,
-              category: nextCategory,
-              eventStartDate: nextStart.date,
-              eventEndDate: nextEnd.date,
-              eventTime: nextStart.time,
-              eventEndTime: nextEnd.time,
-            });
-          } catch (error) {
-            alert('일정 저장에 실패했어. 잠시 후 다시 시도해줘.');
-            throw error;
-          }
-          return;
-        }
-
-        if (state.isAddingTodo) {
-          throw new Error('Event todo save in progress.');
-        }
+        const alarmEvent = { title: nextText,
+          startValue: joinLocalDateTimeValue(nextStart.date, nextStart.time),
+          endValue: joinLocalDateTimeValue(nextEnd.date, nextEnd.time) };
+        let prepared;
+        try { prepared = await alarmEditor.prepare(alarmEvent); }
+        catch (error) { alarmEditor.showError(error); throw error; }
+        if (state.isAddingTodo) throw new Error('Event todo save in progress.');
         state.isAddingTodo = true;
+        alarmEditor.setLocked(true);
+        let eventSaved = false;
         try {
-          await createTodoRange({
-            startDateKey: nextStart.date,
-            endDateKey: nextEnd.date,
-            text: nextText,
-            memo: String(values.memo || ''),
-            eventTime: nextStart.time,
-            eventEndTime: normalizeOptionalEventTime(nextEnd.time),
-            category: nextCategory,
-          });
+          if (savedTodoId) {
+            await saveTodoRange({ todoId: savedTodoId, text: nextText, memo: values.memo,
+              category: nextCategory, startDateKey: nextStart.date, endDateKey: nextEnd.date,
+              eventTime: nextStart.time, eventEndTime: nextEnd.time });
+          } else {
+            if (createdOnce) throw new Error('일정은 저장됐어요. 캘린더를 다시 열어 알람을 설정해 주세요.');
+            const created = await createTodoRange({ startDateKey: nextStart.date, endDateKey: nextEnd.date,
+              text: nextText, memo: String(values.memo || ''), eventTime: nextStart.time,
+              eventEndTime: normalizeOptionalEventTime(nextEnd.time), category: nextCategory });
+            createdOnce = true;
+            const row = (Array.isArray(created) ? created : [created]).find((item) => item?.user_id === state.userId);
+            if (!row?.id) throw new Error('일정은 저장됐지만 알람 연결 정보를 확인하지 못했어요. 일정을 다시 열어 주세요.');
+            savedTodoId = row.id;
+            savedAlarmKey = `event:${state.userId}:${row.event_range_id || row.id}`;
+          }
+          eventSaved = true;
           await reloadStoreForMode();
+          const savedRows = Object.values(state.store).flat();
+          const saved = savedRows.find((item) => item.id === savedTodoId) || savedRows.find((item) =>
+            item.eventRangeId && savedAlarmKey === `event:${state.userId}:${item.eventRangeId}`);
+          if (saved) savedTodoId = saved.id;
+          if (saved) savedAlarmKey = `event:${state.userId}:${saved.eventRangeId || saved.id}`;
+          const result = await alarmEditor.commit(savedAlarmKey, alarmEvent, prepared);
+          if (!dateKeys.includes(state.selectedDateKey)) {
+            state.selectedDateKey = nextStart.date;
+            const [year, month] = nextStart.date.split('-').map(Number);
+            state.viewDate = new Date(year, month - 1, 1);
+          }
+          renderAll();
+          refreshGroupBackupNeeded();
+          if (result.skipped) alert('일정을 저장했어요. 이미 지난 알람 시각은 제외하고 등록했어요.');
+          if (result.web) alert('일정을 저장했어요. 받은 알림 파일을 캘린더 앱으로 가져와 저장해 주세요.');
         } catch (error) {
-          alert('일정 추가에 실패했어. 잠시 후 다시 시도해줘.');
+          if (eventSaved) {
+            renderAll();
+            refreshGroupBackupNeeded();
+          }
+          const detail = eventSaved
+            ? `일정은 저장됐지만 알람 반영을 완료하지 못했어요. ${error.message || ''} 저장을 눌러 다시 시도해 주세요.`
+            : error.message || '일정 저장에 실패했어요. 다시 시도해 주세요.';
+          alarmEditor.showError(new Error(detail));
           throw error;
         } finally {
           state.isAddingTodo = false;
+          alarmEditor.setLocked(false);
         }
-
-        if (!dateKeys.includes(state.selectedDateKey)) {
-          state.selectedDateKey = nextStart.date;
-          const [year, month] = nextStart.date.split('-').map(Number);
-          state.viewDate = new Date(year, month - 1, 1);
-        }
-
-        renderAll();
-        refreshGroupBackupNeeded();
       },
       onDelete: isEdit
         ? async () => {

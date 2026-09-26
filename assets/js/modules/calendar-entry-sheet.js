@@ -816,6 +816,16 @@ export function openCalendarDetailSheet({
   fields
     .filter((field) => field.key !== 'title')
     .forEach((field) => {
+      if (!isReadonly && field.type === 'custom') {
+        field.actionHandle = field.render?.({
+          getValue: (key) => {
+            const item = fields.find((entry) => entry.key === key);
+            return item?.input ? item.input.value : item?.value;
+          },
+        });
+        if (field.actionHandle?.element) body.append(field.actionHandle.element);
+        return;
+      }
       if (!isReadonly && field.type === 'hidden') {
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -1037,6 +1047,7 @@ export function openCalendarDetailSheet({
 
   function close({ restoreFocus = true } = {}) {
     if (!isOpen) return;
+    fields.forEach((field) => field.actionHandle?.close?.({ force: true, restoreFocus: false }));
     closeActiveCalendarTimePicker({ restoreFocus: false });
     blurFocusedControl(dialog);
     isOpen = false;
