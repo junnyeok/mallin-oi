@@ -51,7 +51,7 @@ test('캐릭터와 기본 스킨이 같은 상품에 연결되고 ID·정렬 값
 
 test('사용자 원본 RGBA PNG를 보존하며 www·생성 정책·파일 목록과 일치한다', async () => {
   const image = await readFile(imagePath);
-  assert.equal(createHash('sha256').update(image).digest('hex'), '2dfc9ba46d4eb41ebc71153cdb25b694bc8eb8f82bca25399de800f7cb07651f');
+  assert.equal(createHash('sha256').update(image).digest('hex'), '8f5456e18321ce85ce5e1e4b8d5bf220d12b8130705b28e5a2e89665175a7a25');
   assert.deepEqual(image.subarray(0, 8), Buffer.from([137,80,78,71,13,10,26,10]));
   assert.equal(image.readUInt32BE(16), 941);
   assert.equal(image.readUInt32BE(20), 1672);
