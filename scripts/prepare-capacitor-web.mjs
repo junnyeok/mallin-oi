@@ -39,6 +39,7 @@ const dirsToCopy = ['assets', 'images', 'partials'];
 const nativeCharacterImageFiles = [
   'images/characters/tomato.png',
   'images/characters/brocolli.png',
+  'images/characters/paprikagirl.png',
 ];
 const nativeProfileBackgroundImageFiles = [
   'images/profile-background/mafia.png',
@@ -61,6 +62,7 @@ const nativeProfileFrameImageFiles = [
 const nativeSkinImageFiles = [
   'images/skins/cucumber-daegu.png',
   'images/skins/ozyo.png',
+  'images/skins/policeboy.png',
   'images/skins/spioi.png',
   'images/skins/inomske.png',
   'images/skins/socceroi.png',

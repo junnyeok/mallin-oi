@@ -71,7 +71,10 @@ test('대한민국 공휴일과 음력 명절 및 대체공휴일을 계산한�
 
   const groupSource = read('assets/js/modules/calendar-groups.js');
   const workSource = read('assets/js/modules/work-calendar.js');
-  const sharedCss = read('assets/css/main/calendar-groups-main.css');
+  const sharedCss = read('assets/css/components/calendar-holidays.css');
+  for (const kind of ['study', 'work', 'event', 'groups']) {
+    assert.match(read(`assets/css/main/calendar-${kind}-main.css`), /@import url\('\.\.\/components\/calendar-holidays\.css'\)/);
+  }
   assert.match(groupSource, /calendar-group-schedule__date-label/);
   assert.match(groupSource, /appendKoreanHolidayBadge\(head, item\?\.dateKey\)/);
   assert.match(
@@ -863,6 +866,7 @@ test('루트·www·Android·iOS 시간 기능 자산은 바이트 단위로 일�
     'calendar-work.html',
     'assets/css/components/calendar-entry-sheet.css',
     'assets/css/components/calendar-loading.css',
+    'assets/css/components/calendar-holidays.css',
     'assets/css/main/calendar-event-main.css',
     'assets/css/main/calendar-groups-main.css',
     'assets/css/main/calendar-work-main.css',

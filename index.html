@@ -50,17 +50,58 @@
     <!-- main -->
     <link rel="stylesheet" href="./assets/css/main/main.css" />
     <link rel="stylesheet" href="./assets/css/main/store-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/section-landing.css" />
+    <link rel="stylesheet" href="./assets/css/main/home-landing.css" />
   </head>
 
   <body data-page="home">
     <div class="page">
       <div data-include="header"></div>
 
-      <main class="site-main">
+      <main class="site-main home-landing">
+        <section class="home-section" aria-labelledby="homeWelcomeTitle">
+          <div class="container home-landing__container">
+            <div class="home-welcome">
+              <div class="home-welcome__intro">
+                <p class="section-eyebrow">MAKE TODAY YOURS</p>
+                <h1 id="homeWelcomeTitle">평범한 하루도,<br />모이면 나만의 이야기.</h1>
+                <p>배우고, 일하고, 함께하고, 이루는 순간들.<br />말린오이와 오늘의 기록을 시작해봐.</p>
+                <a class="home-welcome__cta" href="./write.html">오늘의 이야기 남기기 <span aria-hidden="true">↗</span></a>
+                <img src="./images/logo-home.png" alt="" width="90" height="120" />
+              </div>
+              <nav class="home-destinations" aria-label="기록 공간 바로가기">
+                <a class="home-destination home-destination--study" href="./study.html">
+                  <span class="home-destination__number">01 · GROW</span>
+                  <strong>자기개발 <span aria-hidden="true">↗</span></strong>
+                  <span>어제보다 한 걸음 더.<br />공부와 운동, 나를 위한 실천.</span>
+                </a>
+                <a class="home-destination home-destination--work" href="./work.html">
+                  <span class="home-destination__number">02 · WORK</span>
+                  <strong>업무 <span aria-hidden="true">↗</span></strong>
+                  <span>일과 쉼의 균형.<br />근무 일정과 업무 경험을 한곳에.</span>
+                </a>
+                <a class="home-destination home-destination--event" href="./event.html">
+                  <span class="home-destination__number">03 · MOMENTS</span>
+                  <strong>이벤트 <span aria-hidden="true">↗</span></strong>
+                  <span>기다려지는 날들.<br />약속과 기념일, 소중한 순간.</span>
+                </a>
+                <a class="home-destination home-destination--career" href="./career.html">
+                  <span class="home-destination__number">04 · JOURNEY</span>
+                  <strong>이력 <span aria-hidden="true">↗</span></strong>
+                  <span>작은 성취도 멋진 발자취.<br />나만의 도전과 배움을 나눠봐.</span>
+                </a>
+              </nav>
+            </div>
+          </div>
+        </section>
         <section class="home-section" id="featuredStoreSection">
-          <div class="container">
+          <div class="container home-landing__container">
             <div class="home-section__head">
-              <h2 class="home-section__title">🛍️ New 상품 품목</h2>
+              <div>
+                <p class="section-eyebrow">FRESH FINDS</p>
+                <h2 class="home-section__title">🛍️ New 상품 품목</h2>
+                <p class="section-note">새로운 아이템으로 내 공간에 취향을 더해봐.</p>
+              </div>
               <a
                 class="home-section__more home-section__more--cta"
                 href="./store.html"
@@ -103,7 +144,7 @@
         </section>
 
         <section class="home-section">
-          <div class="container">
+          <div class="container home-landing__container home-community">
             <div class="panel panel--latest-wide" id="latestUploadSection">
               <div class="panel__head panel__head--with-more">
                 <h2 class="panel__title">🆕 최신 업로드</h2>
@@ -113,8 +154,27 @@
                   >더보기</a
                 >
               </div>
-              <div class="mini" id="latestList"></div>
+              <p class="section-note home-community__desc">지금, 말린오이에서 나누는 이야기들.</p>
+              <div class="mini" id="latestList" aria-live="polite"></div>
             </div>
+            <aside class="home-community__side" aria-label="기록 아이디어와 나만의 공간">
+              <section class="section-card home-writing-prompt" aria-labelledby="homePromptTitle">
+                <p class="section-eyebrow">A LITTLE INSPIRATION</p>
+                <h2 id="homePromptTitle">오늘은 무엇을 남겨볼까?</h2>
+                <p>오늘 처음 알게 된 것,<br />생각보다 잘 해낸 일,<br />다시 기억하고 싶은 순간.</p>
+                <a href="./write.html">한 가지부터 기록하기 ↗</a>
+              </section>
+              <section class="section-card" aria-labelledby="homeSpaceTitle">
+                <p class="section-eyebrow">YOUR SPACE</p>
+                <h2 id="homeSpaceTitle">나만의 공간 가꾸기</h2>
+                <nav class="home-space-links" aria-label="내 공간 바로가기">
+                  <a href="./profile.html"><span>내 프로필</span><span aria-hidden="true">↗</span></a>
+                  <a href="./inventory.html"><span>인벤토리 · 아이템 장착</span><span aria-hidden="true">↗</span></a>
+                  <a href="./store.html"><span>상점 둘러보기</span><span aria-hidden="true">↗</span></a>
+                </nav>
+                <p class="section-note">내 프로필과 인벤토리는 로그인 후 사용할 수 있어.</p>
+              </section>
+            </aside>
           </div>
         </section>
       </main>

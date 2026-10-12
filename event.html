@@ -45,16 +45,23 @@
     <!-- main -->
     <link rel="stylesheet" href="assets/css/main/main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-event-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/section-landing.css" />
   </head>
   <body class="theme-event" data-page="event">
     <div class="page">
       <div data-include="header"></div>
 
-      <main class="site-main">
+      <main class="site-main section-landing">
         <section class="home-section">
-          <div class="container">
+          <div class="container section-landing__container">
+            <header class="section-intro">
+              <p class="section-eyebrow">MY MOMENTS</p>
+              <h1>기다려지는 날들을 모아</h1>
+              <p>소중한 약속부터 작은 기념일까지, 놓치지 않게.</p>
+            </header>
+            <div class="section-dashboard">
             <section
-              class="panel panel--latest-wide event-calendar-preview"
+              class="panel panel--latest-wide event-calendar-preview section-calendar"
               aria-labelledby="eventCalendarPreviewTitle"
             >
               <a
@@ -84,6 +91,38 @@
                 </div>
               </a>
             </section>
+
+            <aside class="section-dashboard__side" aria-label="이번 달의 약속과 바로가기">
+              <section class="section-card section-card--accent" aria-labelledby="sectionSummaryTitle">
+                <p class="section-eyebrow">MONTHLY OVERVIEW</p>
+                <h2 id="sectionSummaryTitle">이번 달의 약속</h2>
+                <div data-calendar-summary="event" aria-live="polite" aria-busy="true">
+                  <p class="section-note">내 일정을 불러오는 중입니다.</p>
+                </div>
+              </section>
+              <section class="section-card" aria-labelledby="sectionUpcomingTitle">
+                <div class="section-card__heading">
+                  <h2 id="sectionUpcomingTitle">다가오는 약속</h2>
+                  <a href="./calendar-event.html">전체 일정 <span aria-hidden="true">↗</span></a>
+                </div>
+                <div data-calendar-upcoming="event" aria-live="polite">
+                  <p class="section-note">이번 달 남은 일정을 확인해요.</p>
+                </div>
+              </section>
+            </aside>
+              <section class="section-card" aria-labelledby="sectionRoutineTitle">
+                <h2 id="sectionRoutineTitle">약속 전 준비 노트</h2>
+                <ol class="section-prompts">
+                  <li><strong>시간·장소</strong><span>약속 시간과 만날 장소를 다시 확인해.</span></li>
+                  <li><strong>준비물</strong><span>예약 내역이나 챙길 물건을 메모해.</span></li>
+                  <li><strong>추억</strong><span>다녀온 뒤 기억하고 싶은 순간을 남겨봐.</span></li>
+                </ol>
+              </section>
+              <nav class="section-shortcuts" aria-label="이벤트 기록 바로가기">
+                <a href="./posts-all.html?tab=event"><span>함께 나누는 이야기</span><strong>이벤트 기록 둘러보기 <span aria-hidden="true">↗</span></strong></a>
+                <a href="./write.html"><span>소중한 순간 나누기</span><strong>새 글 작성하기 <span aria-hidden="true">＋</span></strong></a>
+              </nav>
+            </div>
           </div>
         </section>
       </main>

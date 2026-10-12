@@ -45,17 +45,24 @@
     <!-- main -->
     <link rel="stylesheet" href="assets/css/main/main.css" />
     <link rel="stylesheet" href="assets/css/main/calendar-work-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/section-landing.css" />
   </head>
   <body class="theme-work" data-page="work">
     <div class="page">
       <div data-include="header"></div>
 
-      <main class="site-main">
+      <main class="site-main section-landing">
         <!-- 3) 2분할 영역(텍스트/리스트) -->
         <section class="home-section">
-          <div class="container">
+          <div class="container section-landing__container">
+            <header class="section-intro">
+              <p class="section-eyebrow">MY WORK</p>
+              <h1>일과 쉼을 한눈에</h1>
+              <p>근무를 살펴보고, 다음 하루를 차분하게 준비해.</p>
+            </header>
+            <div class="section-dashboard">
             <section
-              class="panel panel--latest-wide work-calendar-preview"
+              class="panel panel--latest-wide work-calendar-preview section-calendar"
               aria-labelledby="workCalendarPreviewTitle"
             >
               <a
@@ -83,6 +90,38 @@
                 </div>
               </a>
             </section>
+
+            <aside class="section-dashboard__side" aria-label="이번 달의 업무와 바로가기">
+              <section class="section-card section-card--accent" aria-labelledby="sectionSummaryTitle">
+                <p class="section-eyebrow">MONTHLY OVERVIEW</p>
+                <h2 id="sectionSummaryTitle">이번 달의 업무</h2>
+                <div data-calendar-summary="work" aria-live="polite" aria-busy="true">
+                  <p class="section-note">내 일정을 불러오는 중입니다.</p>
+                </div>
+              </section>
+              <section class="section-card" aria-labelledby="sectionUpcomingTitle">
+                <div class="section-card__heading">
+                  <h2 id="sectionUpcomingTitle">다가오는 근무·일정</h2>
+                  <a href="./calendar-work.html">전체 일정 <span aria-hidden="true">↗</span></a>
+                </div>
+                <div data-calendar-upcoming="work" aria-live="polite">
+                  <p class="section-note">이번 달 남은 일정을 확인해요.</p>
+                </div>
+              </section>
+            </aside>
+              <section class="section-card" aria-labelledby="sectionRoutineTitle">
+                <h2 id="sectionRoutineTitle">업무 시작 전 체크</h2>
+                <ol class="section-prompts">
+                  <li><strong>우선순위</strong><span>오늘 꼭 마칠 일을 먼저 정해봐.</span></li>
+                  <li><strong>인수인계</strong><span>전달할 내용과 확인할 내용을 메모해.</span></li>
+                  <li><strong>휴식</strong><span>근무 사이 쉬는 시간도 챙겨봐.</span></li>
+                </ol>
+              </section>
+              <nav class="section-shortcuts" aria-label="업무 기록 바로가기">
+                <a href="./posts-all.html?tab=work"><span>함께 나누는 이야기</span><strong>업무 기록 둘러보기 <span aria-hidden="true">↗</span></strong></a>
+                <a href="./write.html"><span>업무 경험 나누기</span><strong>새 글 작성하기 <span aria-hidden="true">＋</span></strong></a>
+              </nav>
+            </div>
           </div>
         </section>
       </main>

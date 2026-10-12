@@ -1,0 +1,255 @@
+/* Site section dashboards; never loaded by the full calendar pages. */
+.section-landing__container {
+  width: calc(100% - 64px);
+  max-width: 1760px;
+  padding: 0;
+}
+
+.section-intro {
+  margin-bottom: var(--space-24);
+}
+
+.section-eyebrow {
+  margin: 0 0 var(--space-8);
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.section-intro h1 {
+  margin: 0 0 var(--space-8);
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.3;
+}
+
+.section-intro > p:last-child,
+.section-note {
+  margin: 0;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.section-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-24);
+}
+
+.section-dashboard__side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.section-dashboard > .section-card .section-prompts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.section-card {
+  min-width: 0;
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.section-card--accent {
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  border-top: 3px solid var(--color-primary);
+}
+
+.section-card h2 {
+  margin: 0 0 var(--space-16);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.section-card__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.section-card__heading a {
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 32px;
+}
+
+.section-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 var(--space-12);
+}
+
+.section-stats > div + div {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-16);
+}
+
+.section-stats dt { font-size: 12px; color: var(--color-text-sub); }
+.section-stats dd { margin: var(--space-4) 0 0; font-size: 27px; font-weight: 800; }
+.section-summary-link { display: inline-block; margin-top: var(--space-12); padding: var(--space-8) 0; font-size: 13px; font-weight: 800; }
+
+.section-agenda {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.section-agenda li + li { border-top: 1px solid var(--color-border); }
+.section-agenda a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  min-height: 56px;
+  padding: var(--space-8) 0;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.section-agenda time { flex: 0 0 56px; font-size: 13px; font-weight: 800; }
+.section-agenda__body { min-width: 0; }
+.section-agenda strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.section-agenda small { color: var(--color-text-sub); font-size: 12px; }
+
+.section-prompts {
+  list-style: none;
+  counter-reset: prompt;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-16);
+}
+.section-prompts li { position: relative; padding-left: 30px; counter-increment: prompt; }
+.section-prompts li::before {
+  content: counter(prompt, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-text-sub);
+}
+.section-prompts strong { display: block; margin-bottom: 3px; font-size: 13px; }
+.section-prompts span { display: block; color: var(--color-text-sub); font-size: 12px; line-height: 1.6; word-break: keep-all; }
+
+.section-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16); min-width: 0; align-self: stretch; }
+.section-shortcuts a {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-12);
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+  color: var(--color-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.section-shortcuts a > span { font-size: 12px; color: var(--color-text-sub); }
+.section-shortcuts strong { font-size: 14px; }
+.section-landing a:focus-visible { outline: 3px solid var(--color-text); outline-offset: 4px; }
+.section-agenda a:hover strong,
+.section-shortcuts a:hover strong { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Scale just the landing preview, keeping the full calendars unchanged. */
+.section-calendar { margin: 0; padding: var(--space-16); }
+.section-calendar .panel__title { font-size: 15px; }
+.section-calendar .panel__desc { font-size: 12px; }
+.section-calendar :is(.study-calendar-preview__more, .work-calendar-preview__more, .event-calendar-preview__more) { font-size: 12px; }
+.section-calendar :is(.study-calendar-mini__month, .work-calendar-mini__month, .event-calendar-mini__month) {
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-12);
+}
+.section-calendar :is(.study-calendar-mini__hint, .work-calendar-mini__month span, .event-calendar-mini__hint) { font-size: 11px; }
+.section-calendar :is(.study-calendar-weekday, .work-calendar-weekday, .event-calendar-weekday) { font-size: 11px; padding: 6px 2px; }
+.section-calendar :is(.study-calendar-day, .work-calendar-day, .event-calendar-day) {
+  min-height: 58px;
+  padding: 4px;
+  gap: 3px;
+}
+.section-calendar :is(.study-calendar-day__number, .work-calendar-day__number, .event-calendar-day__number) {
+  min-width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+.section-calendar :is(.study-calendar-day__badges, .work-calendar-day__badges, .event-calendar-day__badges) { gap: 2px; margin-top: 2px; }
+.section-calendar :is(.study-calendar-day__badge, .work-calendar-day__badge, .event-calendar-day__badge, .work-calendar-day__memo) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 15px;
+  padding: 2px 3px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.section-calendar [hidden] { display: none; }
+.section-calendar__more { font-size: 9px; line-height: 1.4; color: var(--color-text-sub); font-weight: 700; }
+.section-calendar .calendar-holiday-badge { min-height: 15px; padding: 1px 3px; font-size: 9px; }
+
+.section-career-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-24);
+  padding: var(--space-32);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+.section-career-hero .panel__head { margin: 0; }
+.section-career-hero h1 { font-size: clamp(22px, 2vw, 30px); }
+.section-career-hero__actions { display: grid; gap: var(--space-12); font-size: 13px; }
+.section-action {
+  display: block;
+  padding: var(--space-12) var(--space-24);
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+.section-career-guides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-24);
+  margin-top: var(--space-24);
+}
+.section-landing--career .section-landing__container { max-width: 1400px; }
+
+@media (max-width: 1100px) {
+  .section-dashboard > .section-card .section-prompts { grid-template-columns: minmax(0, 1fr); }
+  .section-card, .section-shortcuts a { padding: var(--space-16); }
+}
+
+@media (max-width: 900px) {
+  .section-dashboard { grid-template-columns: minmax(0, 1fr); }
+  .section-dashboard > .section-card .section-prompts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .section-landing__container { width: calc(100% - 24px); }
+  .section-intro { margin-bottom: var(--space-16); padding: 0 var(--space-4); }
+  .section-dashboard { gap: var(--space-16); }
+  .section-dashboard__side, .section-career-guides { grid-template-columns: minmax(0, 1fr); gap: var(--space-12); }
+  .section-dashboard > .section-card .section-prompts { grid-template-columns: minmax(0, 1fr); }
+  .section-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); }
+  .section-calendar { padding: var(--space-12) var(--space-8); }
+  .section-calendar :is(.study-calendar-day, .work-calendar-day, .event-calendar-day) { padding: 3px 2px; min-height: 50px; }
+  .section-calendar :is(.study-calendar-day__badge, .work-calendar-day__badge, .event-calendar-day__badge, .work-calendar-day__memo) { padding: 2px; font-size: 9px; }
+  .section-calendar .calendar-holiday-badge { font-size: 8px; padding: 1px 2px; }
+  .section-stats dd { font-size: 24px; }
+  .section-stats > div + div { padding-left: var(--space-8); }
+  .section-career-hero { align-items: stretch; flex-direction: column; padding: var(--space-24); }
+}

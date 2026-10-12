@@ -26,7 +26,7 @@ test('브로콜리 알바생은 토마토 스킨 다음이며 지정 문구·443
   const matches = STORE_ITEMS.filter((item) => item.id === ITEM_ID);
   assert.equal(matches.length, 1);
   const [item] = matches;
-  assert.equal(getFeaturedStoreItems(6)[5].id, ITEM_ID);
+  assert.equal(getFeaturedStoreItems(8)[7].id, ITEM_ID);
   assert.equal(item.name, '브로콜리 알바생 이모티콘팩');
   assert.equal(item.icon, '🥦👧🏼');
   assert.equal(item.category, 'emoticon');

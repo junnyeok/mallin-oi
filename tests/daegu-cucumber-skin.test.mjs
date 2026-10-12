@@ -15,7 +15,7 @@ const migrationPath = 'supabase/migrations/20260913010000_daegu_cucumber_skin.sq
 
 test('대구FC 오이가 DGB PARK 다음이며 가격·문구·미리보기가 정확하다', () => {
   const item = catalog.getStoreItemById(itemId);
-  assert.equal(catalog.getFeaturedStoreItems(3)[2].id, itemId);
+  assert.equal(catalog.getFeaturedStoreItems(5)[4].id, itemId);
   assert.equal(item.name, '대구FC 오이');
   assert.equal(item.category, 'skin');
   assert.equal(item.badge, '스킨');
@@ -33,7 +33,7 @@ test('대구FC 오이가 DGB PARK 다음이며 가격·문구·미리보기가 �
   assert.equal(catalog.getStoreItemDetailHref(itemId), `./store-item.html?id=${itemId}`);
   const newest = catalog.STORE_ITEMS.toSorted((a, b) =>
     String(b.releaseDate).localeCompare(String(a.releaseDate)));
-  assert.equal(newest[2].id, itemId);
+  assert.equal(newest[4].id, itemId);
 });
 
 test('기본오이 전용 스킨 매핑과 ID·정렬 순서는 중복되지 않는다', () => {

@@ -427,6 +427,7 @@
 ./assets/css/components/auth-links.css
 ./assets/css/components/calendar-app-download-popup.css
 ./assets/css/components/calendar-entry-sheet.css
+./assets/css/components/calendar-holidays.css
 ./assets/css/components/calendar-loading.css
 ./assets/css/components/character-effects.css
 ./assets/css/components/cursor-buddy.css
@@ -448,6 +449,7 @@
 ./assets/css/main/calendar-groups-main.css
 ./assets/css/main/calendar-study-main.css
 ./assets/css/main/calendar-work-main.css
+./assets/css/main/home-landing.css
 ./assets/css/main/inventory-main.css
 ./assets/css/main/login-main.css
 ./assets/css/main/main.css
@@ -460,6 +462,7 @@
 ./assets/css/main/privacy-main.css
 ./assets/css/main/profile-history-main.css
 ./assets/css/main/profile-main.css
+./assets/css/main/section-landing.css
 ./assets/css/main/signup-main.css
 ./assets/css/main/store-main.css
 ./assets/css/main/suggestion-qna-main.css
@@ -486,6 +489,7 @@
 ./assets/js/modules/calendar-holidays.js
 ./assets/js/modules/calendar-loading.js
 ./assets/js/modules/calendar-native-widgets.js
+./assets/js/modules/calendar-preview-summary.js
 ./assets/js/modules/calendar-selection-scroll.js
 ./assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./assets/js/modules/calendar-shared-personal-readonly.js
@@ -964,6 +968,7 @@
 ./images/characters/eggpotato.png
 ./images/characters/fat-avocado.png
 ./images/characters/grilled-egg.png
+./images/characters/paprikagirl.png
 ./images/characters/teto-carrot.png
 ./images/characters/tomato.png
 ./images/emoticons/01-broccoli-girl.png
@@ -1131,6 +1136,7 @@
 ./images/skins/grilledegg-PT.png
 ./images/skins/inomske.png
 ./images/skins/ozyo.png
+./images/skins/policeboy.png
 ./images/skins/potato-hot.png
 ./images/skins/socceroi.png
 ./images/skins/spioi.png
@@ -1404,6 +1410,8 @@
 ./supabase-SQLEditor/20260913-dgb-park-profile-background.sql
 ./supabase-SQLEditor/20260913-mafia-profile-background.sql
 ./supabase-SQLEditor/20260913-tomato-skins.sql
+./supabase-SQLEditor/20261012-paprikagirl-character.sql
+./supabase-SQLEditor/20261012-policeboy-skin.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1454,6 +1462,8 @@
 ./supabase/migrations/20260913010000_daegu_cucumber_skin.sql
 ./supabase/migrations/20260913020000_bg06_dgb_park_profile_background.sql
 ./supabase/migrations/20260913030000_bg07_mafia_profile_background.sql
+./supabase/migrations/20261012000000_policeboy_skin.sql
+./supabase/migrations/20261012010000_paprikagirl_character.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1466,6 +1476,7 @@
 ./tests/calendar-event-alarm.test.mjs
 ./tests/calendar-group-backup-state.test.mjs
 ./tests/calendar-loading.test.mjs
+./tests/calendar-preview-summary.test.mjs
 ./tests/calendar-shared-personal-readonly.test.mjs
 ./tests/calendar-time-settings.test.mjs
 ./tests/career-monthly-awards.test.mjs
@@ -1481,7 +1492,9 @@
 ./tests/fixtures/study-completion-celebration-browser.html
 ./tests/free-emoticon-equipment.test.mjs
 ./tests/new-character-skins.test.mjs
+./tests/paprikagirl-character.test.mjs
 ./tests/pixel-heart-bgm.test.mjs
+./tests/policeboy-skin.test.mjs
 ./tests/profile-bio-contrast.test.mjs
 ./tests/profile-featured-bgm-autoplay.test.mjs
 ./tests/run-muscle-night-bgm.test.mjs
@@ -1505,6 +1518,7 @@
 ./www/assets/css/components/auth-links.css
 ./www/assets/css/components/calendar-app-download-popup.css
 ./www/assets/css/components/calendar-entry-sheet.css
+./www/assets/css/components/calendar-holidays.css
 ./www/assets/css/components/calendar-loading.css
 ./www/assets/css/components/character-effects.css
 ./www/assets/css/components/cursor-buddy.css
@@ -1526,6 +1540,7 @@
 ./www/assets/css/main/calendar-groups-main.css
 ./www/assets/css/main/calendar-study-main.css
 ./www/assets/css/main/calendar-work-main.css
+./www/assets/css/main/home-landing.css
 ./www/assets/css/main/inventory-main.css
 ./www/assets/css/main/login-main.css
 ./www/assets/css/main/main.css
@@ -1538,6 +1553,7 @@
 ./www/assets/css/main/privacy-main.css
 ./www/assets/css/main/profile-history-main.css
 ./www/assets/css/main/profile-main.css
+./www/assets/css/main/section-landing.css
 ./www/assets/css/main/signup-main.css
 ./www/assets/css/main/store-main.css
 ./www/assets/css/main/suggestion-qna-main.css
@@ -1564,6 +1580,7 @@
 ./www/assets/js/modules/calendar-holidays.js
 ./www/assets/js/modules/calendar-loading.js
 ./www/assets/js/modules/calendar-native-widgets.js
+./www/assets/js/modules/calendar-preview-summary.js
 ./www/assets/js/modules/calendar-selection-scroll.js
 ./www/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./www/assets/js/modules/calendar-shared-personal-readonly.js
@@ -1644,6 +1661,7 @@
 ./www/images/character-effects/fire-effect-01.png
 ./www/images/character-effects/spider-web-effect-01.png
 ./www/images/characters/brocolli.png
+./www/images/characters/paprikagirl.png
 ./www/images/characters/tomato.png
 ./www/images/emoticons/01-broccoli-girl.png
 ./www/images/emoticons/02-broccoli-girl.png
@@ -1706,6 +1724,7 @@
 ./www/images/skins/cucumber-daegu.png
 ./www/images/skins/inomske.png
 ./www/images/skins/ozyo.png
+./www/images/skins/policeboy.png
 ./www/images/skins/socceroi.png
 ./www/images/skins/spioi.png
 ./www/images/skins/summerboy.png

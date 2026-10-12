@@ -26,6 +26,7 @@ import { openCalendarDetailSheet } from './calendar-entry-sheet.js';
 import { createEventAlarmEditor, cancelEventAlarms } from './event-alarm-picker.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { appendKoreanHolidayBadge } from './calendar-holidays.js';
+import { compactPreviewCalendar, renderPreviewSummary } from './calendar-preview-summary.js';
 import {
   enableCalendarMonthSwipe,
   scheduleCalendarSelectionScroll,
@@ -764,7 +765,7 @@ function renderPreviewLoginMessage(root) {
   const empty = document.createElement('div');
   empty.className = 'event-calendar-mini__empty';
   empty.textContent =
-    '로그인하면 내 계정 전용 자기개발 캘린더를 사용할 수 있습니다.';
+    '로그인하면 내 계정 전용 이벤트 캘린더를 사용할 수 있습니다.';
 
   root.append(empty);
 }
@@ -777,6 +778,7 @@ async function renderPreviewCalendar() {
 
   if (!user?.id) {
     renderPreviewLoginMessage(root);
+    renderPreviewSummary('event', { status: 'signed-out' });
     return;
   }
 
@@ -786,6 +788,7 @@ async function renderPreviewCalendar() {
   const todayKey = getTodayKey();
 
   root.innerHTML = '';
+  renderPreviewSummary('event', { store, todayKey, categories });
 
   const monthHead = document.createElement('div');
   monthHead.className = 'event-calendar-mini__month';
@@ -835,6 +838,7 @@ async function renderPreviewCalendar() {
   });
 
   root.append(monthHead, grid);
+  compactPreviewCalendar(root, 'event');
 }
 
 function createDayButton({
@@ -2236,6 +2240,14 @@ export async function initEventCalendar() {
     }
   } catch (error) {
     console.error('[event-calendar] init failed:', error);
+    if (previewRoot) {
+      previewRoot.replaceChildren();
+      const message = document.createElement('p');
+      message.className = 'event-calendar-mini__empty';
+      message.textContent = '캘린더를 불러오지 못했어요. 새로고침 후 다시 확인해줘.';
+      previewRoot.append(message);
+      renderPreviewSummary('event', { status: 'error' });
+    }
 
     if (pageRoot) {
       alert('이벤트 캘린더를 불러오지 못했어. 잠시 후 다시 시도해줘.');

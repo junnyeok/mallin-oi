@@ -30,6 +30,7 @@ import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal
 import { createStudyCompletionCelebration } from './study-completion-celebration.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { appendKoreanHolidayBadge } from './calendar-holidays.js';
+import { compactPreviewCalendar, renderPreviewSummary } from './calendar-preview-summary.js';
 import {
   enableCalendarMonthSwipe,
   scheduleCalendarSelectionScroll,
@@ -656,6 +657,7 @@ async function renderPreviewCalendar() {
 
   if (!user?.id) {
     renderPreviewLoginMessage(root);
+    renderPreviewSummary('study', { status: 'signed-out' });
     return;
   }
 
@@ -665,6 +667,7 @@ async function renderPreviewCalendar() {
   const todayKey = getTodayKey();
 
   root.innerHTML = '';
+  renderPreviewSummary('study', { store, todayKey, categories });
 
   const monthHead = document.createElement('div');
   monthHead.className = 'study-calendar-mini__month';
@@ -714,6 +717,7 @@ async function renderPreviewCalendar() {
   });
 
   root.append(monthHead, grid);
+  compactPreviewCalendar(root, 'study');
 }
 
 function createDayButton({
@@ -1880,6 +1884,14 @@ export async function initStudyCalendar() {
     }
   } catch (error) {
     console.error('[study-calendar] init failed:', error);
+    if (previewRoot) {
+      previewRoot.replaceChildren();
+      const message = document.createElement('p');
+      message.className = 'study-calendar-mini__empty';
+      message.textContent = '캘린더를 불러오지 못했어요. 새로고침 후 다시 확인해줘.';
+      previewRoot.append(message);
+      renderPreviewSummary('study', { status: 'error' });
+    }
 
     if (pageRoot) {
       alert('자기개발 캘린더를 불러오지 못했어. 잠시 후 다시 시도해줘.');

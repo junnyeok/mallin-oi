@@ -1,4 +1,5 @@
 /* assets/css/main/calendar-groups-main.css */
+@import url('../components/calendar-holidays.css');
 
 .calendar-group-bar {
   flex: 0 0 auto;
@@ -354,25 +355,6 @@ body.calendar-group-modal-open {
   text-align: center;
 }
 
-.calendar-holiday-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  min-height: 18px;
-  padding: 1px var(--space-4);
-  border: 1px solid #e59a9a;
-  border-radius: var(--radius-pill);
-  background: #fff4f4;
-  color: #c62828;
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1.2;
-  text-align: center;
-  white-space: normal;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
 
 .calendar-group-schedule__date-head {
   display: flex;
@@ -1211,11 +1193,6 @@ body.calendar-group-modal-open {
     font-size: 10px;
   }
 
-  .calendar-holiday-badge {
-    min-height: 16px;
-    padding: 1px 3px;
-    font-size: 9px;
-  }
 
   .calendar-group-schedule__date-head .calendar-holiday-badge {
     min-height: 13px;

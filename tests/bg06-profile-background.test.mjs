@@ -16,7 +16,7 @@ const migrationPath = 'supabase/migrations/20260913020000_bg06_dgb_park_profile_
 
 test('DGB PARK가 신규 아지트 다음이며 538피클·지정 문구·두 미리보기가 정확하다', () => {
   const item = catalog.getStoreItemById(itemId);
-  assert.equal(catalog.getFeaturedStoreItems(2)[1].id, itemId);
+  assert.equal(catalog.getFeaturedStoreItems(4)[3].id, itemId);
   assert.equal(item.name, 'DGB PARK');
   assert.equal(item.category, 'profile');
   assert.equal(item.itemType, 'profile-background');
@@ -33,7 +33,7 @@ test('DGB PARK가 신규 아지트 다음이며 538피클·지정 문구·두 �
     {code: 'BG-06-mobile', label: '모바일 버전 미리보기', imagePath: mobile, displayOrder: 2},
   ]);
   assert.equal(item.releaseDate, '2026-09-13');
-  assert.equal(catalog.STORE_ITEMS.toSorted((a,b) => String(b.releaseDate).localeCompare(String(a.releaseDate)))[1].id, itemId);
+  assert.equal(catalog.STORE_ITEMS.toSorted((a,b) => String(b.releaseDate).localeCompare(String(a.releaseDate)))[3].id, itemId);
   assert.equal(catalog.getStoreItemDetailHref(itemId), './store-item.html?id=BG-06');
 });
 

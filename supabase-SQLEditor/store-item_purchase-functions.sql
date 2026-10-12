@@ -151,6 +151,18 @@ begin
     v_required_character_code := 'char-cucumber';
     v_required_character_name := '기본오이';
 
+  elsif p_item_id = 'skin-cucumberboy-03' then
+    v_price := 488;
+    v_name := '지구대 오이소년';
+    v_category := 'skin';
+    v_required_character_code := 'char-cucumber-boy';
+    v_required_character_name := '오이소년 캐릭터';
+
+  elsif p_item_id = 'character-paprikagirl-01' then
+    v_price := 622;
+    v_name := '파프리카걸';
+    v_category := 'character';
+
   elsif p_item_id = 'character-brocolli-01' then
     v_price := 682;
     v_name := '브로콜리 알바생';
@@ -539,9 +551,25 @@ begin
       v_can_bypass_store_balance := false;
     end if;
 
+    if p_item_id = 'skin-cucumberboy-03' then
+      v_can_bypass_store_balance := false;
+    end if;
+
+    if p_item_id = 'character-paprikagirl-01' then
+      v_can_bypass_store_balance := false;
+    end if;
+
     if not v_can_bypass_store_balance then
       v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id)
         and p_item_id <> 'BG-06';
+
+      if p_item_id = 'skin-cucumberboy-03' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'character-paprikagirl-01' then
+        v_is_auto_topup_admin := false;
+      end if;
 
       if p_item_id = 'BG-07' then
         v_is_auto_topup_admin := false;
@@ -842,6 +870,50 @@ begin
       '대구FC 오이',
       './images/skins/cucumber-daegu.png',
       7,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'skin-cucumberboy-03' then
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-cucumber-boy',
+      'char-cucumber-boy-police-station',
+      '지구대 오이소년',
+      './images/skins/policeboy.png',
+      504,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'character-paprikagirl-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-paprika-girl',
+      '파프리카걸',
+      './images/characters/paprikagirl.png',
+      './images/characters/paprikagirl.png',
+      10,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-paprika-girl',
+      'char-paprika-girl-basic',
+      '파프리카걸',
+      './images/characters/paprikagirl.png',
+      901,
       'store_purchase'
     )
     on conflict (user_id, skin_code) do nothing;
@@ -1531,6 +1603,10 @@ begin
         then '멕시코 방울토마토리토 구매가 완료됐어. 87피클이 차감됐고 방울토마토리토 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'skin-cucumber-07'
         then '대구FC 오이 구매가 완료됐어. 389피클이 차감됐고 기본오이 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'skin-cucumberboy-03'
+        then '지구대 오이소년 구매가 완료됐어. 488피클이 차감됐고 오이소년 캐릭터 스킨 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'character-paprikagirl-01'
+        then '파프리카걸 구매가 완료됐어. 622피클이 차감됐고 캐릭터 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-brocolli-01'
         then '브로콜리 알바생 구매가 완료됐어. 682피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'emo-heart-01'

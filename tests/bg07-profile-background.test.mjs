@@ -14,9 +14,9 @@ const mobile = '/images/profile-background/mafia-mobile.png?v=test';
 const editorPath = 'supabase-SQLEditor/20260913-mafia-profile-background.sql';
 const migrationPath = 'supabase/migrations/20260913030000_bg07_mafia_profile_background.sql';
 
-test('방울토마토리토 아지트가 NEW 첫 번째이며 625피클·지정 문구·두 미리보기가 정확하다', () => {
+test('방울토마토리토 아지트가 지구대 오이소년 다음이며 625피클·지정 문구·두 미리보기가 정확하다', () => {
   const item = catalog.getStoreItemById(itemId);
-  assert.equal(catalog.getFeaturedStoreItems(1)[0].id, itemId);
+  assert.equal(catalog.getFeaturedStoreItems(3)[2].id, itemId);
   assert.equal(item.name, '방울토마토리토 아지트');
   assert.equal(item.category, 'profile');
   assert.equal(item.itemType, 'profile-background');
@@ -33,7 +33,7 @@ test('방울토마토리토 아지트가 NEW 첫 번째이며 625피클·지정 
     {code: 'BG-07-mobile', label: '모바일 버전 미리보기', imagePath: mobile, displayOrder: 2},
   ]);
   assert.equal(item.releaseDate, '2026-09-13');
-  assert.equal(catalog.STORE_ITEMS.toSorted((a,b) => String(b.releaseDate).localeCompare(String(a.releaseDate)))[0].id, itemId);
+  assert.equal(catalog.STORE_ITEMS.toSorted((a,b) => String(b.releaseDate).localeCompare(String(a.releaseDate)))[2].id, itemId);
   assert.equal(catalog.getStoreItemDetailHref(itemId), './store-item.html?id=BG-07');
 });
 

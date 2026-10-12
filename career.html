@@ -44,16 +44,18 @@
 
     <!-- main -->
     <link rel="stylesheet" href="assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/main/section-landing.css" />
   </head>
   <body class="theme-career" data-page="career">
     <div class="page">
       <div data-include="header"></div>
 
-      <main class="site-main">
+      <main class="site-main section-landing section-landing--career">
         <section class="home-section">
-          <div class="container">
-            <section class="panel" aria-labelledby="careerIntroTitle">
+          <div class="container section-landing__container">
+            <section class="panel section-career-hero" aria-labelledby="careerIntroTitle">
               <div class="panel__head">
+                <p class="section-eyebrow">MY JOURNEY</p>
                 <h1 class="panel__title" id="careerIntroTitle">
                   ✨ 자신의 이력을 뽐내세요!
                 </h1>
@@ -61,12 +63,37 @@
                   사소한 것이든 거창한 것이든 상관없습니다!
                 </p>
               </div>
+              <div class="section-career-hero__actions">
+                <a class="section-action" href="./write.html">내 이력 기록하기 <span aria-hidden="true">＋</span></a>
+                <a href="./posts-all.html?tab=career">다른 사람들의 발자취 보기 ↗</a>
+                <p class="section-note">새 글쓰기에서 ‘이력’ 카테고리를 선택해줘.</p>
+              </div>
             </section>
+            <div class="section-career-guides">
+              <section class="section-card" aria-labelledby="careerIdeasTitle">
+                <p class="section-eyebrow">RECORD IDEAS</p>
+                <h2 id="careerIdeasTitle">이런 경험도 멋진 이력이야</h2>
+                <ol class="section-prompts">
+                  <li><strong>처음 해낸 일</strong><span>첫 발표, 첫 완주, 처음 만든 결과물.</span></li>
+                  <li><strong>꾸준히 쌓은 일</strong><span>공부, 운동, 취미를 이어온 나만의 과정.</span></li>
+                  <li><strong>함께 만든 변화</strong><span>동료와 해결한 문제, 누군가를 도운 경험.</span></li>
+                </ol>
+              </section>
+              <section class="section-card" aria-labelledby="careerGuideTitle">
+                <p class="section-eyebrow">YOUR STORY</p>
+                <h2 id="careerGuideTitle">경험을 기록으로 바꾸는 3단계</h2>
+                <ol class="section-prompts">
+                  <li><strong>시작</strong><span>언제, 어떤 이유로 도전했는지 적어봐.</span></li>
+                  <li><strong>과정</strong><span>내가 한 일과 어려움을 넘은 방법을 남겨봐.</span></li>
+                  <li><strong>배움</strong><span>결과와 배운 점, 다음 목표로 마무리해.</span></li>
+                </ol>
+              </section>
+            </div>
           </div>
         </section>
 
         <section class="home-section">
-          <div class="container">
+          <div class="container section-landing__container">
             <section
               class="panel career-best-panel"
               aria-labelledby="careerBestTitle"
@@ -95,7 +122,7 @@
         </section>
 
         <section class="home-section">
-          <div class="container">
+          <div class="container section-landing__container">
             <section
               class="panel panel--latest-wide"
               aria-labelledby="careerLatestTitle"

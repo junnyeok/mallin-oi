@@ -63,7 +63,7 @@ function readPngAlpha(png) {
 }
 
 test('DGB PARK와 대구FC 오이 다음 토마토 스킨 두 상품의 순서, 가격, 원본 문구와 미리보기', () => {
-  assert.deepEqual(catalog.getFeaturedStoreItems(5).slice(3).map(item => item.id), specs.map(item => item.id));
+  assert.deepEqual(catalog.getFeaturedStoreItems(7).slice(5).map(item => item.id), specs.map(item => item.id));
   for (const spec of specs) {
     const item = catalog.getStoreItemById(spec.id);
     assert.equal(catalog.STORE_ITEMS.filter(row => row.id === spec.id).length, 1);

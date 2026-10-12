@@ -45,17 +45,24 @@
     <!-- main -->
     <link rel="stylesheet" href="./assets/css/main/main.css" />
     <link rel="stylesheet" href="./assets/css/main/calendar-study-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/section-landing.css" />
   </head>
 
   <body class="theme-study" data-page="study">
     <div class="page">
       <div data-include="header"></div>
 
-      <main class="site-main">
+      <main class="site-main section-landing">
         <section class="home-section">
-          <div class="container">
+          <div class="container section-landing__container">
+            <header class="section-intro">
+              <p class="section-eyebrow">MY STUDY</p>
+              <h1>작은 실천이 쌓이는 곳</h1>
+              <p>공부도 운동도, 나만의 속도로 꾸준히.</p>
+            </header>
+            <div class="section-dashboard">
             <section
-              class="panel panel--latest-wide study-calendar-preview"
+              class="panel panel--latest-wide study-calendar-preview section-calendar"
               aria-labelledby="studyCalendarPreviewTitle"
             >
               <a
@@ -85,6 +92,38 @@
                 </div>
               </a>
             </section>
+
+            <aside class="section-dashboard__side" aria-label="이번 달의 실천과 바로가기">
+              <section class="section-card section-card--accent" aria-labelledby="sectionSummaryTitle">
+                <p class="section-eyebrow">MONTHLY OVERVIEW</p>
+                <h2 id="sectionSummaryTitle">이번 달의 실천</h2>
+                <div data-calendar-summary="study" aria-live="polite" aria-busy="true">
+                  <p class="section-note">내 일정을 불러오는 중입니다.</p>
+                </div>
+              </section>
+              <section class="section-card" aria-labelledby="sectionUpcomingTitle">
+                <div class="section-card__heading">
+                  <h2 id="sectionUpcomingTitle">다음 실천</h2>
+                  <a href="./calendar-study.html">전체 일정 <span aria-hidden="true">↗</span></a>
+                </div>
+                <div data-calendar-upcoming="study" aria-live="polite">
+                  <p class="section-note">이번 달 남은 일정을 확인해요.</p>
+                </div>
+              </section>
+            </aside>
+              <section class="section-card" aria-labelledby="sectionRoutineTitle">
+                <h2 id="sectionRoutineTitle">오늘의 작은 루틴</h2>
+                <ol class="section-prompts">
+                  <li><strong>배움</strong><span>새롭게 알게 된 한 가지를 적어봐.</span></li>
+                  <li><strong>움직임</strong><span>몸을 움직일 시간을 일정에 남겨봐.</span></li>
+                  <li><strong>회고</strong><span>잘한 점 하나와 다음에 바꿀 점 하나.</span></li>
+                </ol>
+              </section>
+              <nav class="section-shortcuts" aria-label="자기개발 기록 바로가기">
+                <a href="./posts-all.html?tab=study"><span>함께 나누는 이야기</span><strong>자기개발 기록 둘러보기 <span aria-hidden="true">↗</span></strong></a>
+                <a href="./write.html"><span>배운 것을 나누기</span><strong>새 글 작성하기 <span aria-hidden="true">＋</span></strong></a>
+              </nav>
+            </div>
           </div>
         </section>
       </main>

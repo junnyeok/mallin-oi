@@ -569,6 +569,15 @@ export const SUMMER_CUCUMBER_BOY_SKIN_PREVIEW = [
   },
 ];
 
+export const POLICE_STATION_CUCUMBER_BOY_SKIN_PREVIEW = [
+  {
+    code: 'char-cucumber-boy-police-station',
+    label: '지구대 오이소년',
+    imagePath: withAssetVersion('./images/skins/policeboy.png'),
+    displayOrder: 1,
+  },
+];
+
 export const INOMSKE_GRILLED_EGG_SKIN_PREVIEW = [
   {
     code: 'char-grilled-egg-inomske',
@@ -2177,6 +2186,45 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'character-paprikagirl-01',
+    name: '파프리카걸',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '👧🏼🫑',
+    thumbImagePath: withAssetVersion('./images/characters/paprikagirl.png'),
+    price: 622,
+    state: '판매 중',
+    description: '발랄한 느낌의 파프리카소녀야. ',
+    detailDescription:
+      '옷가게 직원으로 일을 하고 있어.<br>구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: [
+      {
+        code: 'character-paprikagirl-01-preview',
+        label: '파프리카걸 미리보기',
+        imagePath: withAssetVersion('./images/characters/paprikagirl.png'),
+        displayOrder: 1,
+      },
+    ],
+    releaseDate: '2026-10-12',
+    isPurchasable: true,
+  },
+  {
+    id: 'skin-cucumberboy-03',
+    name: '지구대 오이소년',
+    category: 'skin',
+    badge: '스킨',
+    icon: '👮🏻‍♀️👦🏻🥒',
+    thumbImagePath: withAssetVersion('./images/skins/policeboy.png'),
+    price: 488,
+    state: '판매 중',
+    description: '기동대 의무복무를 마친 오이소년이야.',
+    detailDescription:
+      '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: POLICE_STATION_CUCUMBER_BOY_SKIN_PREVIEW,
+    releaseDate: '2026-10-12',
+    isPurchasable: true,
+  },
+  {
     id: 'BG-07',
     name: '방울토마토리토 아지트',
     category: 'profile',
@@ -2297,6 +2345,8 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'character-paprikagirl-01',
+  'skin-cucumberboy-03',
   'BG-07',
   'BG-06',
   'skin-cucumber-07',
@@ -2419,6 +2469,14 @@ export const CHARACTER_CATALOG = [
     display_order: 9,
     store_item_id: 'character-brocolli-01',
   },
+  {
+    character_code: 'char-paprika-girl',
+    character_name: '파프리카걸',
+    base_image_path: withAssetVersion('./images/characters/paprikagirl.png'),
+    preview_image_path: withAssetVersion('./images/characters/paprikagirl.png'),
+    display_order: 10,
+    store_item_id: 'character-paprikagirl-01',
+  },
 ];
 
 export const CHARACTER_SKIN_CATALOG = [
@@ -2527,6 +2585,14 @@ export const CHARACTER_SKIN_CATALOG = [
     store_item_id: 'skin-cucumberboy-02',
   },
   {
+    character_code: 'char-cucumber-boy',
+    skin_code: 'char-cucumber-boy-police-station',
+    skin_name: '지구대 오이소년',
+    image_path: withAssetVersion('./images/skins/policeboy.png'),
+    display_order: 504,
+    store_item_id: 'skin-cucumberboy-03',
+  },
+  {
     character_code: 'char-egg-potato',
     skin_code: 'char-egg-potato-basic',
     skin_name: '알감자 캐릭터',
@@ -2621,6 +2687,14 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/brocolli.png'),
     display_order: 801,
     store_item_id: 'character-brocolli-01',
+  },
+  {
+    character_code: 'char-paprika-girl',
+    skin_code: 'char-paprika-girl-basic',
+    skin_name: '파프리카걸',
+    image_path: withAssetVersion('./images/characters/paprikagirl.png'),
+    display_order: 901,
+    store_item_id: 'character-paprikagirl-01',
   },
 ];
 

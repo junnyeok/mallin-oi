@@ -21,6 +21,7 @@ import {
 import { collectSharedPersonalReadonlyDetails } from './calendar-shared-personal-readonly-collector.js';
 import { createCalendarLoadingController } from './calendar-loading.js';
 import { appendKoreanHolidayBadge } from './calendar-holidays.js';
+import { compactPreviewCalendar, renderPreviewSummary } from './calendar-preview-summary.js';
 import {
   enableCalendarMonthSwipe,
   scheduleCalendarSelectionScroll,
@@ -1317,12 +1318,14 @@ async function renderPreviewCalendar() {
       root,
       '로그인하면 내 계정 전용 업무 캘린더를 사용할 수 있습니다.',
     );
+    renderPreviewSummary('work', { status: 'signed-out' });
     return;
   }
 
   const viewDate = new Date();
   const categories = await ensureDefaultCategories(user.id);
   const store = await fetchUserTodosInMonth(user.id, viewDate);
+  renderPreviewSummary('work', { store, todayKey: getTodayKey(), categories });
   const header = makeEl('div', 'work-calendar-mini__month');
   const title = makeEl('strong', '', getMonthTitle(viewDate));
   const desc = makeEl('span', '', '내 계정에 저장된 업무 일정만 표시됩니다.');
@@ -1343,6 +1346,7 @@ async function renderPreviewCalendar() {
     },
     isMini: true,
   });
+  compactPreviewCalendar(root, 'work');
 }
 
 function bindPreviewLinkLoginGuard() {
@@ -2530,6 +2534,14 @@ export async function initWorkCalendar() {
     }
   } catch (error) {
     console.error('[work-calendar] init failed:', error);
+    if (previewRoot) {
+      previewRoot.replaceChildren();
+      const message = document.createElement('p');
+      message.className = 'work-calendar-mini__empty';
+      message.textContent = '캘린더를 불러오지 못했어요. 새로고침 후 다시 확인해줘.';
+      previewRoot.append(message);
+      renderPreviewSummary('work', { status: 'error' });
+    }
 
     if (pageRoot) {
       alert('업무 캘린더를 불러오지 못했어. 잠시 후 다시 시도해줘.');

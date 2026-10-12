@@ -110,8 +110,10 @@ test('상품·트랙·displayOrder 전체 중복이 없고 New 순서가 명시�
   assert.equal(new Set(trackIds).size, trackIds.length);
   assert.equal(new Set(displayOrders).size, displayOrders.length);
   assert.deepEqual(
-    getFeaturedStoreItems(14).map((item) => item.id),
+    getFeaturedStoreItems(16).map((item) => item.id),
     [
+      'character-paprikagirl-01',
+      'skin-cucumberboy-03',
       'BG-07',
       'BG-06',
       'skin-cucumber-07',
