@@ -1,0 +1,2 @@
+[functions.social-auth]
+verify_jwt = false

@@ -39398,3 +39398,292 @@ grant execute on function public.save_work_calendar_todo(
 ) to authenticated;
 
 commit;
+
+
+-- 2026-10-18 통합 계정 인증 준비: 20261018-social-account-links.sql
+-- 2026-10-18 Google / Kakao / Apple explicit account linking.
+-- Local implementation only: apply this file alone after reviewing the deployment guide.
+-- Built-in Supabase social providers MUST remain disabled: their email auto-linking
+-- does not implement this service's explicit reauthentication policy.
+begin;
+
+create table if not exists public.social_account_links (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null check (provider in ('google', 'kakao', 'apple')),
+  subject text not null check (length(subject) between 1 and 255),
+  credential_ciphertext text,
+  created_at timestamptz not null default now(),
+  unique (provider, subject),
+  unique (user_id, provider)
+);
+
+create table if not exists public.social_auth_requests (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null check (provider in ('google', 'kakao', 'apple')),
+  purpose text not null check (purpose in ('login', 'link')),
+  target_user_id uuid references auth.users(id) on delete cascade,
+  state_hash text not null unique,
+  client_challenge text not null,
+  provider_verifier text not null,
+  nonce text not null,
+  return_uri text not null,
+  status text not null default 'pending' check (status in ('pending','processing','ready','email-sending','failed','used')),
+  subject text,
+  verified_email text,
+  credential_ciphertext text,
+  proof_email text,
+  proof_user_id uuid references auth.users(id) on delete cascade,
+  error_code text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '5 minutes',
+  check ((purpose = 'link') = (target_user_id is not null))
+);
+create index if not exists social_auth_requests_expiry_idx on public.social_auth_requests(expires_at);
+
+create table if not exists public.social_auth_audit (
+  id bigint generated always as identity primary key,
+  user_id uuid references auth.users(id) on delete set null,
+  provider text not null,
+  action text not null check (action in ('linked','unlinked')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.social_auth_limits (
+  bucket text primary key,
+  window_start timestamptz not null,
+  attempts integer not null
+);
+
+-- A failed Apple revocation is retained for retry, never silently discarded on unlink.
+create table if not exists public.social_auth_revocations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null check (provider = 'apple'),
+  subject text not null unique,
+  credential_ciphertext text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.social_account_links enable row level security;
+alter table public.social_auth_requests enable row level security;
+alter table public.social_auth_audit enable row level security;
+alter table public.social_auth_limits enable row level security;
+alter table public.social_auth_revocations enable row level security;
+revoke all on public.social_account_links, public.social_auth_requests,
+  public.social_auth_audit, public.social_auth_limits, public.social_auth_revocations from public, anon, authenticated;
+grant all on public.social_account_links, public.social_auth_requests,
+  public.social_auth_audit, public.social_auth_limits, public.social_auth_revocations to service_role;
+grant usage, select on sequence public.social_auth_audit_id_seq to service_role;
+
+-- These helpers are service-role-only; callers cannot choose another user's UUID.
+create or replace function public.social_auth_user(p_email text default null, p_id uuid default null)
+returns table (id uuid, email text, has_password boolean, confirmed boolean)
+language sql security definer set search_path = '' as $$
+  select u.id, u.email, coalesce(u.encrypted_password, '') <> '', u.email_confirmed_at is not null
+  from auth.users u
+  where (p_id is not null and u.id = p_id)
+     or (p_id is null and lower(u.email) = lower(trim(p_email)))
+  limit 1;
+$$;
+
+create or replace function public.social_auth_rate_limit(p_bucket text, p_limit integer)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare v_attempts integer;
+begin
+  if p_limit < 1 or p_limit > 100 then raise exception 'INVALID_LIMIT'; end if;
+  insert into public.social_auth_limits as l (bucket, window_start, attempts)
+  values (p_bucket, now(), 1)
+  on conflict (bucket) do update set
+    attempts = case when l.window_start < now() - interval '10 minutes' then 1 else l.attempts + 1 end,
+    window_start = case when l.window_start < now() - interval '10 minutes' then now() else l.window_start end
+  returning attempts into v_attempts;
+  delete from public.social_auth_limits where window_start < now() - interval '1 day';
+  delete from public.social_auth_requests where expires_at < now() - interval '1 day';
+  return v_attempts <= p_limit;
+end;
+$$;
+
+-- Atomic uniqueness + one-time redemption. A client challenge cannot be changed.
+create or replace function public.social_auth_finish(p_request uuid, p_challenge text, p_user uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+declare r public.social_auth_requests; v_owner uuid;
+begin
+  select * into r from public.social_auth_requests where id = p_request for update;
+  if not found or r.status <> 'ready' or r.expires_at <= now()
+     or r.client_challenge <> p_challenge or r.subject is null then
+    raise exception 'INVALID_OR_USED_REQUEST';
+  end if;
+  if r.purpose = 'link' and r.target_user_id <> p_user then raise exception 'ACCOUNT_MISMATCH'; end if;
+  perform 1 from auth.users where id = p_user and email_confirmed_at is not null for update;
+  if not found then raise exception 'VERIFIED_ACCOUNT_REQUIRED'; end if;
+  if exists (select 1 from public.social_auth_revocations where provider = r.provider and subject = r.subject) then
+    raise exception 'REVOCATION_PENDING';
+  end if;
+  select user_id into v_owner from public.social_account_links
+    where provider = r.provider and subject = r.subject for update;
+  if v_owner is not null and v_owner <> p_user then raise exception 'IDENTITY_ALREADY_LINKED'; end if;
+  if v_owner is null then
+    insert into public.social_account_links(user_id, provider, subject, credential_ciphertext)
+    values(p_user, r.provider, r.subject, r.credential_ciphertext);
+    insert into public.social_auth_audit(user_id, provider, action) values(p_user, r.provider, 'linked');
+  elsif r.credential_ciphertext is not null then
+    update public.social_account_links set credential_ciphertext = r.credential_ciphertext
+    where provider = r.provider and subject = r.subject;
+  end if;
+  update public.social_auth_requests set status = 'used', provider_verifier = '', nonce = '',
+    credential_ciphertext = null, verified_email = null, proof_email = null, proof_user_id = null where id = p_request;
+end;
+$$;
+
+create or replace function public.social_auth_unlink(p_user uuid, p_provider text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_password boolean; v_count integer;
+begin
+  -- Serialize removals for the same user, so two concurrent unlinks cannot remove both methods.
+  select coalesce(encrypted_password, '') <> '' and email_confirmed_at is not null
+    into v_password from auth.users where id = p_user for update;
+  if not found then raise exception 'ACCOUNT_NOT_FOUND'; end if;
+  select count(*) into v_count from public.social_account_links where user_id = p_user;
+  if not coalesce(v_password, false) and v_count <= 1 then raise exception 'LAST_LOGIN_METHOD'; end if;
+  insert into public.social_auth_revocations(user_id, provider, subject, credential_ciphertext)
+    select user_id, provider, subject, credential_ciphertext from public.social_account_links
+    where user_id = p_user and provider = p_provider and provider = 'apple';
+  delete from public.social_account_links where user_id = p_user and provider = p_provider;
+  if found then
+    insert into public.social_auth_audit(user_id, provider, action) values(p_user, p_provider, 'unlinked');
+  end if;
+end;
+$$;
+
+revoke all on function public.social_auth_user(text, uuid), public.social_auth_rate_limit(text, integer),
+  public.social_auth_finish(uuid, text, uuid), public.social_auth_unlink(uuid, text)
+  from public, anon, authenticated;
+grant execute on function public.social_auth_user(text, uuid), public.social_auth_rate_limit(text, integer),
+  public.social_auth_finish(uuid, text, uuid), public.social_auth_unlink(uuid, text) to service_role;
+commit;
+
+
+-- 2026-10-18 통합 계정 인증 준비: 20261018-profile-auth-permissions.sql
+-- 2026-10-18: preflight for social login found unrestricted profile UPDATE grants.
+-- Changes privileges only. Existing rows, RLS policies and server-side RPCs are preserved.
+begin;
+
+revoke insert, update, delete, truncate, references, trigger
+  on table public.profiles from public, anon, authenticated;
+
+-- Clear any explicit protected-column grants as well as the table-level UPDATE grant.
+revoke update (id, email, is_admin, pickles, created_at, real_name, birth_key,
+  recovery_question, recovery_answer_hash)
+  on table public.profiles from public, anon, authenticated;
+
+-- Only fields written by the existing profile, nickname and music UI are editable.
+-- Existing ownership triggers continue to validate equipped items.
+grant update (nickname, updated_at, profile_image_url, bio,
+  equipped_character_image_url, bgm_selected_track_ids, bgm_current_track_id,
+  equipped_character_effect_item_id, equipped_profile_background_item_id,
+  equipped_profile_frame_item_id, profile_featured_bgm_item_id)
+  on table public.profiles to authenticated;
+
+commit;
+
+
+-- 2026-10-18 KST: verified provider notifications (20261018-social-provider-events.sql)
+-- 2026-10-18 Verified Apple/Kakao account change notifications. Apply this file only.
+-- Never deletes the unified member account or calendar data.
+begin;
+alter table public.social_account_links add column if not exists authorized_at timestamptz not null default now();
+alter table public.social_account_links add column if not exists email_enabled boolean not null default true;
+alter table public.social_auth_requests add column if not exists provider_authenticated_at timestamptz;
+create table if not exists public.social_auth_provider_events (
+  provider text not null check (provider in ('apple','kakao')),
+  event_id text not null check (length(event_id) between 1 and 512),
+  subject text not null check (length(subject) between 1 and 255),
+  event_type text not null check (event_type in ('email-enabled','email-disabled','consent-revoked','account-deleted','user-unlinked')),
+  event_at timestamptz not null,
+  received_at timestamptz not null default now(),
+  primary key(provider,event_id)
+);
+create index if not exists social_auth_provider_events_subject_idx
+  on public.social_auth_provider_events(provider,subject,event_at);
+alter table public.social_auth_provider_events enable row level security;
+revoke all on public.social_auth_provider_events from public,anon,authenticated;
+grant all on public.social_auth_provider_events to service_role;
+
+create or replace function public.social_auth_receive_event(
+  p_provider text,p_event_id text,p_subject text,p_type text,p_time timestamptz)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_owner uuid;
+begin
+  if p_time > now() + interval '1 minute' or p_time < now() - interval '30 days' then
+    raise exception 'INVALID_EVENT_TIME';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_provider || ':' || p_subject,0));
+  insert into public.social_auth_provider_events(provider,event_id,subject,event_type,event_at)
+    values(p_provider,p_event_id,p_subject,p_type,p_time) on conflict do nothing;
+  if not found then return; end if;
+  if p_type in ('consent-revoked','account-deleted','user-unlinked') then
+    delete from public.social_account_links where provider=p_provider and subject=p_subject
+      and date_trunc('second',authorized_at)<=p_time returning user_id into v_owner;
+    if v_owner is not null then
+      insert into public.social_auth_audit(user_id,provider,action) values(v_owner,p_provider,'unlinked');
+    end if;
+    delete from public.social_auth_revocations where provider=p_provider and subject=p_subject and created_at<=p_time;
+
+  else
+    update public.social_account_links set email_enabled = (select e.event_type='email-enabled'
+      from public.social_auth_provider_events e where e.provider=p_provider and e.subject=p_subject
+      and e.event_type in ('email-enabled','email-disabled') order by e.event_at desc,
+      (e.event_type='email-disabled') desc limit 1)
+      where provider=p_provider and subject=p_subject;
+  end if;
+  delete from public.social_auth_provider_events where received_at < now()-interval '30 days';
+end;
+$$;
+create or replace function public.social_auth_finish(p_request uuid, p_challenge text, p_user uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+declare r public.social_auth_requests; v_owner uuid; v_authenticated timestamptz;
+begin
+  select * into r from public.social_auth_requests where id = p_request for update;
+  if not found or r.status <> 'ready' or r.expires_at <= now()
+     or r.client_challenge <> p_challenge or r.subject is null then
+    raise exception 'INVALID_OR_USED_REQUEST';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(r.provider || ':' || r.subject, 0));
+  v_authenticated := coalesce(r.provider_authenticated_at, r.created_at);
+  if exists (select 1 from public.social_auth_provider_events e where e.provider=r.provider
+      and e.subject=r.subject and e.event_type in ('consent-revoked','account-deleted','user-unlinked')
+      and e.event_at >= date_trunc('second', v_authenticated)) then
+    raise exception 'PROVIDER_REVOKED';
+  end if;
+  if r.purpose = 'link' and r.target_user_id <> p_user then raise exception 'ACCOUNT_MISMATCH'; end if;
+  perform 1 from auth.users where id = p_user and email_confirmed_at is not null for update;
+  if not found then raise exception 'VERIFIED_ACCOUNT_REQUIRED'; end if;
+  if exists (select 1 from public.social_auth_revocations where provider = r.provider and subject = r.subject) then
+    raise exception 'REVOCATION_PENDING';
+  end if;
+  select user_id into v_owner from public.social_account_links
+    where provider = r.provider and subject = r.subject for update;
+  if v_owner is not null and v_owner <> p_user then raise exception 'IDENTITY_ALREADY_LINKED'; end if;
+  if v_owner is null then
+    insert into public.social_account_links(user_id, provider, subject, credential_ciphertext, authorized_at)
+    values(p_user, r.provider, r.subject, r.credential_ciphertext, v_authenticated);
+    insert into public.social_auth_audit(user_id, provider, action) values(p_user, r.provider, 'linked');
+  else
+    update public.social_account_links set authorized_at = v_authenticated,
+      credential_ciphertext = coalesce(r.credential_ciphertext, credential_ciphertext)
+    where provider = r.provider and subject = r.subject;
+  end if;
+  update public.social_account_links set email_enabled = coalesce((select e.event_type = 'email-enabled'
+    from public.social_auth_provider_events e where e.provider=r.provider and e.subject=r.subject
+      and e.event_type in ('email-enabled','email-disabled') order by e.event_at desc,
+      (e.event_type='email-disabled') desc limit 1), true)
+    where provider=r.provider and subject=r.subject;
+  update public.social_auth_requests set status = 'used', provider_verifier = '', nonce = '',
+    credential_ciphertext = null, verified_email = null, proof_email = null, proof_user_id = null where id = p_request;
+end;
+$$;
+
+revoke all on function public.social_auth_receive_event(text,text,text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.social_auth_receive_event(text,text,text,text,timestamptz) to service_role;
+commit;

@@ -152,10 +152,21 @@ function renderHomeFallback(selector, message) {
   root.innerHTML = `<div class="empty">${message}</div>`;
 }
 
+async function initSocialAuthControls() {
+  const page = String(document.body?.dataset?.page || '').trim().toLowerCase();
+  if (['login', 'signup', 'prev-mypage', 'mypage'].includes(page)) {
+    await runSafe('social login controls', async () => {
+      const { initSocialAuthUI } = await import(withModuleVersion('./modules/social-auth.js'));
+      await initSocialAuthUI();
+    });
+  }
+}
+
 async function initPageModules(modules) {
   const page = String(document.body?.dataset?.page || '')
     .trim()
     .toLowerCase();
+  await initSocialAuthControls();
 
   const {
     postsUiModule,
@@ -604,6 +615,17 @@ async function initApp() {
   let modules;
 
   await initCalendarAppModeEarly();
+  // Authentication controls do not depend on slower site counters, feeds or store modules.
+  void initSocialAuthControls();
+
+  if (window.Capacitor?.isNativePlatform?.()) {
+    let socialReturned = false;
+    await runSafe('social login app return', async () => {
+      const { initSocialAuthNative } = await import(withModuleVersion('./modules/social-auth-native.js'));
+      socialReturned = await initSocialAuthNative();
+    });
+    if (socialReturned) return;
+  }
 
   try {
     modules = await loadCoreModules();

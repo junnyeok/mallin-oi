@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
+import { createProviders } from '../social-auth/providers.mjs';
+import { revokePendingApple } from '../social-auth/revocation.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,6 +84,17 @@ Deno.serve(async (req) => {
     }
 
     const userId = userData.user.id;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    try {
+      // Provider secrets stay on the server; revoke Apple authorization before deleting data.
+      const providers = createProviders((name: string) => Deno.env.get(name) || '', null);
+      await revokePendingApple(adminClient, providers, userId, true);
+    } catch {
+      return jsonResponse({ success: false,
+        message: 'Apple 연결 해제를 완료하지 못했습니다. 잠시 후 회원탈퇴를 다시 시도해 주세요.' }, 503);
+    }
     const { error: cleanupError } = await userClient.rpc(
       'cleanup_my_account_data',
     );
@@ -96,13 +109,6 @@ Deno.serve(async (req) => {
         500,
       );
     }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
 
     const { error: deleteError } =
       await adminClient.auth.admin.deleteUser(userId);

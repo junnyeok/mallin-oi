@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="icon" href="../images/favicon.ico" />
+  <title>소셜 로그인 확인 | 말린오이닷컴</title>
+  <script src="../assets/js/calendar-appearance.js"></script>
+  <link rel="stylesheet" href="../assets/css/00-reset.css" />
+  <link rel="stylesheet" href="../assets/css/01-tokens.css" />
+  <link rel="stylesheet" href="../assets/css/02-base.css" />
+  <link rel="stylesheet" href="../assets/css/components/social-auth.css" />
+</head>
+<body data-page="social-callback">
+  <main class="social-auth-page">
+    <h1>소셜 로그인 확인</h1>
+    <p id="socialStatus" class="social-auth-message" role="status" aria-live="polite">인증 결과를 확인하고 있어요.</p>
+    <form id="socialCompleteForm" class="social-auth-card" hidden>
+      <div id="socialSignupFields" hidden>
+        <h2>가입 정보</h2>
+        <label>닉네임<input id="socialNickname" autocomplete="nickname" minlength="2" maxlength="20" /></label>
+        <div id="socialEmailFields" hidden>
+          <p>소셜 계정에서 확인된 이메일을 받지 못했어요. 사용할 이메일을 인증해 주세요.</p>
+          <label>이메일<input id="socialSignupEmail" type="email" autocomplete="email" /></label>
+          <button id="socialSendEmail" type="button">인증번호 받기</button>
+          <label>인증번호<input id="socialSignupOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" /></label>
+        </div>
+        <label><input id="socialTerms" type="checkbox" />이용약관에 동의합니다 (필수)</label>
+        <label><input id="socialPrivacy" type="checkbox" />개인정보처리방침에 동의합니다 (필수)</label>
+        <label><input id="socialMarketing" type="checkbox" />마케팅 수신 동의 (선택)</label>
+        <a href="../privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침 보기</a>
+      </div>
+      <button id="socialFinish" type="submit">계속하기</button>
+    </form>
+    <div class="social-auth-actions"><a id="socialLoginLink" class="social-auth-link" href="../login.html">로그인 화면으로 돌아가기</a></div>
+  </main>
+  <script type="module" src="../assets/js/modules/social-auth-page.js"></script>
+</body>
+</html>

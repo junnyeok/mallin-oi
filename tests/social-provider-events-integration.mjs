@@ -1,0 +1,70 @@
+// Uses isolated PostgreSQL and locally signed JWTs; no real user data or network.
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+import { createNotificationVerifier, createNotificationHandler } from '../supabase/functions/social-auth/notifications.mjs';
+const modules = process.argv[2];
+assert.ok(modules && path.isAbsolute(modules));
+const { PGlite } = await import(pathToFileURL(path.join(modules,'@electric-sql/pglite/dist/index.js')));
+const jose = await import(pathToFileURL(path.join(modules,'jose/dist/webapi/index.js')));
+const db = new PGlite();
+const u = '11111111-1111-4111-8111-111111111111';
+try {
+  await db.exec(`create role anon; create role authenticated; create role service_role;
+    create schema auth; create table auth.users(id uuid primary key,email text,encrypted_password text,email_confirmed_at timestamptz);
+    insert into auth.users values('${u}','a@example.test','hash',now());`);
+  const base = await readFile(new URL('../supabase-SQLEditor/20261018-social-account-links.sql',import.meta.url),'utf8');
+  const sql = await readFile(new URL('../supabase-SQLEditor/20261018-social-provider-events.sql',import.meta.url),'utf8');
+  await db.exec(base); await db.exec(sql); await db.exec(sql);
+  const old = new Date(Date.now()-120000).toISOString(), recent = new Date(Date.now()-60000).toISOString();
+  const request = async (subject, time=old) => (await db.query(`insert into social_auth_requests
+    (provider,purpose,target_user_id,state_hash,client_challenge,provider_verifier,nonce,return_uri,status,subject,provider_authenticated_at)
+    values('apple','link',$1,gen_random_uuid()::text,'proof','verifier','nonce','https://example.test','ready',$2,$3) returning id`,[u,subject,time])).rows[0].id;
+  const finish = id => db.query('select social_auth_finish($1,$2,$3)',[id,'proof',u]);
+  const event = (id,subject,type,time=recent) => db.query('select social_auth_receive_event($1,$2,$3,$4,$5)',['apple',id,subject,type,time]);
+  await finish(await request('one'));
+  await event('disabled','one','email-disabled');
+  assert.equal((await db.query('select email_enabled from social_account_links')).rows[0].email_enabled,false);
+  await event('older-enable','one','email-enabled',old);
+  assert.equal((await db.query('select email_enabled from social_account_links')).rows[0].email_enabled,false);
+  await event('revoke','one','consent-revoked'); await event('revoke','one','consent-revoked');
+  assert.equal((await db.query('select count(*)::int n from social_account_links')).rows[0].n,0);
+  assert.equal((await db.query("select count(*)::int n from social_auth_audit where action='unlinked'")).rows[0].n,1);
+  assert.equal((await db.query('select count(*)::int n from auth.users')).rows[0].n,1);
+  await assert.rejects(finish(await request('one')),/PROVIDER_REVOKED/);
+  await finish(await request('one',new Date().toISOString()));
+  await event('old-retry','one','consent-revoked');
+  assert.equal((await db.query('select count(*)::int n from social_account_links')).rows[0].n,1);
+  await event('before-link','two','account-deleted');
+  await assert.rejects(finish(await request('two')),/PROVIDER_REVOKED/);
+  await assert.rejects(event('future','one','consent-revoked',new Date(Date.now()+120000).toISOString()),/INVALID_EVENT_TIME/);
+  await db.exec('set role authenticated');
+  await assert.rejects(db.query('select * from social_auth_provider_events'),/permission denied/);
+  await assert.rejects(event('forged','one','consent-revoked'),/permission denied/);
+  await db.exec('reset role');
+  console.log('Provider events SQL: reapply, duplicate/reordered delivery, unlink without member deletion, in-flight rejection, newer authorization preservation, role denial passed.');
+} finally { await db.close(); }
+const {privateKey,publicKey} = await jose.generateKeyPair('RS256');
+const values = {SOCIAL_APPLE_CLIENT_ID:'service-id',SOCIAL_APPLE_APP_ID:'app-id',SOCIAL_KAKAO_CLIENT_ID:'rest-id',SOCIAL_KAKAO_APP_ID:'123'};
+const env = key => values[key] || '';
+const verify = createNotificationVerifier(env,{...jose,createRemoteJWKSet:()=>publicKey});
+const now = Math.floor(Date.now()/1000);
+const sign = (claims,issuer='https://appleid.apple.com',aud='service-id',type='JWT') => new jose.SignJWT(claims)
+  .setProtectedHeader({alg:'RS256',typ:type}).setIssuer(issuer).setAudience(aud).setIssuedAt().setJti('event-id').sign(privateKey);
+const apple = {events:{type:'consent-revoked',sub:'one',event_time:now}};
+const token = await sign(apple);
+assert.equal((await verify('apple',token)).p_subject,'one');
+assert.equal((await verify('apple',await sign({...apple,events:JSON.stringify(apple.events)}))).p_type,'consent-revoked');
+for (const bad of [await sign(apple,'https://evil.test'),await sign(apple,undefined,'wrong'),await sign({events:{...apple.events,event_time:now+90}})]) await assert.rejects(verify('apple',bad));
+await assert.rejects(verify('apple',token.slice(0,-10)+'AAAAAAAAAA'));
+const kakao={sub:'one',app_id:'123',toe:now,events:{'https://schemas.openid.net/secevent/oauth/event-type/user-unlinked':{subject:{subject_type:'iss-sub',iss:'https://kauth.kakao.com',sub:'one'}}}};
+assert.equal((await verify('kakao',await sign(kakao,'https://kauth.kakao.com','rest-id','secevent+jwt'))).p_type,'user-unlinked');
+await assert.rejects(verify('kakao',await sign({...kakao,app_id:'999'},'https://kauth.kakao.com','rest-id','secevent+jwt')));
+let writes=0, fail=false;
+const handler=createNotificationHandler({env,verify,createClient:()=>({rpc:async()=>{writes++;return{error:fail?{}:null};}})});
+const request=body=>new Request('https://example.test/notifications/apple',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({payload:body})});
+assert.equal((await handler(request('forged'),'apple')).status,400); assert.equal(writes,0);
+assert.equal((await handler(request(token),'apple')).status,200); assert.equal(writes,1);
+fail=true; assert.equal((await handler(request(token),'apple')).status,503);
+console.log('Signed notifications: Apple/Kakao accepted; forged signatures, wrong issuer/audience/app/type/time rejected; DB failure remains retryable.');

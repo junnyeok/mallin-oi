@@ -1,0 +1,32 @@
+.social-auth { margin-top: var(--space-24); padding-top: var(--space-16); border-top: 1px solid var(--color-border); }
+.social-auth-buttons { display: grid; gap: var(--space-8); margin-block: var(--space-12); }
+.social-auth-button, .social-auth-page button, .social-auth-link {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+  padding: var(--space-12) var(--space-16); border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn); background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-weight: 700; cursor: pointer; text-decoration: none;
+}
+.social-auth-button { width: 224px; max-width: 100%; min-height: 48px; padding: 0;
+  border: 0; background: transparent; justify-self: center; }
+.social-auth-button img { display: block; width: 100%; height: auto; object-fit: contain; }
+.social-auth-button:focus-visible, .social-auth-page :is(button,input,a):focus-visible {
+  outline: 3px solid var(--color-primary); outline-offset: 3px;
+}
+.social-auth-button:disabled, .social-auth-page button:disabled { opacity: .55; cursor: default; }
+.social-auth-message { color: var(--color-text-sub); font-size: var(--text-small); line-height: 1.6; overflow-wrap: anywhere; }
+.social-auth-page { width: min(100% - 32px, 580px); margin: calc(env(safe-area-inset-top) + 24px) auto;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 32px); }
+.social-auth-card { margin-block: var(--space-24); padding: var(--space-24); border: 1px solid var(--color-border);
+  border-radius: var(--radius-card); background: var(--color-surface); }
+.social-auth-page h1 { font-size: var(--text-h1); margin-block: var(--space-24); }
+.social-auth-page h2 { font-size: var(--text-h2); margin-bottom: var(--space-12); }
+.social-auth-page label { display: block; margin-block: var(--space-12); }
+.social-auth-page input:not([type='checkbox']) { width: 100%; min-height: 44px; margin-top: var(--space-6);
+  padding: var(--space-12); border: 1px solid var(--color-border); border-radius: var(--radius-btn);
+  background: var(--color-bg); color: var(--color-text); font: inherit; }
+.social-auth-page input[type='checkbox'] { margin-right: var(--space-8); }
+.social-auth-page [hidden] { display: none; }
+.social-auth-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: var(--space-12); padding-block: var(--space-12); border-bottom: 1px solid var(--color-divider); }
+.social-auth-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-block: var(--space-16); }
+.social-auth-page p { line-height: 1.6; }

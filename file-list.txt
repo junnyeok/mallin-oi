@@ -6,9 +6,11 @@
 ./APP_RELEASE_GUIDE.md
 ./CNAME
 ./README.md
+./account/connections.html
 ./account/find-password.html
 ./account/reset-password.html
 ./account/signup.html
+./account/social-callback.html
 ./android/.gitignore
 ./android/.idea/.gitignore
 ./android/.idea/AndroidProjectSystem.xml
@@ -452,6 +454,7 @@
 ./assets/css/components/refresh-control.css
 ./assets/css/components/scroll-buttons.css
 ./assets/css/components/search-btn.css
+./assets/css/components/social-auth.css
 ./assets/css/components/study-completion-celebration.css
 ./assets/css/components/update-banner.css
 ./assets/css/components/weekly-nav-btn.css
@@ -481,6 +484,9 @@
 ./assets/css/main/suggestion-qna-main.css
 ./assets/css/main/write-main.css
 ./assets/css/utilities.css
+./assets/images/auth/apple-signin.png
+./assets/images/auth/google-signin.png
+./assets/images/auth/kakao-signin.svg
 ./assets/images/calendar/logo-event.png
 ./assets/images/calendar/logo-study.png
 ./assets/images/calendar/logo-work.png
@@ -556,6 +562,9 @@
 ./assets/js/modules/signup.js
 ./assets/js/modules/site-stats.js
 ./assets/js/modules/site-version.js
+./assets/js/modules/social-auth-native.js
+./assets/js/modules/social-auth-page.js
+./assets/js/modules/social-auth.js
 ./assets/js/modules/store-data.js
 ./assets/js/modules/store.js
 ./assets/js/modules/study-calendar.js
@@ -584,6 +593,7 @@
 ./assets/mp3/mallin_oi_welcome.mp3
 ./assets/mp3/mallinoi-reward.mp3
 ./assets/mp3/you’re-fake.mp3
+./assets/social-auth-config.json
 ./assets/version.json
 ./calendar-event.html
 ./calendar-groups.html
@@ -591,6 +601,7 @@
 ./calendar-work.html
 ./capacitor.config.json
 ./career.html
+./docs/SOCIAL_AUTH_SETUP.md
 ./docs/calendar-event-alarms.md
 ./docs/calendar-production-sync.md
 ./docs/handoffs/mallinoi-calendar.md
@@ -1430,6 +1441,9 @@
 ./supabase-SQLEditor/20260913-tomato-skins.sql
 ./supabase-SQLEditor/20261012-paprikagirl-character.sql
 ./supabase-SQLEditor/20261012-policeboy-skin.sql
+./supabase-SQLEditor/20261018-profile-auth-permissions.sql
+./supabase-SQLEditor/20261018-social-account-links.sql
+./supabase-SQLEditor/20261018-social-provider-events.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1452,6 +1466,13 @@
 ./supabase/.temp/storage-version
 ./supabase/config.toml
 ./supabase/functions/delete-account/index.ts
+./supabase/functions/social-auth/.env.example
+./supabase/functions/social-auth/index.ts
+./supabase/functions/social-auth/notifications.mjs
+./supabase/functions/social-auth/policy.mjs
+./supabase/functions/social-auth/providers.mjs
+./supabase/functions/social-auth/revocation.mjs
+./supabase/functions/social-auth/service.mjs
 ./supabase/migrations/20260728000000_bg04_changsin_profile_background.sql
 ./supabase/migrations/20260728010000_ozyo_item_id_change.sql
 ./supabase/migrations/20260728020000_career_monthly_awards.sql
@@ -1482,6 +1503,9 @@
 ./supabase/migrations/20260913030000_bg07_mafia_profile_background.sql
 ./supabase/migrations/20261012000000_policeboy_skin.sql
 ./supabase/migrations/20261012010000_paprikagirl_character.sql
+./supabase/migrations/20261018000000_social_account_links.sql
+./supabase/migrations/20261018010000_profile_auth_permissions.sql
+./supabase/migrations/20261018020000_social_provider_events.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1516,11 +1540,15 @@
 ./tests/paprikagirl-character.test.mjs
 ./tests/pixel-heart-bgm.test.mjs
 ./tests/policeboy-skin.test.mjs
+./tests/profile-auth-permissions-integration.mjs
 ./tests/profile-bio-contrast.test.mjs
 ./tests/profile-featured-bgm-autoplay.test.mjs
 ./tests/run-muscle-night-bgm.test.mjs
 ./tests/service-menu-swipe.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
+./tests/social-auth-integration.mjs
+./tests/social-auth.test.mjs
+./tests/social-provider-events-integration.mjs
 ./tests/store-description-placement.test.mjs
 ./tests/store-showcase-swipe.test.mjs
 ./tests/study-completion-celebration.test.mjs
@@ -1528,9 +1556,11 @@
 ./tests/tomato-skins.test.mjs
 ./work.html
 ./write.html
+./www/account/connections.html
 ./www/account/find-password.html
 ./www/account/reset-password.html
 ./www/account/signup.html
+./www/account/social-callback.html
 ./www/app-calendar-settings.html
 ./www/app-calendar.html
 ./www/assets/app-version.json
@@ -1554,6 +1584,7 @@
 ./www/assets/css/components/refresh-control.css
 ./www/assets/css/components/scroll-buttons.css
 ./www/assets/css/components/search-btn.css
+./www/assets/css/components/social-auth.css
 ./www/assets/css/components/study-completion-celebration.css
 ./www/assets/css/components/update-banner.css
 ./www/assets/css/components/weekly-nav-btn.css
@@ -1583,6 +1614,9 @@
 ./www/assets/css/main/suggestion-qna-main.css
 ./www/assets/css/main/write-main.css
 ./www/assets/css/utilities.css
+./www/assets/images/auth/apple-signin.png
+./www/assets/images/auth/google-signin.png
+./www/assets/images/auth/kakao-signin.svg
 ./www/assets/images/calendar/logo-event.png
 ./www/assets/images/calendar/logo-study.png
 ./www/assets/images/calendar/logo-work.png
@@ -1658,6 +1692,9 @@
 ./www/assets/js/modules/signup.js
 ./www/assets/js/modules/site-stats.js
 ./www/assets/js/modules/site-version.js
+./www/assets/js/modules/social-auth-native.js
+./www/assets/js/modules/social-auth-page.js
+./www/assets/js/modules/social-auth.js
 ./www/assets/js/modules/store-data.js
 ./www/assets/js/modules/store.js
 ./www/assets/js/modules/study-calendar.js
@@ -1669,6 +1706,7 @@
 ./www/assets/js/modules/work-calendar.js
 ./www/assets/js/modules/write.js
 ./www/assets/mp3/mallinoi-reward.mp3
+./www/assets/social-auth-config.json
 ./www/assets/version.json
 ./www/calendar-event.html
 ./www/calendar-groups.html

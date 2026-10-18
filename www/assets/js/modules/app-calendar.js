@@ -11,6 +11,7 @@ import {
 } from './calendar-native-widgets.js';
 import { initRefreshControls } from './refresh-control.js';
 import { renderCalendarAppActions } from './app-calendar-mode.js';
+import { initSocialAuthNative } from './social-auth-native.js';
 
 const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
 
@@ -148,6 +149,7 @@ async function initAppCalendarAccount() {
 }
 
 async function initAppCalendarLauncher() {
+  if (await initSocialAuthNative().catch(() => false)) return;
   enableCalendarAppMode();
   if (await consumeCalendarWidgetRoute()) return;
   bindCalendarLinks();

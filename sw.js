@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20261018-02';
+const SITE_VERSION = '20261018-03';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -248,6 +248,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Authentication availability must follow the current deployment, including rollback.
+  if (url.pathname.endsWith('/assets/social-auth-config.json')) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
 
