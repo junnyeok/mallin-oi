@@ -37,9 +37,12 @@ const admin = {
     getUserById: id => wrap(async () => ({ user: await userById(id) })),
     createUser: input => wrap(async () => {
       creations++;
-      const id = crypto.randomUUID();
-      await sql('insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data) values($1,$2,now(),$3,$4)',
-        [id,input.email,input.app_metadata,input.user_metadata]);
+      const id = input.id || crypto.randomUUID();
+      // Match GoTrue Admin: initial INSERT lacks custom app_metadata and has a generated hash.
+      await sql("insert into auth.users(id,email,encrypted_password,raw_app_meta_data,raw_user_meta_data) values($1,$2,'generated-admin-password-hash',$3,$4)",
+        [id,input.email,{provider:'email',providers:['email']},input.user_metadata]);
+      await sql('update auth.users set raw_app_meta_data=raw_app_meta_data || $2::jsonb,email_confirmed_at=now() where id=$1',
+        [id,input.app_metadata]);
       return { user: await userById(id) };
     }),
     generateLink: ({ email }) => wrap(async () => {
@@ -89,6 +92,8 @@ try {
   for (const provider of ['google','kakao','apple']) await sql('insert into social_account_links(user_id,provider,subject) values($1,$2,$3)',[legacy,provider,provider+'-old-subject']);
   const migration = await readFile(new URL('../supabase-SQLEditor/20261018-independent-social-accounts.sql',import.meta.url),'utf8');
   await db.exec(migration); await db.exec(migration);
+  const guardFix = await readFile(new URL('../supabase-SQLEditor/20261018-social-registration-guard.sql',import.meta.url),'utf8');
+  await db.exec(guardFix); await db.exec(guardFix);
   const accounts = new Map();
   for (const provider of ['google','kakao','apple']) {
     const payload = await request(provider,provider+'-old-subject',provider === 'kakao' ? null : 'same@example.test');
@@ -99,6 +104,7 @@ try {
     assert.equal(result.status,200,JSON.stringify(result));
     assert.notEqual(result.session.access_token,legacy);
     accounts.set(provider,result.session.access_token);
+    assert.equal((await userById(result.session.access_token)).encrypted_password,'');
     assert.equal((await call('finish',{ ...payload,...signup })).error,'EXPIRED_REQUEST');
     const retry = await request(provider,provider+'-old-subject','changed@example.test');
     assert.equal((await call('inspect',retry)).decision,'ready');
@@ -121,9 +127,15 @@ try {
   await assert.rejects(sql("update auth.users set encrypted_password='added' where id=$1",[google]),/SOCIAL_LOGIN_ONLY/);
   await assert.rejects(sql("update auth.users set email='other@example.test' where id=$1",[google]),/SOCIAL_LOGIN_ONLY/);
   await assert.rejects(sql('insert into auth.users(id,email) values($1,$2)',[crypto.randomUUID(),await socialAccountEmail('google','squat')]),/RESERVED_SOCIAL_ACCOUNT/);
+  const expired = await request('google','expired');
+  await sql("update social_auth_requests set expires_at=now()-interval '1 second' where id=$1",[expired.request]);
+  await assert.rejects(sql('insert into auth.users(id,email) values($1,$2)',[expired.request,await socialAccountEmail('google','expired')]),/RESERVED_SOCIAL_ACCOUNT/);
+  const mismatched = await request('google','right-identity');
+  await assert.rejects(sql('insert into auth.users(id,email) values($1,$2)',[mismatched.request,await socialAccountEmail('google','wrong-identity')]),/RESERVED_SOCIAL_ACCOUNT/);
   // Account creation succeeded but mapping write was interrupted: retry recovers only that identity.
   const orphanEmail = await socialAccountEmail('google','interrupted');
-  const orphan = await admin.auth.admin.createUser({email:orphanEmail,user_metadata:signup,
+  const orphanRequest = await request('google','interrupted');
+  const orphan = await admin.auth.admin.createUser({id:orphanRequest.request,email:orphanEmail,user_metadata:signup,
     app_metadata:{mallinoi_auth:{kind:'social',provider:'google',subject:'interrupted'}}});
   const recovered = await call('finish',{ ...await request('google','interrupted'),...signup });
   assert.equal(recovered.session.access_token,orphan.data.user.id);

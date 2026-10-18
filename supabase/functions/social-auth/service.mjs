@@ -95,7 +95,7 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     allowTestEmail(row.verified_email);
     let existing = await userInfo(db, null, email);
     if (!existing) {
-      const result = await db.auth.admin.createUser({ email, email_confirm: true, user_metadata: metadata,
+      const result = await db.auth.admin.createUser({ id: row.id, email, email_confirm: true, user_metadata: metadata,
         app_metadata: { mallinoi_auth: { kind: 'social', provider: row.provider,
           subject: row.subject, contact_email: row.verified_email || null } } });
       if (!result.error) existing = result.data.user;

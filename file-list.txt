@@ -1445,6 +1445,7 @@
 ./supabase-SQLEditor/20261018-profile-auth-permissions.sql
 ./supabase-SQLEditor/20261018-social-account-links.sql
 ./supabase-SQLEditor/20261018-social-provider-events.sql
+./supabase-SQLEditor/20261018-social-registration-guard.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1508,6 +1509,7 @@
 ./supabase/migrations/20261018010000_profile_auth_permissions.sql
 ./supabase/migrations/20261018020000_social_provider_events.sql
 ./supabase/migrations/20261018030000_independent_social_accounts.sql
+./supabase/migrations/20261018114000_social_registration_guard.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
