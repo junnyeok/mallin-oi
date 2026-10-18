@@ -5,8 +5,12 @@
 웹·캘린더 앱 코드, 개발자 콘솔 등록, 승인된 운영 SQL 및 서버 함수 배포를 완료했다.
 Google·카카오·Apple의 실제 계정 연결·웹 재로그인을 같은 Test 계정으로 확인했다.
 이메일 인증번호 수신 및 본인 확인 후 계정 관리 진입도 사용자 확인과 화면으로 검증했다.
-격리 배포 후보의 `assets/social-auth-config.json`은 **true**이며, 아직 푸시하지 않은 원본 작업 폴더는 false다.
-서버는 승인된 테스트 계정 제한을 유지하며 공개 배포 때 제한과 임시 로컬 반환 주소를 정리한다.
+운영 웹 `assets/social-auth-config.json`은 **true**다. `d82de1e4`를 origin/main에 일반 푸시했고
+GitHub Pages 배포 및 실제 운영 파일 일치를 확인했다(SITE_VERSION `20261018-03`).
+서버의 테스트 계정 제한을 제거했으며 임시 로컬 Origin/반환 주소는 차단했다.
+허용 Origin은 `https://mallin-oi.com`, `capacitor://localhost`, `http://localhost`, `https://localhost`다.
+반환 주소는 운영 웹 `account/social-callback.html`과 `mallinoi://auth/callback`만 허용한다.
+원본 혼합 작업 폴더의 비활성 설정은 보존했으므로 원본 전체 설정을 운영에 다시 적용하지 않는다.
 기존 이메일 로그인은 계속 유지한다.
 기존 사용자 UUID와 게시물·피클·프로필·캘린더 외래키는 변경하지 않는다.
 
@@ -30,7 +34,7 @@ Google·카카오·Apple의 실제 계정 연결·웹 재로그인을 같은 Tes
   키 내용은 출력하거나 Git에 추가하지 않았다. ES256 client secret을 생성하고 공개 키로 서명을 검증했다.
   만료는 **2027-04-16 16:52 KST**이며 그 전에 갱신해야 한다. 서버 Secrets 등록을 완료했다.
 - Google·Apple 서버 변수와 별도 난수 암호화 키를 같은 보안 폴더의 `server-secrets.env`에 0600 권한으로
-  준비했다. 기본 보관본은 비활성이며 검증용 서버 설정은 활성 + 테스트 계정 제한 상태다. 카카오 로그인 값을 추가해 서버 Secrets에 등록한 로컬 파일이며,
+  준비했다. 기본 보관본은 비활성이므로 운영 활성화 때 별도 `production-activation.env`를 적용했고 테스트 계정 제한을 제거했다. 기본 보관본 전체를 다시 적용하면 운영 로그인이 비활성화될 수 있다. 카카오 로그인 값을 추가해 서버 Secrets에 등록한 로컬 파일이며,
   저장소·생성 웹·앱 번들에는 포함하지 않는다.
 
 이 구현은 Supabase의 기본 소셜 로그인 버튼을 켜는 방식과 다르다.

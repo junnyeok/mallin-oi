@@ -1,5 +1,19 @@
 # 말린오이 캘린더 작업방 2 인수인계
 
+## 2026-10-18 통합 인증 운영 배포 및 앱 1.0.30 제출 완료
+
+- 웹 기능 커밋 `d82de1e4e3a1cccdb0eb70745585e7db97b5682d` (`feat(auth): add explicit Google Kakao Apple account linking`)을 최신 origin/main의 정상 후속 커밋으로 일반 푸시했다. 64개 허용 파일만 포함했으며 원본 혼합 브랜치·인덱스·다른 작업은 보존했다.
+- SITE_VERSION은 `20261018-02` → `20261018-03`. GitHub Pages 실행 `39115008292` 성공과 운영 웹 버전/인증 파일/개인정보처리방침의 배포 커밋 바이트 일치를 확인했다. https://github.com/junnyeok/mallin-oi/actions/runs/39115008292
+- 운영 서버의 테스트 계정 제한을 제거하고 Google·카카오·Apple 로그인을 공개했다. 운영 웹/Capacitor Origin은 200, 임시 로컬 `127.0.0.1:8767`은 403을 확인했다. 원본 작업 폴더의 false 설정과 저장소 밖 기본 Secrets 보관본(false)을 운영에 통째로 다시 적용하지 않는다. 자세한 운영 설정은 `docs/SOCIAL_AUTH_SETUP.md`를 따른다.
+- 별도 깨끗한 커밋 worktree에서 npm ci·cap:sync, 전체 Node 365/365, PGlite/JWT 통합 검사 3종, Android Debug와 iOS Simulator 빌드, 원본/www/네이티브 public 일치를 확인했다. 이 검증용 worktree만 제거했다. 기존 원본의 관계없는 테스트 오류와 구분한다.
+- Android Studio로 서명 AAB 1.0.30(34)을 생성했다. package `com.mallinoi.calendar`, minSdk 24, targetSdk 36. bundletool validate 및 jarsigner 검증 통과. 보존 경로 `/Users/junnyeok/Documents/mallinoi-releases/1.0.30/mallinoi-calendar-1.0.30-34.aab`, 129313795 bytes.
+- Google Play 프로덕션 34(1.0.30) 업로드 및 최종 검토 제출 완료. 게시 개요에서 ‘검토 중인 변경사항’을 확인했으며 사전 자동 검사는 진행 중이었다. 기존 출시율 100%, 대상 국가, 관리형 게시 설정을 유지했다. 데이터 보안의 계정 생성 방식에 OAuth만 추가했으며 이메일/사용자 ID 기존 신고는 유지했다. 유일한 번들 경고는 가독화 파일 없음이며 현재 minifyEnabled=false다.
+- Xcode Archive 1.0.30(37), Bundle ID `com.mallinoi.calendar`의 검증·App Store Connect 업로드·처리 완료를 확인했다. 저장 위치는 `~/Library/Developer/Xcode/Archives/2026-10-18/App 10-18-26, 6.23 PM.xcarchive`다. SHA-256은 운영체제 CryptoKit/WebCrypto를 사용하고 별도 앱 암호화 구현이 없음을 확인해 암호화 질문을 처리했다.
+- iOS 1.0.29(36) 이전 심사 대기 제출은 새 빌드 준비 후 취소했고 1.0.30(37)로 교체했다. 18:35 KST에 최종 제출한 뒤 ‘심사 대기 중’을 확인했다. 제출 ID `68e7e6aa-e167-4dde-af6b-6793ff28e767`. 자동 출시·즉시 업데이트·기존 평점/스크린샷/심사 계정 설정은 유지했다.
+- 두 스토어 출시노트에 Google·카카오·Apple 로그인/기존 계정 연결, 이메일 인증번호, 다크모드·위젯·카테고리 정렬·달력 여백 개선, 개인정보처리방침 업데이트를 기재했다. 스토어 승인/실제 새 버전 공개가 끝났다는 뜻은 아니다. `assets/app-version.json`은 아직 공개되지 않은 후보로 앞당기지 않았다.
+- 남은 확인: Android 실제 OAuth 복귀 및 iOS Apple·카카오의 기기별 인증, Apple 비공개 릴레이 실제 메일 전달. Apple 발신 주소 등록의 SPF 경고는 남아 있고 DKIM 존재를 확인했다. DNS는 변경하지 않았다. Apple client secret은 2027-04-16 16:52 KST 만료 전 갱신해야 한다.
+- 사용자 기존 시뮬레이터/관리자 로그인/일정/피클은 보존했다. 승인된 Test 계정에는 Google·카카오·Apple 연결을 유지했다. 상세 파일 목록·검증 로그·제출 증거는 저장소 밖 `/Users/junnyeok/Documents/mallinoi-releases/1.0.30/`에 보관한다. 과거 기록은 새로운 SQL/배포/스토어 실행 승인으로 취급하지 않는다.
+
 ## 2026-10-18 통합 인증 서버 적용 및 후속 배포 준비
 
 - 최신 승인 범위: Google·카카오·Apple 로그인/기존 계정 연결, 필요한 운영 SQL·서버 설정, 개인정보처리방침, origin/main 일반 푸시와 후속 앱 업데이트다. 원본 브랜치·인덱스·다른 작업은 보존하고 최신 origin/main 별도 worktree에 이번 인증 변경만 이식했다.
