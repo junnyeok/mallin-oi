@@ -1,5 +1,15 @@
 # 말린오이 캘린더 작업방 2 인수인계
 
+## 2026-10-18 독립 계정 1.0.31 앱 제출 상태
+
+- 웹/서버 기능 커밋 `729379e6d8bdc2529c91225c63441e1129b4ce72`, GoTrue 생성 순서 보완 커밋 `1b1675d7d39307e969390d8cf51215a57c177298`를 origin/main으로 일반 푸시했다. 두 Pages 실행 `39123309006`, `39124084031` 모두 성공. SITE_VERSION은 `20261018-04`다.
+- Android Studio에서 기존 키로 1.0.31(35) 서명 AAB를 만들고 Google Play에 업로드했다. package `com.mallinoi.calendar`, minSdk 24/targetSdk 36, 파일 `/Users/junnyeok/Documents/mallinoi-releases/1.0.31/mallinoi-calendar-1.0.31-35.aab`, 129313573 bytes. 서명 및 bundletool 검사 통과. 가독화 파일 없음 경고만 있으며 minifyEnabled=false다.
+- Android 사전 자동 검사는 통과했다. 최종 전송 클릭 뒤 확인 창은 닫히지만 게시 개요가 아직 미제출 상태이며 새 제출 이력이 없다. 새 탭/화면 버튼/키보드 재시도에도 동일하며 오류 메시지는 없다. Mac 잠금 때문에 네이티브 Chrome 재확인을 진행하지 못해 사용자에게 잠금 해제를 요청했다. **Android 최종 심사 접수는 아직 확인하지 못했다.** 기존 국가·100% 출시율·관리형 게시 설정은 변경하지 않았다.
+- Xcode Archive 1.0.31(38), bundle `com.mallinoi.calendar` 검증·업로드·처리 완료. Archive는 `/Users/junnyeok/Library/Developer/Xcode/Archives/2026-10-18/App 10-18-26, 8.24 PM.xcarchive`. 이전 iOS 1.0.30(37) 심사 대기는 새 빌드 준비 후 취소했고, 20:37 KST에 새 1.0.31(38)을 최종 제출하여 **심사 대기 중**을 확인했다. 제출 ID `536c7732-cc12-4b0e-b4c1-c5d2ca861128`. 기존 출시/스크린샷/심사 계정 설정 유지.
+- 출시노트는 다크모드·위젯, 달력 여백, 카테고리 순서 이동/자동 스크롤, 독립 소셜 가입/자동 로그인, 계정 연결 제거, 개인정보처리방침 변경을 포함한다. 기존 세 캘린더 기능은 이번 번들에도 유지된다. 아직 스토어 승인/새 버전 공개 완료를 뜻하지 않는다.
+- 기능/서버 보완 커밋 각각 별도 깨끗한 worktree에서 검증했다. 정상 의존성 설치·cap:sync 후 Node 374/374 및 통합 검사 통과, 기능 커밋은 Android Debug/iOS Simulator도 통과했다. Git에서 제외된 네이티브 public을 생성하기 전의 동기화 검사 실패와 최종 통과를 구분한다. 검증 worktree 두 곳을 제거했고, 원본 혼합 브랜치/인덱스/다른 작업은 보존했다.
+- 실제 Google 독립 가입/자동 재로그인 성공, 기기별 미실행 범위는 바로 아래 기록을 따른다. 상세 보고서·정확한 커밋 파일 목록·검증 로그·스크린샷·AAB는 저장소 밖 `/Users/junnyeok/Documents/mallinoi-releases/1.0.31/`에 보관한다. 과거 제출 명령을 새 실행 승인으로 취급하지 않는다.
+
 ## 2026-10-18 독립 계정 웹 배포 및 실제 Google 가입 검증
 
 - 기능 커밋 `729379e6d8bdc2529c91225c63441e1129b4ce72`를 origin/main으로 일반 푸시했다. SITE_VERSION `20261018-03` → `20261018-04`; Pages 실행 `39123309006` 성공, 운영 개인정보처리방침/인증 파일 바이트 일치, 제거한 connections 경로 404 확인.
