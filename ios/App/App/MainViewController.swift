@@ -6,5 +6,6 @@ class MainViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(CalendarWidgetsPlugin())
         bridge?.registerPluginInstance(CompletionAudioSessionPlugin())
+        bridge?.registerPluginInstance(EventAlarmsPlugin())
     }
 }

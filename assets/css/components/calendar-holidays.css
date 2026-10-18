@@ -5,10 +5,10 @@
   max-width: 100%;
   min-height: 18px;
   padding: 1px var(--space-4);
-  border: 1px solid #e59a9a;
+  border: 1px solid var(--calendar-holiday-border);
   border-radius: var(--radius-pill);
-  background: #fff4f4;
-  color: #c62828;
+  background: var(--calendar-holiday-bg);
+  color: var(--calendar-holiday-text);
   font-size: 10px;
   font-weight: 900;
   line-height: 1.2;

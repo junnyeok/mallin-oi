@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="./assets/js/calendar-appearance.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>환경설정 - 말린오이 캘린더</title>
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" type="image/png" href="./images/favicon-32x32.png" />
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
+  </head>
+  <body class="theme-home app-calendar-body" data-page="app-calendar-settings" data-app-mode="calendar">
+    <main class="app-calendar-settings" aria-labelledby="appCalendarSettingsTitle">
+      <header class="app-calendar-settings__header">
+        <a class="app-calendar-settings__back" id="appCalendarSettingsBack"
+           href="./app-calendar.html?app=calendar" aria-label="이전 화면으로 돌아가기">
+          <span aria-hidden="true">‹</span>
+        </a>
+        <h1 id="appCalendarSettingsTitle">환경설정</h1>
+      </header>
+
+      <section class="app-calendar-settings__section" aria-labelledby="appSettingsGeneralTitle">
+        <h2 id="appSettingsGeneralTitle">일반</h2>
+        <div class="app-calendar-settings__list">
+          <a class="app-calendar-settings__row" href="https://mallin-oi.com/">
+            <span>
+              <strong>사이트로 이동</strong>
+              <span class="app-calendar-settings__description">말린오이닷컴 열기</span>
+            </span>
+            <span class="app-calendar-settings__arrow" aria-hidden="true">›</span>
+          </a>
+          <a class="app-calendar-settings__row" href="./prev-mypage.html?app=calendar">
+            <span>
+              <strong>계정 관리</strong>
+              <span class="app-calendar-settings__description">내 계정 정보 확인 및 관리</span>
+            </span>
+            <span class="app-calendar-settings__arrow" aria-hidden="true">›</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="app-calendar-settings__section" aria-labelledby="appSettingsAppearanceTitle">
+        <h2 id="appSettingsAppearanceTitle">화면</h2>
+        <fieldset class="app-calendar-settings__list app-calendar-appearance" id="calendarAppearanceOptions" disabled>
+          <legend class="sr-only">화면 모드</legend>
+          <label class="app-calendar-settings__row">
+            <span><strong>라이트 모드</strong><span class="app-calendar-settings__description">밝은 배경으로 보기</span></span>
+            <input type="radio" name="calendarAppearance" value="light" checked />
+          </label>
+          <label class="app-calendar-settings__row">
+            <span><strong>다크 모드</strong><span class="app-calendar-settings__description">어두운 배경으로 보기</span></span>
+            <input type="radio" name="calendarAppearance" value="dark" />
+          </label>
+        </fieldset>
+        <p class="app-calendar-settings__note">선택한 화면 모드는 앱과 캘린더 위젯에 함께 적용돼요.</p>
+        <p class="app-calendar-settings__note" id="calendarAppearanceStatus" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+    <script type="module" src="./assets/js/modules/app-calendar-settings.js"></script>
+  </body>
+</html>

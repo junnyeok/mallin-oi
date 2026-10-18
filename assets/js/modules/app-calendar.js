@@ -10,6 +10,7 @@ import {
   scheduleCalendarWidgetRefresh,
 } from './calendar-native-widgets.js';
 import { initRefreshControls } from './refresh-control.js';
+import { renderCalendarAppActions } from './app-calendar-mode.js';
 
 const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
 
@@ -77,17 +78,11 @@ function renderLoggedOut(accountEl) {
   accountEl.innerHTML = `
     <p class="app-calendar-account__status">로그인하면 내 캘린더를 이어서 쓸 수 있어.</p>
     <div class="app-calendar-account__actions">
+      ${renderCalendarAppActions(`
       <a class="app-calendar-account__btn app-calendar-account__btn--primary" href="${getLoginHref()}" data-app-calendar-login>
         로그인
       </a>
-      <button
-        class="app-calendar-account__refresh"
-        type="button"
-        aria-label="새로고침"
-        data-refresh-control
-      >
-        <span aria-hidden="true">↻</span>
-      </button>
+      `, { launcher: true })}
     </div>
   `;
 
@@ -108,24 +103,11 @@ function renderLoggedIn(accountEl, user) {
       <span>로그인 중</span>
     </p>
     <div class="app-calendar-account__actions">
-      <a
-        class="app-calendar-account__btn"
-        href="https://mallin-oi.com/"
-        aria-label="말린오이닷컴 사이트로 이동"
-      >
-        사이트로
-      </a>
+      ${renderCalendarAppActions(`
       <button class="app-calendar-account__btn" type="button" data-app-calendar-logout>
         로그아웃
       </button>
-      <button
-        class="app-calendar-account__refresh"
-        type="button"
-        aria-label="새로고침"
-        data-refresh-control
-      >
-        <span aria-hidden="true">↻</span>
-      </button>
+      `, { launcher: true })}
     </div>
   `;
 

@@ -5,6 +5,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import androidx.core.view.WindowCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -17,6 +19,7 @@ public class CalendarWidgetsPlugin extends Plugin {
     static final String PREFS_NAME = "mallinoi_calendar_widgets";
     static final String KEY_LOGGED_IN = "is_logged_in";
     static final String KEY_PAYLOAD = "payload_json";
+    static final String KEY_APPEARANCE = "appearance";
     static final String KEY_PENDING_TYPE = "pending_calendar_type";
     static final Class<?>[] WIDGET_PROVIDERS = new Class<?>[] {
             StudyFourDayWidgetProvider.class,
@@ -29,6 +32,56 @@ public class CalendarWidgetsPlugin extends Plugin {
             EventTwoWeekWidgetProvider.class,
             EventMonthWidgetProvider.class
     };
+
+    @Override
+    public void load() {
+        applyAppearance(savedAppearance());
+    }
+
+    private String savedAppearance() {
+        String value = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_APPEARANCE, "light");
+        return "dark".equals(value) ? "dark" : "light";
+    }
+
+    private void applyAppearance(String appearance) {
+        getActivity().runOnUiThread(() -> {
+            boolean dark = "dark".equals(appearance);
+            int background = dark ? Color.rgb(23, 25, 30) : Color.WHITE;
+            android.view.Window window = getActivity().getWindow();
+            window.setStatusBarColor(background);
+            window.setNavigationBarColor(background);
+            WindowCompat.getInsetsController(window, window.getDecorView()).setAppearanceLightStatusBars(!dark);
+            WindowCompat.getInsetsController(window, window.getDecorView()).setAppearanceLightNavigationBars(!dark);
+            getBridge().getWebView().setBackgroundColor(background);
+        });
+    }
+
+    @PluginMethod
+    public void getAppearance(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("appearance", savedAppearance());
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void setAppearance(PluginCall call) {
+        String appearance = call.getString("appearance");
+        if (!"light".equals(appearance) && !"dark".equals(appearance)) {
+            call.reject("Invalid calendar appearance");
+            return;
+        }
+        // Separate from schedule data: refresh and logout must not reset the theme.
+        boolean saved = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putString(KEY_APPEARANCE, appearance).commit();
+        if (!saved) {
+            call.reject("Could not save calendar appearance");
+            return;
+        }
+        applyAppearance(appearance);
+        refreshAllWidgets(getContext());
+        call.resolve();
+    }
 
     @PluginMethod
     public void saveWidgetData(PluginCall call) {

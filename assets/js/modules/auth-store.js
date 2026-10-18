@@ -675,18 +675,16 @@ export async function updateAuthUI() {
         }
       };
 
-      const isCalendarShell = isCalendarShellAuthLink(loginLink);
-      const nickEl = document.createElement('a');
-      nickEl.className = 'auth-link auth-nickname';
-      nickEl.dataset.authNickname = 'true';
-      nickEl.href = isCalendarShell ? prevMypageHref() : profileHref();
-      nickEl.textContent = isCalendarShell ? '계정 관리' : `${displayName}님`;
-      if (isCalendarShell) {
-        nickEl.setAttribute('aria-label', '계정 관리');
-      }
-
-      if (!loginLink.previousElementSibling?.matches('.auth-nickname')) {
-        loginLink.before(nickEl);
+      // 앱의 계정 관리는 환경설정에서 제공한다. 사이트의 프로필 링크는 유지한다.
+      if (!isCalendarShellAuthLink(loginLink)) {
+        const nickEl = document.createElement('a');
+        nickEl.className = 'auth-link auth-nickname';
+        nickEl.dataset.authNickname = 'true';
+        nickEl.href = profileHref();
+        nickEl.textContent = `${displayName}님`;
+        if (!loginLink.previousElementSibling?.matches('.auth-nickname')) {
+          loginLink.before(nickEl);
+        }
       }
     }
 

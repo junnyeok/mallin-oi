@@ -124,7 +124,7 @@ html.is-calendar-app-mode .calendar-app-back-row {
   border: 0;
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-text);
+  color: var(--color-on-accent);
   font-size: var(--text-body);
   font-weight: 800;
   cursor: pointer;

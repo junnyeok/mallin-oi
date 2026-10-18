@@ -1,6 +1,7 @@
 // assets/js/modules/work-calendar.js
 
 import { supabase } from './supabase-client.js';
+import { enableCategoryReorder, resetCategoryReorder, persistCategoryOrder, nextCategorySortOrder } from './calendar-category-order.js';
 import {
   getCurrentUser,
   loginHref,
@@ -439,8 +440,8 @@ function groupTodosByDate(rows = []) {
 
 function sortCategories(categories = []) {
   return [...categories].sort((a, b) => {
-    const sortA = Number(a.sort_order || 100);
-    const sortB = Number(b.sort_order || 100);
+    const sortA = Number(a.sort_order ?? 100);
+    const sortB = Number(b.sort_order ?? 100);
 
     if (sortA !== sortB) return sortA - sortB;
 
@@ -1003,9 +1004,11 @@ function renderCategoryList({
   categories,
   onSave,
   onDelete,
+  onReorder,
 }) {
   if (!root) return;
 
+  resetCategoryReorder(root);
   root.innerHTML = '';
 
   categories.forEach((category) => {
@@ -1116,6 +1119,7 @@ function renderCategoryList({
     item.append(dot, input, times, color, saveButton, deleteButton);
     root.append(item);
   });
+  enableCategoryReorder({ root, categories, onReorder });
 }
 
 function renderCalendarGrid({
@@ -1522,6 +1526,7 @@ async function initPageCalendar(loadingController) {
       categories: state.categories,
       onSave: saveCategory,
       onDelete: removeCategory,
+      onReorder: reorderCategories,
     });
 
     scheduleCalendarWidgetRefresh();
@@ -1980,6 +1985,29 @@ async function initPageCalendar(loadingController) {
       state.categories,
       preferredValue || select.value,
     );
+  }
+
+  async function reorderCategories(ids) {
+    const selectedCategoryId = typeSelect.value;
+    try {
+      state.categories = await persistCategoryOrder({
+        client: supabase,
+        table: CATEGORY_TABLE_NAME,
+        userId: state.userId,
+        categories: state.categories,
+        ids,
+      });
+    } catch (error) {
+      try { state.categories = await fetchUserCategories(state.userId); }
+      catch { /* Keep the last known order while offline. */ }
+      renderCategorySelect(typeSelect, state.categories, selectedCategoryId);
+      error.categoryOrder = state.categories.map((category) => String(category.id));
+      throw error;
+    }
+    // Update choices without rebuilding category inputs with unsaved edits.
+    renderCategorySelect(typeSelect, state.categories, selectedCategoryId);
+    scheduleCalendarWidgetRefresh();
+    refreshGroupBackupNeeded();
   }
 
   async function saveCategory({
@@ -2469,7 +2497,7 @@ async function initPageCalendar(loadingController) {
           color,
           startTime: times.startTime,
           endTime: times.endTime,
-          sortOrder: 100 + state.categories.length,
+          sortOrder: nextCategorySortOrder(state.categories),
         });
 
         state.categories = sortCategories([...state.categories, nextCategory]);

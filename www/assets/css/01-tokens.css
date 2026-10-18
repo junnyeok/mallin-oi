@@ -31,6 +31,23 @@ var()로 쓴다. */
   --color-text: #111111;
   --color-text-sub: #666666;
   --color-border: #d9d9d9;
+  --color-surface-muted: #f7f7f7;
+  --color-divider: #eeeeee;
+  --color-on-primary: #ffffff;
+  --color-on-danger: #ffffff;
+  --color-on-accent: #111111;
+  --color-danger: #a91f1f;
+  --color-danger-bg: #fff5f5;
+  --calendar-event-highlight: #fff0f6;
+  --calendar-shared-highlight: #fff7fa;
+  --calendar-account-disabled-bg: #f5f5f5;
+  --calendar-account-danger-bg: #fff1f1;
+  --calendar-account-danger-text: #b42318;
+  --calendar-account-bg: rgba(255, 255, 255, 0.78);
+  --calendar-loading-bg: rgba(255, 255, 255, 0.86);
+  --calendar-holiday-bg: #fff4f4;
+  --calendar-holiday-text: #c62828;
+  --calendar-holiday-border: #e59a9a;
 
   /* Study Calendar Category Colors */
   --study-category-study-bg: #e7f6ff;
@@ -74,6 +91,44 @@ var()로 쓴다. */
 
   /* Layout */
   --container-max: 1100px;
+}
+
+/* 앱 전용 설정. 페이지 배경과 테마색을 분리해 라이트 모드의 기존 색을 보존한다. */
+html[data-calendar-appearance='dark'] {
+  color-scheme: dark;
+  --color-bg: #17191e;
+  --color-surface: #22252b;
+  --color-surface-muted: #1c1f25;
+  --color-text: #f2f3f5;
+  --color-text-sub: #b4b8c2;
+  --color-border: #464b55;
+  --color-divider: #363b45;
+  --theme-home-sub: #303c24;
+  --theme-study: #6e6e79;
+  --theme-study-sub: #36363f;
+  --theme-work: #5959de;
+  --theme-work-sub: #29294b;
+  --theme-event-sub: #432c37;
+  --color-danger: #ffaaaa;
+  --color-danger-bg: #42282c;
+  --calendar-event-highlight: #432c37;
+  --calendar-shared-highlight: #352731;
+  --calendar-account-disabled-bg: #1c1f25;
+  --calendar-account-danger-bg: #42282c;
+  --calendar-account-danger-text: #ffaaaa;
+  --calendar-account-bg: #22252b;
+  --calendar-loading-bg: rgba(23, 25, 30, 0.92);
+  --calendar-holiday-bg: #42282c;
+  --calendar-holiday-text: #ffaaaa;
+  --calendar-holiday-border: #a96369;
+  --shadow-card: 0 6px 18px rgba(0, 0, 0, 0.24);
+}
+
+html[data-calendar-appearance='light'] { color-scheme: light; }
+
+html[data-calendar-appearance='dark'] body.theme-home,
+html[data-calendar-appearance='dark'] body.theme-event {
+  --color-on-primary: #17191e;
 }
 
 /* =========================

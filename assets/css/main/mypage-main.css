@@ -167,7 +167,7 @@ html.is-calendar-app-mode .calendar-app-back-row {
 .mypage-field input[readonly],
 .mypage-field input:disabled,
 .mypage-field select:disabled {
-  background: #f5f5f5;
+  background: var(--calendar-account-disabled-bg);
   color: var(--color-text-sub);
   cursor: not-allowed;
 }
@@ -192,7 +192,7 @@ html.is-calendar-app-mode .calendar-app-back-row {
 .mypage-btn {
   border: none;
   background: var(--color-primary);
-  color: var(--color-text);
+  color: var(--color-on-accent);
   margin-top: var(--space-24);
   margin-bottom: 0;
 }
@@ -205,8 +205,8 @@ html.is-calendar-app-mode .calendar-app-back-row {
 
 .mypage-danger-btn {
   border: 2px solid #f0b9b9;
-  background: #fff1f1;
-  color: #b42318;
+  background: var(--calendar-account-danger-bg);
+  color: var(--calendar-account-danger-text);
 }
 
 .mypage-btn:hover,

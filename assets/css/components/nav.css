@@ -1146,13 +1146,13 @@ body.has-global-floating-modal .pickle-menu {
 }
 
 .login-required-popup__btn--ghost {
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-text);
 }
 
 .login-required-popup__btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   border-color: var(--color-primary);
 }
 

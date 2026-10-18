@@ -91,7 +91,7 @@ body.calendar-entry-sheet-open {
 .calendar-entry-sheet__submit {
   padding: 0 var(--space-12);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   white-space: nowrap;
 }
@@ -104,7 +104,7 @@ body.calendar-entry-sheet-open {
 
 .calendar-entry-sheet__submit:disabled {
   border-color: var(--color-border);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
   color: var(--color-text-sub);
   cursor: default;
 }
@@ -161,7 +161,7 @@ body.calendar-entry-sheet-open {
   align-items: center;
   gap: var(--space-12);
   min-height: 54px;
-  border-bottom: 1px solid #eeeeee;
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .calendar-entry-sheet__label {
@@ -460,7 +460,7 @@ body.calendar-entry-sheet-open {
   margin-top: var(--space-12);
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
 }
 
 .calendar-time-picker__clear {
@@ -631,7 +631,7 @@ body.calendar-entry-sheet-open {
 .event-alarm-fields .calendar-entry-sheet__label { white-space: nowrap; }
 .event-alarm-fields__status { color: var(--color-text-sub); font-size: var(--text-small); line-height: var(--line-body); margin: var(--space-8) 0; }
 .event-alarm-fields__status:empty { display: none; }
-.event-alarm-fields__status[data-error='true'] { color: #a91f1f; }
+.event-alarm-fields__status[data-error='true'] { color: var(--color-danger); }
 
 .calendar-entry-sheet__danger {
   width: 100%;
@@ -639,8 +639,8 @@ body.calendar-entry-sheet-open {
   margin-top: var(--space-24);
   border: 1px solid #d64343;
   border-radius: var(--radius-btn);
-  background: #fff5f5;
-  color: #a91f1f;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -729,7 +729,7 @@ body.calendar-entry-sheet-open {
 .calendar-entry-delete-confirm__confirm {
   border: 1px solid #d64343;
   background: #d64343;
-  color: var(--color-surface);
+  color: var(--color-on-danger);
 }
 
 .calendar-entry-delete-confirm__button:disabled {
@@ -913,7 +913,7 @@ body.calendar-entry-sheet-open {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-pill);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 24px;
   font-weight: 900;
   line-height: 1;
@@ -1044,6 +1044,92 @@ body.theme-work[data-page='calendar-work']
   .work-repeat__trigger:focus-visible {
   border-color: var(--color-primary);
   background: var(--color-surface);
+}
+
+.calendar-category-sortable {
+  position: relative;
+  padding-left: 44px;
+}
+
+.calendar-category-handle {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--color-text-sub);
+  font: inherit;
+  font-size: 24px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.calendar-category-handle:hover,
+.calendar-category-handle:focus-visible {
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.calendar-category-handle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.calendar-category-handle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.calendar-category-sortable.is-category-placeholder {
+  border-style: dashed;
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+}
+
+.is-category-placeholder > * {
+  opacity: 0;
+}
+
+.calendar-category-drag-preview {
+  position: fixed;
+  z-index: 1201;
+  margin: 0;
+  pointer-events: none;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  opacity: 0.96;
+  will-change: transform;
+}
+
+.calendar-category-drag-preview .calendar-category-handle {
+  cursor: grabbing;
+}
+
+.calendar-category-order-status {
+  margin: var(--space-8) 0 0;
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  line-height: var(--line-body);
+}
+
+/* Match the calendar column above the desktop two-column layout. */
+@media (min-width: 901px) {
+  .study-calendar-page__head > .calendar-group-bar__backup--header,
+  .work-calendar-page__head > .calendar-group-bar__backup--header,
+  .event-calendar-page__head > .calendar-group-bar__backup--header {
+    margin-right: calc(max(300px, (100% - var(--space-16)) * 0.3) + var(--space-16));
+  }
 }
 
 @media (max-width: 640px) {

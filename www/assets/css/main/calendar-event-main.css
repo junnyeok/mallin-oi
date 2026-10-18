@@ -74,7 +74,7 @@
   padding: var(--space-8) var(--space-4);
   border-radius: var(--radius-btn);
   background: #ff8fb3;
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 12px;
   font-weight: 900;
   text-align: center;
@@ -108,13 +108,13 @@
 
 .event-calendar-day--button:hover {
   border-color: #ff8fb3;
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   transform: translateY(-1px);
 }
 
 .event-calendar-day--muted {
   color: var(--color-text-sub);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .event-calendar-day--today {
@@ -123,7 +123,7 @@
 }
 
 .event-calendar-day--selected {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -140,7 +140,7 @@
 
 .event-calendar-day--today .event-calendar-day__number {
   background: #ff8fb3;
-  color: var(--color-surface);
+  color: var(--color-on-primary);
 }
 
 .event-calendar-day__badges {
@@ -160,7 +160,7 @@
   min-height: 20px;
   padding: 0 var(--space-6);
   border-radius: 5px;
-  background: var(--todo-category-color, #fff0f6);
+  background: var(--todo-category-color, var(--calendar-event-highlight));
   color: var(--todo-category-text, var(--color-text));
   font-size: 11px;
   font-weight: 900;
@@ -250,7 +250,7 @@
 }
 
 .event-calendar-nav-btn:hover {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -329,7 +329,7 @@
 .event-todo-form__select:focus,
 .event-todo-form__input:focus,
 .event-todo-form__memo:focus {
-  outline: 2px solid #fff0f6;
+  outline: 2px solid var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -347,7 +347,7 @@
 }
 
 .event-todo-form__setting:hover {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -365,7 +365,7 @@
 }
 
 .event-todo-form__date-toggle:hover {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -442,7 +442,7 @@
 .event-date-picker__close:hover,
 .event-date-picker__close:focus-visible {
   color: var(--color-text);
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -452,7 +452,7 @@
   border: 1px solid #ff8fb3;
   border-radius: var(--radius-btn);
   background: #ff8fb3;
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -483,7 +483,7 @@
 }
 
 .event-todo-item.is-done {
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .event-todo-item__check {
@@ -536,7 +536,7 @@
 }
 
 .event-todo-item__memo-input:focus {
-  outline: 2px solid #fff0f6;
+  outline: 2px solid var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -562,7 +562,7 @@
   border: 1px solid #ff8fb3;
   border-radius: var(--radius-btn);
   background: #ff8fb3;
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
@@ -570,7 +570,7 @@
 
 .event-todo-item__save:disabled {
   border-color: var(--color-border);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
   color: var(--color-text-sub);
   cursor: default;
   opacity: 0.82;
@@ -581,7 +581,7 @@
 }
 
 .event-todo-item.is-done .event-todo-item__memo-input {
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
   color: var(--color-text-sub);
 }
 
@@ -592,7 +592,7 @@
   margin-bottom: var(--space-4);
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-pill);
-  background: var(--todo-category-color, #fff0f6);
+  background: var(--todo-category-color, var(--calendar-event-highlight));
   color: var(--todo-category-text, var(--color-text));
   font-size: 12px;
   font-weight: 800;
@@ -612,7 +612,7 @@
 
 .event-todo-item__delete:hover {
   color: var(--color-text);
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
 }
 
 .event-todo-empty {
@@ -805,7 +805,7 @@
 }
 
 .event-todo-item__text-input:focus {
-  outline: 2px solid #fff0f6;
+  outline: 2px solid var(--calendar-event-highlight);
   border-color: #ff8fb3;
   background: var(--color-surface);
 }
@@ -954,7 +954,7 @@
 }
 
 .event-todo-item__memo-toggle:hover {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -978,7 +978,7 @@
     border: 1px solid #ff8fb3;
     border-radius: var(--radius-btn);
     background: #ff8fb3;
-    color: var(--color-surface);
+    color: var(--color-on-primary);
     font-size: var(--text-small);
     font-weight: 900;
     cursor: pointer;
@@ -1015,7 +1015,7 @@
 
   .event-todo-form__close:hover {
     color: var(--color-text);
-    background: #fff0f6;
+    background: var(--calendar-event-highlight);
   }
 
   .event-todo-list {
@@ -1173,7 +1173,7 @@ body.event-category-modal-open {
 }
 
 .event-category-manager__close:hover {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   color: var(--color-text);
 }
 
@@ -1211,7 +1211,7 @@ body.event-category-modal-open {
   border: 1px solid #ff8fb3;
   border-radius: var(--radius-btn);
   background: #ff8fb3;
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -1234,7 +1234,7 @@ body.event-category-modal-open {
 
 .event-category-palette__button.is-selected {
   border-color: var(--color-text);
-  box-shadow: 0 0 0 2px #fff0f6;
+  box-shadow: 0 0 0 2px var(--calendar-event-highlight);
 }
 
 .event-category-list {
@@ -1253,7 +1253,7 @@ body.event-category-modal-open {
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .event-category-item__dot {
@@ -1299,7 +1299,7 @@ body.event-category-modal-open {
 }
 
 .event-category-item__button:hover {
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   color: var(--color-text);
 }
 
@@ -1415,7 +1415,7 @@ body.theme-event[data-page='calendar-event'] .event-category-form__button {
 body.theme-event[data-page='calendar-event'] .event-calendar-day--button:hover,
 body.theme-event[data-page='calendar-event'] .event-calendar-day--selected {
   border-color: #ff8fb3;
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
 }
 
 body.theme-event[data-page='calendar-event'] .event-calendar-day--today {
@@ -1435,7 +1435,7 @@ body.theme-event[data-page='calendar-event'] .event-todo-item__edit:hover,
 body.theme-event[data-page='calendar-event']
   .event-category-manager__close:hover {
   border-color: #ff8fb3;
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
 }
 
 body.theme-event[data-page='calendar-event']
@@ -1488,7 +1488,7 @@ body.theme-event[data-page='calendar-event'] .event-calendar-preview__more {
 
 .event-calendar-day--button:hover {
   border-color: transparent;
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   transform: none;
 }
 
@@ -1499,7 +1499,7 @@ body.theme-event[data-page='calendar-event'] .event-calendar-preview__more {
 
 .event-calendar-day--selected {
   border-color: transparent;
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   box-shadow: inset 0 0 0 2px #ff8fb3;
 }
 
@@ -1540,7 +1540,7 @@ body.theme-event[data-page='calendar-event'] .event-calendar-preview__more {
 body.theme-event[data-page='calendar-event'] .event-calendar-day--button:hover,
 body.theme-event[data-page='calendar-event'] .event-calendar-day--selected {
   border-color: transparent;
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
 }
 
 body.theme-event[data-page='calendar-event'] .event-calendar-day--today {
@@ -1728,7 +1728,7 @@ body.theme-event[data-page='calendar-event']
 }
 
 .event-todo-form__time:focus {
-  outline: 2px solid #fff0f6;
+  outline: 2px solid var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -1842,7 +1842,7 @@ body.theme-event[data-page='calendar-event']
 .event-todo-item__date-clear:hover,
 .event-todo-item__date-clear:focus-visible {
   color: var(--color-text);
-  background: #fff0f6;
+  background: var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 
@@ -1855,7 +1855,7 @@ body.theme-event[data-page='calendar-event']
 
 .event-todo-item__date-input:focus,
 .event-todo-item__time-input:focus {
-  outline: 2px solid #fff0f6;
+  outline: 2px solid var(--calendar-event-highlight);
   border-color: #ff8fb3;
 }
 

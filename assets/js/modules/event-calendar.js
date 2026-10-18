@@ -1,6 +1,7 @@
 // assets/js/modules/event-calendar.js
 
 import { supabase } from './supabase-client.js';
+import { enableCategoryReorder, resetCategoryReorder, persistCategoryOrder, nextCategorySortOrder } from './calendar-category-order.js';
 import {
   getCurrentUser,
   loginHref,
@@ -1014,9 +1015,11 @@ function renderCategoryList({
   groups,
   onSave,
   onDelete,
+  onReorder,
 }) {
   if (!root) return;
 
+  resetCategoryReorder(root);
   root.innerHTML = '';
 
   categories.forEach((category) => {
@@ -1090,6 +1093,7 @@ function renderCategoryList({
     item.append(dot, nameInput, colorInput, saveButton, deleteButton, sharedControls.element);
     root.append(item);
   });
+  enableCategoryReorder({ root, categories, onReorder });
 }
 
 function renderPageCalendar(
@@ -1425,6 +1429,7 @@ async function initPageCalendar(loadingController) {
       groups: state.sharedGroups,
       onSave: saveCategory,
       onDelete: removeCategory,
+      onReorder: reorderCategories,
     });
 
     scheduleCalendarWidgetRefresh();
@@ -1905,7 +1910,7 @@ async function initPageCalendar(loadingController) {
           userId: state.userId,
           name,
           color,
-          sortOrder: 100 + state.categories.length,
+          sortOrder: nextCategorySortOrder(state.categories),
         });
 
         state.categories = [...state.categories, nextCategory];
@@ -1923,6 +1928,29 @@ async function initPageCalendar(loadingController) {
         alert('카테고리 추가에 실패했어. 이름 중복 여부를 확인해줘.');
       }
     });
+  }
+
+  async function reorderCategories(ids) {
+    const selectedCategoryId = typeSelect.value;
+    try {
+      state.categories = await persistCategoryOrder({
+        client: supabase,
+        table: CATEGORY_TABLE_NAME,
+        userId: state.userId,
+        categories: state.categories,
+        ids,
+      });
+    } catch (error) {
+      try { state.categories = await fetchUserCategories(state.userId); }
+      catch { /* Keep the last known order while offline. */ }
+      renderCategorySelect(typeSelect, state.categories, selectedCategoryId);
+      error.categoryOrder = state.categories.map((category) => String(category.id));
+      throw error;
+    }
+    // Update choices without rebuilding category inputs with unsaved edits.
+    renderCategorySelect(typeSelect, state.categories, selectedCategoryId);
+    scheduleCalendarWidgetRefresh();
+    refreshGroupBackupNeeded();
   }
 
   async function saveCategory({

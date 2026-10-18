@@ -1,8 +1,7 @@
 /* assets/css/components/refresh-control.css */
 
 .refresh-control-btn,
-.calendar-app-shell__refresh,
-.app-calendar-account__refresh {
+.calendar-app-icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -22,20 +21,17 @@
 }
 
 .refresh-control-btn:hover,
-.calendar-app-shell__refresh:hover,
-.app-calendar-account__refresh:hover {
+.calendar-app-icon-button:hover {
   transform: translateY(-1px);
 }
 
 .refresh-control-btn:active,
-.calendar-app-shell__refresh:active,
-.app-calendar-account__refresh:active {
+.calendar-app-icon-button:active {
   transform: translateY(0);
 }
 
 .refresh-control-btn:focus-visible,
-.calendar-app-shell__refresh:focus-visible,
-.app-calendar-account__refresh:focus-visible {
+.calendar-app-icon-button:focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }

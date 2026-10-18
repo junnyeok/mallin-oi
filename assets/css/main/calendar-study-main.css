@@ -74,7 +74,7 @@
   padding: var(--space-8) var(--space-4);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 12px;
   font-weight: 900;
   text-align: center;
@@ -114,7 +114,7 @@
 
 .study-calendar-day--muted {
   color: var(--color-text-sub);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .study-calendar-day--today {
@@ -140,7 +140,7 @@
 
 .study-calendar-day--today .study-calendar-day__number {
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
 }
 
 .study-calendar-day__badges {
@@ -347,7 +347,7 @@
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -377,7 +377,7 @@
 }
 
 .study-todo-item.is-done {
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .study-todo-item__check {
@@ -453,7 +453,7 @@
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
@@ -461,7 +461,7 @@
 
 .study-todo-item__save:disabled {
   border-color: var(--color-border);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
   color: var(--color-text-sub);
   cursor: default;
   opacity: 0.82;
@@ -472,7 +472,7 @@
 }
 
 .study-todo-item.is-done .study-todo-item__memo-input {
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
   color: var(--color-text-sub);
 }
 
@@ -869,7 +869,7 @@
     border: 1px solid var(--color-primary);
     border-radius: var(--radius-btn);
     background: var(--color-primary);
-    color: var(--color-surface);
+    color: var(--color-on-primary);
     font-size: var(--text-small);
     font-weight: 900;
     cursor: pointer;
@@ -1101,7 +1101,7 @@ body.study-category-modal-open {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -1143,7 +1143,7 @@ body.study-category-modal-open {
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .study-category-item__dot {

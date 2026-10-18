@@ -266,12 +266,14 @@ test('로딩 오버레이는 캘린더 본문을 반투명하게 덮고 세 점�
   const overlayRule = css.match(/\.calendar-loading-overlay\s*\{[^}]+\}/s)?.[0] || '';
   assert.match(regionRule, /position:\s*relative/);
   assert.match(regionRule, /isolation:\s*isolate/);
-  assert.match(regionRule, /min-height:\s*730px/);
+  assert.doesNotMatch(regionRule, /(?:min-)?height:/);
+  assert.match(css, /\.calendar-loading-region__grid:empty\s*\{\s*min-height:\s*730px/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.calendar-loading-region__grid:empty\s*\{\s*min-height:\s*533px/);
   assert.match(regionRule, /background:\s*var\(--color-surface\)/);
   assert.match(overlayRule, /position:\s*absolute/);
   assert.doesNotMatch(overlayRule, /position:\s*fixed/);
   assert.match(overlayRule, /inset:\s*0/);
-  assert.match(overlayRule, /background:\s*rgba\(255, 255, 255, 0\.86\)/);
+  assert.match(overlayRule, /background:\s*var\(--calendar-loading-bg\)/);
   assert.match(overlayRule, /backdrop-filter:\s*blur\(2px\)/);
   assert.match(overlayRule, /opacity:\s*0/);
   assert.match(overlayRule, /visibility:\s*hidden/);

@@ -67,7 +67,7 @@ body.calendar-group-modal-open {
 .calendar-copy-dialog__color-compare i { width: 16px; height: 16px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--category-color); }
 .calendar-copy-dialog__actions { display: flex; justify-content: flex-end; gap: var(--space-8); }
 .calendar-copy-dialog__actions button { min-height: 40px; padding: 0 var(--space-16); border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: transparent; color: var(--color-text); font: inherit; font-weight: 900; cursor: pointer; }
-.calendar-copy-dialog__actions [data-copy], .calendar-copy-dialog__actions [data-range-copy], .calendar-copy-dialog__actions [data-confirm], .calendar-copy-dialog__actions [data-resolve], .calendar-copy-dialog__actions [data-overwrite], .calendar-copy-dialog__actions [data-notice-close] { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-surface); }
+.calendar-copy-dialog__actions [data-copy], .calendar-copy-dialog__actions [data-range-copy], .calendar-copy-dialog__actions [data-confirm], .calendar-copy-dialog__actions [data-resolve], .calendar-copy-dialog__actions [data-overwrite], .calendar-copy-dialog__actions [data-notice-close] { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-on-primary); }
 .calendar-copy-dialog__schedule-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); padding: var(--space-12); border: 1px solid var(--color-border); border-radius: var(--radius-btn); }
 .calendar-copy-dialog__schedule-summary strong { flex: 0 0 auto; font-size: var(--text-h2); }
 .calendar-copy-dialog__schedule-summary span { min-width: 0; color: var(--color-text-sub); font-size: var(--text-small); text-align: right; }
@@ -329,7 +329,7 @@ body.calendar-group-modal-open {
 }
 
 .calendar-group-schedule__row--shared {
-  background: #fff7fa;
+  background: var(--calendar-shared-highlight);
   background: color-mix(
     in srgb,
     var(--color-primary-sub) 26%,
@@ -349,7 +349,7 @@ body.calendar-group-modal-open {
 .calendar-group-schedule__date-head {
   padding: var(--space-6);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 11px;
   font-weight: 900;
   text-align: center;
@@ -372,7 +372,7 @@ body.calendar-group-modal-open {
   min-height: 14px;
   padding: 1px 2px;
   border-color: #f2b8b5;
-  background: #ffffff;
+  background: var(--color-surface);
   font-size: 8px;
   line-height: 1.05;
 }
@@ -400,7 +400,7 @@ body.calendar-group-modal-open {
 }
 
 .calendar-group-schedule__name--shared {
-  background: #fff7fa;
+  background: var(--calendar-shared-highlight);
   background: color-mix(
     in srgb,
     var(--color-primary-sub) 26%,
@@ -425,7 +425,7 @@ body.calendar-group-modal-open {
 }
 
 .calendar-group-schedule__cell.is-muted {
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .calendar-group-schedule__cell.is-selected {
@@ -852,7 +852,7 @@ body.calendar-group-modal-open {
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
@@ -1126,7 +1126,7 @@ body.calendar-group-modal-open {
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font: inherit;
   font-weight: 900;
   cursor: pointer;

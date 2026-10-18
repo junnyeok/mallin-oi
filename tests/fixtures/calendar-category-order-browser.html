@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>카테고리 드래그 회귀 검사</title>
+  <link rel="stylesheet" href="../../assets/css/01-tokens.css">
+  <link rel="stylesheet" href="../../assets/css/02-base.css">
+  <link rel="stylesheet" href="../../assets/css/main/calendar-study-main.css">
+  <link rel="stylesheet" href="../../assets/css/components/calendar-entry-sheet.css">
+  <style>
+    body { min-height: 200vh; }
+    #checks { position: fixed; top: 0; left: 8px; z-index: 2000; background: white; }
+    .study-category-manager__dialog { max-height: 75vh; }
+  </style>
+</head>
+<body class="theme-study">
+  <div id="checks"><button id="run">드래그 회귀 검사 실행</button><output id="result"></output></div>
+  <div class="study-category-manager__modal">
+    <section class="study-category-manager__dialog" aria-label="카테고리 설정">
+      <h2>내 카테고리</h2>
+      <ul class="study-category-list"></ul>
+    </section>
+  </div>
+  <script type="module">
+    import { enableCategoryReorder, resetCategoryReorder } from '../../assets/js/modules/calendar-category-order.js';
+    const root = document.querySelector('ul');
+    const panel = document.querySelector('section');
+    const categories = Array.from({ length: 12 }, (_, i) => ({ id: String(i), name: ['공부', '운동', '청소', '코딩'][i % 4] + (i + 1) }));
+    for (const category of categories) {
+      const row = document.createElement('li');
+      row.className = 'study-category-item';
+      row.innerHTML = `<span class="study-category-item__dot"></span><input class="study-category-item__name" aria-label="${category.name} 이름" value="${category.name}"><input class="study-category-item__color" type="color" value="#eaffd7"><button class="study-category-item__button">저장</button><button class="study-category-item__button">삭제</button>`;
+      root.append(row);
+    }
+    let saves = 0;
+    const bind = () => enableCategoryReorder({ root, categories, onReorder: async () => { saves += 1; } });
+    bind();
+    const frames = async (count = 2) => { for (let i = 0; i < count; i++) await new Promise(requestAnimationFrame); };
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const order = () => Array.from(root.children).map(row => row.dataset.categoryOrderId).join(',');
+    function pointer(target, type, y) {
+      target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 91, pointerType: 'touch', isPrimary: true, button: 0, clientX: 45, clientY: y }));
+    }
+    document.querySelector('#run').onclick = async () => {
+      const result = document.querySelector('#result');
+      result.textContent = '검사 중';
+      // Synthetic pointers cannot acquire browser capture. Real pointer/manual
+      // tests use the unmodified capture implementation outside this test run.
+      const capture = root.setPointerCapture;
+      root.setPointerCapture = () => {};
+      try {
+        saves = 0;
+        window.scrollTo(0, 120);
+        panel.scrollTop = 50;
+        await frames();
+        const top = panel.scrollTop;
+        const pageTop = window.scrollY;
+        const styleBefore = panel.getAttribute('style');
+        const row = root.children[1];
+        const handle = row.querySelector('.calendar-category-handle');
+        const input = row.querySelector('input');
+        input.value = '편집 중인 이름';
+        const y = handle.getBoundingClientRect().top + 22;
+        const original = order();
+        pointer(handle, 'pointerdown', y);
+        const preview = document.querySelector('.calendar-category-drag-preview');
+        assert(preview && preview.inert && preview.getAttribute('aria-hidden') === 'true', '선택 카드 미리보기/접근성');
+        assert(preview.querySelector('input').value === input.value, '미리보기 편집 내용');
+        assert(document.querySelector('.is-category-placeholder'), '놓일 자리 표시');
+        const previewTop = preview.getBoundingClientRect().top;
+        pointer(root, 'pointermove', y + 35);
+        assert(Math.abs(preview.getBoundingClientRect().top - previewTop - 35) < 1, '카드가 이동 중 포인터를 따라야 함');
+        const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 100 });
+        const touch = new Event('touchmove', { bubbles: true, cancelable: true });
+        panel.dispatchEvent(wheel);
+        panel.dispatchEvent(touch);
+        assert(wheel.defaultPrevented && touch.defaultPrevented, '드래그 중 휠/터치 스크롤 차단');
+        panel.scrollTop += 30;
+        await frames();
+        assert(panel.scrollTop === top && window.scrollY === pageTop, '드래그 중 목록/페이지 위치 고정');
+        pointer(root, 'pointermove', panel.getBoundingClientRect().bottom - 2);
+        const edgePreviewTop = preview.getBoundingClientRect().top;
+        await frames(12);
+        assert(panel.scrollTop > top && window.scrollY === pageTop, '아래 가장자리에서 목록만 자동 스크롤');
+        assert(Math.abs(preview.getBoundingClientRect().top - edgePreviewTop) < 1, '자동 스크롤 중 카드의 포인터 위치 유지');
+        pointer(root, 'pointermove', (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2);
+        const middleTop = panel.scrollTop;
+        await frames(8);
+        assert(panel.scrollTop === middleTop, '중앙으로 돌아오면 자동 스크롤 정지');
+        pointer(root, 'pointermove', panel.getBoundingClientRect().bottom + 20);
+        for (let frame = 0; frame < 300 && panel.scrollTop < panel.scrollHeight - panel.clientHeight - 1; frame++) await frames(1);
+        assert(panel.scrollTop >= panel.scrollHeight - panel.clientHeight - 1, '놓지 않고 목록 맨 아래까지 이동');
+        const lastTop = panel.scrollTop;
+        await frames(4);
+        // scrollTop is fractional while scrollHeight/clientHeight are rounded pixels.
+        assert(Math.abs(panel.scrollTop - lastTop) <= 1 && window.scrollY === pageTop, `목록 끝에서 배경으로 스크롤 전달 금지 (목록 ${lastTop}→${panel.scrollTop}, 배경 ${pageTop}→${window.scrollY})`);
+        pointer(root, 'pointermove', panel.getBoundingClientRect().top - 20);
+        await frames(12);
+        assert(panel.scrollTop < lastTop && window.scrollY === pageTop, '위 가장자리에서 목록만 자동 스크롤');
+        for (let frame = 0; frame < 300 && panel.scrollTop > 0; frame++) await frames(1);
+        assert(panel.scrollTop === 0, '놓지 않고 목록 맨 위까지 이동');
+        await frames(4);
+        assert(panel.scrollTop === 0 && window.scrollY === pageTop, '목록 맨 위에서 배경 스크롤 금지');
+        assert(order() !== original, '드롭 전 놓일 자리 이동');
+        pointer(root, 'pointerup', y + 35);
+        await frames();
+        const droppedTop = panel.scrollTop;
+        await frames(8);
+        assert(panel.scrollTop === droppedTop, '손을 놓으면 자동 스크롤 정지');
+        assert(saves === 1 && input.value === '편집 중인 이름', '드롭 시 한 번 저장/입력 유지');
+        assert(!document.querySelector('.calendar-category-drag-preview'), '드롭 후 미리보기 정리');
+        assert((panel.getAttribute('style') || '') === (styleBefore || ''), '드롭 후 스크롤 스타일 복원');
+        const wheelAfter = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 20 });
+        panel.dispatchEvent(wheelAfter);
+        assert(!wheelAfter.defaultPrevented, '드롭 후 정상 스크롤');
+        for (const cancel of ['pointercancel', 'lostpointercapture', 'Escape', 'blur', 'resize', 'destroy']) {
+          const before = order();
+          const item = root.children[0];
+          const grip = item.querySelector('.calendar-category-handle');
+          const cy = grip.getBoundingClientRect().top + 22;
+          pointer(grip, 'pointerdown', cy);
+          pointer(root, 'pointermove', cy + 90);
+          if (cancel === 'Escape') grip.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' }));
+          else if (cancel === 'blur' || cancel === 'resize') window.dispatchEvent(new Event(cancel));
+          else if (cancel === 'destroy') resetCategoryReorder(root);
+          else pointer(root, cancel, cy + 90);
+          assert(order() === before && saves === 1, `${cancel}: 순서 복원/저장 안 함`);
+          assert(!document.querySelector('.calendar-category-drag-preview'), `${cancel}: 미리보기 정리`);
+          assert((panel.getAttribute('style') || '') === (styleBefore || ''), `${cancel}: 스크롤 잠금 해제`);
+        }
+        // Rebind with the current DOM order for subsequent manual checks.
+        enableCategoryReorder({ root, categories: Array.from(root.children).map(row => ({ id: row.dataset.categoryOrderId, name: row.dataset.categoryOrderName })), onReorder: async () => { saves += 1; } });
+        result.textContent = 'PASS: 위/아래 자동 스크롤·중앙 정지·배경 고정·카드 추적·저장·취소';
+      } catch (error) {
+        resetCategoryReorder(root);
+        result.textContent = `FAIL: ${error.message}`;
+      } finally {
+        root.setPointerCapture = capture;
+      }
+    };
+  </script>
+</body>
+</html>

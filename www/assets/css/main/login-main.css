@@ -103,6 +103,7 @@ html.is-calendar-app-mode .login-calendar-back-row {
 .login-btn {
   border: none;
   background: var(--color-primary);
+  color: var(--color-on-accent);
 }
 
 .login-resend-btn {

@@ -82,7 +82,7 @@ test('대한민국 공휴일과 음력 명절 및 대체공휴일을 계산한�
     /appendTypeBadges\(dayButton, todos, categories\);\s*appendKoreanHolidayBadge\(dayButton, cell\.dateKey\);/,
   );
   assert.match(sharedCss, /\.calendar-holiday-badge/);
-  assert.match(sharedCss, /color:\s*#c62828/);
+  assert.match(sharedCss, /color:\s*var\(--calendar-holiday-text\)/);
 });
 
 test('시간 값은 브라우저 로케일이나 Date 파싱 없이 분 단위 문자열로 정규화한다', () => {

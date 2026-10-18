@@ -15,8 +15,15 @@ struct CalendarWidgetItem: Decodable, Identifiable {
     let title: String
     let memo: String
     let time: String?
+    let isDone: Bool?
     let sortOrder: Int
     let createdAt: String?
+}
+
+struct CalendarWidgetHoliday: Decodable {
+    let name: String
+    let badgeLabel: String
+    let isSubstitute: Bool?
 }
 
 struct CalendarWidgetTheme {
@@ -26,38 +33,37 @@ struct CalendarWidgetTheme {
     let text: Color
     let mutedText: Color
     let border: Color
+    let onPrimary: Color
+    let isDark: Bool
 }
 
-func theme(for calendarType: String) -> CalendarWidgetTheme {
+func theme(for calendarType: String, isDark: Bool = false) -> CalendarWidgetTheme {
+    let primary: Color
+    let secondary: Color
     if calendarType == "work" {
-        return CalendarWidgetTheme(
-            primary: Color(red: 52 / 255, green: 52 / 255, blue: 206 / 255),
-            secondary: Color(red: 245 / 255, green: 245 / 255, blue: 70 / 255),
-            background: .white,
-            text: Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
-            mutedText: Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
-            border: Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
-        )
+        primary = isDark ? Color(red: 89 / 255, green: 89 / 255, blue: 222 / 255)
+            : Color(red: 52 / 255, green: 52 / 255, blue: 206 / 255)
+        secondary = Color(red: 245 / 255, green: 245 / 255, blue: 70 / 255)
+    } else if calendarType == "event" {
+        primary = Color(red: 250 / 255, green: 133 / 255, blue: 154 / 255)
+        secondary = Color(red: 1, green: 192 / 255, blue: 203 / 255)
+    } else {
+        primary = isDark ? Color(red: 110 / 255, green: 110 / 255, blue: 121 / 255)
+            : Color(red: 60 / 255, green: 60 / 255, blue: 60 / 255)
+        secondary = Color(red: 187 / 255, green: 187 / 255, blue: 187 / 255)
     }
-
-    if calendarType == "event" {
-        return CalendarWidgetTheme(
-            primary: Color(red: 250 / 255, green: 133 / 255, blue: 154 / 255),
-            secondary: Color(red: 1, green: 192 / 255, blue: 203 / 255),
-            background: .white,
-            text: Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
-            mutedText: Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
-            border: Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
-        )
-    }
-
     return CalendarWidgetTheme(
-        primary: Color(red: 60 / 255, green: 60 / 255, blue: 60 / 255),
-        secondary: Color(red: 187 / 255, green: 187 / 255, blue: 187 / 255),
-        background: .white,
-        text: Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
-        mutedText: Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
-        border: Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
+        primary: primary,
+        secondary: secondary,
+        background: isDark ? Color(red: 23 / 255, green: 25 / 255, blue: 30 / 255) : .white,
+        text: isDark ? Color(red: 242 / 255, green: 243 / 255, blue: 245 / 255)
+            : Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
+        mutedText: isDark ? Color(red: 180 / 255, green: 184 / 255, blue: 194 / 255)
+            : Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
+        border: isDark ? Color(red: 70 / 255, green: 75 / 255, blue: 85 / 255)
+            : Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255),
+        onPrimary: isDark && calendarType == "event" ? Color(red: 23 / 255, green: 25 / 255, blue: 30 / 255) : .white,
+        isDark: isDark
     )
 }
 
@@ -66,6 +72,7 @@ struct CalendarWidgetDay: Decodable, Identifiable {
     let weekday: String?
     let isToday: Bool
     let isCurrentMonth: Bool
+    let holiday: CalendarWidgetHoliday?
     let items: [CalendarWidgetItem]
 
     var id: String { date }
@@ -103,6 +110,7 @@ struct CalendarWidgetData: Decodable {
 }
 
 struct CalendarWidgetEntry: TimelineEntry {
+    let isDark: Bool
     let date: Date
     let isLoggedIn: Bool
     let widget: CalendarWidgetData?
@@ -116,6 +124,7 @@ struct CalendarWidgetProvider: TimelineProvider {
 
     func placeholder(in context: Context) -> CalendarWidgetEntry {
         CalendarWidgetEntry(
+            isDark: UserDefaults(suiteName: appGroupName)?.string(forKey: "appearance") == "dark",
             date: Date(),
             isLoggedIn: true,
             widget: SampleData.widget(calendarType: calendarType, range: range),
@@ -149,6 +158,7 @@ struct CalendarWidgetProvider: TimelineProvider {
         let widget = decodeWidget(from: json)
 
         return CalendarWidgetEntry(
+            isDark: defaults.string(forKey: "appearance") == "dark",
             date: date,
             isLoggedIn: isLoggedIn,
             widget: widget,
@@ -171,11 +181,23 @@ struct CalendarWidgetProvider: TimelineProvider {
     }
 }
 
+private struct CalendarWidgetBackground: ViewModifier {
+    let color: Color
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.containerBackground(color, for: .widget)
+        } else {
+            content.background(color)
+        }
+    }
+}
+
 struct CalendarWidgetView: View {
     let entry: CalendarWidgetEntry
 
     var body: some View {
-        let activeTheme = theme(for: entry.calendarType)
+        let activeTheme = theme(for: entry.calendarType, isDark: entry.isDark)
 
         ZStack {
             activeTheme.background
@@ -188,7 +210,8 @@ struct CalendarWidgetView: View {
                 EmptyWidgetView(title: title, message: "앱을 열어 새로고침해줘요", theme: activeTheme)
             }
         }
-        .background(activeTheme.background)
+        .modifier(CalendarWidgetBackground(color: activeTheme.background))
+        .environment(\.colorScheme, entry.isDark ? .dark : .light)
         .widgetURL(URL(string: "mallinoi://calendar?type=\(entry.calendarType)"))
     }
 
@@ -331,7 +354,9 @@ struct MonthGridView: View {
                 ForEach(["일", "월", "화", "수", "목", "금", "토"], id: \.self) { text in
                     Text(text)
                         .font(.system(size: 9 * layout.scale, weight: .semibold))
-                        .foregroundStyle(text == "일" ? .red.opacity(0.8) : text == "토" ? .blue.opacity(0.8) : theme.mutedText)
+                        .foregroundStyle(text == "일"
+                            ? (theme.isDark ? Color(red: 1, green: 0.45, blue: 0.45) : .red.opacity(0.8))
+                            : text == "토" ? (theme.isDark ? Color(red: 0.4, green: 0.6, blue: 1) : .blue.opacity(0.8)) : theme.mutedText)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -436,10 +461,15 @@ struct DayCellView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
+            if calendarType != "work", let holiday = day.holiday {
+                holidayBadge(holiday)
+            }
+
             ForEach(Array(visibleItems.prefix(maxVisibleItems))) { item in
                 Text(displayTitle(for: item))
+                    .strikethrough(calendarType == "study" && item.isDone == true)
                     .font(.system(size: badgeFontSize, weight: .bold))
-                    .foregroundStyle(theme.text)
+                    .foregroundStyle(badgeTextColor(for: item.displayColor ?? item.categoryColor))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
@@ -448,26 +478,31 @@ struct DayCellView: View {
                     .frame(maxWidth: .infinity, minHeight: badgeHeight, maxHeight: badgeHeight)
                     .background(textColor(for: item.displayColor ?? item.categoryColor))
                     .clipShape(RoundedRectangle(cornerRadius: 5 * monthContentScale, style: .continuous))
+                    .opacity(calendarType == "study" && item.isDone == true ? 0.62 : 1)
             }
 
             if hasWorkMemo, let item = visibleItems.first {
                 Text(workMemo(for: item))
                     .font(.system(size: memoFontSize, weight: .medium))
-                    .foregroundStyle(isToday ? .white : theme.mutedText)
+                    .foregroundStyle(isToday ? theme.onPrimary : theme.mutedText)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity)
             }
 
+            if calendarType == "work", let holiday = day.holiday {
+                holidayBadge(holiday)
+            }
+
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
                     .font(.system(size: moreFontSize, weight: .bold))
-                    .foregroundStyle(isToday ? .white : theme.mutedText)
+                    .foregroundStyle(isToday ? theme.onPrimary : theme.mutedText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
                     .frame(height: moreIndicatorHeight)
-            } else if visibleItems.isEmpty {
+            } else if visibleItems.isEmpty && day.holiday == nil {
                 Text(" ")
                     .font(.system(size: badgeFontSize))
                     .lineLimit(1)
@@ -482,6 +517,7 @@ struct DayCellView: View {
     }
 
     private var maxVisibleItems: Int {
+        if calendarType != "work" && day.holiday != nil { return 1 }
         if range == "fourDays" { return 2 }
         return calendarType == "work" ? 1 : 2
     }
@@ -508,7 +544,9 @@ struct DayCellView: View {
     private var badgeFontSize: CGFloat {
         let size: CGFloat
 
-        if range == "fourDays" {
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 9 : 8
+        } else if range == "fourDays" {
             size = itemCount <= 1 ? 12 : itemCount == 2 ? 10 : 9
         } else if range == "twoWeeks" {
             size = itemCount <= 1 ? 9.5 : itemCount == 2 ? 9 : 8.5
@@ -527,7 +565,9 @@ struct DayCellView: View {
     private var memoFontSize: CGFloat {
         let size: CGFloat
 
-        if range == "fourDays" {
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 8.5 : range == "twoWeeks" ? 7.2 : 7
+        } else if range == "fourDays" {
             size = 10.5
         } else if range == "twoWeeks" {
             size = 8.5
@@ -541,7 +581,9 @@ struct DayCellView: View {
     private var dateFontSize: CGFloat {
         let size: CGFloat
 
-        if range == "fourDays" {
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 9.5 : range == "twoWeeks" ? 7.5 : 8
+        } else if range == "fourDays" {
             size = itemCount <= 1 ? 11.5 : itemCount == 2 ? 10 : 8.5
         } else if range == "twoWeeks" {
             size = 8
@@ -562,6 +604,7 @@ struct DayCellView: View {
     private var badgeVerticalPadding: CGFloat {
         if range == "fourDays" { return 0 }
         if hasWorkMemo { return 0.5 * monthContentScale }
+        if day.holiday != nil { return 0.5 * monthContentScale }
 
         let padding: CGFloat = itemCount <= 1 ? 1.5 : itemCount == 2 ? 1 : 0
         return padding * monthContentScale
@@ -569,6 +612,7 @@ struct DayCellView: View {
 
     private var badgeHeight: CGFloat? {
         guard range == "fourDays" else { return nil }
+        if day.holiday != nil { return itemCount <= 1 ? 14 : 12 }
         if itemCount <= 1 { return 18 }
         if itemCount == 2 { return 14 }
         return 12
@@ -581,7 +625,7 @@ struct DayCellView: View {
     private var itemSpacing: CGFloat {
         let spacing: CGFloat
 
-        if hasWorkMemo {
+        if day.holiday != nil || hasWorkMemo {
             spacing = 1
         } else if range == "fourDays" {
             spacing = itemCount <= 1 ? 4 : itemCount == 2 ? 2 : 1
@@ -602,8 +646,8 @@ struct DayCellView: View {
     }
 
     private var dayNumberColor: Color {
-        if isToday { return .white }
-        return day.isCurrentMonth ? theme.text : theme.mutedText.opacity(0.55)
+        if isToday { return theme.onPrimary }
+        return day.isCurrentMonth ? theme.text : theme.mutedText.opacity(theme.isDark ? 0.8 : 0.55)
     }
 
     private var hasWorkMemo: Bool {
@@ -614,12 +658,70 @@ struct DayCellView: View {
         return calendarType == "work" && hasMemo
     }
 
+    private var hasDenseWorkHoliday: Bool {
+        calendarType == "work" && day.holiday != nil && hasWorkMemo
+    }
+
     private var dayNumber: String {
         if range != "month", let weekday = day.weekday, !weekday.isEmpty {
             return "\(Int(day.date.suffix(2)) ?? 0) \(weekday)"
         }
 
         return String(Int(day.date.suffix(2)) ?? 0)
+    }
+
+    private func holidayBadge(_ holiday: CalendarWidgetHoliday) -> some View {
+        Text(holiday.badgeLabel)
+            .font(.system(size: holidayFontSize, weight: .semibold))
+            .foregroundStyle(holidayTextColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)
+            .truncationMode(.tail)
+            .padding(.horizontal, 3 * monthContentScale)
+            .padding(.vertical, holidayVerticalPadding)
+            .background(holidayBackgroundColor)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(holidayBorderColor, lineWidth: max(0.5, 0.8 * monthContentScale))
+            )
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("\(holiday.name) 공휴일")
+    }
+
+    private var holidayFontSize: CGFloat {
+        let size: CGFloat
+
+        if hasDenseWorkHoliday {
+            size = range == "fourDays" ? 7 : 6.8
+        } else if range == "fourDays" {
+            size = 8
+        } else if range == "twoWeeks" {
+            size = 7.2
+        } else {
+            size = 7.3
+        }
+
+        return size * monthContentScale
+    }
+
+    private var holidayVerticalPadding: CGFloat {
+        (hasDenseWorkHoliday ? 0.25 : 0.5) * monthContentScale
+    }
+
+    private var holidayTextColor: Color {
+        theme.isDark ? Color(red: 1, green: 170 / 255, blue: 170 / 255)
+            : Color(red: 198 / 255, green: 40 / 255, blue: 40 / 255)
+    }
+
+    private var holidayBackgroundColor: Color {
+        theme.isDark ? Color(red: 66 / 255, green: 40 / 255, blue: 44 / 255)
+            : Color(red: 1, green: 244 / 255, blue: 244 / 255)
+    }
+
+    private var holidayBorderColor: Color {
+        theme.isDark ? Color(red: 169 / 255, green: 99 / 255, blue: 105 / 255)
+            : Color(red: 229 / 255, green: 154 / 255, blue: 154 / 255)
     }
 
     private func displayTitle(for item: CalendarWidgetItem) -> String {
@@ -639,6 +741,16 @@ struct DayCellView: View {
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func badgeTextColor(for hex: String) -> Color {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else {
+            return Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255)
+        }
+        let brightness = Double((value >> 16) & 0xff) * 0.299
+            + Double((value >> 8) & 0xff) * 0.587 + Double(value & 0xff) * 0.114
+        return brightness > 160 ? Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255) : .white
     }
 
     private func textColor(for hex: String) -> Color {
@@ -676,6 +788,7 @@ struct SampleData {
                 title: "일정",
                 memo: "",
                 time: nil,
+                isDone: calendarType == "study" && index % 6 == 0,
                 sortOrder: 10,
                 createdAt: nil
             ) : nil
@@ -685,6 +798,7 @@ struct SampleData {
                 weekday: koreanWeekdays[calendar.component(.weekday, from: date) - 1],
                 isToday: index == 0,
                 isCurrentMonth: true,
+                holiday: nil,
                 items: item.map { [$0] } ?? []
             )
         }

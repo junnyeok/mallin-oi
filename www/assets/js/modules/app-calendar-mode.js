@@ -6,6 +6,7 @@ const APP_MODE_VALUE = 'calendar';
 
 const CALENDAR_PAGES = new Set([
   'app-calendar',
+  'app-calendar-settings',
   'calendar-study',
   'calendar-work',
   'calendar-event',
@@ -108,6 +109,35 @@ function getActiveCalendarType() {
   return '';
 }
 
+export function renderCalendarAppActions(authMarkup, { launcher = false } = {}) {
+  const textClass = launcher
+    ? 'app-calendar-account__btn'
+    : 'calendar-app-shell__action';
+  const iconClass = launcher
+    ? 'app-calendar-account__icon'
+    : 'calendar-app-shell__icon';
+  const from = encodeURIComponent(window.location.pathname.split('/').pop());
+
+  return `
+    <a class="${textClass}" href="https://mallin-oi.com/post.html?id=362"
+       aria-label="말린오이 캘린더 사용방법 보기">사용방법</a>
+    ${authMarkup}
+    <button class="calendar-app-icon-button ${iconClass}" type="button"
+            aria-label="새로고침" data-refresh-control>
+      <span aria-hidden="true">↻</span>
+    </button>
+    <a class="calendar-app-icon-button ${iconClass}"
+       href="./app-calendar-settings.html?app=calendar&from=${from}"
+       aria-label="환경설정">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="m9.5 3-.6 2.1-1.5.9-2.1-.5-2.5 4.3 1.5 1.6v1.7l-1.5 1.6L5.3 19l2.1-.5 1.5.9.6 2.1h5l.6-2.1 1.5-.9 2.1.5 2.5-4.3-1.5-1.6v-1.7l1.5-1.6-2.5-4.3-2.1.5-1.5-.9-.6-2.1z" />
+        <circle cx="12" cy="12.25" r="3.25" />
+      </svg>
+    </a>
+  `;
+}
+
 function createCalendarAppShell() {
   if (document.getElementById('calendarAppShell')) return;
 
@@ -127,25 +157,11 @@ function createCalendarAppShell() {
           캘린더 선택
         </a>
         <div class="calendar-app-shell__actions" aria-label="캘린더 앱 작업">
-          <p class="calendar-app-shell__title">말린오이 캘린더</p>
-          <a
-            class="calendar-app-shell__site"
-            href="https://mallin-oi.com/"
-            aria-label="말린오이닷컴 사이트로 이동"
-          >
-            사이트로
-          </a>
-          <a class="calendar-app-shell__auth" data-auth-link href="./login.html?app=calendar">
+          ${renderCalendarAppActions(`
+          <a class="calendar-app-shell__action" data-auth-link href="./login.html?app=calendar">
             <span data-auth-text>로그인</span>
           </a>
-          <button
-            class="calendar-app-shell__refresh"
-            type="button"
-            aria-label="새로고침"
-            data-refresh-control
-          >
-            <span aria-hidden="true">↻</span>
-          </button>
+          `)}
         </div>
       </div>
 

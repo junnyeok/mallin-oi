@@ -78,7 +78,7 @@
   padding: var(--space-8) var(--space-4);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: 12px;
   font-weight: 900;
   text-align: center;
@@ -120,7 +120,7 @@
 .work-calendar-day.is-muted,
 .work-calendar-day--muted {
   color: var(--color-text-sub);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .work-calendar-day--today {
@@ -146,7 +146,7 @@
 
 .work-calendar-day--today .work-calendar-day__number {
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
 }
 
 .work-calendar-day__badges {
@@ -358,7 +358,7 @@
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -571,7 +571,7 @@ body.work-repeat-modal-open {
 .work-repeat__button {
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
 }
 
 .work-repeat__cancel {
@@ -878,7 +878,7 @@ body.work-category-modal-open {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-btn);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   font-size: var(--text-small);
   font-weight: 900;
   cursor: pointer;
@@ -926,7 +926,7 @@ body.work-category-modal-open {
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
-  background: #f7f7f7;
+  background: var(--color-surface-muted);
 }
 
 .work-category-list__dot {
