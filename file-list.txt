@@ -1498,6 +1498,7 @@
 ./tests/profile-bio-contrast.test.mjs
 ./tests/profile-featured-bgm-autoplay.test.mjs
 ./tests/run-muscle-night-bgm.test.mjs
+./tests/service-menu-swipe.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
 ./tests/store-description-placement.test.mjs
 ./tests/store-showcase-swipe.test.mjs
