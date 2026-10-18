@@ -1,6 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
-import { getCurrentUser, loginHref } from './auth-store.js';
+import { getCurrentUser, loginHref, getUserEmail } from './auth-store.js';
 import {
   applyBgmPreferencesToLocal,
   getBgmPreferencesFromProfileRow,
@@ -3304,7 +3304,7 @@ function applyProfileModeUI({
 
   if (emailText) {
     if (isSettingPage && isOwnProfile) {
-      emailText.textContent = currentUser?.email || profileRow?.email || '-';
+      emailText.textContent = getUserEmail(currentUser) || '-';
       emailText.hidden = false;
     } else {
       emailText.textContent = '';
@@ -3481,7 +3481,7 @@ export async function initProfile() {
     profileRow?.nickname ||
     currentUser?.user_metadata?.nickname ||
     currentUser?.user_metadata?.display_name ||
-    (currentUser?.email ? currentUser.email.split('@')[0] : '회원');
+    (getUserEmail(currentUser) ? getUserEmail(currentUser).split('@')[0] : '회원');
 
   const currentBio = normalizeProfileBio(profileRow?.bio, {
     preserveLineBreaks: true,

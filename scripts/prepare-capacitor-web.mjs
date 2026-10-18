@@ -32,7 +32,7 @@ const filesToCopy = [
 
 const filesToCopyIfExists = [
   'account/signup.html',
-  'account/connections.html',
+  'account/verify.html',
   'account/social-callback.html',
   'account/find-password.html',
   'account/reset-password.html',

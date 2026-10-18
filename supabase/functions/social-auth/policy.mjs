@@ -51,10 +51,18 @@ export async function authorizeRequest(row, verifier, now = Date.now()) {
   demand(row.client_challenge === await challenge(validateVerifier(verifier)), 'REQUEST_MISMATCH', 403);
   return row;
 }
-export function loginDecision(link, existingEmailUser) {
-  if (link) return 'linked';
-  if (existingEmailUser) return 'existing-account';
-  return 'signup';
+export function loginDecision(account) {
+  return account ? 'ready' : 'signup';
+}
+export function socialAccount(user) {
+  const account = user?.app_metadata?.mallinoi_auth;
+  return account?.kind === 'social' && PROVIDERS.includes(account.provider) ? account : null;
+}
+export async function socialAccountEmail(provider, subject) {
+  demand(PROVIDERS.includes(provider) && typeof subject === 'string' && subject.length > 0 && subject.length <= 255, 'INVALID_IDENTITY');
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${provider}:${subject}`)));
+  // No mail is sent here. This reserved internal address isolates Auth's unique email namespace.
+  return `${provider}.${Array.from(digest, b => b.toString(16).padStart(2, '0')).join('').slice(0, 56)}@social.mallinoi.invalid`;
 }
 export function providerIdentity(provider, claims, profile = null) {
   demand(PROVIDERS.includes(provider) && typeof claims.sub === 'string' && claims.sub.length > 0 &&

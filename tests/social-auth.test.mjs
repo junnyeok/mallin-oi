@@ -51,8 +51,8 @@ test('signup requires explicit mandatory consent', () => {
   assert.equal(validateProfile({ nickname: ' 테스트 ', terms: true, privacy: true }).nickname, '테스트');
 });
 test('email equality never authorizes login or account merging', () => {
-  assert.equal(loginDecision(null, { id: 'existing' }), 'existing-account');
-  assert.equal(loginDecision({ user_id: 'linked' }, { id: 'different' }), 'linked');
+  assert.equal(loginDecision(null, { id: 'existing' }), 'signup');
+  assert.equal(loginDecision({ user_id: 'linked' }, { id: 'different' }), 'ready');
   assert.equal(loginDecision(null, null), 'signup');
 });
 test('provider identity trusts subject and verified email only', () => {
@@ -185,8 +185,8 @@ test('broker refuses activation while automatic email-linking provider endpoints
   assert.equal(response.status, 503); assert.equal((await response.json()).error, 'UNSAFE_AUTH_CONFIGURATION');
 });
 test('configured capabilities expose no secrets and only available providers', async () => {
-  const handler = createHandler({ env, createClient: () => ({}), providers: { available: p => p === 'google' }, fetcher: safeSettings });
-  const response = await handler(request('config')); assert.deepEqual(await response.json(), { providers: ['google'] });
+  const handler = createHandler({ env, createClient: () => ({ rpc: async () => ({ data: 'separate' }) }), providers: { available: p => p === 'google' }, fetcher: safeSettings });
+  const response = await handler(request('config')); assert.deepEqual(await response.json(), { providers: ['google'], accountMode: 'separate' });
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
 });
 
@@ -196,6 +196,7 @@ test('reauthentication email limit stays bound to the account across changing IP
   const db = {
     from: () => ({ select: () => ({ eq: async () => ({ data: [] }) }) }),
     rpc: async (name, args) => {
+      if (name === 'social_auth_account_mode') return { data: 'separate' };
       if (name !== 'social_auth_rate_limit') return { data: [] };
       const count = (buckets.get(args.p_bucket) || 0) + 1;
       buckets.set(args.p_bucket, count);
@@ -224,19 +225,19 @@ function stubDb(row, existing = null, link = null) {
       maybeSingle: async () => ({ data: table === 'social_auth_requests' ? row : link, error: null }) };
     return q;
   };
-  return { calls, from: chain, rpc: async name => ({ data: name === 'social_auth_rate_limit' ? true : name === 'social_auth_user' ? existing ? [existing] : [] : null, error: null }),
+  return { calls, from: chain, rpc: async name => ({ data: name === 'social_auth_account_mode' ? 'separate' : name === 'social_auth_rate_limit' ? true : name === 'social_auth_user' ? existing ? [existing] : [] : null, error: null }),
     auth: { admin: { createUser: async () => { calls.push('createUser'); throw new Error('unexpected signup'); },
       generateLink: async () => { calls.push('generateLink'); throw new Error('unexpected session'); } } } };
 }
-test('same-email existing member cannot receive a session through unlinked social login', async () => {
+test('same-email member does not prevent independent social signup', async () => {
   const verifier = randomToken();
   const row = { id: '11111111-1111-4111-8111-111111111111', status: 'ready', purpose: 'login', provider: 'google',
     subject: 'unlinked', verified_email: 'member@example.com', client_challenge: await challenge(verifier),
     expires_at: new Date(Date.now() + 10000).toISOString() };
   const db = stubDb(row, { id: 'existing' });
   const handler = createHandler({ env, createClient: () => db, providers: {}, fetcher: safeSettings });
-  const response = await handler(request('finish', { request: row.id, verifier, nickname: '테스트', terms: true, privacy: true }));
-  assert.equal((await response.json()).error, 'EXISTING_ACCOUNT'); assert.deepEqual(db.calls, []);
+  const response = await handler(request('inspect', { request: row.id, verifier }));
+  assert.equal((await response.json()).decision, 'signup'); assert.deepEqual(db.calls, []);
 });
 test('a stolen callback request id cannot inspect or redeem without the initiating verifier', async () => {
   const row = { id: '11111111-1111-4111-8111-111111111111', status: 'ready', client_challenge: await challenge(randomToken()), expires_at: new Date(Date.now() + 10000).toISOString() };
@@ -260,7 +261,7 @@ test('public activation file contains only a boolean flag, never server configur
   assert.deepEqual(generated, config);
 });
 
-test('linked login issues a session for the stored UUID, never for the provider email', async () => {
+test('independent social login issues a session only for its registered UUID', async () => {
   const verifier = randomToken(), userId = 'existing-user';
   const row = { id: '11111111-1111-4111-8111-111111111111', status: 'ready', purpose: 'login', provider: 'google',
     subject: 'linked-sub', verified_email: 'changed-provider@example.com', client_challenge: await challenge(verifier),
@@ -269,9 +270,9 @@ test('linked login issues a session for the stored UUID, never for the provider 
   const events = [];
   db.rpc = async name => {
     if (name === 'social_auth_finish') events.push('atomic-finish');
-    return { data: name === 'social_auth_rate_limit' ? true : name === 'social_auth_user' ? [{ id: 'different-email-owner' }] : null };
+    return { data: name === 'social_auth_account_mode' ? 'separate' : name === 'social_auth_rate_limit' ? true : name === 'social_auth_user' ? [{ id: 'different-email-owner' }] : null };
   };
-  let user = { id: userId, email: 'original@example.com', email_confirmed_at: '2026-01-01', banned_until: '2020-01-01' };
+  let user = { id: userId, email: 'original@example.com', email_confirmed_at: '2026-01-01', banned_until: '2020-01-01', app_metadata: { mallinoi_auth: { kind:'social', provider:'google', subject:'linked-sub', contact_email:'original@example.com' } } };
   db.auth.admin.getUserById = async id => { assert.equal(id,userId); return { data: { user } }; };
   db.auth.admin.generateLink = async input => {
     assert.equal(input.email, 'original@example.com'); events.push('generate');
@@ -293,38 +294,20 @@ test('linked login issues a session for the stored UUID, never for the provider 
   assert.ok(!events.includes('generate'));
 });
 
-test('link start requires successful fresh reauthentication before creating an OAuth request', async () => {
+test('removed link, unlink, password-add and signup email APIs fail closed', async () => {
   const db = stubDb(null);
-  const anon = { auth: { getUser: async () => ({ data: { user: { id:'member', email:'member@example.com', email_confirmed_at:'2026-01-01' } } }),
-    signInWithPassword: async () => ({ error: { message:'incorrect password' } }) } };
-  const handler = createHandler({ env, createClient: (_,key) => key === 'test-server' ? db : anon,
-    providers: { available: () => true }, fetcher: safeSettings });
-  const response = await handler(request('start',{provider:'google',purpose:'link',challenge:await challenge(randomToken()),
-    returnUri:'https://mallin-oi.com/account/social-callback.html',proof:{password:'wrong'}}));
-  assert.equal(response.status,403); assert.equal((await response.json()).error,'INVALID_PROOF');
+  const handler = createHandler({ env, createClient: () => db, providers: { available: () => true }, fetcher: safeSettings });
+  for (const action of ['unlink', 'password', 'email-send', 'start']) {
+    const response = await handler(request(action, { provider:'google', purpose:'link' }));
+    assert.equal((await response.json()).error, 'ACCOUNT_LINKING_DISABLED');
+    assert.deepEqual(db.calls, []);
+  }
 });
 
-test('email-absent signup cannot redeem an OTP belonging to a different existing UUID', async () => {
-  const verifier=randomToken();
-  const row={id:'11111111-1111-4111-8111-111111111111',status:'ready',purpose:'login',provider:'kakao',subject:'new-sub',
-    proof_email:'new@example.com',proof_user_id:'newly-created',client_challenge:await challenge(verifier),expires_at:new Date(Date.now()+10000).toISOString()};
-  const db=stubDb(row);
-  const anon={auth:{verifyOtp:async()=>({data:{user:{id:'preexisting-user',email:'new@example.com',email_confirmed_at:'2026-01-01'}}})}};
-  const handler=createHandler({env,createClient:(_,key)=>key==='test-server'?db:anon,providers:{},fetcher:safeSettings});
-  const response=await handler(request('finish',{request:row.id,verifier,otp:'123456'}));
-  assert.equal((await response.json()).error,'INVALID_PROOF'); assert.deepEqual(db.calls,[]);
-});
-
-test('staged acceptance rejects non-test members before account linking', async () => {
-  const db = stubDb(null);
-  let passwordChecks = 0;
-  const anon = { auth: { getUser: async () => ({ data: { user: { id:'other', email:'other@example.com', email_confirmed_at:'2026-01-01' } } }),
-    signInWithPassword: async () => { passwordChecks++; return {}; } } };
-  const restrictedEnv = key => key === 'SOCIAL_AUTH_TEST_EMAILS' ? 'tester@example.com' : env(key);
-  const handler = createHandler({ env: restrictedEnv, createClient: (_,key) => key === 'test-server' ? db : anon,
+test('independent account code refuses an unapplied schema migration', async () => {
+  const handler = createHandler({ env, createClient: () => ({ rpc: async () => ({ data:null }) }),
     providers: { available: () => true }, fetcher: safeSettings });
-  const response = await handler(request('start',{provider:'google',purpose:'link',challenge:await challenge(randomToken()),
-    returnUri:'https://mallin-oi.com/account/social-callback.html',proof:{password:'not-used'}}));
-  assert.equal(response.status,403); assert.equal((await response.json()).error,'TEST_RESTRICTED');
-  assert.equal(passwordChecks,0); assert.deepEqual(db.calls,[]);
+  const response = await handler(request('config'));
+  assert.equal(response.status,503);
+  assert.equal((await response.json()).error,'ACCOUNT_MIGRATION_REQUIRED');
 });

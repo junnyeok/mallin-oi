@@ -9,6 +9,7 @@ import {
   prevMypageHref,
   verifyCurrentPassword,
 } from './auth-store.js';
+import { accountVerificationHref } from './social-auth.js';
 
 function setMsg(el, text, color = 'var(--color-text-sub)') {
   if (!el) return;
@@ -27,6 +28,11 @@ async function initPrevMypageForm() {
   if (!user) {
     saveRedirect(`${window.location.pathname}${window.location.search}`);
     window.location.href = loginHref();
+    return;
+  }
+
+  if (user.app_metadata?.mallinoi_auth?.kind === 'social') {
+    window.location.replace(accountVerificationHref());
     return;
   }
 

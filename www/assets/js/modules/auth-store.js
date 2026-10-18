@@ -544,7 +544,8 @@ export function getNicknameValue(user) {
 }
 
 export function getUserEmail(user) {
-  return String(user?.email || '').trim();
+  const account = user?.app_metadata?.mallinoi_auth;
+  return String(account?.kind === 'social' ? account.contact_email || '' : user?.email || '').trim();
 }
 
 export function getDisplayName(user) {

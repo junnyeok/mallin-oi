@@ -1,6 +1,5 @@
-import { PROVIDERS, AuthError, demand, normalizeEmail, validateProfile, randomToken,
-  challenge, validateReturnUri, validateVerifier, authorizeRequest, loginDecision, safeProviderFailure } from './policy.mjs';
-import { revokePendingApple } from './revocation.mjs';
+import { PROVIDERS, AuthError, demand, validateProfile, randomToken,
+  challenge, validateReturnUri, validateVerifier, authorizeRequest, loginDecision, safeProviderFailure, socialAccount, socialAccountEmail } from './policy.mjs';
 
 // Credentials and provider responses must never be logged or returned in error messages.
 export function createHandler({ env, createClient, providers, fetcher = fetch }) {
@@ -17,7 +16,7 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
   const callback = provider => `${env('SUPABASE_URL')}/functions/v1/social-auth/callback/${provider}`;
   function checked(result) {
     if (result.error) {
-      const safe = ['LAST_LOGIN_METHOD', 'IDENTITY_ALREADY_LINKED', 'REVOCATION_PENDING', 'INVALID_OR_USED_REQUEST', 'PROVIDER_REVOKED'];
+      const safe = ['ACCOUNT_LINKING_DISABLED', 'ACCOUNT_MISMATCH', 'SOCIAL_ACCOUNT_REQUIRED', 'LAST_LOGIN_METHOD', 'IDENTITY_ALREADY_LINKED', 'REVOCATION_PENDING', 'INVALID_OR_USED_REQUEST', 'PROVIDER_REVOKED'];
       throw new AuthError(result.error.code === '23505' ? 'ACCOUNT_CONFLICT' :
         safe.includes(result.error.message) ? result.error.message : 'SERVER_REQUEST_FAILED', 409);
     }
@@ -29,7 +28,7 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     });
     demand(response.ok, 'NOT_CONFIGURED', 503);
     const settings = await response.json();
-    // Direct Supabase provider endpoints would bypass this broker's explicit-link policy.
+    // Direct Supabase provider endpoints could merge these independent accounts by email.
     demand(settings.external && PROVIDERS.every(p => settings.external[p] === false), 'UNSAFE_AUTH_CONFIGURATION', 503);
   }
   async function rpc(db, name, args) { return checked(await db.rpc(name, args)); }
@@ -40,7 +39,7 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const { data, error } = await auth().auth.getUser(jwt);
     demand(!error && data?.user?.id, 'LOGIN_REQUIRED', 401);
-    allowTestEmail(data.user.email);
+    allowTestEmail(socialAccount(data.user)?.contact_email || data.user.email);
     return data.user;
   }
   async function rate(db, req, action, who = '') {
@@ -73,8 +72,8 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     const row = checked(await db.from('social_auth_requests').select('*').eq('id', body.request).maybeSingle());
     return authorizeRequest(row, body.verifier);
   }
-  async function existingLink(db, row) {
-    return checked(await db.from('social_account_links').select('user_id,provider,subject')
+  async function existingAccount(db, row) {
+    return checked(await db.from('social_login_accounts').select('user_id,provider,subject')
       .eq('provider', row.provider).eq('subject', row.subject).maybeSingle());
   }
   async function sessionFor(db, userId) {
@@ -89,6 +88,28 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     const verified = checked(await a.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' }));
     demand(verified.user?.id === userId && verified.session, 'ACCOUNT_MISMATCH', 403);
     return verified.session;
+  }
+  async function independentUser(db, row, body) {
+    const metadata = validateProfile(body);
+    const email = await socialAccountEmail(row.provider, row.subject);
+    allowTestEmail(row.verified_email);
+    let existing = await userInfo(db, null, email);
+    if (!existing) {
+      const result = await db.auth.admin.createUser({ email, email_confirm: true, user_metadata: metadata,
+        app_metadata: { mallinoi_auth: { kind: 'social', provider: row.provider,
+          subject: row.subject, contact_email: row.verified_email || null } } });
+      if (!result.error) existing = result.data.user;
+      else {
+        // Recover only this provider identity after a concurrent creation/interrupted finish.
+        existing = await userInfo(db, null, email);
+        if (!existing) checked(result);
+      }
+    }
+    const { user } = checked(await db.auth.admin.getUserById(existing.id));
+    const account = socialAccount(user);
+    demand(account?.provider === row.provider && account.subject === row.subject && user.email === email,
+      'ACCOUNT_MISMATCH', 403);
+    return user.id;
   }
   return async function handle(req) {
     const url = new URL(req.url);
@@ -147,58 +168,40 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
       demand(raw.length <= 8192, 'REQUEST_TOO_LARGE', 413);
       const body = JSON.parse(raw);
       const action = body.action;
-      demand(['config','list','reauth-email','reauth','unlink','password','start','inspect','email-send','finish'].includes(action), 'INVALID_ACTION');
+      demand(!['unlink', 'password', 'email-send'].includes(action), 'ACCOUNT_LINKING_DISABLED');
+      demand(['config','list','reauth-email','reauth','start','inspect','finish'].includes(action), 'INVALID_ACTION');
       if (['config','start','finish'].includes(action)) await verifyAuthConfiguration();
-      if (action === 'config') return json({ providers: PROVIDERS.filter(p => providers.available(p)) });
+      demand(await rpc(db, 'social_auth_account_mode', {}) === 'separate', 'ACCOUNT_MIGRATION_REQUIRED', 503);
+      if (action === 'config') return json({ providers: PROVIDERS.filter(p => providers.available(p)), accountMode: 'separate' });
       await rate(db, req, action || 'invalid');
 
-      if (['list','reauth-email','reauth','unlink','password'].includes(action)) {
+      if (['list','reauth-email','reauth'].includes(action)) {
         const user = await currentUser(req);
         await rate(db, req, action, user.id);
-        const links = checked(await db.from('social_account_links').select('*').eq('user_id', user.id));
+        const account = socialAccount(user);
         const info = await userInfo(db, user.id);
-        if (action === 'list') {
-          let revocationPending = false;
-          try { await revokePendingApple(db, providers, user.id); } catch { revocationPending = true; }
-          return json({ links: links.map(l => ({ provider: l.provider, created_at: l.created_at })),
-            hasPassword: info?.has_password === true, email: user.email, revocationPending,
-            relayDisabled: links.some(l => l.provider === 'apple' && l.email_enabled === false) && user.email.endsWith('@privaterelay.appleid.com') });
-        }
+        if (action === 'list') return json({ provider: account?.provider || null,
+          hasPassword: !account && info?.has_password === true,
+          email: account ? account.contact_email || '' : user.email, accountMode: 'separate' });
+        demand(!account, 'SOCIAL_REAUTH_REQUIRED', 403);
         if (action === 'reauth-email') {
-          demand(!user.email.endsWith('@privaterelay.appleid.com') ||
-            !links.some(l => l.provider === 'apple' && l.email_enabled === false), 'RELAY_DISABLED');
           demand(user.email_confirmed_at, 'VERIFIED_ACCOUNT_REQUIRED');
           checked(await auth().auth.signInWithOtp({ email: user.email, options: { shouldCreateUser: false } }));
           return json({ sent: true });
         }
         await reauthenticate(db, user, body.proof);
-        if (action === 'reauth') return json({ verified: true });
-        if (action === 'password') {
-          const password = body.password;
-          demand(typeof password === 'string' && password.length >= 10 && password.length <= 64 &&
-            /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password), 'INVALID_PASSWORD');
-          checked(await db.auth.admin.updateUserById(user.id, { password }));
-          return json({ updated: true });
-        }
-        demand(PROVIDERS.includes(body.provider), 'INVALID_PROVIDER');
-        demand(info?.has_password || links.length > 1, 'LAST_LOGIN_METHOD');
-        const link = links.find(l => l.provider === body.provider);
-        demand(link, 'LINK_NOT_FOUND');
-        await rpc(db, 'social_auth_unlink', { p_user: user.id, p_provider: body.provider });
-        let revocationPending = false;
-        try { await revokePendingApple(db, providers, user.id); } catch { revocationPending = true; }
-        return json({ unlinked: true, revocationPending });
+        return json({ verified: true });
       }
       if (action === 'start') {
         demand(PROVIDERS.includes(body.provider) && providers.available(body.provider), 'PROVIDER_UNAVAILABLE', 503);
-        demand(['login','link'].includes(body.purpose), 'INVALID_PURPOSE');
+        demand(body.purpose !== 'link', 'ACCOUNT_LINKING_DISABLED');
+        demand(['login','reauth'].includes(body.purpose), 'INVALID_PURPOSE');
         demand(/^[A-Za-z0-9_-]{43}$/.test(body.challenge || ''), 'INVALID_CHALLENGE');
         const returnUri = validateReturnUri(body.returnUri, list('SOCIAL_RETURN_URIS'));
         let user = null;
-        if (body.purpose === 'link') {
+        if (body.purpose === 'reauth') {
           user = await currentUser(req);
-          await rate(db, req, 'link-proof', user.id);
-          await reauthenticate(db, user, body.proof);
+          demand(socialAccount(user)?.provider === body.provider, 'ACCOUNT_MISMATCH', 403);
         }
         const state = randomToken();
         const row = checked(await db.from('social_auth_requests').insert({ provider: body.provider,
@@ -209,64 +212,24 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
       }
       const row = await loadRequest(db, body);
       demand(row.status === 'ready', row.error_code || 'AUTHORIZATION_PENDING');
-      const link = await existingLink(db, row);
-      const existing = row.verified_email ? await userInfo(db, null, row.verified_email) : null;
-      if (action === 'inspect') return json({ purpose: row.purpose, provider: row.provider,
-        decision: row.purpose === 'link' ? 'link' : loginDecision(link, existing),
-        emailRequired: !row.verified_email && !link });
-      if (action === 'email-send') {
-        demand(row.purpose === 'login' && !link && !row.verified_email, 'EMAIL_NOT_REQUIRED');
-        const email = normalizeEmail(body.email);
-        allowTestEmail(email);
-        const metadata = validateProfile(body);
-        await rate(db, req, 'email-send', email);
-        demand(!row.proof_email || row.proof_email === email, 'EMAIL_ALREADY_SELECTED');
-        const claimed = checked(await db.from('social_auth_requests').update({ status: 'email-sending' })
-          .eq('id', row.id).eq('status', 'ready').select('id').maybeSingle());
-        demand(claimed, 'AUTHORIZATION_PENDING');
-        try {
-          let userId = row.proof_user_id;
-          if (!userId) {
-            // Create explicitly and bind the UUID. A concurrent email signup must never be
-            // turned into an implicit link by signInWithOtp's create-or-login behavior.
-            demand(!await userInfo(db, null, email), 'EXISTING_ACCOUNT');
-            const created = checked(await db.auth.admin.createUser({ email, email_confirm: false, user_metadata: metadata }));
-            userId = created.user.id;
-            checked(await db.from('social_auth_requests').update({ proof_email: email, proof_user_id: userId })
-              .eq('id', row.id).eq('status', 'email-sending'));
-          }
-          checked(await auth().auth.signInWithOtp({ email, options: { shouldCreateUser: false } }));
-        } finally {
-          checked(await db.from('social_auth_requests').update({ status: 'ready' }).eq('id', row.id).eq('status', 'email-sending'));
-        }
-        return json({ sent: true });
-      }
-      demand(action === 'finish', 'INVALID_ACTION');
-      let userId;
-      if (row.purpose === 'link') {
+      demand(row.purpose !== 'link', 'ACCOUNT_LINKING_DISABLED');
+      const account = await existingAccount(db, row);
+      if (row.purpose === 'reauth') {
         const user = await currentUser(req);
-        demand(user.id === row.target_user_id, 'ACCOUNT_MISMATCH', 403);
-        userId = user.id;
-      } else if (link) userId = link.user_id;
-      else if (row.verified_email) {
-        allowTestEmail(row.verified_email);
-        demand(!existing, 'EXISTING_ACCOUNT');
-        const metadata = validateProfile(body);
-        const created = checked(await db.auth.admin.createUser({ email: row.verified_email,
-          email_confirm: true, user_metadata: metadata }));
-        userId = created.user.id;
-      } else {
-        demand(row.proof_email && row.proof_user_id && /^\d{6,10}$/.test(body.otp || ''), 'EMAIL_VERIFICATION_REQUIRED');
-        const a = auth();
-        const verified = checked(await a.auth.verifyOtp({ email: row.proof_email, token: body.otp, type: 'email' }));
-        demand(verified.user?.id === row.proof_user_id && verified.user?.email_confirmed_at &&
-          normalizeEmail(verified.user.email) === row.proof_email, 'INVALID_PROOF');
-        userId = verified.user.id;
-        if (verified.session) await a.auth.signOut({ scope: 'local' });
+        demand(row.target_user_id === user.id && account?.user_id === user.id &&
+          socialAccount(user)?.provider === row.provider, 'ACCOUNT_MISMATCH', 403);
       }
-      allowTestEmail((await userInfo(db, userId))?.email);
+      if (action === 'inspect') return json({ purpose: row.purpose, provider: row.provider,
+        decision: row.purpose === 'reauth' ? 'reauth' : loginDecision(account),
+        email: row.verified_email || '', emailRequired: false, accountMode: 'separate' });
+      demand(action === 'finish', 'INVALID_ACTION');
+      const userId = account?.user_id || await independentUser(db, row, body);
+      const { user } = checked(await db.auth.admin.getUserById(userId));
+      const identity = socialAccount(user);
+      demand(identity?.provider === row.provider && identity.subject === row.subject, 'ACCOUNT_MISMATCH', 403);
+      allowTestEmail(identity.contact_email);
       await rpc(db, 'social_auth_finish', { p_request: row.id, p_challenge: await challenge(body.verifier), p_user: userId });
-      return json(row.purpose === 'link' ? { linked: true } : { session: await sessionFor(db, userId) });
+      return json(row.purpose === 'reauth' ? { verified: true } : { session: await sessionFor(db, userId) });
     } catch (error) {
       return json({ error: error instanceof AuthError ? error.code : 'AUTH_FAILED' },
         error instanceof AuthError ? error.status : 500);

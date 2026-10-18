@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="referrer" content="no-referrer" />
+  <title>계정 본인 확인 | 말린오이닷컴</title>
+  <link rel="icon" href="../images/favicon.ico" />
+  <script src="../assets/js/calendar-appearance.js"></script>
+  <link rel="stylesheet" href="../assets/css/00-reset.css" />
+  <link rel="stylesheet" href="../assets/css/01-tokens.css" />
+  <link rel="stylesheet" href="../assets/css/02-base.css" />
+  <link rel="stylesheet" href="../assets/css/components/social-auth.css" />
+</head>
+<body data-page="account-verification">
+  <main class="social-auth-page">
+    <a id="socialBack" class="social-auth-link" href="../mypage.html">‹ 계정 관리</a>
+    <h1>본인 확인</h1>
+    <p id="socialStatus" class="social-auth-message" role="status" aria-live="polite">가입한 로그인 방법을 확인하고 있어요.</p>
+    <div id="socialManagement" hidden>
+      <section id="socialProviderProof" class="social-auth-card" hidden>
+        <p>가입한 소셜 계정으로 인증해 주세요.</p>
+        <button id="socialProviderVerify" type="button">본인 확인</button>
+      </section>
+      <section id="socialEmailProof" class="social-auth-card" hidden>
+        <label>현재 비밀번호<input id="socialPassword" type="password" autocomplete="current-password" /></label>
+        <p id="socialEmail" class="social-auth-message"></p>
+        <button id="socialSendProof" type="button">이메일 인증번호 받기</button>
+        <label>이메일 인증번호<input id="socialOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" /></label>
+        <button id="socialEnterAccount" type="button">본인 확인 후 계정 관리</button>
+      </section>
+    </div>
+    <div class="social-auth-actions"><a id="socialLoginLink" class="social-auth-link" href="../login.html">로그인 화면</a></div>
+  </main>
+  <script type="module" src="../assets/js/modules/social-auth-page.js"></script>
+</body>
+</html>

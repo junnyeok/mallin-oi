@@ -30,3 +30,5 @@
   gap: var(--space-12); padding-block: var(--space-12); border-bottom: 1px solid var(--color-divider); }
 .social-auth-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-block: var(--space-16); }
 .social-auth-page p { line-height: 1.6; }
+
+.social-auth-page input:disabled { opacity: .55; cursor: not-allowed; }

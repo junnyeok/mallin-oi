@@ -1,6 +1,6 @@
 // assets/js/modules/mypage.js
 import { supabase } from './supabase-client.js';
-import { isMypageVerified, saveRedirect, signOutUser } from './auth-store.js';
+import { isMypageVerified, saveRedirect, signOutUser, getUserEmail } from './auth-store.js';
 import { loadPostsByAuthorId } from './posts-repo.js';
 
 const MODULE_VERSION = encodeURIComponent(
@@ -358,14 +358,22 @@ export async function initMypage() {
     syncRoleBadge(false);
   }
 
-  if (emailEl) emailEl.value = user.email || '';
-  if (emailTextEl) emailTextEl.textContent = user.email || '-';
+  const social = user.app_metadata?.mallinoi_auth?.kind === 'social';
+  const email = getUserEmail(user);
+  if (emailEl) emailEl.value = email;
+  if (emailTextEl) emailTextEl.textContent = email || '이메일 미제공';
+  if (social) {
+    $('mypagePasswordSection').hidden = true;
+    const label = { google: 'Google', kakao: '카카오', apple: 'Apple' }[user.app_metadata.mallinoi_auth.provider];
+    $('mypageLoginMethod').textContent = `${label}로 가입한 계정이에요. 로그인은 해당 소셜 계정으로 해 주세요.`;
+    ['mypageCurrentPw', 'mypageNewPw', 'mypageNewPw2'].forEach(id => { $(id).disabled = true; });
+  }
 
   if (nicknameEl) {
     nicknameEl.value =
       user.user_metadata?.nickname ||
       user.user_metadata?.display_name ||
-      (user.email ? user.email.split('@')[0] : '');
+      (email ? email.split('@')[0] : '');
   }
 
   if (createdAtEl) createdAtEl.textContent = formatDate(user.created_at);
@@ -395,6 +403,10 @@ export async function initMypage() {
       return;
     }
 
+    if (social && (newPw || newPw2 || currentPw)) {
+      if (msgEl) msgEl.textContent = '소셜 계정에는 이메일 로그인 비밀번호를 추가할 수 없어요.';
+      return;
+    }
     if (newPw || newPw2 || currentPw) {
       if (!currentPw) {
         if (msgEl)
@@ -426,7 +438,7 @@ export async function initMypage() {
       const currentNickname =
         user.user_metadata?.nickname ||
         user.user_metadata?.display_name ||
-        (user.email ? user.email.split('@')[0] : '');
+        (email ? email.split('@')[0] : '');
 
       if (nickname !== currentNickname) {
         const { error: metaError } = await supabase.auth.updateUser({

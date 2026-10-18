@@ -6,11 +6,11 @@
 ./APP_RELEASE_GUIDE.md
 ./CNAME
 ./README.md
-./account/connections.html
 ./account/find-password.html
 ./account/reset-password.html
 ./account/signup.html
 ./account/social-callback.html
+./account/verify.html
 ./android/.gitignore
 ./android/.idea/.gitignore
 ./android/.idea/AndroidProjectSystem.xml
@@ -1441,6 +1441,7 @@
 ./supabase-SQLEditor/20260913-tomato-skins.sql
 ./supabase-SQLEditor/20261012-paprikagirl-character.sql
 ./supabase-SQLEditor/20261012-policeboy-skin.sql
+./supabase-SQLEditor/20261018-independent-social-accounts.sql
 ./supabase-SQLEditor/20261018-profile-auth-permissions.sql
 ./supabase-SQLEditor/20261018-social-account-links.sql
 ./supabase-SQLEditor/20261018-social-provider-events.sql
@@ -1506,6 +1507,7 @@
 ./supabase/migrations/20261018000000_social_account_links.sql
 ./supabase/migrations/20261018010000_profile_auth_permissions.sql
 ./supabase/migrations/20261018020000_social_provider_events.sql
+./supabase/migrations/20261018030000_independent_social_accounts.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1547,7 +1549,9 @@
 ./tests/service-menu-swipe.test.mjs
 ./tests/socceroi-summerboy-skins.test.mjs
 ./tests/social-auth-integration.mjs
+./tests/social-auth-page.test.mjs
 ./tests/social-auth.test.mjs
+./tests/social-independent-accounts-integration.mjs
 ./tests/social-provider-events-integration.mjs
 ./tests/store-description-placement.test.mjs
 ./tests/store-showcase-swipe.test.mjs
@@ -1556,11 +1560,11 @@
 ./tests/tomato-skins.test.mjs
 ./work.html
 ./write.html
-./www/account/connections.html
 ./www/account/find-password.html
 ./www/account/reset-password.html
 ./www/account/signup.html
 ./www/account/social-callback.html
+./www/account/verify.html
 ./www/app-calendar-settings.html
 ./www/app-calendar.html
 ./www/assets/app-version.json

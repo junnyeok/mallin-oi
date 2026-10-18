@@ -6,18 +6,20 @@ export const SOCIAL_PROVIDERS = [ ['google', 'Google'], ['kakao', '카카오'], 
 const pendingKey = 'mallin:social-request:v1';
 const messages = {
   TEST_RESTRICTED: '현재 소셜 로그인 확인 작업 중이에요. 기존 이메일 로그인을 이용해 주세요.',
-  PROVIDER_REVOKED: '소셜 계정의 연결이 해제되었어요. 기존 이메일로 로그인하거나 처음부터 다시 연결해 주세요.',
+  PROVIDER_REVOKED: '소셜 인증 승인이 해제되었어요. 가입한 제공자로 다시 로그인해 주세요.',
   RELAY_DISABLED: 'Apple 이메일 전달이 꺼져 있어요. Apple 계정 설정에서 이메일 전달을 켠 뒤 다시 시도해 주세요.',
   NOT_CONFIGURED: '소셜 로그인을 준비하고 있어요. 지금은 이메일 로그인을 이용해 주세요.',
   PROVIDER_UNAVAILABLE: '아직 준비 중인 로그인 방법이에요.',
   UNSAFE_AUTH_CONFIGURATION: '소셜 로그인 설정을 확인 중이에요. 이메일 로그인을 이용해 주세요.',
   MFA_REQUIRED: '추가 인증이 설정된 계정이에요. 기존 로그인 방법으로 인증해 주세요.',
   IDENTITY_ALREADY_LINKED: '이 소셜 계정은 다른 회원 계정에 연결되어 있어요.',
-  REVOCATION_PENDING: '이전 Apple 연결 해제를 처리 중이에요. 계정 연결 화면을 다시 연 뒤 시도해 주세요.',
+  REVOCATION_PENDING: '이전 Apple 연결 해제를 처리 중이에요. 잠시 후 다시 시도해 주세요.',
   INVALID_OR_USED_REQUEST: '이미 처리되었거나 만료된 요청이에요. 처음부터 다시 시도해 주세요.',
   LOGIN_REQUIRED: '먼저 이메일 또는 연결된 소셜 계정으로 로그인해 주세요.',
-  EXISTING_ACCOUNT: '이미 가입한 이메일이에요. 기존 계정으로 로그인한 뒤 ‘소셜 계정 연결’에서 연결해 주세요.',
-  ACCOUNT_CONFLICT: '이미 사용 중인 이메일·닉네임 또는 연결된 계정이 있어요. 기존 계정으로 로그인하거나 다른 닉네임을 입력해 주세요.',
+  ACCOUNT_LINKING_DISABLED: '계정 연결 기능은 제공하지 않아요. 가입한 방법으로 다시 로그인해 주세요.',
+  ACCOUNT_MIGRATION_REQUIRED: '새 로그인 방식을 준비 중이에요. 잠시 후 다시 시도해 주세요.',
+  SOCIAL_REAUTH_REQUIRED: '가입한 소셜 계정으로 본인 확인해 주세요.',
+  ACCOUNT_CONFLICT: '이미 사용 중인 닉네임이에요. 다른 닉네임으로 다시 시도해 주세요.',
   INVALID_PROOF: '비밀번호 또는 이메일 인증번호를 다시 확인해 주세요.',
   REAUTHENTICATION_REQUIRED: '현재 비밀번호 또는 이메일 인증번호로 본인 확인을 해 주세요.',
   LAST_LOGIN_METHOD: '마지막 로그인 방법은 해제할 수 없어요. 비밀번호나 다른 소셜 계정을 먼저 추가해 주세요.',
@@ -69,14 +71,16 @@ export async function availableSocialProviders() {
   try {
     const response = await fetch(resolveSitePath('assets/social-auth-config.json'), { cache: 'no-store' });
     if (!response.ok || !(await response.json()).enabled) return [];
-    return (await socialApi('config')).providers || [];
+    const config = await socialApi('config');
+    return config.accountMode === 'separate' ? config.providers || [] : [];
   } catch { return []; }
 }
-export async function startSocialLogin(provider, purpose = 'login', proof = null) {
+export async function startSocialLogin(provider, purpose = 'login') {
+  if (!['login', 'reauth'].includes(purpose)) throw new Error('ACCOUNT_LINKING_DISABLED');
   const native = window.Capacitor?.isNativePlatform?.() === true;
   const verifier = randomVerifier();
   const callback = new URL(resolveSitePath('account/social-callback.html'), window.location.href);
-  const result = await socialApi('start', { provider, purpose, proof, challenge: await hash(verifier),
+  const result = await socialApi('start', { provider, purpose, challenge: await hash(verifier),
     returnUri: native ? 'mallinoi://auth/callback' : callback.href });
   const allowedHosts = { google: 'accounts.google.com', kakao: 'kauth.kakao.com', apple: 'appleid.apple.com' };
   const destination = new URL(result.url);
@@ -93,8 +97,8 @@ export async function startSocialLogin(provider, purpose = 'login', proof = null
     if (result?.completed === false) throw new Error('AUTH_FAILED');
   } else window.location.assign(destination.href);
 }
-export function connectionHref() {
-  return resolveSitePath('account/connections.html') + (window.Capacitor?.isNativePlatform?.() ||
+export function accountVerificationHref() {
+  return resolveSitePath('account/verify.html') + (window.Capacitor?.isNativePlatform?.() ||
     new URLSearchParams(location.search).get('app') === 'calendar' ? '?app=calendar' : '');
 }
 export async function mountSocialLogin(root) {
@@ -125,7 +129,7 @@ export async function mountSocialLogin(root) {
   }
   const available = await availableSocialProviders();
   controls.forEach(({ provider, button }) => { button.disabled = !available.includes(provider); });
-  status.textContent = available.length ? '기존 계정에 연결하려면 먼저 로그인한 뒤 소셜 계정 연결을 이용해 주세요.' : messages.NOT_CONFIGURED;
+  status.textContent = available.length ? '이메일·Google·카카오·Apple은 각각 별개의 계정이에요. 가입한 방법으로 로그인해 주세요.' : messages.NOT_CONFIGURED;
 }
 export async function acceptSocialResult(result) {
   if (result.session) {
@@ -136,7 +140,8 @@ export async function acceptSocialResult(result) {
     saveLoginPolicy({ autoLogin: pendingRequest()?.autoLogin === true });
   }
   clearSocialRequest();
-  let destination = result.linked ? connectionHref() : consumeRedirect(homeHref());
+  if (result.verified === true) { enterVerifiedAccountPage(); return; }
+  let destination = consumeRedirect(homeHref());
   try {
     if (new URL(destination, location.href).origin !== location.origin) destination = homeHref();
   } catch { destination = homeHref(); }
@@ -149,5 +154,5 @@ export function enterVerifiedAccountPage() {
 
 export async function initSocialAuthUI() {
   await Promise.all([...document.querySelectorAll('[data-social-login]')].map(root => mountSocialLogin(root)));
-  document.querySelectorAll('[data-social-connections]').forEach(link => { link.href = connectionHref(); });
+  document.querySelectorAll('[data-account-verification]').forEach(link => { link.href = accountVerificationHref(); });
 }
