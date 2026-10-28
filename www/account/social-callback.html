@@ -19,11 +19,7 @@
     <form id="socialCompleteForm" class="social-auth-card" hidden>
       <div id="socialSignupFields">
         <h2>기본 정보</h2>
-        <label>이메일(아이디)<input id="socialSignupEmail" type="email" disabled aria-describedby="socialSignupHelp" /></label>
-        <p id="socialSignupHelp">소셜 인증을 사용하므로 이메일과 비밀번호를 따로 입력하지 않아요.</p>
         <label>닉네임<input id="socialNickname" autocomplete="nickname" minlength="2" maxlength="20" placeholder="닉네임 2~20자" /></label>
-        <label>비밀번호<input id="socialSignupPassword" type="password" disabled placeholder="소셜 로그인에서는 입력하지 않아요" /></label>
-        <label>비밀번호 확인<input id="socialSignupPasswordConfirm" type="password" disabled placeholder="입력하지 않아도 돼요" /></label>
         <label><input id="socialTerms" type="checkbox" />이용약관에 동의합니다 (필수)</label>
         <label><input id="socialPrivacy" type="checkbox" />개인정보처리방침에 동의합니다 (필수)</label>
         <label><input id="socialMarketing" type="checkbox" />마케팅 수신 동의 (선택)</label>
@@ -31,6 +27,7 @@
       </div>
       <button id="socialFinish" type="submit">가입하고 시작하기</button>
     </form>
+    <p class="social-auth-message">로그인이 오래 걸리거나 다음 화면으로 넘어가지 않으면 아래 버튼을 눌러 다시 시도해 주세요.</p>
     <div class="social-auth-actions"><a id="socialLoginLink" class="social-auth-link" href="../login.html">로그인 화면으로 돌아가기</a></div>
   </main>
   <script type="module" src="../assets/js/modules/social-auth-page.js"></script>

@@ -1,3 +1,4 @@
+@import url('../components/calendar-category-color.css');
 /* assets/css/main/calendar-event-main.css */
 @import url('../components/calendar-holidays.css');
 
@@ -1247,13 +1248,17 @@ body.event-category-modal-open {
 
 .event-category-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 46px auto auto;
+  grid-template-columns: auto minmax(0, 1fr) 46px;
   gap: var(--space-6);
   align-items: center;
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
   background: var(--color-surface-muted);
+}
+
+.event-category-item > .calendar-category-actions {
+  grid-column: 2 / -1;
 }
 
 .event-category-item__dot {
@@ -1277,7 +1282,8 @@ body.event-category-modal-open {
 }
 
 .event-category-item__color {
-  width: 46px;
+  width: 100%;
+  max-width: 46px;
   height: 36px;
   padding: var(--space-4);
   border: 1px solid var(--color-border);
@@ -1382,15 +1388,6 @@ body.event-category-modal-open {
 
   .event-category-item {
     grid-template-columns: auto minmax(0, 1fr) 42px;
-  }
-
-  .event-category-item__button {
-    grid-column: 2 / -1;
-    width: 100%;
-  }
-
-  .event-category-item__button + .event-category-item__button {
-    margin-top: -2px;
   }
 
   .event-category-shared {

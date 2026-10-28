@@ -27,6 +27,7 @@
 ./android/app/proguard-rules.pro
 ./android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java
 ./android/app/src/androidTest/java/com/mallinoi/calendar/EventAlarmInstrumentedTest.java
+./android/app/src/androidTest/java/com/mallinoi/calendar/WidgetAppearanceTest.java
 ./android/app/src/main/AndroidManifest.xml
 ./android/app/src/main/assets/capacitor.config.json
 ./android/app/src/main/assets/capacitor.plugins.json
@@ -441,6 +442,7 @@
 ./assets/css/components/app-update-popup.css
 ./assets/css/components/auth-links.css
 ./assets/css/components/calendar-app-download-popup.css
+./assets/css/components/calendar-category-color.css
 ./assets/css/components/calendar-entry-sheet.css
 ./assets/css/components/calendar-holidays.css
 ./assets/css/components/calendar-loading.css
@@ -502,6 +504,7 @@
 ./assets/js/modules/bgm-player.js
 ./assets/js/modules/bgm-preferences.js
 ./assets/js/modules/calendar-app-download-popup.js
+./assets/js/modules/calendar-category-color.js
 ./assets/js/modules/calendar-category-order.js
 ./assets/js/modules/calendar-copy-buffer.js
 ./assets/js/modules/calendar-entry-sheet.js
@@ -1446,6 +1449,8 @@
 ./supabase-SQLEditor/20261018-social-account-links.sql
 ./supabase-SQLEditor/20261018-social-provider-events.sql
 ./supabase-SQLEditor/20261018-social-registration-guard.sql
+./supabase-SQLEditor/20261028-calendar-category-no-color.sql
+./supabase-SQLEditor/20261028-calendar-manual-group-backup.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1510,6 +1515,8 @@
 ./supabase/migrations/20261018020000_social_provider_events.sql
 ./supabase/migrations/20261018030000_independent_social_accounts.sql
 ./supabase/migrations/20261018114000_social_registration_guard.sql
+./supabase/migrations/20261028000000_calendar_category_no_color.sql
+./supabase/migrations/20261028010000_calendar_manual_group_backup.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1519,10 +1526,13 @@
 ./tests/broccoli-girl-emoticon-pack.test.mjs
 ./tests/burning-soul-bgm.test.mjs
 ./tests/calendar-appearance.test.mjs
+./tests/calendar-category-color.test.mjs
 ./tests/calendar-category-order.test.mjs
 ./tests/calendar-copy-paste.test.mjs
 ./tests/calendar-event-alarm.test.mjs
 ./tests/calendar-group-backup-state.test.mjs
+./tests/calendar-group-today.test.mjs
+./tests/calendar-home-navigation.test.mjs
 ./tests/calendar-loading.test.mjs
 ./tests/calendar-preview-summary.test.mjs
 ./tests/calendar-shared-personal-readonly.test.mjs
@@ -1577,6 +1587,7 @@
 ./www/assets/css/components/app-update-popup.css
 ./www/assets/css/components/auth-links.css
 ./www/assets/css/components/calendar-app-download-popup.css
+./www/assets/css/components/calendar-category-color.css
 ./www/assets/css/components/calendar-entry-sheet.css
 ./www/assets/css/components/calendar-holidays.css
 ./www/assets/css/components/calendar-loading.css
@@ -1638,6 +1649,7 @@
 ./www/assets/js/modules/bgm-player.js
 ./www/assets/js/modules/bgm-preferences.js
 ./www/assets/js/modules/calendar-app-download-popup.js
+./www/assets/js/modules/calendar-category-color.js
 ./www/assets/js/modules/calendar-category-order.js
 ./www/assets/js/modules/calendar-copy-buffer.js
 ./www/assets/js/modules/calendar-entry-sheet.js

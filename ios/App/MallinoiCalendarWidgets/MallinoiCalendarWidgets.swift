@@ -186,7 +186,7 @@ private struct CalendarWidgetBackground: ViewModifier {
 
     @ViewBuilder func body(content: Content) -> some View {
         if #available(iOS 17.0, *) {
-            content.containerBackground(color, for: .widget)
+            content.containerBackground(for: .widget) { color }
         } else {
             content.background(color)
         }
@@ -199,9 +199,7 @@ struct CalendarWidgetView: View {
     var body: some View {
         let activeTheme = theme(for: entry.calendarType, isDark: entry.isDark)
 
-        ZStack {
-            activeTheme.background
-
+        Group {
             if !entry.isLoggedIn {
                 EmptyWidgetView(title: title, message: "로그인이 필요해요", theme: activeTheme)
             } else if let widget = entry.widget {
@@ -210,8 +208,10 @@ struct CalendarWidgetView: View {
                 EmptyWidgetView(title: title, message: "앱을 열어 새로고침해줘요", theme: activeTheme)
             }
         }
-        .modifier(CalendarWidgetBackground(color: activeTheme.background))
+        // Keep the app appearance inside WidgetKit's container boundary.
+        // The system must own the outer background (including iPad rendering).
         .environment(\.colorScheme, entry.isDark ? .dark : .light)
+        .modifier(CalendarWidgetBackground(color: activeTheme.background))
         .widgetURL(URL(string: "mallinoi://calendar?type=\(entry.calendarType)"))
     }
 
@@ -744,6 +744,7 @@ struct DayCellView: View {
     }
 
     private func badgeTextColor(for hex: String) -> Color {
+        if hex.lowercased() == "transparent" { return theme.text }
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else {
             return Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255)
@@ -754,6 +755,7 @@ struct DayCellView: View {
     }
 
     private func textColor(for hex: String) -> Color {
+        if hex.lowercased() == "transparent" { return .clear }
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else {
             return theme.secondary

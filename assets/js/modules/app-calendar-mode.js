@@ -152,9 +152,9 @@ function createCalendarAppShell() {
   shell.innerHTML = `
     <div class="calendar-app-shell__inner">
       <div class="calendar-app-shell__top">
-        <a class="calendar-app-shell__home" href="./app-calendar.html?app=calendar">
+        <a class="calendar-app-shell__home" href="./app-calendar.html?app=calendar&home=1" data-no-pjax>
           <span aria-hidden="true">‹</span>
-          캘린더 선택
+          홈 화면
         </a>
         <div class="calendar-app-shell__actions" aria-label="캘린더 앱 작업">
           ${renderCalendarAppActions(`

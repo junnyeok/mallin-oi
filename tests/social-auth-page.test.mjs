@@ -9,6 +9,7 @@ async function render({ purpose='login', decision='ready', provider='google', fa
   const elements = new Map();
   const calls=[],accepted=[];
   const get=id => {
+    if (['socialSignupEmail','socialSignupPassword','socialSignupPasswordConfirm'].includes(id)) return null;
     if (!elements.has(id)) elements.set(id,{hidden:['socialCompleteForm','socialManagement','socialProviderProof','socialEmailProof'].includes(id),value:'',checked:false,
       textContent:'',disabled:false,listeners:{},addEventListener(name,fn){this.listeners[name]=fn;}});
     return elements.get(id);
@@ -38,9 +39,10 @@ for(const provider of ['google','kakao','apple']) for(const native of [false,tru
     assert.equal(accepted.length,1); assert.equal(get('socialCompleteForm').hidden,true);
   });
 }
-test('new social signup requires only nickname and consent, never email/password',async()=>{
-  const {get,calls,accepted}=await render({decision:'signup',provider:'kakao'});
-  assert.equal(get('socialTitle').textContent,'카카오로 회원가입');
+for(const [provider,label] of [['google','Google'],['kakao','카카오'],['apple','Apple']]) for(const native of [false,true]) {
+test(`${provider} ${native?'app':'web'} signup shows only nickname and consent, never email/password`,async()=>{
+  const {get,calls,accepted}=await render({decision:'signup',provider,native});
+  assert.equal(get('socialTitle').textContent,`${label}로 회원가입`);
   assert.equal(get('socialCompleteForm').hidden,false);
   assert.deepEqual(calls.map(c=>c.action),['inspect']); assert.equal(accepted.length,0);
   get('socialNickname').value='새닉네임';get('socialTerms').checked=true;get('socialPrivacy').checked=true;
@@ -51,8 +53,12 @@ test('new social signup requires only nickname and consent, never email/password
   for(const field of ['email','password','otp']) assert.equal(field in calls.at(-1).body,false);
   const html=await readFile(new URL('../account/social-callback.html',import.meta.url),'utf8');
   for(const id of ['socialSignupEmail','socialSignupPassword','socialSignupPasswordConfirm'])
-    assert.match(html,new RegExp(`<input[^>]+id="${id}"[^>]+disabled`));
+    assert.doesNotMatch(html,new RegExp(`id="${id}"`));
+  const textFields=[...html.matchAll(/<input\b[^>]*>/g)].map(match=>match[0]).filter(input=>!input.includes('type="checkbox"'));
+  assert.equal(textFields.length,1);
+  assert.match(textFields[0],/id="socialNickname"/);
 });
+}
 test('expired/replayed requests and mismatched browser state never accept a session',async()=>{
   for(const options of [{fail:'inspect'},{fail:'finish'},{savedRequest:'different'}]) {
     const result=await render(options);assert.equal(result.accepted.length,0);

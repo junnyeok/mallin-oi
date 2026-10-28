@@ -21,16 +21,16 @@ public class CalendarWidgetsPlugin extends Plugin {
     static final String KEY_PAYLOAD = "payload_json";
     static final String KEY_APPEARANCE = "appearance";
     static final String KEY_PENDING_TYPE = "pending_calendar_type";
-    static final Class<?>[] WIDGET_PROVIDERS = new Class<?>[] {
-            StudyFourDayWidgetProvider.class,
-            StudyTwoWeekWidgetProvider.class,
-            StudyMonthWidgetProvider.class,
-            WorkFourDayWidgetProvider.class,
-            WorkTwoWeekWidgetProvider.class,
-            WorkMonthWidgetProvider.class,
-            EventFourDayWidgetProvider.class,
-            EventTwoWeekWidgetProvider.class,
-            EventMonthWidgetProvider.class
+    static final CalendarWidgetProvider[] WIDGET_PROVIDERS = new CalendarWidgetProvider[] {
+            new StudyFourDayWidgetProvider(),
+            new StudyTwoWeekWidgetProvider(),
+            new StudyMonthWidgetProvider(),
+            new WorkFourDayWidgetProvider(),
+            new WorkTwoWeekWidgetProvider(),
+            new WorkMonthWidgetProvider(),
+            new EventFourDayWidgetProvider(),
+            new EventTwoWeekWidgetProvider(),
+            new EventMonthWidgetProvider()
     };
 
     @Override
@@ -119,14 +119,12 @@ public class CalendarWidgetsPlugin extends Plugin {
 
     static void refreshAllWidgets(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        for (Class<?> provider : WIDGET_PROVIDERS) {
-            ComponentName name = new ComponentName(context, provider);
+        for (CalendarWidgetProvider provider : WIDGET_PROVIDERS) {
+            ComponentName name = new ComponentName(context, provider.getClass());
             int[] ids = manager.getAppWidgetIds(name);
             if (ids.length > 0) {
-                Intent intent = new Intent(context, provider);
-                intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
-                context.sendBroadcast(intent);
+                // Render now, before resolving the appearance change; do not wait for a broadcast.
+                provider.onUpdate(context, manager, ids);
             }
         }
     }

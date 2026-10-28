@@ -183,6 +183,110 @@ test('event·study·work 정규화는 각 payload의 카테고리와 상세 시�
   }
 });
 
+test('업무 백업 상세는 저장된 개별 시간과 익일 해제 값을 카테고리 시간보다 우선한다', () => {
+  for (const hasTimeOverride of [true, 'true', 1, '1']) {
+    const detail = normalizeSharedPersonalDetail(makeEvent({
+      calendar_type: 'work',
+      payload: {
+        hasTimeOverride,
+        startTime: '10:00',
+        endTime: '18:00',
+        endsNextDay: false,
+        categoryStartTime: '22:00',
+        categoryEndTime: '06:00',
+        categoryEndsNextDay: true,
+      },
+    }));
+    assert.equal(detail.eventTime, '오전 10:00');
+    assert.equal(detail.eventEndTime, '오후 6:00');
+    assert.equal(detail.endsNextDay, false);
+    assert.equal(detail.timeLabel, '오전 10:00 ~ 오후 6:00');
+  }
+
+  const overnight = normalizeSharedPersonalDetail(makeEvent({
+    calendar_type: 'work',
+    has_time_override: true,
+    start_time: '23:00',
+    end_time: '07:00',
+    ends_next_day: 'true',
+    payload: { categoryStartTime: '09:00', categoryEndTime: '18:00' },
+  }));
+  assert.equal(overnight.timeLabel, '오후 11:00 ~ 오전 7:00 (익일)');
+});
+
+test('업무 백업 상세의 명시적 시간 지우기는 카테고리 기본시간을 다시 표시하지 않는다', () => {
+  for (const clearedTime of [null, '']) {
+    const detail = normalizeSharedPersonalDetail(makeEvent({
+      calendar_type: 'work',
+      payload: {
+        hasTimeOverride: true,
+        startTime: clearedTime,
+        endTime: clearedTime,
+        endsNextDay: false,
+        categoryStartTime: '22:00',
+        categoryEndTime: '06:00',
+        categoryEndsNextDay: true,
+      },
+    }));
+    assert.equal(detail.eventTime, '');
+    assert.equal(detail.eventEndTime, '');
+    assert.equal(detail.endsNextDay, false);
+    assert.equal(detail.timeLabel, '시간 미지정');
+  }
+});
+
+test('업무 개별 시간 사용이 꺼진 백업은 남은 개별 값 대신 백업의 카테고리 시간을 표시한다', () => {
+  for (const hasTimeOverride of [false, 'false', 0, '0']) {
+    const detail = normalizeSharedPersonalDetail(makeEvent({
+      calendar_type: 'work',
+      payload: {
+        hasTimeOverride,
+        startTime: '12:00',
+        endTime: '14:00',
+        endsNextDay: false,
+        categoryStartTime: '22:00',
+        categoryEndTime: '06:00',
+        categoryEndsNextDay: true,
+      },
+    }));
+    assert.equal(detail.timeLabel, '오후 10:00 ~ 오전 6:00 (익일)');
+  }
+});
+
+test('개별 시간 구분이 없는 예전 업무 백업과 다른 달력의 시간 형식은 유지한다', () => {
+  const legacyCategory = normalizeSharedPersonalDetail(makeEvent({
+    calendar_type: 'work',
+    payload: {
+      categoryStartTime: '09:00',
+      categoryEndTime: '18:00',
+      categoryEndsNextDay: false,
+    },
+  }));
+  assert.equal(legacyCategory.timeLabel, '오전 9:00 ~ 오후 6:00');
+
+  const legacyDirect = normalizeSharedPersonalDetail(makeEvent({
+    calendar_type: 'work',
+    event_time: '10:00',
+    event_end_time: '12:00',
+    payload: { categoryStartTime: '09:00', categoryEndTime: '18:00' },
+  }));
+  assert.equal(legacyDirect.timeLabel, '오전 10:00 ~ 오후 12:00');
+
+  for (const calendarType of ['study', 'event']) {
+    const detail = normalizeSharedPersonalDetail(makeEvent({
+      calendar_type: calendarType,
+      payload: {
+        hasTimeOverride: false,
+        eventTime: '10:00',
+        eventEndTime: '12:00',
+        categoryStartTime: '09:00',
+        categoryEndTime: '18:00',
+      },
+    }));
+    assert.equal(detail.timeLabel, '오전 10:00 ~ 오후 12:00');
+  }
+});
+
 test('공통 카드에는 카테고리와 같은 행에 닉네임·그룹원 일정 배지를 렌더링한다', () => {
   const previousDocument = globalThis.document;
   globalThis.document = { createElement: (tagName) => new FakeElement(tagName) };

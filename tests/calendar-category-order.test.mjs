@@ -1,6 +1,8 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import assert from 'node:assert/strict';
-import { orderCategories, nextCategorySortOrder, persistCategoryOrder, getCategoryEdgeScrollSpeed } from '../assets/js/modules/calendar-category-order.js';
+import { orderCategories, nextCategorySortOrder, persistCategoryOrder, getCategoryEdgeScrollSpeed, syncReorderedCategorySelection } from '../assets/js/modules/calendar-category-order.js';
 
 const categories = () => [
   { id: 'a', user_id: 'me', name: '당직', sort_order: 10, start_time: '17:00' },
@@ -89,4 +91,44 @@ test('동시 변경은 덮어쓰지 않고 이전 성공 쓰기만 되돌린다'
   await assert.rejects(persistCategoryOrder({ ...db, table: 'work_calendar_categories', userId: 'me', categories: categories(), ids: ['c', 'a', 'b'] }));
   assert.equal(db.rows.find((row) => row.id === 'a').sort_order, 500);
   assert.equal(db.rows.find((row) => row.id === 'c').sort_order, 101);
+});
+
+test('새 일정의 실제 기본값은 세 달력 모두 순서 변경 후 첫 카테고리다', () => {
+  for (const type of ['study', 'event', 'work']) {
+    const source = readFileSync(new URL(`../assets/js/modules/${type}-calendar.js`, import.meta.url), 'utf8');
+    const expression = type === 'work'
+      ? source.match(/const defaultCategory = ([^;]+);/)[1]
+      : source.match(/const category = isEdit\s*\? getCategoryByTodo\(todo, state.categories\)\s*: ([^;]+);/)[0].replace(/^const category = /, '').replace(/;$/, '');
+    const original = [{ id: 'study', slug: 'etc' }, { id: 'exercise', slug: 'exercise' }];
+    const ordered = orderCategories(original, ['exercise', 'study']);
+    for (const isEdit of [false, true]) {
+      const result = vm.runInNewContext(expression, {
+        state: { categories: ordered }, isEdit, todo: { categoryId: 'study' },
+        getFallbackCategory: () => original[0],
+        getCategoryByTodo: () => original[0],
+      });
+      assert.equal(result.id, isEdit && type !== 'work' ? 'study' : 'exercise');
+    }
+  }
+});
+
+test('열려 있는 새 일정도 순서 변경을 반영하고 근무시간 변경 이벤트를 전달한다', () => {
+  const ordered = orderCategories(categories(), ['c', 'b', 'a']);
+  for (const mode of ['create', 'edit']) {
+    const events = [];
+    const select = { value: 'a', dispatchEvent: event => events.push(event.type) };
+    const sheet = { dataset: { mode }, querySelector: () => select };
+    const documentRef = { querySelector: () => sheet };
+    const renderSelect = (node, list, preferred) => { node.value = list.find(c => c.id === preferred)?.id || list[0]?.id || ''; };
+    syncReorderedCategorySelection({ calendarType: 'work', categories: ordered, renderSelect, documentRef });
+    assert.equal(select.value, mode === 'create' ? 'c' : 'a');
+    assert.deepEqual(events, mode === 'create' ? ['change'] : []);
+  }
+});
+
+test('맨 위 카테고리가 그대로이면 사용자가 입력한 시간 변경 이벤트를 발생시키지 않는다', () => {
+  const select = { value: 'a', dispatchEvent: () => assert.fail('unchanged category') };
+  const sheet = { dataset: { mode: 'create' }, querySelector: () => select };
+  syncReorderedCategorySelection({ calendarType: 'study', categories: categories(), documentRef: { querySelector: () => sheet }, renderSelect: (node, list, preferred) => { node.value = preferred; } });
+  syncReorderedCategorySelection({ calendarType: 'study', categories: [], documentRef: { querySelector: () => null }, renderSelect: () => assert.fail('no sheet') });
 });

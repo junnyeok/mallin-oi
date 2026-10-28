@@ -390,9 +390,10 @@ test('일정·카테고리 저장은 연속 요청을 막고 실패 시 입력 U
     /state\.isAddingTodo = true;[\s\S]*?finally \{\s*state\.isAddingTodo = false;/,
   );
   assert.match(workSource, /if \(isAddingCategory\) return;/);
+  // Recheck manual-backup state before releasing the category submission guard.
   assert.match(
     workSource,
-    /isAddingCategory = true;[\s\S]*?finally \{\s*isAddingCategory = false;/,
+    /isAddingCategory = true;[\s\S]*?finally \{\s*refreshGroupBackupNeeded\(\);\s*isAddingCategory = false;\s*if \(submitButton\?\.isConnected\) \{\s*submitButton\.disabled = false;/,
   );
   assert.match(workSource, /if \(saveButton\.disabled\) return;/);
   assert.match(

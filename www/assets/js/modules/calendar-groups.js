@@ -1,3 +1,4 @@
+import { normalizeCategoryColor } from './calendar-category-color.js';
 // assets/js/modules/calendar-groups.js
 
 import { supabase } from './supabase-client.js';
@@ -71,6 +72,7 @@ const BACKUP_SOURCE_CONFIG = {
     categorySelect: 'id, name, slug, color, start_time, end_time, ends_next_day, is_default, sort_order, is_shared_copy_category',
     select: `
       id, work_date, work_type, work_text, memo, is_done,
+      start_time, end_time, ends_next_day, has_time_override,
       work_calendar_categories (name, slug, color, start_time, end_time, ends_next_day)
     `,
   },
@@ -89,11 +91,11 @@ const BACKUP_SOURCE_CONFIG = {
 };
 
 function normalizeColor(color, fallback = '#f54260') {
-  const value = String(color || '').trim();
-  return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : fallback;
+  return normalizeCategoryColor(color, fallback);
 }
 
 function getTextColor(bgColor) {
+  if (normalizeColor(bgColor) === 'transparent') return 'var(--color-text)';
   const color = normalizeColor(bgColor).replace('#', '');
   const r = parseInt(color.slice(0, 2), 16);
   const g = parseInt(color.slice(2, 4), 16);
@@ -538,6 +540,10 @@ function makeSourceBackupEvent(row, calendarType) {
         categoryStartTime: category?.start_time || null,
         categoryEndTime: category?.end_time || null,
         categoryEndsNextDay: Boolean(category?.ends_next_day),
+        startTime: row.start_time || null,
+        endTime: row.end_time || null,
+        endsNextDay: Boolean(row.ends_next_day),
+        hasTimeOverride: Boolean(row.has_time_override),
       },
     }, calendarType);
   }
@@ -591,7 +597,7 @@ function makeSourceBackupCategory(row, calendarType) {
     sourceSlug: String(row.slug || ''),
     color: normalizeColor(row.color, calendarType === 'work' ? '#e7f6ff' : calendarType === 'event' ? '#ffe0ef' : '#eaffd7'),
     sourceIsDefault: Boolean(row.is_default),
-    sourceSortOrder: Number(row.sort_order || 100),
+    sourceSortOrder: Number(row.sort_order ?? 100),
     settings: calendarType === 'work' ? {
       startTime: row.start_time || null,
       endTime: row.end_time || null,
@@ -610,7 +616,7 @@ function makeStoredBackupCategory(row) {
     sourceSlug: String(row.source_slug || ''),
     color: normalizeColor(row.color, '#eaffd7'),
     sourceIsDefault: Boolean(row.source_is_default),
-    sourceSortOrder: Number(row.source_sort_order || 100),
+    sourceSortOrder: Number(row.source_sort_order ?? 100),
     settings: Object.keys(settings).sort().reduce((result, key) => {
       result[key] = settings[key] ?? null;
       return result;
@@ -797,6 +803,7 @@ function appendScheduleRow({
   rowMember,
   groupState,
   selectedDateKey,
+  todayKey,
   onSelect,
   onSelectEvent,
   getEvents,
@@ -834,6 +841,11 @@ function appendScheduleRow({
 
     if (!item?.isCurrentMonth) {
       cellButton.classList.add('is-muted');
+    }
+
+    if (item?.dateKey === todayKey) {
+      cellButton.classList.add('is-today');
+      cellButton.setAttribute('aria-current', 'date');
     }
 
     if (item?.dateKey === selectedDateKey) {
@@ -878,6 +890,7 @@ export function appendCalendarGroupBoard(
   if (!root || !Array.isArray(dateItems) || !groupState?.selectedGroup?.id) return;
   if (!isCalendarGroupActive(groupState)) return;
 
+  const todayKey = toDateKey(new Date());
   const weeks = [];
 
   for (let index = 0; index < dateItems.length; index += 7) {
@@ -913,6 +926,12 @@ export function appendCalendarGroupBoard(
     week.forEach((item) => {
       const head = document.createElement('div');
       head.className = 'calendar-group-schedule__date-head';
+      head.dataset.date = item?.dateKey || '';
+      if (item?.dateKey === todayKey) {
+        head.classList.add('is-today');
+        head.setAttribute('aria-current', 'date');
+        head.setAttribute('aria-label', `${item.dateKey} 오늘`);
+      }
       if (!item?.isCurrentMonth) {
         head.classList.add('is-muted');
       }
@@ -933,6 +952,7 @@ export function appendCalendarGroupBoard(
         rowMember: { name: '우리 일정' },
         groupState,
         selectedDateKey: options.selectedDateKey,
+        todayKey,
         onSelect: options.onSelect,
         onSelectEvent: options.onSelectEvent,
         getEvents: (dateKey) => sharedEventsByDate.get(dateKey) || [],
@@ -947,6 +967,7 @@ export function appendCalendarGroupBoard(
         rowMember: member,
         groupState,
         selectedDateKey: options.selectedDateKey,
+        todayKey,
         onSelect: options.onSelect,
         onSelectEvent: options.onSelectEvent,
         getEvents: (dateKey) =>
@@ -984,6 +1005,7 @@ export async function initCalendarGroupBar({
     lastBackupAt: '',
     backupNeeded: false,
     backupChecking: false,
+    backupRunning: false,
     backupCheckId: 0,
     groupLoadId: 0,
     backupStatus: BACKUP_STATUS.IDLE,
@@ -1188,7 +1210,7 @@ export async function initCalendarGroupBar({
     const isActive = isCalendarGroupActive(state);
     backupButton.hidden = !isActive;
     const isChecking = state.backupStatus === BACKUP_STATUS.CHECKING;
-    const isRunning = state.backupStatus === BACKUP_STATUS.RUNNING;
+    const isRunning = state.backupRunning;
     const hasPendingPersonalCalendarChanges =
       state.backupStatus === BACKUP_STATUS.PENDING ||
       (state.backupNeeded && !isChecking && !isRunning);
@@ -1227,6 +1249,10 @@ export async function initCalendarGroupBar({
   }
 
   async function refreshBackupNeeded() {
+    // A source edit or group refresh can arrive while the explicit backup RPC is
+    // running. Keep it single-flight; the final comparison checks the latest data.
+    if (state.backupRunning) return state.backupNeeded;
+
     const checkId = ++state.backupCheckId;
     const groupId = state.selectedGroup?.id || '';
 
@@ -1418,14 +1444,15 @@ export async function initCalendarGroupBar({
       !isCalendarGroupActive(state) ||
       !state.backupNeeded ||
       state.backupChecking ||
+      state.backupRunning ||
       backupButton.disabled
     ) {
       return;
     }
 
-    let backupSucceeded = false;
     const backupGroupId = state.selectedGroup.id;
     state.backupCheckId += 1;
+    state.backupRunning = true;
     state.backupChecking = true;
     state.backupStatus = BACKUP_STATUS.RUNNING;
     updateBackupButtonState();
@@ -1440,10 +1467,9 @@ export async function initCalendarGroupBar({
 
       const backedUpAt = result?.[0]?.backed_up_at || new Date().toISOString();
       const count = Number(result?.[0]?.event_count || 0);
-      state.lastBackupAt = backedUpAt;
-      backupSucceeded = true;
-
       if (backupGroupId !== state.selectedGroup?.id) return;
+
+      state.lastBackupAt = backedUpAt;
 
       state.backupChecking = false;
       setBackupNeeded(false);
@@ -1455,11 +1481,15 @@ export async function initCalendarGroupBar({
       await refreshCalendar({ reason: 'group-backup' });
     } catch (error) {
       console.error('[calendar-groups] backup failed:', error);
-      setStatus('백업에 실패했어. 그룹 권한과 SQL 적용 여부를 확인해줘.');
+      if (backupGroupId === state.selectedGroup?.id) {
+        setStatus('백업에 실패했어. 그룹 권한과 SQL 적용 여부를 확인해줘.');
+      }
     } finally {
+      state.backupRunning = false;
+      state.backupChecking = false;
       backupButton.textContent = '백업';
       renderSelect();
-      if (!backupSucceeded) await refreshBackupNeeded();
+      await refreshBackupNeeded();
     }
   });
 

@@ -355,10 +355,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                                 isCompactTwoWeek
                         )
                 );
-                dayViews.setTextColor(textId, badgeTextColor(badgeColor));
+                dayViews.setTextColor(textId, badgeTextColor(badgeColor, theme));
                 dayViews.setBoolean(textId, "setSingleLine", true);
                 dayViews.setInt(textId, "setMaxLines", 1);
                 dayViews.setInt(backgroundId, "setColorFilter", badgeColor);
+                dayViews.setInt(backgroundId, "setImageAlpha", Color.alpha(badgeColor) == 0 ? 0 : 255);
                 dayViews.setViewVisibility(rowId, View.VISIBLE);
             }
 
@@ -557,6 +558,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     int parseColor(String value, int fallback) {
+        if ("transparent".equalsIgnoreCase(value)) return Color.TRANSPARENT;
         try {
             return Color.parseColor(value);
         } catch (Exception error) {
@@ -574,7 +576,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return "한 달";
     }
 
-    int badgeTextColor(int background) {
+    int badgeTextColor(int background, WidgetTheme theme) {
+        if (Color.alpha(background) == 0) return theme.text;
         double brightness = Color.red(background) * 0.299 + Color.green(background) * 0.587 + Color.blue(background) * 0.114;
         return brightness > 160 ? Color.rgb(17, 17, 17) : Color.WHITE;
     }

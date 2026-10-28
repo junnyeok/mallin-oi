@@ -40,13 +40,11 @@ async function callbackPage() {
   if (info.purpose !== 'login' || info.decision !== 'signup') throw new Error('ACCOUNT_LINKING_DISABLED');
   const provider = SOCIAL_PROVIDERS.find(([id]) => id === info.provider)?.[1] || '소셜';
   $('socialTitle').textContent = `${provider}로 회원가입`;
-  $('socialSignupEmail').value = info.email || '';
-  $('socialSignupEmail').placeholder = `${provider} 인증으로 확인했어요`;
   $('socialCompleteForm').hidden = false;
   $('socialNickname').required = true;
   $('socialTerms').required = true;
   $('socialPrivacy').required = true;
-  status('닉네임을 정하면 시작할 수 있어요. 이메일과 비밀번호는 입력하지 않아도 돼요.');
+  status('닉네임을 정하고 필수 약관에 동의하면 시작할 수 있어요.');
   $('socialCompleteForm').addEventListener('submit', event => {
     event.preventDefault();
     busy(async () => {

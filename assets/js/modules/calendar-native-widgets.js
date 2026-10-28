@@ -141,7 +141,7 @@ export function scheduleCalendarWidgetRefresh() {
   }, REFRESH_DELAY_MS);
 }
 
-export async function consumeCalendarWidgetRoute() {
+export async function consumeCalendarWidgetRoute({ navigate = true } = {}) {
   const plugin = getPlugin();
   if (!plugin?.consumePendingRoute) return false;
 
@@ -149,7 +149,8 @@ export async function consumeCalendarWidgetRoute() {
     const result = await plugin.consumePendingRoute();
     const calendarType = String(result?.calendarType || '').trim();
 
-    if (!calendarType) return false;
+    // Reading consumes the native pending request even when Home was requested.
+    if (!navigate || !['study', 'work', 'event'].includes(calendarType)) return false;
 
     window.location.replace(getCalendarHref(calendarType));
     return true;

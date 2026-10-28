@@ -151,7 +151,9 @@ async function initAppCalendarAccount() {
 async function initAppCalendarLauncher() {
   if (await initSocialAuthNative().catch(() => false)) return;
   enableCalendarAppMode();
-  if (await consumeCalendarWidgetRoute()) return;
+  // An explicit Home tap must not replay an earlier widget navigation.
+  const homeRequested = new URLSearchParams(window.location.search).get('home') === '1';
+  if (await consumeCalendarWidgetRoute({ navigate: !homeRequested })) return;
   bindCalendarLinks();
   initRefreshControls();
   await initAppCalendarAccount();

@@ -31,6 +31,15 @@ function getEventValue(event, ...keys) {
   return getPayloadValue(event, ...keys);
 }
 
+function getSnapshotValue(event, ...keys) {
+  for (const source of [event, event?.payload]) {
+    for (const key of keys) {
+      if (source?.[key] !== undefined) return source[key];
+    }
+  }
+  return undefined;
+}
+
 function formatReadonlyTime(value) {
   return formatCalendarTimeLabel(normalizeCalendarTime(value));
 }
@@ -182,7 +191,7 @@ export function normalizeSharedPersonalDetail(
   const date = String(
     event.event_date || event.date || event.todo_date || event.work_date || '',
   ).slice(0, 10);
-  const rawEventTime = getEventValue(
+  let rawEventTime = getEventValue(
     event,
     'event_time',
     'eventTime',
@@ -193,7 +202,7 @@ export function normalizeSharedPersonalDetail(
     'categoryStartTime',
     'time',
   );
-  const rawEventEndTime = getEventValue(
+  let rawEventEndTime = getEventValue(
     event,
     'event_end_time',
     'eventEndTime',
@@ -203,19 +212,38 @@ export function normalizeSharedPersonalDetail(
     'todoEndTime',
     'categoryEndTime',
   );
+  let rawEndsNextDay = getEventValue(
+    event,
+    'ends_next_day',
+    'endsNextDay',
+    'categoryEndsNextDay',
+  );
+  const timeOverride = getSnapshotValue(
+    event,
+    'hasTimeOverride',
+    'has_time_override',
+  );
+  if (
+    safeCalendarType === 'work' &&
+    timeOverride !== undefined && timeOverride !== null && timeOverride !== ''
+  ) {
+    const hasTimeOverride = normalizeReadonlyBoolean(timeOverride);
+    rawEventTime = hasTimeOverride
+      ? getSnapshotValue(event, 'startTime', 'start_time', 'eventTime', 'event_time')
+      : getSnapshotValue(event, 'categoryStartTime', 'category_start_time');
+    rawEventEndTime = hasTimeOverride
+      ? getSnapshotValue(event, 'endTime', 'end_time', 'eventEndTime', 'event_end_time')
+      : getSnapshotValue(event, 'categoryEndTime', 'category_end_time');
+    rawEndsNextDay = hasTimeOverride
+      ? getSnapshotValue(event, 'endsNextDay', 'ends_next_day')
+      : getSnapshotValue(event, 'categoryEndsNextDay', 'category_ends_next_day');
+  }
   const eventTime = formatReadonlyTime(rawEventTime);
   const eventEndTime = formatReadonlyTime(rawEventEndTime);
   const eventEndDate = String(
     getEventValue(event, 'event_end_date', 'eventEndDate', 'todoEndDate') || '',
   ).slice(0, 10);
-  const endsNextDay = normalizeReadonlyBoolean(
-    getEventValue(
-      event,
-      'ends_next_day',
-      'endsNextDay',
-      'categoryEndsNextDay',
-    ),
-  );
+  const endsNextDay = normalizeReadonlyBoolean(rawEndsNextDay);
   const isAllDay = normalizeReadonlyBoolean(
     getEventValue(event, 'is_all_day', 'isAllDay', 'all_day', 'allDay'),
   );

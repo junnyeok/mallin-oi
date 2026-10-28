@@ -68,7 +68,7 @@ function normalizeCategoryRow(input = {}) {
 
   if (!sourceCategoryKey) throw new TypeError('source category key is required');
   if (!name || name.length > 20) throw new TypeError('category name is invalid');
-  if (!/^#[0-9A-Fa-f]{6}$/.test(color)) throw new TypeError('category color is invalid');
+  if (color !== 'transparent' && !/^#[0-9A-Fa-f]{6}$/.test(color)) throw new TypeError('category color is invalid');
   if (!Number.isInteger(sourceSortOrder)) {
     throw new TypeError('category sort order is invalid');
   }
@@ -80,7 +80,7 @@ function normalizeCategoryRow(input = {}) {
     input.targetColor || input.target_color || '',
   ).trim() || null;
 
-  if (targetColor && !/^#[0-9A-Fa-f]{6}$/.test(targetColor)) {
+  if (targetColor && targetColor !== 'transparent' && !/^#[0-9A-Fa-f]{6}$/.test(targetColor)) {
     throw new TypeError('target category color is invalid');
   }
 

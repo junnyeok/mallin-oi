@@ -1,0 +1,55 @@
+.calendar-category-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.calendar-category-actions > button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--space-6);
+  white-space: nowrap;
+}
+
+.calendar-category-no-color {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.calendar-category-no-color:hover,
+.calendar-category-no-color[aria-pressed='true'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+.calendar-category-actions > button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.calendar-category-no-color:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+input[type='color'][data-no-color='true']::-webkit-color-swatch {
+  background-image: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%);
+  background-size: 10px 10px;
+}
+
+input[type='color'][data-no-color='true']::-moz-color-swatch {
+  background-image: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%);
+  background-size: 10px 10px;
+}
+
+button.calendar-category-color-none {
+  background-image: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%);
+  background-size: 10px 10px;
+}

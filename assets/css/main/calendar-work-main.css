@@ -1,3 +1,4 @@
+@import url('../components/calendar-category-color.css');
 /* assets/css/main/calendar-work-main.css */
 @import url('../components/calendar-holidays.css');
 
@@ -920,13 +921,17 @@ body.work-category-modal-open {
 .work-category-list__item {
   display: grid;
   grid-template-columns:
-    auto minmax(130px, 1fr) minmax(260px, 1.4fr) 46px auto auto;
+    auto minmax(130px, 1fr) minmax(260px, 1.4fr) 46px;
   gap: var(--space-6);
   align-items: center;
   padding: var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-btn);
   background: var(--color-surface-muted);
+}
+
+.work-category-list__item > .calendar-category-actions {
+  grid-column: 2 / -1;
 }
 
 .work-category-list__dot {
@@ -950,7 +955,8 @@ body.work-category-modal-open {
 }
 
 .work-category-list__color {
-  width: 46px;
+  width: 100%;
+  max-width: 46px;
   height: 36px;
   padding: var(--space-4);
   border: 1px solid var(--color-border);
@@ -1335,16 +1341,8 @@ body.theme-work[data-page='calendar-work'] .work-calendar-preview__more {
     grid-row: 2;
   }
 
-  .work-category-list__save {
-    grid-column: 2;
+  .work-category-list__item > .calendar-category-actions {
     grid-row: 3;
-    width: 100%;
-  }
-
-  .work-category-list__delete {
-    grid-column: 3;
-    grid-row: 3;
-    width: 100%;
   }
 
 }

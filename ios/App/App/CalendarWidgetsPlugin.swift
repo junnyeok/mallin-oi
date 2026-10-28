@@ -14,10 +14,22 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "consumePendingRoute", returnType: CAPPluginReturnPromise)
     ]
 
+    private var appearanceReloadPending = false
+
     private let suiteName = "group.com.mallinoi.calendar"
 
     public override func load() {
         applyAppearance(savedAppearance())
+        NotificationCenter.default.addObserver(self, selector: #selector(reloadAppearanceOnBackground),
+                                               name: UIApplication.didEnterBackgroundNotification, object: nil)
+    }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func reloadAppearanceOnBackground() {
+        guard appearanceReloadPending else { return }
+        appearanceReloadPending = false
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func savedAppearance() -> String {
@@ -25,13 +37,14 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
         return defaults.string(forKey: "appearance") == "dark" ? "dark" : "light"
     }
 
-    private func applyAppearance(_ appearance: String) {
+    private func applyAppearance(_ appearance: String, completion: (() -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
             let dark = appearance == "dark"
             let background = dark ? UIColor(red: 23 / 255, green: 25 / 255, blue: 30 / 255, alpha: 1) : .white
             self?.bridge?.viewController?.overrideUserInterfaceStyle = dark ? .dark : .light
             self?.bridge?.webView?.backgroundColor = background
             self?.bridge?.webView?.scrollView.backgroundColor = background
+            completion?()
         }
     }
 
@@ -48,9 +61,11 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
         // Separate from the schedule payload so refresh and logout preserve the preference.
         defaults.set(appearance, forKey: "appearance")
         defaults.synchronize()
-        applyAppearance(appearance)
-        WidgetCenter.shared.reloadAllTimelines()
-        call.resolve()
+        applyAppearance(appearance) { [weak self] in
+            self?.appearanceReloadPending = true
+            WidgetCenter.shared.reloadAllTimelines()
+            call.resolve()
+        }
     }
 
     @objc func saveWidgetData(_ call: CAPPluginCall) {

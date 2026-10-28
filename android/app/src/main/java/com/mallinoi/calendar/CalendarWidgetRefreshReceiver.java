@@ -78,8 +78,8 @@ public class CalendarWidgetRefreshReceiver extends BroadcastReceiver {
 
     private static boolean hasActiveWidgets(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        for (Class<?> provider : CalendarWidgetsPlugin.WIDGET_PROVIDERS) {
-            ComponentName name = new ComponentName(context, provider);
+        for (CalendarWidgetProvider provider : CalendarWidgetsPlugin.WIDGET_PROVIDERS) {
+            ComponentName name = new ComponentName(context, provider.getClass());
             if (manager.getAppWidgetIds(name).length > 0) {
                 return true;
             }

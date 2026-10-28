@@ -1,7 +1,8 @@
 // assets/js/modules/event-calendar.js
 
 import { supabase } from './supabase-client.js';
-import { enableCategoryReorder, resetCategoryReorder, persistCategoryOrder, nextCategorySortOrder } from './calendar-category-order.js';
+import { normalizeCategoryColor, readCategoryColor, setCategoryColor, initCategoryColorInput, createCategoryNoColorButton } from './calendar-category-color.js';
+import { enableCategoryReorder, resetCategoryReorder, persistCategoryOrder, nextCategorySortOrder, syncReorderedCategorySelection } from './calendar-category-order.js';
 import {
   getCurrentUser,
   loginHref,
@@ -111,16 +112,11 @@ function normalizeCategoryName(name) {
 }
 
 function normalizeColor(color) {
-  const nextColor = String(color || '').trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(nextColor)) {
-    return nextColor.toLowerCase();
-  }
-
-  return '#eaffd7';
+  return normalizeCategoryColor(color);
 }
 
 function getCategoryTextColor(bgColor) {
+  if (normalizeColor(bgColor) === 'transparent') return 'var(--color-text)';
   const color = normalizeColor(bgColor).replace('#', '');
   const r = parseInt(color.slice(0, 2), 16);
   const g = parseInt(color.slice(2, 4), 16);
@@ -978,7 +974,7 @@ function renderCategorySelect(select, categories = [], preferredValue = '') {
     return;
   }
 
-  const fallback = getFallbackCategory(categories);
+  const fallback = categories[0] || getFallbackCategory(categories);
   if (fallback?.id) {
     select.value = fallback.id;
   }
@@ -989,19 +985,22 @@ function renderCategoryPalette({ root, colorInput }) {
 
   root.innerHTML = '';
 
-  CATEGORY_COLOR_PRESETS.forEach((color) => {
+  [...CATEGORY_COLOR_PRESETS, 'transparent'].forEach((color) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'event-category-palette__button';
     button.style.setProperty('--category-color', color);
-    button.setAttribute('aria-label', `${color} 색상 선택`);
+    button.setAttribute('aria-label', color === 'transparent' ? '색 없음' : `${color} 색상 선택`);
+    button.classList.toggle('calendar-category-color-none', color === 'transparent');
+    button.title = color === 'transparent' ? '색 없음' : color;
+    button.setAttribute('aria-pressed', String(normalizeColor(readCategoryColor(colorInput)) === color));
 
-    if (normalizeColor(colorInput.value) === color) {
+    if (normalizeColor(readCategoryColor(colorInput)) === color) {
       button.classList.add('is-selected');
     }
 
     button.addEventListener('click', () => {
-      colorInput.value = color;
+      setCategoryColor(colorInput, color);
       renderCategoryPalette({ root, colorInput });
     });
 
@@ -1040,7 +1039,7 @@ function renderCategoryList({
     const colorInput = document.createElement('input');
     colorInput.className = 'event-category-item__color';
     colorInput.type = 'color';
-    colorInput.value = normalizeColor(category.color);
+    initCategoryColorInput(colorInput, category.color);
     colorInput.setAttribute('aria-label', '카테고리 색상 수정');
 
     const saveButton = document.createElement('button');
@@ -1071,7 +1070,7 @@ function renderCategoryList({
       onSave({
         category,
         name: nameInput.value,
-        color: colorInput.value,
+        color: readCategoryColor(colorInput),
         ...sharedValue,
       });
     });
@@ -1090,7 +1089,13 @@ function renderCategoryList({
       onDelete(category);
     });
 
-    item.append(dot, nameInput, colorInput, saveButton, deleteButton, sharedControls.element);
+    const actions = document.createElement('div');
+    actions.className = 'calendar-category-actions';
+    const noColorButton = createCategoryNoColorButton(colorInput, {
+      onChange: (nextColor) => dot.style.setProperty('--category-color', nextColor),
+    });
+    actions.append(noColorButton, saveButton, deleteButton);
+    item.append(dot, nameInput, colorInput, actions, sharedControls.element);
     root.append(item);
   });
   enableCategoryReorder({ root, categories, onReorder });
@@ -1578,7 +1583,7 @@ async function initPageCalendar(loadingController) {
   function openEventDetailSheet({ todo = null, opener = entrySheetOpen } = {}) {
     if (todo && isReadonlySharedPersonalDetail(todo, state.userId)) return;
     const isEdit = Boolean(todo?.id);
-    const category = isEdit ? getCategoryByTodo(todo, state.categories) : getFallbackCategory(state.categories);
+    const category = isEdit ? getCategoryByTodo(todo, state.categories) : state.categories[0] || getFallbackCategory(state.categories);
     const todoDateRange = isEdit ? getTodoDateRange(todo, state.store) : [];
     const startDate = isEdit
       ? todoDateRange[0]?.dateKey || String(todo.date || state.selectedDateKey)
@@ -1870,6 +1875,7 @@ async function initPageCalendar(loadingController) {
   });
 
   if (categoryPalette && categoryColorInput) {
+    initCategoryColorInput(categoryColorInput);
     renderCategoryPalette({
       root: categoryPalette,
       colorInput: categoryColorInput,
@@ -1888,7 +1894,7 @@ async function initPageCalendar(loadingController) {
       event.preventDefault();
 
       const name = normalizeCategoryName(categoryNameInput.value);
-      const color = normalizeColor(categoryColorInput.value);
+      const color = normalizeColor(readCategoryColor(categoryColorInput));
 
       if (!name) {
         categoryNameInput.focus();
@@ -1916,7 +1922,7 @@ async function initPageCalendar(loadingController) {
         state.categories = [...state.categories, nextCategory];
 
         categoryNameInput.value = '';
-        categoryColorInput.value = '#eaffd7';
+        setCategoryColor(categoryColorInput, '#eaffd7');
 
         renderAll();
 
@@ -1926,6 +1932,8 @@ async function initPageCalendar(loadingController) {
         });
       } catch (error) {
         alert('카테고리 추가에 실패했어. 이름 중복 여부를 확인해줘.');
+      } finally {
+        refreshGroupBackupNeeded();
       }
     });
   }
@@ -1947,8 +1955,11 @@ async function initPageCalendar(loadingController) {
       error.categoryOrder = state.categories.map((category) => String(category.id));
       throw error;
     }
-    // Update choices without rebuilding category inputs with unsaved edits.
-    renderCategorySelect(typeSelect, state.categories, selectedCategoryId);
+    // Newly added entries follow the first category after a successful reorder.
+    renderCategorySelect(typeSelect, state.categories, state.categories[0]?.id || '');
+    syncReorderedCategorySelection({
+      calendarType: 'event', categories: state.categories, renderSelect: renderCategorySelect,
+    });
     scheduleCalendarWidgetRefresh();
     refreshGroupBackupNeeded();
   }
@@ -2005,6 +2016,8 @@ async function initPageCalendar(loadingController) {
       renderAll();
     } catch (error) {
       alert('카테고리 수정에 실패했어. 잠시 후 다시 시도해줘.');
+    } finally {
+      refreshGroupBackupNeeded();
     }
   }
 
@@ -2028,6 +2041,8 @@ async function initPageCalendar(loadingController) {
         renderAll();
       } catch (error) {
         alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+      } finally {
+        refreshGroupBackupNeeded();
       }
 
       return;
@@ -2071,6 +2086,8 @@ async function initPageCalendar(loadingController) {
       renderAll();
     } catch (error) {
       alert('카테고리 삭제에 실패했어. 잠시 후 다시 시도해줘.');
+    } finally {
+      refreshGroupBackupNeeded();
     }
   }
 

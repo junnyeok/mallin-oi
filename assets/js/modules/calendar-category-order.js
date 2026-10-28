@@ -10,6 +10,20 @@ export function orderCategories(categories, ids) {
   return ids.map((id, index) => ({ ...byId.get(id), sort_order: (index + 1) * 10 }));
 }
 
+// Reordering changes the default only for a new entry, never for an existing one.
+export function syncReorderedCategorySelection({ calendarType, categories, renderSelect, documentRef = document }) {
+  const sheet = documentRef.querySelector(`.calendar-entry-sheet[data-calendar-type="${calendarType}"].is-open`);
+  const select = sheet?.querySelector('.calendar-entry-sheet__category-actions select');
+  if (!select) return;
+  const previous = select.value;
+  const preferred = sheet.dataset.mode === 'create' ? categories[0]?.id || '' : previous;
+  renderSelect(select, categories, preferred);
+  if (sheet.dataset.mode === 'create' && select.value !== previous) {
+    // Work entry fields use this event to apply the selected category's default times.
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
 export function nextCategorySortOrder(categories) {
   return Math.max(0, ...categories.map((category) => Number(category.sort_order) || 0)) + 10;
 }
