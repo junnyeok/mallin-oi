@@ -358,8 +358,7 @@ function renderStoreThumb(item) {
   return item.icon || '';
 }
 
-function renderStoreCard(item, { compact = false } = {}) {
-  const detailHref = getStoreItemDetailHref(item.id);
+function renderStoreCard(item, { compact = false, detailHref = getStoreItemDetailHref(item.id) } = {}) {
   const cardClassName = compact
     ? 'store-card store-card--compact'
     : 'store-card';
@@ -773,6 +772,32 @@ function bindStoreFilter(renderByCategory) {
   });
 }
 
+function readStoreListState(search = window.location.search) {
+  const params = new URLSearchParams(search);
+  const categories = ['all', 'emoticon', 'character', 'skin', 'bgm', 'profile', 'cha-effects'];
+  const page = Number(params.get('page'));
+  return {
+    category: categories.includes(params.get('category')) ? params.get('category') : 'all',
+    sortKey: params.get('sort') === 'price' ? 'price' : 'releaseDate',
+    direction: params.get('direction') === 'asc' ? 'asc' : 'desc',
+    page: Number.isSafeInteger(page) && page > 0 ? page : 1,
+  };
+}
+
+function storeListStateHref(href, state) {
+  const url = new URL(href, window.location.href);
+  for (const [key, value, fallback] of [
+    ['category', state.category, 'all'],
+    ['sort', state.sortKey, 'releaseDate'],
+    ['direction', state.direction, 'desc'],
+    ['page', String(state.page), '1'],
+  ]) {
+    if (value === fallback) url.searchParams.delete(key);
+    else url.searchParams.set(key, value);
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 async function initStorePage() {
   const gridEl = $('#storeGrid');
   if (!gridEl) return;
@@ -786,10 +811,11 @@ async function initStorePage() {
   const STORE_PAGE_SIZE = 8;
   const STORE_PAGER_VISIBLE_COUNT = 5;
 
-  let currentCategory = 'all';
-  let currentPage = 1;
-  let currentSortKey = 'releaseDate';
-  let currentSortDirection = 'desc';
+  const initialState = readStoreListState();
+  let currentCategory = initialState.category;
+  let currentPage = initialState.page;
+  let currentSortKey = initialState.sortKey;
+  let currentSortDirection = initialState.direction;
 
   function getSortableValue(item, sortKey) {
     if (sortKey === 'price') {
@@ -948,7 +974,24 @@ async function initStorePage() {
     const startIndex = (currentPage - 1) * STORE_PAGE_SIZE;
     const pageItems = filtered.slice(startIndex, startIndex + STORE_PAGE_SIZE);
 
-    gridEl.innerHTML = pageItems.map((item) => renderStoreCard(item)).join('');
+    const listState = {
+      category: currentCategory, sortKey: currentSortKey,
+      direction: currentSortDirection, page: currentPage,
+    };
+    // 현재 기록만 갱신하여 필터 클릭이 뒤로가기 기록을 늘리지 않게 한다.
+    const listHref = storeListStateHref(window.location.href, listState);
+    if (listHref !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(window.history.state, '', listHref);
+    }
+    $all('[data-store-filter]').forEach((button) => {
+      const active = button.dataset.storeFilter === currentCategory;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    updateSortControls();
+    gridEl.innerHTML = pageItems.map((item) => renderStoreCard(item, {
+      detailHref: storeListStateHref(getStoreItemDetailHref(item.id), listState),
+    })).join('');
     prepareCharacterEffects(gridEl);
 
     if (emptyEl) {
@@ -1010,8 +1053,8 @@ async function initStorePage() {
     });
   });
 
-  render('all', {
-    page: 1,
+  render(currentCategory, {
+    page: currentPage,
     shouldScroll: false,
   });
 
@@ -1294,7 +1337,7 @@ ${renderStoreItemPreview(item, { effectPreviewCharacterImage })}          </sect
             >
               ${actionLabel}
             </button>
-            <p class="store-item-buybox__msg" id="storeItemBuyMsg">${resolvedMessage}</p>            <a class="store-item-buybox__back" href="./store.html">← 상점으로 돌아가기</a>
+            <p class="store-item-buybox__msg" id="storeItemBuyMsg">${resolvedMessage}</p>            <a class="store-item-buybox__back" href="${storeListStateHref('./store.html', readStoreListState())}">← 상점으로 돌아가기</a>
           </div>
         </aside>
       </div>
