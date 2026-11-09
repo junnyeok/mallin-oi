@@ -15,10 +15,9 @@ const imagePath = 'images/characters/paprikagirl.png';
 const editorPath = 'supabase-SQLEditor/20261012-paprikagirl-character.sql';
 const migrationPath = 'supabase/migrations/20261012010000_paprikagirl_character.sql';
 
-test('파프리카걸이 NEW 첫 번째이며 지정 문구·622피클·미리보기가 정확하다', () => {
+test('파프리카걸의 지정 문구·622피클·미리보기가 정확하다', () => {
   const item = catalog.getStoreItemById(itemId);
-  assert.equal(catalog.getFeaturedStoreItems(1)[0].id, itemId);
-  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[0].id, itemId);
+  assert.ok(catalog.getFeaturedStoreItems().some(item => item.id === itemId));
   assert.equal(item.name, '파프리카걸');
   assert.equal(item.category, 'character');
   assert.equal(item.badge, '캐릭터');

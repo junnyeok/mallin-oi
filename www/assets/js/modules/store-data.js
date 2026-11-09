@@ -2186,6 +2186,29 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'character-eggplant-01',
+    name: '뒷골목 가지소년',
+    category: 'character',
+    badge: '캐릭터',
+    icon: '🍆',
+    thumbImagePath: withAssetVersion('./images/characters/eggplant.png'),
+    price: 589,
+    state: '판매 중',
+    description: '뒷골목에 출몰하는 가지소년이야. ',
+    detailDescription:
+      '질풍노도의 시기를 겪고 있어.<br>구매하면 내프로필의 캐릭터 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+    previewImages: [
+      {
+        code: 'character-eggplant-01-preview',
+        label: '뒷골목 가지소년 미리보기',
+        imagePath: withAssetVersion('./images/characters/eggplant.png'),
+        displayOrder: 1,
+      },
+    ],
+    releaseDate: '2026-11-10',
+    isPurchasable: true,
+  },
+  {
     id: 'character-paprikagirl-01',
     name: '파프리카걸',
     category: 'character',
@@ -2345,6 +2368,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'character-eggplant-01',
   'character-paprikagirl-01',
   'skin-cucumberboy-03',
   'BG-07',
@@ -2476,6 +2500,15 @@ export const CHARACTER_CATALOG = [
     preview_image_path: withAssetVersion('./images/characters/paprikagirl.png'),
     display_order: 10,
     store_item_id: 'character-paprikagirl-01',
+  },
+
+  {
+    character_code: 'char-eggplant',
+    character_name: '뒷골목 가지소년',
+    base_image_path: withAssetVersion('./images/characters/eggplant.png'),
+    preview_image_path: withAssetVersion('./images/characters/eggplant.png'),
+    display_order: 11,
+    store_item_id: 'character-eggplant-01',
   },
 ];
 
@@ -2695,6 +2728,15 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/characters/paprikagirl.png'),
     display_order: 901,
     store_item_id: 'character-paprikagirl-01',
+  },
+
+  {
+    character_code: 'char-eggplant',
+    skin_code: 'char-eggplant-basic',
+    skin_name: '뒷골목 가지소년',
+    image_path: withAssetVersion('./images/characters/eggplant.png'),
+    display_order: 1001,
+    store_item_id: 'character-eggplant-01',
   },
 ];
 

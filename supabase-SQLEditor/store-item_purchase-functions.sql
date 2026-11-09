@@ -163,6 +163,11 @@ begin
     v_name := '파프리카걸';
     v_category := 'character';
 
+  elsif p_item_id = 'character-eggplant-01' then
+    v_price := 589;
+    v_name := '뒷골목 가지소년';
+    v_category := 'character';
+
   elsif p_item_id = 'character-brocolli-01' then
     v_price := 682;
     v_name := '브로콜리 알바생';
@@ -559,6 +564,10 @@ begin
       v_can_bypass_store_balance := false;
     end if;
 
+    if p_item_id = 'character-eggplant-01' then
+      v_can_bypass_store_balance := false;
+    end if;
+
     if not v_can_bypass_store_balance then
       v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id)
         and p_item_id <> 'BG-06';
@@ -568,6 +577,10 @@ begin
       end if;
 
       if p_item_id = 'character-paprikagirl-01' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'character-eggplant-01' then
         v_is_auto_topup_admin := false;
       end if;
 
@@ -914,6 +927,35 @@ begin
       '파프리카걸',
       './images/characters/paprikagirl.png',
       901,
+      'store_purchase'
+    )
+    on conflict (user_id, skin_code) do nothing;
+
+  elsif p_item_id = 'character-eggplant-01' then
+    insert into public.user_characters (
+      user_id, character_code, character_name, base_image_path, preview_image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-eggplant',
+      '뒷골목 가지소년',
+      './images/characters/eggplant.png',
+      './images/characters/eggplant.png',
+      11,
+      'store_purchase'
+    )
+    on conflict (user_id, character_code) do nothing;
+
+    insert into public.user_character_skins (
+      user_id, character_code, skin_code, skin_name, image_path, display_order, acquired_reason
+    )
+    values (
+      v_user_id,
+      'char-eggplant',
+      'char-eggplant-basic',
+      '뒷골목 가지소년',
+      './images/characters/eggplant.png',
+      1001,
       'store_purchase'
     )
     on conflict (user_id, skin_code) do nothing;
@@ -1607,6 +1649,8 @@ begin
         then '지구대 오이소년 구매가 완료됐어. 488피클이 차감됐고 오이소년 캐릭터 스킨 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-paprikagirl-01'
         then '파프리카걸 구매가 완료됐어. 622피클이 차감됐고 캐릭터 인벤토리에서 착용할 수 있어.'
+      when p_item_id = 'character-eggplant-01'
+        then '뒷골목 가지소년 구매가 완료됐어. 589피클이 차감됐고 캐릭터 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'character-brocolli-01'
         then '브로콜리 알바생 구매가 완료됐어. 682피클이 차감됐고 인벤토리에서 착용할 수 있어.'
       when p_item_id = 'emo-heart-01'

@@ -996,6 +996,7 @@
 ./images/characters/cucumber.png
 ./images/characters/cucumberboy.png
 ./images/characters/cucumbergirl.png
+./images/characters/eggplant.png
 ./images/characters/eggpotato.png
 ./images/characters/fat-avocado.png
 ./images/characters/grilled-egg.png
@@ -1451,6 +1452,7 @@
 ./supabase-SQLEditor/20261018-social-registration-guard.sql
 ./supabase-SQLEditor/20261028-calendar-category-no-color.sql
 ./supabase-SQLEditor/20261028-calendar-manual-group-backup.sql
+./supabase-SQLEditor/20261110-eggplant-character.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1517,6 +1519,7 @@
 ./supabase/migrations/20261018114000_social_registration_guard.sql
 ./supabase/migrations/20261028000000_calendar_category_no_color.sql
 ./supabase/migrations/20261028010000_calendar_manual_group_backup.sql
+./supabase/migrations/20261110000000_eggplant_character.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1542,6 +1545,7 @@
 ./tests/character-effects-spider-web.test.mjs
 ./tests/cucumber-boy-emoticon-pack.test.mjs
 ./tests/daegu-cucumber-skin.test.mjs
+./tests/eggplant-character.test.mjs
 ./tests/empty-road-bgm.test.mjs
 ./tests/fixtures/app-update-popup-browser.html
 ./tests/fixtures/calendar-category-order-browser.html
@@ -1744,6 +1748,7 @@
 ./www/images/character-effects/fire-effect-01.png
 ./www/images/character-effects/spider-web-effect-01.png
 ./www/images/characters/brocolli.png
+./www/images/characters/eggplant.png
 ./www/images/characters/paprikagirl.png
 ./www/images/characters/tomato.png
 ./www/images/emoticons/01-broccoli-girl.png

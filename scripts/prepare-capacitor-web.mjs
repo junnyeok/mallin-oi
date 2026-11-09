@@ -43,6 +43,7 @@ const nativeCharacterImageFiles = [
   'images/characters/tomato.png',
   'images/characters/brocolli.png',
   'images/characters/paprikagirl.png',
+  'images/characters/eggplant.png',
 ];
 const nativeProfileBackgroundImageFiles = [
   'images/profile-background/mafia.png',
