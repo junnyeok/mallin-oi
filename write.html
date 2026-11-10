@@ -114,47 +114,31 @@
                     </p>
                   </div>
 
-                  <div
-                    class="comment-form__tools emoticon-picker-box write-editor-tools"
-                  >
-                    <div class="emoticon-tool-actions">
-                      <button
-                        type="button"
-                        class="comment-emoticon-toggle write-emoticon-toggle"
-                        id="writeEmoticonToggle"
-                        disabled
-                      >
-                        🥒 이모티콘
-                      </button>
-
-                      <a
-                        class="emoticon-setting-link"
-                        href="./inventory.html#emoticon-inventory"
-                      >
-                        설정
-                      </a>
-                    </div>
-
-                    <div
-                      class="emoticon-picker"
-                      id="writeEmoticonPanel"
-                      hidden
-                      aria-label="보유 이모티콘"
-                    ></div>
-                  </div>
-
                   <div class="write-row">
                     <label class="write-label" for="bodyEditor"
                       >글내용(본문) *</label
                     >
 
-                    <div class="write-editor-wrap">
+                    <div class="write-editor-wrap write-editor-tools">
+                      <button type="button" class="write-emoticon-toggle" id="writeEmoticonToggle"
+                        aria-label="이모티콘 열기" aria-expanded="false" aria-controls="writeEmoticonPanel" disabled>
+                        <img src="./images/good.png" alt="" />
+                      </button>
+                      <div class="emoticon-picker write-emoticon-panel" id="writeEmoticonPanel" hidden aria-label="보유 이모티콘">
+                        <div class="write-emoticon-panel__header">
+                          <span>이모티콘</span>
+                          <a class="emoticon-setting-link" href="./inventory.html#emoticon-inventory" aria-label="이모티콘 설정" title="이모티콘 설정">
+                            <img src="./images/emoticons/settings-cucumber-gear.png" alt="" />
+                          </a>
+                        </div>
+                        <div id="writeEmoticonContent"></div>
+                      </div>
                       <div
                         class="write-editor"
                         id="bodyEditor"
                         contenteditable="true"
                         spellcheck="false"
-                        data-placeholder="여기에 본문을 입력해. 사진/영상/파일을 업로드하면 현재 커서 위치에 바로 들어가."
+                        data-placeholder="여기에 본문을 입력해."
                       ></div>
 
                       <!-- 실제 저장용 -->

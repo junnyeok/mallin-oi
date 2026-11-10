@@ -20,6 +20,10 @@ const NOTIFICATION_TYPE_META = Object.freeze({
   post_reaction_dislike: { icon: '💡', label: '참신해요' },
   post_comment: { icon: '💬', label: '댓글·답글' },
   post_participant_comment: { icon: '↩', label: '댓글·답글' },
+  suggestion_new: { icon: '💬', label: '새 건의사항' },
+  suggestion_reply: { icon: '↩', label: '건의사항 답변' },
+  qna_new: { icon: '❓', label: '새 질문' },
+  qna_reply: { icon: '↩', label: 'Q&A 답변' },
   store_new_item: { icon: '🛍', label: '새 상품' },
   admin_announcement: { icon: '📢', label: '안내' },
 });

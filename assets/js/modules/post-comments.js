@@ -1,3 +1,4 @@
+import { initEmoticonSettingsNavigation } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
 import { loadPostById } from './posts-repo.js';
 import {
@@ -1719,6 +1720,7 @@ async function syncCommentAccess(postId, secretPassword = '') {
 }
 
 export async function initPostComments() {
+  initEmoticonSettingsNavigation();
   const form = $('commentForm');
   const textarea = $('commentBody');
   const submitBtn = $('commentSubmitBtn');

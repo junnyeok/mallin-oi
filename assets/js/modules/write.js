@@ -1,3 +1,4 @@
+import { initEmoticonSettingsNavigation } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
 import { loadEditablePostById } from './posts-repo.js';
 import {
@@ -6,6 +7,7 @@ import {
   createInlineEmoticonNode,
   switchEmoticonPickerPack,
 } from './emoticons.js';
+import { attachWriteEmoticonAnchor } from './write-emoticon-anchor.js';
 import { playPickleBurst } from './pickle-burst.js';
 
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
@@ -32,7 +34,9 @@ function createWriteLeaveGuard(form) {
   let baseline = '';
   let dirty = false;
   let navigationAllowed = false;
-  let historyArmed = false;
+  // A reload/reinitialization may already be on our extra guard entry.
+  let historyArmed = !!window.history.state?.[WRITE_HISTORY_GUARD_KEY];
+  let baselineReady = false;
   let handlingGuardPop = false;
   let skipNextPop = false;
 
@@ -89,6 +93,8 @@ function createWriteLeaveGuard(form) {
   };
 
   const refreshDirty = () => {
+    // Loading an existing post and normalizing an empty editor are not edits.
+    if (!baselineReady) return false;
     dirty = getSnapshot() !== baseline;
     if (dirty) armHistoryGuard();
     return dirty;
@@ -167,7 +173,7 @@ function createWriteLeaveGuard(form) {
 
     if (!refreshDirty()) {
       navigationAllowed = true;
-      window.history.back();
+      setTimeout(() => window.history.back(), 0);
       return;
     }
 
@@ -176,12 +182,13 @@ function createWriteLeaveGuard(form) {
 
     if (window.confirm(WRITE_LEAVE_MESSAGE)) {
       permitNavigation();
-      window.history.back();
+      // Finish this popstate/confirm cycle before starting another traversal.
+      setTimeout(() => window.history.back(), 0);
       return;
     }
 
     skipNextPop = true;
-    window.history.forward();
+    setTimeout(() => window.history.forward(), 0);
     handlingGuardPop = false;
   };
 
@@ -204,6 +211,7 @@ function createWriteLeaveGuard(form) {
 
   const resetBaseline = () => {
     baseline = getSnapshot();
+    baselineReady = true;
     dirty = false;
     navigationAllowed = false;
   };
@@ -222,7 +230,6 @@ function createWriteLeaveGuard(form) {
   };
 
   window.__mallinDisposeWriteLeaveGuard = dispose;
-  resetBaseline();
 
   return { permitNavigation, resetBaseline };
 }
@@ -723,24 +730,56 @@ async function initWriteEmoticonPicker(user) {
   const toggleBtn = $('#writeEmoticonToggle');
   const panel = $('#writeEmoticonPanel');
 
-  if (!editor || !toggleBtn || !panel) return;
+  const content = $('#writeEmoticonContent');
+  if (!editor || !toggleBtn || !panel || !content) return;
+
+  window.__mallinDisposeEmoticonAnchor?.();
+  const anchor = attachWriteEmoticonAnchor({
+    editor, toggle: toggleBtn, panel,
+    getRange: () => {
+      const selection = window.getSelection();
+      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+      return isRangeInsideBodyEditor(range) ? range : savedSelectionRange;
+    },
+  });
+  window.__mallinDisposeEmoticonAnchor = anchor.dispose;
 
   if (!user?.id) {
     toggleBtn.disabled = true;
-    panel.innerHTML = renderOwnedEmoticonPicker([], {
+    content.innerHTML = renderOwnedEmoticonPicker([], {
       emptyText: '로그인 후 이모티콘을 사용할 수 있어.',
     });
     return;
   }
 
-  const ownedEmoticons = await loadOwnedEmoticons(user.id);
+  let ownedEmoticons = await loadOwnedEmoticons(user.id);
 
-  panel.innerHTML = renderOwnedEmoticonPicker(ownedEmoticons, {
+  content.innerHTML = renderOwnedEmoticonPicker(ownedEmoticons, {
     emptyText:
       '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
   });
 
   switchEmoticonPickerPack(panel);
+
+  window.__mallinDisposeWriteEmoticonRefresh?.();
+  const refreshEquipment = async () => {
+    if (!editor.isConnected) return;
+    try {
+      ownedEmoticons = await loadOwnedEmoticons(user.id);
+      if (!editor.isConnected) return;
+      content.innerHTML = renderOwnedEmoticonPicker(ownedEmoticons, {
+        emptyText: '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
+      });
+      switchEmoticonPickerPack(panel);
+      anchor.schedule();
+    } catch (error) { console.warn('[write] emoticon refresh failed', error); }
+  };
+  window.addEventListener('mallin:emoticon-settings-return', refreshEquipment);
+  window.addEventListener('focus', refreshEquipment);
+  window.__mallinDisposeWriteEmoticonRefresh = () => {
+    window.removeEventListener('mallin:emoticon-settings-return', refreshEquipment);
+    window.removeEventListener('focus', refreshEquipment);
+  };
 
   toggleBtn.disabled = false;
 
@@ -780,7 +819,7 @@ async function initWriteEmoticonPicker(user) {
 
   toggleBtn.addEventListener('click', () => {
     restoreSavedSelectionRange();
-    panel.hidden = !panel.hidden;
+    anchor.setOpen(panel.hidden);
   });
 
   panel.addEventListener('click', (event) => {
@@ -813,7 +852,15 @@ async function initWriteEmoticonPicker(user) {
     });
 
     saveCurrentSelectionRange();
-    panel.hidden = true;
+    anchor.setOpen(true);
+  });
+
+  panel.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    anchor.setOpen(false);
+    editor.focus({ preventScroll: true });
+    restoreSavedSelectionRange();
   });
 
   document.addEventListener('click', (event) => {
@@ -824,7 +871,7 @@ async function initWriteEmoticonPicker(user) {
       return;
     }
 
-    panel.hidden = true;
+    anchor.setOpen(false);
   });
 }
 
@@ -2291,6 +2338,7 @@ function bindAttachmentInputs(note) {
   editor.addEventListener('compositionstart', () => {
     isEditorComposing = true;
     editorCompositionSequence += 1;
+    editor.classList.remove('is-empty');
   });
 
   editor.addEventListener('compositionend', () => {
@@ -2348,6 +2396,8 @@ function bindAttachmentInputs(note) {
   });
 
   editor.addEventListener('input', (event) => {
+    // Update only the placeholder during IME input, without rewriting its DOM.
+    updateEditorEmptyState(editor);
     if (isEditorComposing || event.isComposing) return;
 
     reconcileAttachmentStateWithEditor();
@@ -2790,6 +2840,7 @@ function fillWriteForm(post, isAdmin) {
 }
 
 export async function initWrite() {
+  initEmoticonSettingsNavigation();
   const form = $('#writeForm');
   if (!form) return;
   if (form.dataset.writeInitialized === 'true') return;

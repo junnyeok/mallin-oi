@@ -346,6 +346,7 @@
 }
 
 .write-editor-wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -356,6 +357,7 @@
   min-height: 480px;
   max-height: 150vh;
   padding: var(--space-16);
+  padding-right: 64px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-bg);
@@ -526,26 +528,37 @@
 ========================= */
 
 .write-editor-tools {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
   width: 100%;
   min-width: 0;
 }
 
-.write-emoticon-toggle {
-  align-self: flex-start;
-  min-height: 38px;
-  padding: 0 14px;
+.write-emoticon-toggle,
+.write-emoticon-panel .emoticon-setting-link {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 3px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: #fff;
-  color: var(--color-text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
+  border-radius: 50%;
+  background: var(--color-surface);
   cursor: pointer;
+}
+
+.write-emoticon-toggle {
+  position: absolute;
+  z-index: 3;
+  right: 10px;
+  top: var(--write-emoticon-top, 12px);
+}
+
+.write-emoticon-toggle img,
+.write-emoticon-panel .emoticon-setting-link img {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
 .write-emoticon-toggle:disabled {
@@ -553,31 +566,47 @@
   cursor: not-allowed;
 }
 
-.emoticon-tool-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.emoticon-setting-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.emoticon-setting-link:hover {
+.write-emoticon-toggle[aria-expanded="true"],
+.write-emoticon-toggle:hover,
+.write-emoticon-panel .emoticon-setting-link:hover {
   border-color: var(--color-primary);
-  background: rgba(170, 208, 94, 0.12);
+  background: var(--color-primary-sub);
+}
+
+.write-emoticon-toggle:focus-visible,
+.write-emoticon-panel .emoticon-setting-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.write-editor-wrap.write-editor-tools .write-emoticon-panel {
+  position: absolute;
+  z-index: 2;
+  left: 10px;
+  top: var(--write-emoticon-panel-top, 64px);
+  width: calc(100% - 20px);
+  max-height: var(--write-emoticon-panel-height, 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-surface);
+}
+
+.write-emoticon-panel[hidden] {
+  display: none;
+}
+
+.write-emoticon-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.write-editor-wrap.is-picker-open .write-editor {
+  padding-bottom: 360px;
 }
 
 /* write.html 이모티콘 선택창 - post.html 댓글창과 동일 기준 */
@@ -588,7 +617,7 @@
   padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--color-surface);
   box-sizing: border-box;
 }
 
@@ -724,6 +753,19 @@
 }
 
 @media (max-width: 768px) {
+  .write-emoticon-toggle,
+  .write-emoticon-panel .emoticon-setting-link {
+    width: 28px;
+    height: 28px;
+    padding: 2px;
+  }
+
+  .write-emoticon-toggle img,
+  .write-emoticon-panel .emoticon-setting-link img {
+    width: 22px;
+    height: 22px;
+  }
+
   .write-editor-wrap,
   .write-editor-tools,
   .write-editor-tools .emoticon-picker,

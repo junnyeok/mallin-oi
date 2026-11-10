@@ -495,4 +495,14 @@ export async function initInquiryBoard(config) {
   });
 
   await refreshAll({ keepPage: false });
+
+  // 알림에서 들어온 글이 뒤쪽 페이지에 있어도 해당 글로 이동한다.
+  const targetThread = new URLSearchParams(window.location.search).get('thread');
+  const targetIndex = state.threads.findIndex((item) => String(item.id) === targetThread);
+  if (targetIndex >= 0) {
+    state.page = Math.floor(targetIndex / PER_PAGE) + 1;
+    render();
+    const target = listEl.querySelector(`[data-thread-id="${state.threads[targetIndex].id}"]`);
+    target?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
 }

@@ -80,6 +80,7 @@ const nativeCharacterEffectImageFiles = [
   'images/character-effects/spider-web-effect-01.png',
 ];
 const nativeEmoticonImageFiles = [
+  'images/emoticons/settings-cucumber-gear.png',
   ...Array.from(
     { length: 10 },
     (_, index) =>

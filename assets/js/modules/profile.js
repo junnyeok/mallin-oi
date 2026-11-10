@@ -1,3 +1,4 @@
+import { initEmoticonInventoryReturn } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 import { getCurrentUser, loginHref, getUserEmail } from './auth-store.js';
@@ -3399,6 +3400,7 @@ export async function initProfile() {
     .toLowerCase();
 
   const isInventoryPage = pageName === 'inventory';
+  if (isInventoryPage) initEmoticonInventoryReturn();
   const isProfileSettingPage = pageName === 'profile-setting';
 
   if (!['profile', 'profile-setting', 'inventory'].includes(pageName)) return;

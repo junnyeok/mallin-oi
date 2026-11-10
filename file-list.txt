@@ -527,6 +527,7 @@
 ./assets/js/modules/completion-audio-session.js
 ./assets/js/modules/cursor-buddy.js
 ./assets/js/modules/daily-attendance-popup.js
+./assets/js/modules/emoticon-inventory-return.js
 ./assets/js/modules/emoticons.js
 ./assets/js/modules/equipment-events.js
 ./assets/js/modules/event-alarm-picker.js
@@ -577,6 +578,7 @@
 ./assets/js/modules/supabase-client.js
 ./assets/js/modules/update-banner.js
 ./assets/js/modules/work-calendar.js
+./assets/js/modules/write-emoticon-anchor.js
 ./assets/js/modules/write.js
 ./assets/mp3/Burning-Soul.mp3
 ./assets/mp3/Cherry-Smile.mp3
@@ -1105,6 +1107,7 @@
 ./images/emoticons/sad-5.png
 ./images/emoticons/sad-6.png
 ./images/emoticons/sad-7.png
+./images/emoticons/settings-cucumber-gear.png
 ./images/emoticons/sorry-1.png
 ./images/emoticons/sorry-2.png
 ./images/emoticons/sorry-3.png
@@ -1453,6 +1456,7 @@
 ./supabase-SQLEditor/20261028-calendar-category-no-color.sql
 ./supabase-SQLEditor/20261028-calendar-manual-group-backup.sql
 ./supabase-SQLEditor/20261110-eggplant-character.sql
+./supabase-SQLEditor/20261110-inquiry-notifications.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1520,6 +1524,7 @@
 ./supabase/migrations/20261028000000_calendar_category_no_color.sql
 ./supabase/migrations/20261028010000_calendar_manual_group_backup.sql
 ./supabase/migrations/20261110000000_eggplant_character.sql
+./supabase/migrations/20261110010000_inquiry_notifications.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1546,6 +1551,7 @@
 ./tests/cucumber-boy-emoticon-pack.test.mjs
 ./tests/daegu-cucumber-skin.test.mjs
 ./tests/eggplant-character.test.mjs
+./tests/emoticon-inventory-return.test.mjs
 ./tests/empty-road-bgm.test.mjs
 ./tests/fixtures/app-update-popup-browser.html
 ./tests/fixtures/calendar-category-order-browser.html
@@ -1575,6 +1581,8 @@
 ./tests/study-completion-celebration.test.mjs
 ./tests/study-widget-completion.test.mjs
 ./tests/tomato-skins.test.mjs
+./tests/write-editor-regressions.test.mjs
+./tests/write-emoticon-anchor.test.mjs
 ./work.html
 ./write.html
 ./www/account/find-password.html
@@ -1677,6 +1685,7 @@
 ./www/assets/js/modules/completion-audio-session.js
 ./www/assets/js/modules/cursor-buddy.js
 ./www/assets/js/modules/daily-attendance-popup.js
+./www/assets/js/modules/emoticon-inventory-return.js
 ./www/assets/js/modules/emoticons.js
 ./www/assets/js/modules/equipment-events.js
 ./www/assets/js/modules/event-alarm-picker.js
@@ -1727,6 +1736,7 @@
 ./www/assets/js/modules/supabase-client.js
 ./www/assets/js/modules/update-banner.js
 ./www/assets/js/modules/work-calendar.js
+./www/assets/js/modules/write-emoticon-anchor.js
 ./www/assets/js/modules/write.js
 ./www/assets/mp3/mallinoi-reward.mp3
 ./www/assets/social-auth-config.json
@@ -1772,6 +1782,7 @@
 ./www/images/emoticons/emo-cucumberboy-08.png
 ./www/images/emoticons/emo-cucumberboy-09.png
 ./www/images/emoticons/emo-cucumberboy-10.png
+./www/images/emoticons/settings-cucumber-gear.png
 ./www/images/favicon-16x16.png
 ./www/images/favicon-32x32.png
 ./www/images/favicon.ico

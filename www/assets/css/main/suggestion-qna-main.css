@@ -489,6 +489,18 @@
 }
 
 /* ===== MOBILE ===== */
+@media (max-width: 700px), (any-pointer: coarse) {
+  /* iOS 입력 포커스 자동 확대 방지. 사용자의 핀치 확대는 유지한다. */
+  .suggestion-form__textarea,
+  .suggestion-edit-form__textarea,
+  .suggestion-reply-edit-form__textarea,
+  .suggestion-admin-form__textarea,
+  .suggestion-secret-input,
+  .suggestion-secret-unlock-input {
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 640px) {
   .suggestion-form__textarea,
   .suggestion-edit-form__textarea,
