@@ -645,6 +645,61 @@ body[data-page='post'] .logo #siteLogoImg {
   white-space: nowrap;
 }
 
+/* Shared item order controls: inventory cards and the BGM popup. */
+.item-order-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-primary);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 15px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.item-order-button:active { cursor: grabbing; }
+.item-order-button:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.item-order-dragging { opacity: 0.3; }
+.item-order-drop-target { outline: 3px dashed var(--color-primary); outline-offset: -3px; }
+.item-order-ghost {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0.85;
+  margin: 0;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-card);
+}
+.item-order-status {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+  pointer-events: none;
+}
+.bgm-item__body .bgm-item__action {
+  display: block;
+  margin-top: 8px;
+}
+
 .bgm-item__action:hover {
   background: #f8f8f8;
 }
@@ -670,7 +725,8 @@ body[data-page='post'] .logo #siteLogoImg {
     top: auto;
     left: 0;
     right: auto;
-    bottom: calc(100% + var(--space-8));
+    /* Clear the pickle button, positioned 46px above the BGM button. */
+    bottom: calc(100% + 46px + var(--space-8));
     width: min(330px, calc(100vw - var(--space-24)));
     max-height: min(430px, calc(100svh - 180px));
   }

@@ -727,16 +727,10 @@ function renderCommentItem(
                 type="button"
                 class="comment-emoticon-toggle"
                 data-action="toggle-emoticon"
+                      aria-label="이모티콘 열기" aria-expanded="false"
               >
-                🥒 이모티콘
+                <img src="./images/good.png" alt="" />
               </button>
-
-              <a
-                class="emoticon-setting-link"
-                href="./inventory.html#emoticon-inventory"
-              >
-                설정
-              </a>
             </div>
 
             <div
@@ -744,7 +738,7 @@ function renderCommentItem(
               data-role="emoticon-panel"
               hidden
             >
-              ${renderOwnedEmoticonPicker(ownedCommentEmoticons, {
+              ${renderCommentEmoticonPicker(ownedCommentEmoticons, {
                 emptyText:
                   '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
               })}
@@ -800,16 +794,10 @@ function renderCommentItem(
               type="button"
               class="comment-emoticon-toggle"
               data-action="toggle-emoticon"
+                      aria-label="이모티콘 열기" aria-expanded="false"
             >
-              🥒 이모티콘
+              <img src="./images/good.png" alt="" />
             </button>
-
-            <a
-              class="emoticon-setting-link"
-              href="./inventory.html#emoticon-inventory"
-            >
-              설정
-            </a>
           </div>
 
           <div
@@ -817,7 +805,7 @@ function renderCommentItem(
             data-role="emoticon-panel"
             hidden
           >
-            ${renderOwnedEmoticonPicker(ownedCommentEmoticons, {
+            ${renderCommentEmoticonPicker(ownedCommentEmoticons, {
               emptyText:
                 '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
             })}
@@ -1136,16 +1124,32 @@ function setReplyFormMessage(formEl, text, type = '') {
     : 'comment-reply-form__msg';
 }
 
+function renderCommentEmoticonPicker(emoticons, options) {
+  return `
+    <div class="comment-emoticon-panel__header">
+      <span>이모티콘</span>
+      <a class="emoticon-setting-link" href="./inventory.html#emoticon-inventory"
+        aria-label="이모티콘 설정" title="이모티콘 설정">
+        <img src="./images/emoticons/settings-cucumber-gear.png" alt="" />
+      </a>
+    </div>
+    ${renderOwnedEmoticonPicker(emoticons, options)}
+  `;
+}
+
 function closeAllEmoticonPanels() {
   document
     .querySelectorAll('.emoticon-picker[data-role="emoticon-panel"]')
     .forEach((panel) => {
       panel.hidden = true;
+      const toggle = panel.closest('.emoticon-picker-box')?.querySelector('[data-action="toggle-emoticon"]');
+      toggle?.setAttribute('aria-expanded', 'false');
+      toggle?.setAttribute('aria-label', '이모티콘 열기');
     });
 }
 
 function refreshCommentEmoticonUi() {
-  const html = renderOwnedEmoticonPicker(ownedCommentEmoticons, {
+  const html = renderCommentEmoticonPicker(ownedCommentEmoticons, {
     emptyText:
       '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
   });
@@ -1187,6 +1191,8 @@ function toggleEmoticonPanel(button) {
   const nextOpen = panel.hidden;
   closeAllEmoticonPanels();
   panel.hidden = !nextOpen;
+  button.setAttribute('aria-expanded', String(nextOpen));
+  button.setAttribute('aria-label', nextOpen ? '이모티콘 닫기' : '이모티콘 열기');
 }
 
 function insertEmoticonToForm(formEl, emoticonCode) {

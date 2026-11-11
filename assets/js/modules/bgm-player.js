@@ -1,3 +1,4 @@
+import { loadItemOrder, getItemOrder, sortByItemOrder, appendItemOrderButton } from './inventory-order.js';
 import { supabase } from './supabase-client.js';
 import {
   getCurrentSession,
@@ -539,7 +540,6 @@ function renderPlaylist() {
             <p class="bgm-item__title">${escapeHtml(track.title)}</p>
             <p class="bgm-item__meta">${escapeHtml(track.artist || '말린오이닷컴')}</p>
             <span class="bgm-item__state">${stateText}</span>
-          </div>
 
           <button
             type="button"
@@ -548,11 +548,17 @@ function renderPlaylist() {
           >
             ${isActive && isPlaying ? '일시정지' : '재생'}
           </button>
+          </div>
         </div>
       `;
     })
     .join('');
+  const items = playlist.map(track => ({id: track.id, label: track.title}));
+  list.querySelectorAll('.bgm-item').forEach((card, index) => {
+    appendItemOrderButton(card, {userId: authenticatedUserId, type: 'bgm', items, itemId: playlist[index].id});
+  });
 }
+
 
 async function loadOwnedBgmList() {
   const user = await getSessionUser();
@@ -564,21 +570,22 @@ async function loadOwnedBgmList() {
     .eq('user_id', user.id);
 
   const selectedTrackIds = getSavedSelectedTrackIds();
+  const order = await loadItemOrder(user.id, 'bgm');
 
   if (error) {
     console.error('[bgm] load owned bgm failed:', error);
 
-    return BGM_CATALOG.filter(
+    return sortByItemOrder(BGM_CATALOG.filter(
       (item) =>
         item.isDefault && selectedTrackIds.has(String(item?.id || '').trim()),
-    );
+    ), order);
   }
 
   const ownedStoreIds = new Set(
     (data || []).map((row) => String(row?.item_id || '').trim()),
   );
 
-  return [...BGM_CATALOG]
+  return sortByItemOrder([...BGM_CATALOG]
     .filter((item) => {
       const isOwned =
         item?.isDefault ||
@@ -591,7 +598,7 @@ async function loadOwnedBgmList() {
     })
     .sort(
       (a, b) => Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0),
-    );
+    ), order);
 }
 
 function waitForSeekable(player) {
@@ -992,6 +999,15 @@ async function togglePlayPause() {
   await tryPlayCurrentTrack();
 }
 
+function applyPlaylistOrder() {
+  const playingId = playlist[currentIndex]?.id;
+  playlist = sortByItemOrder(playlist, getItemOrder(authenticatedUserId, 'bgm'));
+  currentIndex = Math.max(0, playlist.findIndex(track => track.id === playingId));
+  // Only reorder the list; do not reload audio or reset playback time.
+  saveIndex(currentIndex);
+  renderPlaylist();
+}
+
 function openPanel() {
   const btn = $('bgmBtn');
   const panel = $('bgmPanel');
@@ -1000,6 +1016,10 @@ function openPanel() {
   panel.hidden = false;
   btn.setAttribute('aria-expanded', 'true');
   panelOpen = true;
+  const userId = authenticatedUserId;
+  if (userId) loadItemOrder(userId, 'bgm').then(() => {
+    if (authenticatedUserId === userId) applyPlaylistOrder();
+  });
 }
 
 function closePanel() {
@@ -1075,6 +1095,11 @@ function bindPageLifecycleSave() {
 function bindSelectionWatcher() {
   if (selectionWatcherBinded) return;
   selectionWatcherBinded = true;
+  window.addEventListener('mallin:item-order-changed', event => {
+    if (event.detail?.userId !== authenticatedUserId || event.detail?.type !== 'bgm') return;
+    applyPlaylistOrder();
+  });
+
 
   window.addEventListener('bgm-selection-changed', async () => {
     const user = await getSessionUser();

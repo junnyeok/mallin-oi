@@ -14,7 +14,10 @@ const SQL_PATH = 'supabase-SQLEditor/20260906-broccoli-girl-emoticon-pack.sql';
 const MIGRATION_PATH = 'supabase/migrations/20260906010000_broccoli_girl_emoticon_pack.sql';
 const emoticonSource = await readFile('assets/js/modules/emoticons.js', 'utf8');
 // 브라우저 전용 Supabase 연결만 대체한다. 실제 선택기/토큰 렌더러 코드를 실행한다.
+const orderSource = (await readFile('assets/js/modules/inventory-order.js', 'utf8')).replace("import { supabase } from './supabase-client.js';", 'const supabase = {};');
+const orderUrl = `data:text/javascript;base64,${Buffer.from(orderSource).toString('base64')}`;
 const sourceForNode = emoticonSource
+  .replace("from './inventory-order.js'", `from '${orderUrl}'`)
   .replace("from './site-version.js'", `from '${new URL('../assets/js/modules/site-version.js', import.meta.url).href}'`)
   .replace("import { supabase } from './supabase-client.js';", 'const supabase = {};')
   .replace('await import(`./store-data.js?v=${MODULE_VERSION}`)', `await import('${storeUrl.href}')`);

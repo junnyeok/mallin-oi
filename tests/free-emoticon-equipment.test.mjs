@@ -15,6 +15,7 @@ const storeUrl = new URL('../assets/js/modules/store-data.js?v=test', import.met
 const { BASIC_EMOTICON_PACK, STORE_ITEMS } = await import(storeUrl.href);
 const USER_ID = 'equipment-test-user';
 const BASIC_ID = 'emo-basic-01';
+let metadata = {};
 let rows;
 let requests;
 let updateError;
@@ -22,6 +23,7 @@ let missingEquipmentColumn;
 
 // 접속 대신 저장소만 대체하고 조회·정규화·저장·렌더링은 실제 모듈을 실행한다.
 const client = {
+  auth: { async getUser() { return {data: {user: {id: USER_ID, user_metadata: metadata}}}; } },
   from(table) {
     assert.equal(table, 'user_emoticons');
     const request = { filters: [] };
@@ -49,7 +51,10 @@ const client = {
   },
 };
 globalThis.__emoticonEquipmentTestClient = client;
+const orderSource = (await readFile('assets/js/modules/inventory-order.js', 'utf8')).replace("import { supabase } from './supabase-client.js';", 'const supabase = globalThis.__emoticonEquipmentTestClient;');
+const orderUrl = `data:text/javascript;base64,${Buffer.from(orderSource).toString('base64')}`;
 const sourceForNode = source
+  .replace("from './inventory-order.js'", `from '${orderUrl}'`)
   .replace("from './site-version.js'", `from '${new URL('../assets/js/modules/site-version.js', import.meta.url).href}'`)
   .replace("import { supabase } from './supabase-client.js';", 'const supabase = globalThis.__emoticonEquipmentTestClient;')
   .replace('await import(`./store-data.js?v=${MODULE_VERSION}`)', `await import('${storeUrl.href}')`);
@@ -60,6 +65,7 @@ const {
 delete globalThis.__emoticonEquipmentTestClient;
 
 function resetRows(equipped = true) {
+  metadata = {};
   rows = BASIC_EMOTICON_PACK.map((image) => ({
     user_id: USER_ID, item_id: BASIC_ID, emoticon_code: image.code,
     emoticon_label: image.label, image_path: image.imagePath,
@@ -175,4 +181,17 @@ test('변경 원본과 www가 바이트 단위로 일치하고 새 테스트 경
   }
   const paths = (await readFile('file-list.txt', 'utf8')).split('\n');
   assert.equal(paths.filter((path) => path === './tests/free-emoticon-equipment.test.mjs').length, 1);
+});
+
+
+test('저장한 팩 순서가 공통 글쓰기·댓글 선택기에 반영되고 해제한 팩은 숨긴다', async () => {
+  resetRows();
+  rows.push({ ...rows[0], item_id: 'emo-cheer-01', emoticon_code: 'cheer-1' });
+  metadata = { mallin_emoticon_order_v1: ['emo-cheer-01', BASIC_ID] };
+  const owned = await loadOwnedEmoticons(USER_ID);
+  assert.equal(owned[0].item_id, 'emo-cheer-01');
+  const html = renderOwnedEmoticonPicker(owned);
+  assert.ok(html.indexOf('data-pack-key="cheer"') < html.indexOf('data-pack-key="basic"'));
+  await setEmoticonPackEquipped(USER_ID, 'emo-cheer-01', false);
+  assert.equal((await loadOwnedEmoticons(USER_ID))[0].item_id, BASIC_ID);
 });

@@ -1,3 +1,4 @@
+import { loadItemOrder, getItemOrder, sortByItemOrder, appendItemOrderButton } from './inventory-order.js';
 import { initEmoticonInventoryReturn } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
@@ -1352,8 +1353,8 @@ const INVENTORY_VISIBLE_LIMITS = {
   profileCharacterSkinList: 6,
   profileBackgroundList: 4,
   profileFrameList: 4,
-  profileBgmList: 8,
-  profileEmoticonList: 10,
+  profileBgmList: 3,
+  profileEmoticonList: 6,
 };
 
 let inventoryResizeTimer = null;
@@ -1392,26 +1393,30 @@ function getInventoryGridColumnCount(listEl) {
 }
 
 function getInventoryVisibleLimitByViewport(listEl) {
+  const columnCount = getInventoryGridColumnCount(listEl);
   const fixedLimit = INVENTORY_VISIBLE_LIMITS[listEl?.id];
-  if (Number.isFinite(fixedLimit)) return fixedLimit;
+  // These two sections use an exact item count on every screen size.
+  if (listEl?.id === 'profileBgmList' || listEl?.id === 'profileEmoticonList') {
+    return fixedLimit;
+  }
 
   const isMobile = window.matchMedia(INVENTORY_MOBILE_QUERY).matches;
+  let limit;
 
-  if (isMobile) {
-    return 4;
+  if (Number.isFinite(fixedLimit)) {
+    limit = fixedLimit;
+  } else if (isMobile) {
+    limit = 4;
+  } else if (columnCount > 0) {
+    limit = Math.max(columnCount * 2, 4);
+  } else {
+    limit = listEl?.classList?.contains('profile-character-grid--bgm') ? 8 : 6;
   }
 
-  const columnCount = getInventoryGridColumnCount(listEl);
-
-  if (columnCount > 0) {
-    return Math.max(columnCount * 2, 4);
-  }
-
-  if (listEl?.classList?.contains('profile-character-grid--bgm')) {
-    return 8;
-  }
-
-  return 6;
+  // Fill the last visible row before placing remaining items behind More.
+  return columnCount > 0
+    ? Math.ceil(limit / columnCount) * columnCount
+    : limit;
 }
 
 function removeInventoryMoreButton(wrapEl) {
@@ -2330,20 +2335,7 @@ function renderBgmCard(
 ) {
   const isOwned = track?.is_owned !== false;
   const isSelected = selectedTrackIds.has(String(track?.id || '').trim());
-  const isDefaultTrack = track?.isDefault === true;
-  const storeItemId = String(track?.storeItemId || '').trim();
   const isFeatured = isFeaturedBgmTrack(track, featuredBgmItemId);
-  const canSetFeatured = isOwned && (isDefaultTrack || !!storeItemId);
-  const featuredActionLabel = isFeatured
-    ? isDefaultTrack
-      ? '대표 BGM 설정됨'
-      : '대표 BGM 해제'
-    : '대표로 설정';
-  const featuredActionAriaLabel = isFeatured
-    ? isDefaultTrack
-      ? '현재 대표 BGM 설정됨'
-      : '대표 BGM 해제'
-    : '대표 BGM으로 설정';
   const detailHref = track?.storeItemId
     ? getStoreItemDetailHref(track.storeItemId)
     : '';
@@ -2390,22 +2382,6 @@ function renderBgmCard(
           : ''
       }
 
-      ${
-        canSetFeatured
-          ? `
-            <button
-              type="button"
-              class="profile-bgm-card__featured-action"
-              data-profile-featured-bgm-item-id="${escapeHtml(storeItemId)}"
-              data-profile-featured-bgm-default="${isDefaultTrack ? 'true' : 'false'}"
-              aria-pressed="${isFeatured ? 'true' : 'false'}"
-              aria-label="${escapeHtml(track?.title || 'BGM')} ${featuredActionAriaLabel}"
-            >
-              ${featuredActionLabel}
-            </button>
-          `
-          : ''
-      }
     </div>
   `;
 }
@@ -2462,17 +2438,8 @@ function renderBgmSection({
   function renderList() {
     const selectedTrackIds = getNormalizedSelectedTrackIds();
 
-    const currentTrackId = String(getLocalCurrentBgmTrackId() || '').trim();
 
-    const sortedBgmRows = sortEquippedItemFirst(bgmRows, (track) => {
-      const trackId = String(track?.id || '').trim();
-
-      return (
-        isFeaturedBgmTrack(track, featuredBgmItemId) ||
-        trackId === currentTrackId ||
-        selectedTrackIds.has(trackId)
-      );
-    });
+    const sortedBgmRows = sortByItemOrder(bgmRows, getItemOrder(bgmPreferenceUserId, 'bgm'));
 
     listEl.innerHTML = sortedBgmRows
       .map((track) =>
@@ -2480,6 +2447,11 @@ function renderBgmSection({
       )
       .join('');
 
+    const orderItems = sortedBgmRows.filter(track => track.is_owned).map(track => ({id: track.id, label: track.title}));
+    listEl.querySelectorAll('.profile-bgm-card').forEach((card, index) => {
+      const track = sortedBgmRows[index];
+      if (track.is_owned) appendItemOrderButton(card, {userId: bgmPreferenceUserId, type: 'bgm', items: orderItems, itemId: track.id, onSaved: renderList});
+    });
     applyInventoryLimitByIds('profileBgmWrap', 'profileBgmList');
 
     Array.from(listEl.querySelectorAll('[data-bgm-track-id]')).forEach(
@@ -2536,72 +2508,94 @@ function renderBgmSection({
       },
     );
 
-    Array.from(
-      listEl.querySelectorAll('[data-profile-featured-bgm-item-id]'),
-    ).forEach((button) => {
-      button.disabled = isFeaturedBgmSaving;
-
-      button.addEventListener('click', async () => {
-        if (isFeaturedBgmSaving) return;
-
-        const itemId = String(
-          button.dataset.profileFeaturedBgmItemId || '',
-        ).trim();
-        const isDefaultTrack =
-          button.dataset.profileFeaturedBgmDefault === 'true';
-        const isFeatured = isDefaultTrack
-          ? !featuredBgmItemId
-          : itemId === featuredBgmItemId;
-
-        if (isDefaultTrack && isFeatured) {
-          setMsg('기본 환영 BGM이 이미 대표 BGM으로 설정되어 있어.', 'green');
-          return;
-        }
-
-        if (!isDefaultTrack && (!itemId || !ownedStoreItemIds.has(itemId))) {
-          setMsg('보유한 BGM만 대표로 설정할 수 있어.', 'red');
-          return;
-        }
-
-        const nextItemId =
-          isDefaultTrack || itemId === featuredBgmItemId ? null : itemId;
-        isFeaturedBgmSaving = true;
-        renderList();
-
-        try {
-          const result = await saveMyProfileFeaturedBgm(nextItemId);
-          featuredBgmItemId = String(result.itemId || '').trim();
-          profileRow = {
-            ...profileRow,
-            profile_featured_bgm_item_id: result.itemId,
-          };
-
-          setMsg(
-            nextItemId
-              ? result.message || '대표 BGM 설정 완료!'
-              : '기본 환영 BGM으로 변경했어.',
-            'green',
-          );
-
-          emitEquipmentChanged({
-            userId: bgmPreferenceUserId,
-            source: 'profile-featured-bgm',
-            changed: ['profileFeaturedBgm'],
-          });
-        } catch (error) {
-          console.error('[profile] save featured BGM failed:', error);
-          setMsg(
-            error?.message || '대표 BGM 저장 중 오류가 발생했어.',
-            'red',
-          );
-        } finally {
-          isFeaturedBgmSaving = false;
-          renderList();
-        }
-      });
-    });
   }
 
+  // Keep representative-song management separate from playlist cards.
+  wrapEl.querySelector('.profile-bgm-manager')?.remove();
+  const heading = wrapEl.querySelector('.profile-character-inventory__title');
+  heading.querySelector('.profile-bgm-manage-button')?.remove();
+  heading.classList.add('profile-bgm-heading');
+  const manageButton = document.createElement('button');
+  manageButton.type = 'button';
+  manageButton.className = 'profile-bgm-manage-button';
+  manageButton.textContent = '대표곡 관리';
+  manageButton.setAttribute('aria-expanded', 'false');
+  manageButton.setAttribute('aria-controls', 'profileBgmManager');
+  heading.append(manageButton);
+
+  const manager = document.createElement('div');
+  manager.id = 'profileBgmManager';
+  manager.className = 'profile-bgm-manager';
+  manager.hidden = true;
+  manager.innerHTML = `
+    <label for="profileFeaturedBgmSelect">프로필 대표 BGM</label>
+    <select id="profileFeaturedBgmSelect">
+      ${bgmRows.filter(track => track.is_owned && (track.isDefault || track.storeItemId)).map(track => `
+        <option value="${escapeHtml(track.isDefault ? '' : track.storeItemId)}">${escapeHtml(track.title)}${track.isDefault ? ' (기본곡 · 대표 설정 해제)' : ''}</option>
+      `).join('')}
+    </select>
+    <div class="profile-bgm-manager__actions">
+      <button type="button" class="profile-bgm-manage-button" data-featured-save>저장</button>
+      <button type="button" class="profile-bgm-manage-button" data-featured-cancel>취소</button>
+    </div>
+    <p role="status" class="profile-bgm-manager__status"></p>
+  `;
+  heading.after(manager);
+  const select = manager.querySelector('select');
+  const saveButton = manager.querySelector('[data-featured-save]');
+  const cancelButton = manager.querySelector('[data-featured-cancel]');
+  const status = manager.querySelector('[role="status"]');
+  function closeManager() {
+    manager.hidden = true;
+    manageButton.setAttribute('aria-expanded', 'false');
+    manageButton.focus();
+  }
+  manageButton.onclick = () => {
+    if (!manager.hidden) { closeManager(); return; }
+    select.value = featuredBgmItemId;
+    status.textContent = '';
+    manager.hidden = false;
+    manageButton.setAttribute('aria-expanded', 'true');
+    select.focus();
+  };
+  cancelButton.onclick = closeManager;
+  manager.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !isFeaturedBgmSaving) closeManager();
+  });
+  saveButton.onclick = async () => {
+    if (isFeaturedBgmSaving) return;
+    const nextItemId = select.value || null;
+    if (nextItemId && !ownedStoreItemIds.has(nextItemId)) return;
+    if ((nextItemId || '') === featuredBgmItemId) { closeManager(); return; }
+    isFeaturedBgmSaving = true;
+    [select, saveButton, cancelButton, manageButton].forEach(control => { control.disabled = true; });
+    status.textContent = '대표곡을 저장하고 있어.';
+    try {
+      const result = await saveMyProfileFeaturedBgm(nextItemId);
+      featuredBgmItemId = String(result.itemId || '').trim();
+      profileRow = {...profileRow, profile_featured_bgm_item_id: result.itemId};
+      setMsg(nextItemId ? result.message || '대표 BGM 설정 완료!' : '기본 환영 BGM으로 변경했어.', 'green');
+      emitEquipmentChanged({userId: bgmPreferenceUserId, source: 'profile-featured-bgm', changed: ['profileFeaturedBgm']});
+      renderList();
+      manager.hidden = true;
+      manageButton.setAttribute('aria-expanded', 'false');
+    } catch (error) {
+      console.error('[profile] save featured BGM failed:', error);
+      status.textContent = error?.message || '대표 BGM 저장 중 오류가 발생했어.';
+    } finally {
+      isFeaturedBgmSaving = false;
+      [select, saveButton, cancelButton, manageButton].forEach(control => { control.disabled = false; });
+      if (manager.hidden) manageButton.focus();
+    }
+  };
+
+  loadItemOrder(bgmPreferenceUserId, 'bgm').then(renderList);
+  window.__mallinBgmOrderAbort?.abort();
+  const orderEvents = new AbortController();
+  window.__mallinBgmOrderAbort = orderEvents;
+  window.addEventListener('mallin:item-order-changed', event => {
+    if (event.detail?.userId === bgmPreferenceUserId && event.detail?.type === 'bgm') renderList();
+  }, {signal: orderEvents.signal});
   renderList();
 }
 
@@ -2612,9 +2606,10 @@ function renderEmoticonPackCard(pack) {
     : '미장착 · 클릭하면 장착';
 
   return `
+    <div class="profile-character-card profile-emoticon-card ${isEquipped ? 'is-equipped' : ''}">
     <button
       type="button"
-      class="profile-character-card profile-emoticon-card ${isEquipped ? 'is-equipped' : ''}"
+      class="profile-emoticon-card__selection"
       data-emoticon-pack-item-id="${escapeHtml(pack?.itemId || '')}"
       data-equipped="${isEquipped ? 'true' : 'false'}"
       aria-pressed="${isEquipped ? 'true' : 'false'}"
@@ -2631,6 +2626,7 @@ function renderEmoticonPackCard(pack) {
         ${escapeHtml(metaText)}
       </div>
     </button>
+    </div>
   `;
 }
 
@@ -2660,12 +2656,15 @@ async function renderEmoticonInventorySection({
     return;
   }
 
-  const sortedPacks = sortEquippedItemFirst(
-    packs,
-    (pack) => pack?.isEquipped === true,
-  );
+  const order = await loadItemOrder(userId, 'emoticon');
+  const sortedPacks = sortByItemOrder(packs, order, pack => pack.itemId);
 
   listEl.innerHTML = sortedPacks.map(renderEmoticonPackCard).join('');
+  listEl.querySelectorAll('.profile-emoticon-card').forEach((card, index) => {
+    appendItemOrderButton(card, {userId, type: 'emoticon', items: sortedPacks.map(pack => ({id: pack.itemId, label: pack.label})),
+      itemId: sortedPacks[index].itemId, onSaved: () => renderEmoticonInventorySection({isOwnProfile, currentUser})});
+  });
+
 
   applyInventoryLimitByIds('profileEmoticonWrap', 'profileEmoticonList');
 

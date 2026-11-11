@@ -386,6 +386,17 @@
 /* =========================
   FEATURED BGM CONTROLS
 ========================= */
+.profile-bgm-card,
+.profile-emoticon-card { position: relative; padding-top: 34px; }
+.profile-bgm-card > .item-order-button,
+.profile-emoticon-card > .item-order-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.profile-emoticon-card__selection { text-align: center; }
+
+.profile-emoticon-card__selection,
 .profile-bgm-card__selection {
   display: flex;
   width: 100%;
@@ -401,8 +412,9 @@
   cursor: pointer;
 }
 
+.profile-emoticon-card__selection:focus-visible,
 .profile-bgm-card__selection:focus-visible,
-.profile-bgm-card__featured-action:focus-visible {
+.profile-bgm-manage-button:focus-visible {
   outline: 3px solid var(--color-primary);
   outline-offset: 3px;
 }
@@ -420,8 +432,8 @@
   font-weight: 800;
 }
 
-.profile-bgm-card__featured-action {
-  width: 100%;
+.profile-bgm-manage-button {
+  flex-shrink: 0;
   min-height: 40px;
   padding: var(--space-8) var(--space-12);
   border: 2px solid var(--color-primary);
@@ -438,11 +450,8 @@
   box-shadow: 0 0 0 3px rgba(170, 208, 94, 0.24);
 }
 
-.profile-bgm-card.is-featured .profile-bgm-card__featured-action {
-  background: var(--color-primary);
-}
 
-.profile-bgm-card__featured-action:disabled {
+.profile-bgm-manage-button:disabled {
   cursor: wait;
   opacity: 0.62;
 }
@@ -459,12 +468,7 @@
     line-height: 1.2;
   }
 
-  .profile-bgm-card__featured-action {
-    min-height: 32px;
-    padding: var(--space-4) var(--space-6);
-    font-size: 10px;
-    line-height: 1.2;
-  }
+
 }
 
 /* =========================
@@ -608,3 +612,37 @@
     height: 52px;
   }
 }
+
+.profile-bgm-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+.profile-bgm-manager {
+  padding: var(--space-12);
+  margin-bottom: var(--space-12);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+}
+.profile-bgm-manager:not([hidden]) {
+  display: grid;
+  gap: var(--space-8);
+  border-radius: 16px;
+}
+.profile-bgm-manager select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+.profile-bgm-manager__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+.profile-bgm-manager__status { margin: 0; }
+.profile-bgm-manager__status:empty { display: none; }

@@ -546,6 +546,7 @@
 ./assets/js/modules/event-calendar.js
 ./assets/js/modules/inquiry-board-repo.js
 ./assets/js/modules/inquiry-board.js
+./assets/js/modules/inventory-order.js
 ./assets/js/modules/layout-includes.js
 ./assets/js/modules/login.js
 ./assets/js/modules/mobile-stability.js
@@ -1578,6 +1579,7 @@
 ./tests/fixtures/event-alarm-browser.html
 ./tests/fixtures/study-completion-celebration-browser.html
 ./tests/free-emoticon-equipment.test.mjs
+./tests/inventory-order.test.mjs
 ./tests/new-character-skins.test.mjs
 ./tests/paprikagirl-character.test.mjs
 ./tests/pixel-heart-bgm.test.mjs
@@ -1712,6 +1714,7 @@
 ./www/assets/js/modules/event-calendar.js
 ./www/assets/js/modules/inquiry-board-repo.js
 ./www/assets/js/modules/inquiry-board.js
+./www/assets/js/modules/inventory-order.js
 ./www/assets/js/modules/layout-includes.js
 ./www/assets/js/modules/login.js
 ./www/assets/js/modules/mobile-stability.js

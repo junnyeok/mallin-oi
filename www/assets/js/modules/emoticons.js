@@ -1,3 +1,4 @@
+import { loadItemOrder, sortByItemOrder } from './inventory-order.js';
 import { withAssetVersion } from './site-version.js';
 import { supabase } from './supabase-client.js';
 
@@ -198,7 +199,8 @@ function groupOwnedEmoticonsByPack(emoticons = []) {
     grouped.get(key).push(item);
   });
 
-  return PACK_META.map((pack) => ({
+  const packOrder = [...new Set(emoticons.map(row => row.item_id))];
+  return sortByItemOrder(PACK_META, packOrder, pack => pack.itemId).map((pack) => ({
     ...pack,
     emoticons: grouped.get(pack.key) || [],
   })).filter((pack) => pack.emoticons.length > 0);
@@ -298,9 +300,8 @@ export function getEmoticonPackByItemId(itemId = '') {
 
 export async function loadOwnedEmoticons(userId) {
   try {
-    return (await loadOwnedEmoticonRows(userId)).filter(
-      (row) => row.is_equipped,
-    );
+    const rows = (await loadOwnedEmoticonRows(userId)).filter(row => row.is_equipped);
+    return sortByItemOrder(rows, await loadItemOrder(userId, 'emoticon'), row => row.item_id);
   } catch (error) {
     console.error('[emoticons] loadOwnedEmoticons failed:', error);
     return [];
@@ -498,6 +499,11 @@ export function renderOwnedEmoticonPicker(
     .join('');
 
   return `
+    ${packGroups.length > 5 ? `<div class="emoticon-picker__swipe-hint">
+      <span class="emoticon-picker__swipe-arrow" aria-hidden="true">‹</span>
+      <span>좌우로 밀어서 종류 보기</span>
+      <span class="emoticon-picker__swipe-arrow" aria-hidden="true">›</span>
+    </div>` : ''}
     <div class="emoticon-picker__packs" aria-label="이모티콘 팩 목록">
       ${tabsHtml}
     </div>

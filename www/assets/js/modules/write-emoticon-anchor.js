@@ -1,10 +1,15 @@
 // Picker controls are siblings of the editable content, never part of saved HTML.
-export function getPickerGeometry({ editorTop, editorBottom, caretTop, caretBottom, viewportTop, viewportBottom }) {
-  const top = Math.max(editorTop + 8, viewportTop + 8);
+export function getPickerGeometry({ editorTop, editorBottom, caretTop, caretBottom, viewportBottom }) {
   const bottom = Math.min(editorBottom - 8, viewportBottom - 8);
-  const buttonTop = Math.max(top, Math.min(caretTop, bottom - 44));
+  // Keep the button on the caret line, even when the page scrolls out of view.
+  const buttonTop = caretTop;
   const panelTop = Math.max(buttonTop + 50, caretBottom + 8);
-  return { buttonTop, panelTop, panelHeight: Math.max(0, Math.min(320, bottom - panelTop)) };
+  return { buttonTop, panelTop, caretVisible: caretTop >= editorTop && caretTop < editorBottom, panelHeight: Math.max(0, Math.min(320, bottom - panelTop)) };
+}
+
+export function rectsOverlap(a, b) {
+  return a.width > 0 && a.height > 0 && a.left < b.right && a.right > b.left &&
+    a.top < b.bottom && a.bottom > b.top;
 }
 
 export function attachWriteEmoticonAnchor({ editor, toggle, panel, getRange }) {
@@ -73,9 +78,25 @@ export function attachWriteEmoticonAnchor({ editor, toggle, panel, getRange }) {
     const view = viewport();
     const layout = getPickerGeometry({ editorTop: box.top, editorBottom: box.bottom,
       caretTop: caret.top, caretBottom: caret.bottom, viewportTop: view.top, viewportBottom: view.bottom });
+    // Controls sit outside the scrolling editor, so hide them when its caret is clipped.
+    toggle.style.visibility = layout.caretVisible ? '' : 'hidden';
+    panel.style.visibility = layout.caretVisible ? '' : 'hidden';
     wrap.style.setProperty('--write-emoticon-top', `${layout.buttonTop - origin}px`);
     wrap.style.setProperty('--write-emoticon-panel-top', `${layout.panelTop - origin}px`);
     wrap.style.setProperty('--write-emoticon-panel-height', `${layout.panelHeight}px`);
+    const buttonRect = toggle.getBoundingClientRect();
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    const textRange = document.createRange();
+    let overlapping = false;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent.trim()) continue;
+      textRange.selectNodeContents(node);
+      if (Array.from(textRange.getClientRects()).some(rect => rectsOverlap(rect, buttonRect))) {
+        overlapping = true;
+        break;
+      }
+    }
+    toggle.classList.toggle('is-overlapping-text', layout.caretVisible && overlapping);
   }
   function schedule() {
     if (!disposed && !frame) frame = requestAnimationFrame(update);
