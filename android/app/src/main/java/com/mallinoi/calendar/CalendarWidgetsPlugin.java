@@ -47,7 +47,8 @@ public class CalendarWidgetsPlugin extends Plugin {
     private void applyAppearance(String appearance) {
         getActivity().runOnUiThread(() -> {
             boolean dark = "dark".equals(appearance);
-            int background = dark ? Color.rgb(23, 25, 30) : Color.WHITE;
+            // Match the app surface behind the WebView and system bars.
+            int background = dark ? Color.rgb(25, 31, 30) : Color.rgb(247, 249, 242);
             android.view.Window window = getActivity().getWindow();
             window.setStatusBarColor(background);
             window.setNavigationBarColor(background);

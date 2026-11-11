@@ -3,6 +3,7 @@ import { SOCIAL_PROVIDERS, socialApi, socialMessage, pendingRequest,
 import { supabase } from './supabase-client.js';
 import { loginHref, mypageHref, homeHref } from './auth-store.js';
 import { initSocialAuthNative } from './social-auth-native.js';
+import { initCalendarWidgetNavigation } from './calendar-native-widgets.js';
 
 const $ = id => document.getElementById(id);
 const status = message => { $('socialStatus').textContent = message; };
@@ -79,8 +80,10 @@ async function managementPage() {
 $('socialLoginLink').href = loginHref();
 if ($('socialBack')) $('socialBack').href = mypageHref();
 await initSocialAuthNative().catch(() => {});
-await (document.body.dataset.page === 'social-callback' ? callbackPage() : managementPage())
-  .catch(error => {
-    status(socialMessage(error));
-    if ($('socialBack')) { $('socialBack').href = homeHref(); $('socialBack').textContent = '‹ 홈으로'; }
-  });
+if (!await initCalendarWidgetNavigation()) {
+  await (document.body.dataset.page === 'social-callback' ? callbackPage() : managementPage())
+    .catch(error => {
+      status(socialMessage(error));
+      if ($('socialBack')) { $('socialBack').href = homeHref(); $('socialBack').textContent = '‹ 홈으로'; }
+    });
+}

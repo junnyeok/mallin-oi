@@ -40,8 +40,12 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
     private func applyAppearance(_ appearance: String, completion: (() -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
             let dark = appearance == "dark"
-            let background = dark ? UIColor(red: 23 / 255, green: 25 / 255, blue: 30 / 255, alpha: 1) : .white
+            // Match the app surface, including overscroll and the status bar.
+            let background = dark
+                ? UIColor(red: 25 / 255, green: 31 / 255, blue: 30 / 255, alpha: 1)
+                : UIColor(red: 247 / 255, green: 249 / 255, blue: 242 / 255, alpha: 1)
             self?.bridge?.viewController?.overrideUserInterfaceStyle = dark ? .dark : .light
+            self?.bridge?.statusBarStyle = dark ? .lightContent : .darkContent
             self?.bridge?.webView?.backgroundColor = background
             self?.bridge?.webView?.scrollView.backgroundColor = background
             completion?()

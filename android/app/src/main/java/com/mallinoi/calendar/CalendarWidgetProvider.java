@@ -75,7 +75,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         WidgetTheme theme = getTheme(dark);
         boolean isCompactTwoWeek = isCompactTwoWeek(context, appWidgetManager, appWidgetId);
 
-        views.setTextViewText(R.id.widgetTitle, label);
+        views.setTextViewText(R.id.widgetTitle, "work".equals(calendarType) ? "업무" : "event".equals(calendarType) ? "이벤트" : "자기개발");
+        views.setImageViewResource(R.id.widgetMascot, "work".equals(calendarType) ? R.drawable.widget_mascot_work
+                : "event".equals(calendarType) ? R.drawable.widget_mascot_event : R.drawable.widget_mascot_study);
+        views.setInt(R.id.widgetSubtitle, "setBackgroundResource", theme.labelBackground);
         views.setTextColor(R.id.widgetTitle, theme.text);
         views.setTextViewText(R.id.widgetSubtitle, getRangeLabel());
         views.setTextColor(R.id.widgetSubtitle, theme.mutedText);
@@ -294,7 +297,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                             isCompactTwoWeek
                     )
             );
-            dayViews.setTextColor(R.id.widgetDayDate, isToday ? theme.onPrimary : isCurrentMonth ? theme.text : theme.mutedText);
+            dayViews.setTextColor(R.id.widgetDayDate, isToday ? theme.text : isCurrentMonth ? theme.text : theme.mutedText);
             dayViews.setInt(R.id.widgetDayContent, "setBackgroundResource", isToday ? theme.todayBackground : theme.isDark ? R.drawable.widget_day_dark_background : R.drawable.widget_day_background);
             dayViews.setViewPadding(
                     R.id.widgetDayContent,
@@ -375,7 +378,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                                     isCompactTwoWeek
                             )
                     );
-                    dayViews.setTextColor(R.id.widgetDayEventText2, isToday ? theme.onPrimary : theme.mutedText);
+                    dayViews.setTextColor(R.id.widgetDayEventText2, isToday ? theme.text : theme.mutedText);
                     dayViews.setBoolean(R.id.widgetDayEventText2, "setSingleLine", true);
                     dayViews.setInt(R.id.widgetDayEventText2, "setMaxLines", 1);
                     dayViews.setViewVisibility(R.id.widgetDayEventBackground2, View.GONE);
@@ -399,7 +402,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             if (moreCount > 0) {
                 dayViews.setTextViewText(R.id.widgetDayMore, "+" + moreCount);
                 dayViews.setTextViewTextSize(R.id.widgetDayMore, TypedValue.COMPLEX_UNIT_SP, getMoreTextSize());
-                dayViews.setTextColor(R.id.widgetDayMore, isToday ? theme.onPrimary : theme.mutedText);
+                dayViews.setTextColor(R.id.widgetDayMore, isToday ? theme.text : theme.mutedText);
                 dayViews.setViewVisibility(R.id.widgetDayMore, View.VISIBLE);
             }
 
@@ -586,23 +589,27 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         int primary;
         int secondary;
         int todayBackground;
+        int labelBackground;
         if ("work".equals(calendarType)) {
-            primary = dark ? Color.rgb(89, 89, 222) : Color.rgb(52, 52, 206);
+            primary = dark ? Color.rgb(182, 166, 238) : Color.rgb(113, 96, 182);
             secondary = Color.rgb(245, 245, 70);
             todayBackground = dark ? R.drawable.widget_today_work_dark_background : R.drawable.widget_today_work_background;
+            labelBackground = dark ? R.drawable.widget_label_work_dark : R.drawable.widget_label_work;
         } else if ("event".equals(calendarType)) {
-            primary = Color.rgb(250, 133, 154);
+            primary = dark ? Color.rgb(237, 171, 193) : Color.rgb(233, 163, 184);
             secondary = Color.rgb(255, 192, 203);
-            todayBackground = R.drawable.widget_today_event_background;
+            todayBackground = dark ? R.drawable.widget_today_event_dark_background : R.drawable.widget_today_event_background;
+            labelBackground = dark ? R.drawable.widget_label_event_dark : R.drawable.widget_label_event;
         } else {
-            primary = dark ? Color.rgb(110, 110, 121) : Color.rgb(60, 60, 60);
+            primary = dark ? Color.rgb(168, 180, 167) : Color.rgb(98, 107, 99);
             secondary = Color.rgb(187, 187, 187);
             todayBackground = dark ? R.drawable.widget_today_study_dark_background : R.drawable.widget_today_study_background;
+            labelBackground = dark ? R.drawable.widget_label_study_dark : R.drawable.widget_label_study;
         }
         return new WidgetTheme(primary, secondary,
-                dark ? Color.rgb(242, 243, 245) : Color.rgb(17, 17, 17),
-                dark ? Color.rgb(180, 184, 194) : Color.rgb(102, 102, 102),
-                todayBackground, dark && "event".equals(calendarType) ? Color.rgb(23, 25, 30) : Color.WHITE, dark);
+                dark ? Color.rgb(237, 242, 233) : Color.rgb(48, 58, 48),
+                dark ? Color.rgb(178, 192, 176) : Color.rgb(101, 112, 95),
+                todayBackground, labelBackground, dark);
     }
 
     int[] getDayIds() {
@@ -650,16 +657,16 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         final int text;
         final int mutedText;
         final int todayBackground;
-        final int onPrimary;
+        final int labelBackground;
         final boolean isDark;
 
-        WidgetTheme(int primary, int secondary, int text, int mutedText, int todayBackground, int onPrimary, boolean isDark) {
+        WidgetTheme(int primary, int secondary, int text, int mutedText, int todayBackground, int labelBackground, boolean isDark) {
             this.primary = primary;
             this.secondary = secondary;
             this.text = text;
             this.mutedText = mutedText;
             this.todayBackground = todayBackground;
-            this.onPrimary = onPrimary;
+            this.labelBackground = labelBackground;
             this.isDark = isDark;
         }
     }

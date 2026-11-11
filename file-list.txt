@@ -216,6 +216,9 @@
 ./android/app/src/main/res/drawable-land-xhdpi/splash.png
 ./android/app/src/main/res/drawable-land-xxhdpi/splash.png
 ./android/app/src/main/res/drawable-land-xxxhdpi/splash.png
+./android/app/src/main/res/drawable-nodpi/widget_mascot_event.png
+./android/app/src/main/res/drawable-nodpi/widget_mascot_study.png
+./android/app/src/main/res/drawable-nodpi/widget_mascot_work.png
 ./android/app/src/main/res/drawable-port-hdpi/splash.png
 ./android/app/src/main/res/drawable-port-mdpi/splash.png
 ./android/app/src/main/res/drawable-port-xhdpi/splash.png
@@ -232,6 +235,12 @@
 ./android/app/src/main/res/drawable/widget_event_row_background.xml
 ./android/app/src/main/res/drawable/widget_holiday_badge_background.xml
 ./android/app/src/main/res/drawable/widget_holiday_dark_background.xml
+./android/app/src/main/res/drawable/widget_label_event.xml
+./android/app/src/main/res/drawable/widget_label_event_dark.xml
+./android/app/src/main/res/drawable/widget_label_study.xml
+./android/app/src/main/res/drawable/widget_label_study_dark.xml
+./android/app/src/main/res/drawable/widget_label_work.xml
+./android/app/src/main/res/drawable/widget_label_work_dark.xml
 ./android/app/src/main/res/drawable/widget_preview_chip_event.xml
 ./android/app/src/main/res/drawable/widget_preview_chip_study.xml
 ./android/app/src/main/res/drawable/widget_preview_chip_work.xml
@@ -246,6 +255,7 @@
 ./android/app/src/main/res/drawable/widget_preview_image_work_two_weeks.xml
 ./android/app/src/main/res/drawable/widget_today_background.xml
 ./android/app/src/main/res/drawable/widget_today_event_background.xml
+./android/app/src/main/res/drawable/widget_today_event_dark_background.xml
 ./android/app/src/main/res/drawable/widget_today_study_background.xml
 ./android/app/src/main/res/drawable/widget_today_study_dark_background.xml
 ./android/app/src/main/res/drawable/widget_today_work_background.xml
@@ -441,6 +451,7 @@
 ./assets/css/03-layout.css
 ./assets/css/components/app-update-popup.css
 ./assets/css/components/auth-links.css
+./assets/css/components/calendar-app-design.css
 ./assets/css/components/calendar-app-download-popup.css
 ./assets/css/components/calendar-category-color.css
 ./assets/css/components/calendar-entry-sheet.css
@@ -1373,6 +1384,13 @@
 ./ios/App/MallinoiCalendarWidgets/Info.plist
 ./ios/App/MallinoiCalendarWidgets/MallinoiCalendarWidgets.entitlements
 ./ios/App/MallinoiCalendarWidgets/MallinoiCalendarWidgets.swift
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/Contents.json
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/widget-event.imageset/Contents.json
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/widget-event.imageset/logo-event.png
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/widget-study.imageset/Contents.json
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/widget-study.imageset/logo-study.png
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/widget-work.imageset/Contents.json
+./ios/App/MallinoiCalendarWidgets/WidgetAssets.xcassets/widget-work.imageset/logo-work.png
 ./ios/capacitor-cordova-ios-plugins/CordovaPluginsResources.podspec
 ./ios/capacitor-cordova-ios-plugins/resources/.gitkeep
 ./ios/capacitor-cordova-ios-plugins/sources/.gitkeep
@@ -1599,6 +1617,7 @@
 ./www/assets/css/03-layout.css
 ./www/assets/css/components/app-update-popup.css
 ./www/assets/css/components/auth-links.css
+./www/assets/css/components/calendar-app-design.css
 ./www/assets/css/components/calendar-app-download-popup.css
 ./www/assets/css/components/calendar-category-color.css
 ./www/assets/css/components/calendar-entry-sheet.css

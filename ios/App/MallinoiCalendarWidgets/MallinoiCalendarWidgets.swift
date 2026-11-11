@@ -28,41 +28,52 @@ struct CalendarWidgetHoliday: Decodable {
 
 struct CalendarWidgetTheme {
     let primary: Color
+    let soft: Color
+    let mascot: String
     let secondary: Color
     let background: Color
     let text: Color
     let mutedText: Color
     let border: Color
-    let onPrimary: Color
     let isDark: Bool
 }
 
 func theme(for calendarType: String, isDark: Bool = false) -> CalendarWidgetTheme {
     let primary: Color
+    let soft: Color
     let secondary: Color
     if calendarType == "work" {
-        primary = isDark ? Color(red: 89 / 255, green: 89 / 255, blue: 222 / 255)
-            : Color(red: 52 / 255, green: 52 / 255, blue: 206 / 255)
+        primary = isDark ? Color(red: 182 / 255, green: 166 / 255, blue: 238 / 255)
+            : Color(red: 113 / 255, green: 96 / 255, blue: 182 / 255)
+        soft = isDark ? Color(red: 54 / 255, green: 50 / 255, blue: 73 / 255)
+            : Color(red: 238 / 255, green: 234 / 255, blue: 248 / 255)
         secondary = Color(red: 245 / 255, green: 245 / 255, blue: 70 / 255)
     } else if calendarType == "event" {
-        primary = Color(red: 250 / 255, green: 133 / 255, blue: 154 / 255)
+        primary = isDark ? Color(red: 237 / 255, green: 171 / 255, blue: 193 / 255)
+            : Color(red: 233 / 255, green: 163 / 255, blue: 184 / 255)
+        soft = isDark ? Color(red: 68 / 255, green: 48 / 255, blue: 59 / 255)
+            : Color(red: 255 / 255, green: 240 / 255, blue: 244 / 255)
         secondary = Color(red: 1, green: 192 / 255, blue: 203 / 255)
     } else {
-        primary = isDark ? Color(red: 110 / 255, green: 110 / 255, blue: 121 / 255)
-            : Color(red: 60 / 255, green: 60 / 255, blue: 60 / 255)
+        primary = isDark ? Color(red: 168 / 255, green: 180 / 255, blue: 167 / 255)
+            : Color(red: 98 / 255, green: 107 / 255, blue: 99 / 255)
+        soft = isDark ? Color(red: 52 / 255, green: 63 / 255, blue: 56 / 255)
+            : Color(red: 233 / 255, green: 238 / 255, blue: 231 / 255)
         secondary = Color(red: 187 / 255, green: 187 / 255, blue: 187 / 255)
     }
     return CalendarWidgetTheme(
         primary: primary,
+        soft: soft,
+        mascot: "widget-" + (["work", "event"].contains(calendarType) ? calendarType : "study"),
         secondary: secondary,
-        background: isDark ? Color(red: 23 / 255, green: 25 / 255, blue: 30 / 255) : .white,
-        text: isDark ? Color(red: 242 / 255, green: 243 / 255, blue: 245 / 255)
-            : Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255),
-        mutedText: isDark ? Color(red: 180 / 255, green: 184 / 255, blue: 194 / 255)
-            : Color(red: 102 / 255, green: 102 / 255, blue: 102 / 255),
-        border: isDark ? Color(red: 70 / 255, green: 75 / 255, blue: 85 / 255)
-            : Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255),
-        onPrimary: isDark && calendarType == "event" ? Color(red: 23 / 255, green: 25 / 255, blue: 30 / 255) : .white,
+        background: isDark ? Color(red: 25 / 255, green: 31 / 255, blue: 30 / 255)
+            : Color(red: 247 / 255, green: 249 / 255, blue: 242 / 255),
+        text: isDark ? Color(red: 237 / 255, green: 242 / 255, blue: 233 / 255)
+            : Color(red: 48 / 255, green: 58 / 255, blue: 48 / 255),
+        mutedText: isDark ? Color(red: 178 / 255, green: 192 / 255, blue: 176 / 255)
+            : Color(red: 101 / 255, green: 112 / 255, blue: 95 / 255),
+        border: isDark ? Color(red: 67 / 255, green: 80 / 255, blue: 70 / 255)
+            : Color(red: 216 / 255, green: 225 / 255, blue: 209 / 255),
         isDark: isDark
     )
 }
@@ -182,13 +193,21 @@ struct CalendarWidgetProvider: TimelineProvider {
 }
 
 private struct CalendarWidgetBackground: ViewModifier {
-    let color: Color
+    let theme: CalendarWidgetTheme
+
+    private var fill: some View {
+        ZStack {
+            theme.background
+            LinearGradient(colors: [.clear, theme.soft.opacity(0.35)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
 
     @ViewBuilder func body(content: Content) -> some View {
         if #available(iOS 17.0, *) {
-            content.containerBackground(for: .widget) { color }
+            content.containerBackground(for: .widget) { fill }
         } else {
-            content.background(color)
+            content.background(fill)
         }
     }
 }
@@ -211,7 +230,7 @@ struct CalendarWidgetView: View {
         // Keep the app appearance inside WidgetKit's container boundary.
         // The system must own the outer background (including iPad rendering).
         .environment(\.colorScheme, entry.isDark ? .dark : .light)
-        .modifier(CalendarWidgetBackground(color: activeTheme.background))
+        .modifier(CalendarWidgetBackground(theme: activeTheme))
         .widgetURL(URL(string: "mallinoi://calendar?type=\(entry.calendarType)"))
     }
 
@@ -280,18 +299,28 @@ struct CalendarWidgetHeader: View {
     let theme: CalendarWidgetTheme
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .center, spacing: 5 * scale) {
+            Image(theme.mascot)
+                .resizable()
+                .scaledToFit()
+                .frame(width: height ?? 18 * scale, height: height ?? 18 * scale)
+                .accessibilityHidden(true)
             Text(title)
-                .font(scale == 1 ? .caption.bold() : .system(size: 12 * scale, weight: .bold))
+                .font(.system(size: 12 * scale, weight: .bold, design: .rounded))
                 .foregroundStyle(theme.text)
                 .lineLimit(1)
 
             Spacer(minLength: 4 * scale)
 
-            Text(subtitle)
-                .font(scale == 1 ? .caption2 : .system(size: 11 * scale))
-                .foregroundStyle(theme.mutedText)
-                .lineLimit(1)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.system(size: 10 * scale, weight: .medium, design: .rounded))
+                    .foregroundStyle(theme.mutedText)
+                    .lineLimit(1)
+                    .padding(.horizontal, 6 * scale)
+                    .padding(.vertical, scale)
+                    .background(theme.soft, in: Capsule())
+            }
         }
         .frame(height: height)
         .padding(.horizontal, 6 * scale)
@@ -305,10 +334,7 @@ struct EmptyWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.bold())
-                .foregroundStyle(theme.text)
-                .lineLimit(1)
+            CalendarWidgetHeader(title: title, subtitle: "", theme: theme)
 
             Spacer()
 
@@ -484,7 +510,7 @@ struct DayCellView: View {
             if hasWorkMemo, let item = visibleItems.first {
                 Text(workMemo(for: item))
                     .font(.system(size: memoFontSize, weight: .medium))
-                    .foregroundStyle(isToday ? theme.onPrimary : theme.mutedText)
+                    .foregroundStyle(isToday ? theme.text : theme.mutedText)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity)
@@ -497,7 +523,7 @@ struct DayCellView: View {
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
                     .font(.system(size: moreFontSize, weight: .bold))
-                    .foregroundStyle(isToday ? theme.onPrimary : theme.mutedText)
+                    .foregroundStyle(isToday ? theme.text : theme.mutedText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
@@ -512,8 +538,14 @@ struct DayCellView: View {
         .padding(.horizontal, 2 * monthContentScale)
         .frame(height: cellHeight, alignment: .top)
         .frame(maxWidth: .infinity, alignment: .top)
-        .background(isToday ? theme.primary : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 8 * monthContentScale, style: .continuous))
+        .background(isToday ? theme.soft : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 10 * monthContentScale, style: .continuous))
+        .overlay {
+            if isToday {
+                RoundedRectangle(cornerRadius: 10 * monthContentScale, style: .continuous)
+                    .strokeBorder(theme.primary.opacity(0.75), lineWidth: monthContentScale)
+            }
+        }
     }
 
     private var maxVisibleItems: Int {
@@ -646,7 +678,7 @@ struct DayCellView: View {
     }
 
     private var dayNumberColor: Color {
-        if isToday { return theme.onPrimary }
+        if isToday { return theme.text }
         return day.isCurrentMonth ? theme.text : theme.mutedText.opacity(theme.isDark ? 0.8 : 0.55)
     }
 

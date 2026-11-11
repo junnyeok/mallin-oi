@@ -14,14 +14,14 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(StoreUpdatePlugin.class);
         registerPlugin(EventAlarmsPlugin.class);
         super.onCreate(savedInstanceState);
-        handleCalendarIntent(getIntent());
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
+        // BridgeActivity also calls this on launch. Save the route before Capacitor notifies the WebView.
+        handleCalendarIntent(intent);
         super.onNewIntent(intent);
         setIntent(intent);
-        handleCalendarIntent(intent);
     }
 
     private void handleCalendarIntent(Intent intent) {

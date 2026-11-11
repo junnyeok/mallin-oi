@@ -1,3 +1,5 @@
+@import url('./components/calendar-app-design.css');
+
 /* 디자인 규칙(설계도)
 사이트 전체에서 공유되는 값들임. 색상, 폰트, 간격 등을 숫자 말고 의미로 씀.
 색 바뀌면 여기만 고치면 됨.

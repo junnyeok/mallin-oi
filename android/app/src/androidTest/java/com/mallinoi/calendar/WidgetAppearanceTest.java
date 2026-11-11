@@ -54,8 +54,10 @@ public class WidgetAppearanceTest {
                     View view = provider.buildViews(context, AppWidgetManager.getInstance(context), 0).apply(context, null);
                     TextView title = view.findViewById(R.id.widgetTitle);
                     assertEquals(mode + " " + provider.getClass().getSimpleName(),
-                        "dark".equals(mode) ? Color.rgb(242, 243, 245) : Color.rgb(17, 17, 17), title.getCurrentTextColor());
+                        "dark".equals(mode) ? Color.rgb(237, 242, 233) : Color.rgb(48, 58, 48), title.getCurrentTextColor());
                     assertNotNull(view.findViewById(R.id.widgetRoot).getBackground());
+                    assertNotNull(((ImageView) view.findViewById(R.id.widgetMascot)).getDrawable());
+                    assertNotNull(view.findViewById(R.id.widgetSubtitle).getBackground());
                 }
             }
         } finally {

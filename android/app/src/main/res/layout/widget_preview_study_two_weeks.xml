@@ -17,12 +17,23 @@
         android:paddingLeft="5dp"
         android:paddingRight="5dp">
 
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginEnd="5dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_mascot_study" />
+
         <TextView
             style="@style/MallinoiWidgetPreviewTitle"
-            android:text="자기개발 2주" />
+            android:text="자기개발" />
 
         <TextView
             style="@style/MallinoiWidgetPreviewSubtitle"
+            android:background="@drawable/widget_label_study"
+            android:paddingLeft="6dp"
+            android:paddingRight="6dp"
             android:text="2주" />
     </LinearLayout>
 
@@ -51,7 +62,7 @@
             <TextView
                 style="@style/MallinoiWidgetPreviewDate"
                 android:text="30 화"
-                android:textColor="#FFFFFF" />
+                android:textColor="#303a30" />
 
             <TextView
                 style="@style/MallinoiWidgetPreviewChip"

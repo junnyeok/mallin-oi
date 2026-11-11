@@ -6,7 +6,7 @@ import {
   signOutUser,
 } from './auth-store.js';
 import {
-  consumeCalendarWidgetRoute,
+  initCalendarWidgetNavigation,
   scheduleCalendarWidgetRefresh,
 } from './calendar-native-widgets.js';
 import { initRefreshControls } from './refresh-control.js';
@@ -151,9 +151,8 @@ async function initAppCalendarAccount() {
 async function initAppCalendarLauncher() {
   if (await initSocialAuthNative().catch(() => false)) return;
   enableCalendarAppMode();
-  // An explicit Home tap must not replay an earlier widget navigation.
   const homeRequested = new URLSearchParams(window.location.search).get('home') === '1';
-  if (await consumeCalendarWidgetRoute({ navigate: !homeRequested })) return;
+  if (await initCalendarWidgetNavigation({ discardPending: homeRequested })) return;
   bindCalendarLinks();
   initRefreshControls();
   await initAppCalendarAccount();

@@ -1,6 +1,8 @@
 import { initCalendarAppMode } from './app-calendar-mode.js';
+import { initCalendarWidgetNavigation } from './calendar-native-widgets.js';
 
 initCalendarAppMode();
+void initCalendarWidgetNavigation();
 
 // 앱 내부의 알려진 화면으로만 돌아간다. 외부 URL은 복귀 주소로 사용하지 않는다.
 const returnPages = new Set([

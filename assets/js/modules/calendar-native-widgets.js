@@ -7,6 +7,7 @@ let refreshTimer = null;
 let refreshPromise = null;
 let authStoreModulePromise = null;
 let widgetDataModulePromise = null;
+let widgetNavigationReady = null;
 
 function getRuntimeSiteVersion() {
   return String(window.__SITE_VERSION__ || 'dev').trim();
@@ -43,9 +44,18 @@ function getPlugin() {
 }
 
 function getCalendarHref(calendarType = '') {
-  if (calendarType === 'work') return './calendar-work.html?app=calendar';
-  if (calendarType === 'event') return './calendar-event.html?app=calendar';
-  return './calendar-study.html?app=calendar';
+  if (!['study', 'work', 'event'].includes(calendarType)) return null;
+  return `/calendar-${calendarType}.html?app=calendar`;
+}
+
+function isCalendarWidgetUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'mallinoi:' && url.host === 'calendar'
+      && !url.pathname && Boolean(getCalendarHref(url.searchParams.get('type')));
+  } catch {
+    return false;
+  }
 }
 
 async function loadCalendarWidgetPayloadFetcher() {
@@ -147,15 +157,39 @@ export async function consumeCalendarWidgetRoute({ navigate = true } = {}) {
 
   try {
     const result = await plugin.consumePendingRoute();
-    const calendarType = String(result?.calendarType || '').trim();
+    const href = getCalendarHref(result?.calendarType);
 
-    // Reading consumes the native pending request even when Home was requested.
-    if (!navigate || !['study', 'work', 'event'].includes(calendarType)) return false;
+    // Consume a tap on the current calendar without reloading its month or group.
+    if (!navigate || !href || window.location.pathname === href.split('?')[0]) return false;
 
-    window.location.replace(getCalendarHref(calendarType));
+    window.location.replace(href);
     return true;
   } catch (error) {
     console.error('[calendar-native-widgets] route consume failed:', error);
     return false;
   }
+}
+
+export async function initCalendarWidgetNavigation({ discardPending = false } = {}) {
+  if (!isNativeCapacitor()) return false;
+
+  if (!widgetNavigationReady) {
+    widgetNavigationReady = (async () => {
+      // An explicit Home tap can leave an older request from a previous app version.
+      if (discardPending) await consumeCalendarWidgetRoute({ navigate: false });
+
+      try {
+        await window.Capacitor.Plugins?.App?.addListener('appUrlOpen', event => {
+          if (isCalendarWidgetUrl(event?.url)) return consumeCalendarWidgetRoute();
+        });
+      } catch (error) {
+        console.error('[calendar-native-widgets] route listener failed:', error);
+      }
+
+      // A cold-start URL may arrive before this document can receive events.
+      return consumeCalendarWidgetRoute();
+    })();
+  }
+
+  return widgetNavigationReady;
 }

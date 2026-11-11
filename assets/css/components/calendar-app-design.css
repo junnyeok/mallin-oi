@@ -1,0 +1,341 @@
+/* Calendar app visual layer. calendar-appearance.js enables this only in the
+   native app or an explicit localhost preview; the website keeps its styling.
+   Keep layout, category colours, calendar density and action order intact. */
+html[data-calendar-appearance] body {
+  --app-leaf: #587c36;
+  --app-leaf-soft: #edf5de;
+  --app-theme: #bedb8e;
+  --app-theme-soft: #edf5de;
+  --app-theme-ink: #34472b;
+  --color-bg: #f7f9f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f0f3ec;
+  --color-text: #303a30;
+  --color-text-sub: #65705f;
+  --color-border: #d8e1d1;
+  --color-divider: #e8ede3;
+  --color-primary: var(--app-theme);
+  --color-primary-sub: var(--app-theme-soft);
+  --color-on-primary: var(--app-theme-ink);
+  --calendar-account-bg: var(--color-surface);
+  --calendar-loading-bg: rgba(247, 249, 242, .94);
+  --radius-card: 22px;
+  --radius-btn: 14px;
+  --shadow-card: 0 4px 16px rgba(52, 72, 39, .045);
+  font-family: ui-rounded, var(--font-base);
+  -webkit-font-smoothing: antialiased;
+  background: var(--color-bg);
+}
+
+html[data-calendar-appearance] body.theme-study {
+  --app-theme: #626b63;
+  --app-theme-soft: #e9eee7;
+  --app-theme-ink: #ffffff;
+}
+
+html[data-calendar-appearance] body.theme-work {
+  --app-theme: #7160b6;
+  --app-theme-soft: #eeeaf8;
+  --app-theme-ink: #ffffff;
+}
+
+html[data-calendar-appearance] body.theme-event {
+  --app-theme: #e9a3b8;
+  --app-theme-soft: #fff0f4;
+  --app-theme-ink: #552e3b;
+}
+
+html[data-calendar-appearance='dark'] body {
+  --app-leaf: #c1dba0;
+  --app-leaf-soft: #303e2e;
+  --app-theme: #bdd99c;
+  --app-theme-soft: #303e2e;
+  --app-theme-ink: #202a20;
+  --color-bg: #191f1e;
+  --color-surface: #242d29;
+  --color-surface-muted: #202723;
+  --color-text: #edf2e9;
+  --color-text-sub: #b2c0b0;
+  --color-border: #435046;
+  --color-divider: #364139;
+  --calendar-loading-bg: rgba(25, 31, 30, .94);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, .13);
+}
+
+html[data-calendar-appearance='dark'] body.theme-study {
+  --app-theme: #a8b4a7;
+  --app-theme-soft: #343f38;
+  --app-theme-ink: #202a20;
+}
+
+html[data-calendar-appearance='dark'] body.theme-work {
+  --app-theme: #b6a6ee;
+  --app-theme-soft: #363249;
+  --app-theme-ink: #282239;
+}
+
+html[data-calendar-appearance='dark'] body.theme-event {
+  --app-theme: #edabc1;
+  --app-theme-soft: #44303b;
+  --app-theme-ink: #38252d;
+}
+
+/* Home: the original cucumber illustrations sit on soft, themed stickers. */
+html[data-calendar-appearance] .app-calendar-body {
+  background: radial-gradient(ellipse at 50% 0, var(--app-leaf-soft), transparent 58%), var(--color-bg);
+}
+
+html[data-calendar-appearance] .app-calendar-launcher__logo {
+  border-radius: 26px;
+  box-shadow: 0 5px 0 var(--color-border), 0 12px 24px rgba(67, 91, 43, .09);
+}
+
+html[data-calendar-appearance] .app-calendar-launcher__eyebrow {
+  color: var(--app-leaf);
+  font-weight: 750;
+  letter-spacing: .04em;
+}
+
+html[data-calendar-appearance] .app-calendar-launcher__title {
+  letter-spacing: -.055em;
+  line-height: 1.3;
+}
+
+html[data-calendar-appearance] .app-calendar-account {
+  border-radius: 22px;
+  border-color: var(--color-border);
+}
+
+html[data-calendar-appearance] .app-calendar-card {
+  border-radius: 24px;
+  border-color: var(--color-border);
+  background: linear-gradient(105deg, var(--color-surface) 56%, var(--app-card-tint));
+  box-shadow: 0 3px 0 var(--color-border), var(--shadow-card);
+}
+
+html[data-calendar-appearance] .app-calendar-card--study { --app-card-tint: #edf1e9; }
+html[data-calendar-appearance] .app-calendar-card--work { --app-card-tint: #f0edfb; }
+html[data-calendar-appearance] .app-calendar-card--event { --app-card-tint: #fff0f4; }
+html[data-calendar-appearance] .app-calendar-card--groups { --app-card-tint: #eff7df; }
+html[data-calendar-appearance='dark'] .app-calendar-card--study { --app-card-tint: #343f38; }
+html[data-calendar-appearance='dark'] .app-calendar-card--work { --app-card-tint: #363249; }
+html[data-calendar-appearance='dark'] .app-calendar-card--event { --app-card-tint: #44303b; }
+html[data-calendar-appearance='dark'] .app-calendar-card--groups { --app-card-tint: #303e2e; }
+
+html[data-calendar-appearance] .app-calendar-card__thumb {
+  border-radius: 20px 22px 18px 22px;
+  background: var(--app-card-tint);
+}
+
+html[data-calendar-appearance] .app-calendar-card__arrow {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  background: var(--app-card-tint);
+  color: var(--color-text);
+  font-size: 23px;
+}
+
+/* Existing top actions and three calendar tabs stay in their original order. */
+html[data-calendar-appearance] .calendar-app-shell {
+  background: var(--color-bg);
+  border-color: var(--color-divider);
+  box-shadow: 0 4px 12px rgba(37, 55, 32, .035);
+}
+
+html[data-calendar-appearance] :is(.calendar-app-shell__home, .calendar-app-shell__action,
+  .calendar-app-icon-button, .app-calendar-account__btn, .app-calendar-settings__back) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 2px 0 var(--color-divider);
+  font-weight: 700;
+}
+
+html[data-calendar-appearance] :is(.calendar-app-shell__home, .app-calendar-settings__back) {
+  min-height: 44px;
+  color: var(--app-leaf);
+}
+
+html[data-calendar-appearance] .calendar-app-shell__tab {
+  min-height: 44px;
+  gap: 5px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  border-color: var(--color-divider);
+  font-weight: 700;
+}
+
+html[data-calendar-appearance] .calendar-app-shell__tab::before {
+  content: '';
+  width: 24px;
+  height: 28px;
+  flex: 0 0 24px;
+  background: center / contain no-repeat;
+}
+
+html[data-calendar-appearance] .calendar-app-shell__tab[href*='calendar-study']::before { background-image: url('../../../images/logo-study.png'); }
+html[data-calendar-appearance] .calendar-app-shell__tab[href*='calendar-work']::before { background-image: url('../../../images/logo-work.png'); }
+html[data-calendar-appearance] .calendar-app-shell__tab[href*='calendar-event']::before { background-image: url('../../../images/logo-event.png'); }
+
+html[data-calendar-appearance] .calendar-app-shell__tab.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-sub);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
+  font-weight: 800;
+}
+
+/* Keep the edge-to-edge month grid and all schedule/category colour values. */
+html[data-calendar-appearance] body :is(.study-calendar-main-panel, .work-calendar-main-panel,
+  .event-calendar-main-panel, .study-calendar-todo-panel, .work-calendar-todo-panel,
+  .event-calendar-todo-panel, .calendar-groups-panel) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 22px;
+  box-shadow: var(--shadow-card);
+}
+
+html[data-calendar-appearance] body :is(.study-calendar-nav-btn, .work-calendar-nav-btn, .event-calendar-nav-btn) {
+  background: var(--color-primary-sub);
+  border-color: transparent;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+html[data-calendar-appearance] :is(.study-calendar-month, .work-calendar-month, .event-calendar-month) {
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+html[data-calendar-appearance] body[data-app-mode='calendar'] :is(.study-calendar-weekday, .work-calendar-weekday, .event-calendar-weekday) {
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+html[data-calendar-appearance] :is(.study-calendar-weekday, .work-calendar-weekday, .event-calendar-weekday):first-child { border-top-left-radius: 12px; }
+html[data-calendar-appearance] :is(.study-calendar-weekday, .work-calendar-weekday, .event-calendar-weekday):nth-child(7) { border-top-right-radius: 12px; }
+
+html[data-calendar-appearance] body :is(.study-calendar-day--selected, .work-calendar-day--selected, .event-calendar-day--selected) {
+  border-radius: 12px;
+  background: var(--color-primary-sub);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+html[data-calendar-appearance] :is(.study-calendar-day__badge, .work-calendar-day__badge,
+  .event-calendar-day__badge, .calendar-group-schedule__badge) {
+  border-radius: 7px;
+}
+
+html[data-calendar-appearance] .calendar-group-schedule__week {
+  border-radius: 18px;
+  border: 1px solid var(--color-divider);
+}
+
+html[data-calendar-appearance] :is(.calendar-group-schedule__date-head, .calendar-group-schedule__corner) {
+  background: var(--color-primary-sub);
+  color: var(--color-text);
+}
+
+html[data-calendar-appearance] .calendar-group-schedule__date-head.is-today .calendar-group-schedule__date-label {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  outline-color: var(--color-primary);
+}
+
+html[data-calendar-appearance] .calendar-group-schedule__cell.is-today { border-radius: 10px; }
+
+html[data-calendar-appearance] :is(.calendar-group-bar__toggle, .calendar-group-bar__list,
+  .work-repeat__trigger, .calendar-groups-page__back, .calendar-groups-page__action) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 2px 0 var(--color-divider);
+  font-weight: 700;
+}
+
+/* Editors, categories and settings share the same soft card treatment. */
+html[data-calendar-appearance] :is(.calendar-entry-sheet__panel, .study-category-manager__dialog,
+  .work-category-manager__dialog, .event-category-manager__dialog, .calendar-group-bar__dialog,
+  .calendar-copy-dialog, .work-repeat__dialog, .app-calendar-settings__list) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-calendar-appearance] .calendar-entry-sheet__header {
+  background: var(--color-primary-sub);
+  border-color: var(--color-divider);
+}
+
+html[data-calendar-appearance] .calendar-entry-sheet__close {
+  background: var(--color-surface);
+  font-size: 26px;
+}
+
+html[data-calendar-appearance] :is(.calendar-entry-sheet__form-title, .calendar-entry-sheet__title) { font-weight: 750; }
+html[data-calendar-appearance] .calendar-entry-sheet__form-title::placeholder { color: var(--color-text-sub); }
+
+html[data-calendar-appearance] :is(.study-category-item, .work-category-list__item, .event-category-item) {
+  background: var(--color-bg);
+  border-color: var(--color-divider);
+  border-radius: 18px;
+}
+
+html[data-calendar-appearance] .calendar-category-actions > :nth-child(2) {
+  background: var(--app-leaf-soft);
+  color: var(--app-leaf);
+  border-color: var(--color-border);
+}
+
+html[data-calendar-appearance] :is(.study-category-manager__title, .work-category-manager__title,
+  .event-category-manager__title, .calendar-group-bar__title) { font-weight: 750; }
+
+html[data-calendar-appearance] :is(.app-calendar-settings__section h2, .app-calendar-settings__note) { color: var(--color-text-sub); }
+
+html[data-calendar-appearance] .app-calendar-appearance label:has(input:checked) { background: var(--app-leaf-soft); }
+html[data-calendar-appearance] .app-calendar-appearance input { accent-color: var(--app-leaf); }
+
+html[data-calendar-appearance] :is(.login-card, .signup-card, .account-auth-card, .social-auth-card,
+  .mypage-card, .prev-mypage-card) {
+  border-width: 1px;
+  border-color: var(--color-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-card);
+}
+
+html[data-calendar-appearance] :is(.signup-section, .signup-agree) {
+  border-width: 1px;
+  background: var(--color-bg);
+}
+
+/* Do not recolour provider logos, category chips, destructive or pending actions. */
+html[data-calendar-appearance] :is(.login-form, .signup-form, .account-auth-form, .social-auth-page)
+  input:not([type='checkbox']):not([type='radio']) {
+  border-width: 1px;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+html[data-calendar-appearance] :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 3px;
+}
+
+@media (max-width: 360px) {
+  html[data-calendar-appearance] .calendar-app-shell__tab { gap: 3px; padding-inline: 4px; font-size: 13px; }
+  html[data-calendar-appearance] .calendar-app-shell__tab::before { width: 20px; flex-basis: 20px; }
+}
+
+@media (hover: hover) {
+  html[data-calendar-appearance] .app-calendar-card:hover {
+    border-color: var(--app-leaf);
+    box-shadow: 0 3px 0 var(--color-border), 0 6px 20px rgba(52, 72, 39, .09);
+  }
+}
+
+/* Match the group buttons after the entry-sheet header placement rule. */
+html[data-calendar-appearance] .work-calendar-page__head > .work-repeat .work-repeat__trigger {
+  box-shadow: 0 2px 0 var(--color-divider);
+}

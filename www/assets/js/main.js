@@ -625,6 +625,15 @@ async function initApp() {
       socialReturned = await initSocialAuthNative();
     });
     if (socialReturned) return;
+
+    let widgetOpened = false;
+    await runSafe('calendar widget navigation', async () => {
+      const { initCalendarWidgetNavigation } = await import(
+        withModuleVersion('./modules/calendar-native-widgets.js')
+      );
+      widgetOpened = await initCalendarWidgetNavigation();
+    });
+    if (widgetOpened) return;
   }
 
   try {
