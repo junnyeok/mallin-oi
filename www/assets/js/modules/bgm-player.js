@@ -539,6 +539,7 @@ function renderPlaylist() {
           <div class="bgm-item__body">
             <p class="bgm-item__title">${escapeHtml(track.title)}</p>
             <p class="bgm-item__meta">${escapeHtml(track.artist || '말린오이닷컴')}</p>
+            <div class="bgm-item__controls">
             <span class="bgm-item__state">${stateText}</span>
 
           <button
@@ -548,6 +549,7 @@ function renderPlaylist() {
           >
             ${isActive && isPlaying ? '일시정지' : '재생'}
           </button>
+            </div>
           </div>
         </div>
       `;
@@ -556,6 +558,7 @@ function renderPlaylist() {
   const items = playlist.map(track => ({id: track.id, label: track.title}));
   list.querySelectorAll('.bgm-item').forEach((card, index) => {
     appendItemOrderButton(card, {userId: authenticatedUserId, type: 'bgm', items, itemId: playlist[index].id});
+    card.querySelector('.bgm-item__controls').append(card.querySelector('.item-order-button'));
   });
 }
 
@@ -642,7 +645,7 @@ async function tryAutoplayWithMutedBootstrap(player) {
   }
 }
 
-async function setTrackSource(track) {
+function setTrackSource(track, { waitForMetadata = true } = {}) {
   const player = ensureAudio();
   if (!track) return;
 
@@ -654,7 +657,7 @@ async function setTrackSource(track) {
   player.src = track.audioPath;
   player.load();
 
-  await waitForSeekable(player);
+  if (waitForMetadata) return waitForSeekable(player);
 }
 
 async function syncPlaylistWithSelection({ autoPlay = false } = {}) {
@@ -778,10 +781,10 @@ async function tryPlayCurrentTrack() {
 
   notifyPersonalBgmPlay('play');
 
-  await setTrackSource(track);
+  setTrackSource(track, { waitForMetadata: false });
 
   try {
-    await tryAutoplayWithMutedBootstrap(player);
+    await player.play();
     isPlaying = true;
     playBlocked = false;
     removeReloadResumeNotice();
@@ -810,7 +813,8 @@ async function playTrack(index = 0, options = {}) {
   const track = getCurrentTrack();
   const player = ensureAudio();
 
-  await setTrackSource(track);
+  if (startTime > 0) await setTrackSource(track);
+  else setTrackSource(track, { waitForMetadata: false });
 
   try {
     if (startTime > 0) {

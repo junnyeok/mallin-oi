@@ -525,7 +525,7 @@ body[data-page='post'] .logo #siteLogoImg {
 
 .bgm-item {
   display: grid;
-  grid-template-columns: 68px 1fr auto;
+  grid-template-columns: 68px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   padding: 12px;
@@ -695,10 +695,14 @@ body[data-page='post'] .logo #siteLogoImg {
   box-shadow: var(--shadow-card);
   pointer-events: none;
 }
-.bgm-item__body .bgm-item__action {
-  display: block;
-  margin-top: 8px;
+.bgm-item__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
 }
+.bgm-item__controls .bgm-item__state { margin-top: 0; }
+.bgm-item__controls .item-order-button { margin-left: auto; }
 
 .bgm-item__action:hover {
   background: #f8f8f8;
@@ -754,7 +758,7 @@ body[data-page='post'] .logo #siteLogoImg {
   }
 
   .bgm-item {
-    grid-template-columns: 48px 1fr auto;
+    grid-template-columns: 48px minmax(0, 1fr);
     gap: var(--space-8);
     padding: var(--space-8);
   }
