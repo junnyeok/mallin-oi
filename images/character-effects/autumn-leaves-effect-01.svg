@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="600" viewBox="0 0 600 600" role="img" aria-labelledby="autumn-title autumn-desc">
+  <title id="autumn-title">늦가을 낙엽 캐릭터 효과</title>
+  <desc id="autumn-desc">투명한 배경 위로 단풍잎, 은행잎, 갈색 잎이 천천히 흔들리며 내려옵니다.</desc>
+  <defs>
+    <linearGradient id="maple-fill" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffcf72"/><stop offset=".44" stop-color="#e77939"/><stop offset="1" stop-color="#ad462c"/>
+    </linearGradient>
+    <linearGradient id="ginkgo-fill" x1="0" y1="0" x2=".7" y2="1">
+      <stop stop-color="#ffe9a0"/><stop offset=".5" stop-color="#eec457"/><stop offset="1" stop-color="#c68a2e"/>
+    </linearGradient>
+    <linearGradient id="oak-fill" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#e7ae66"/><stop offset=".6" stop-color="#bd7745"/><stop offset="1" stop-color="#875637"/>
+    </linearGradient>
+    <g id="maple" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M0 21 C-7 15 -15 16 -23 9 L-18 3 -29 -8 -16 -7 -20 -23 -8 -15 0 -35 8 -15 20 -23 16 -7 29 -8 18 3 23 9 C15 16 7 15 0 21Z" fill="url(#maple-fill)" stroke="#a75b32" stroke-width="1.25"/>
+      <path d="M0 29 0-24 M0 11-17-5 M0 6 17-6 M0-3-12-16 M0-3 12-16" fill="none" stroke="#8d4b2d" stroke-width="1.4" opacity=".65"/>
+      <path d="M-6-12-2-24 M-21-7-15-4" stroke="#ffe7a9" stroke-width="2.2" opacity=".6"/>
+    </g>
+    <g id="ginkgo" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M0 21 C-5 10-25 5-29-9 Q-30-17-22-21 Q-17-27-11-22 Q-5-27 0-19 Q5-27 11-22 Q17-27 22-21 Q30-17 29-9 C25 5 5 10 0 21Z" fill="url(#ginkgo-fill)" stroke="#bd8a37" stroke-width="1.25"/>
+      <path d="M0 29 0 16 M0 17Q-14 0-22-16 M0 17Q-8-4-11-19 M0 17 0-15 M0 17Q8-4 11-19 M0 17Q14 0 22-16" fill="none" stroke="#ae7b33" stroke-width="1.1" opacity=".55"/>
+      <path d="M-24-12Q-21-19-15-19 M7-21Q11-24 14-22" fill="none" stroke="#fff5c6" stroke-width="2.5" opacity=".7"/>
+    </g>
+    <g id="oak" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M0 24 C-9 19-18 17-17 10 C-26 9-23 0-17-2 C-25-8-17-16-11-11 C-16-23-6-24-3-18 C-6-30 4-35 8-25 C18-28 22-19 15-14 C26-17 30-6 21-2 C29 3 25 13 17 12 C19 21 7 20 0 24Z" fill="url(#oak-fill)" stroke="#92613e" stroke-width="1.25"/>
+      <path d="M-3 30Q1 5 7-24 M1 11-13 4 M3 1 19-6 M5-10-7-17" fill="none" stroke="#795236" stroke-width="1.5" opacity=".65"/>
+      <path d="M2-19 5-25 M-17 1-14-1" fill="none" stroke="#f7d49d" stroke-width="2" opacity=".6"/>
+    </g>
+  </defs>
+  <style>
+    .leaf-fall { animation: autumn-fall var(--duration) linear infinite; animation-delay: var(--delay); opacity: 0; }
+    .leaf-sway { animation: autumn-sway var(--sway-duration) ease-in-out infinite alternate; animation-delay: var(--delay); }
+    .leaf-turn { animation: autumn-turn var(--turn-duration) ease-in-out infinite alternate; animation-delay: var(--delay); }
+    .leaf-bed { opacity: .88; }
+    @keyframes autumn-fall {
+      0% { transform: translateY(-65px); opacity: 0; }
+      9% { opacity: var(--alpha); }
+      80% { opacity: var(--alpha); }
+      97%, 100% { transform: translateY(590px); opacity: 0; }
+    }
+    @keyframes autumn-sway {
+      from { transform: translateX(-19px); }
+      to { transform: translateX(22px); }
+    }
+    @keyframes autumn-turn {
+      0% { transform: rotate(-32deg) scaleX(.72); }
+      50% { transform: rotate(5deg) scaleX(1); }
+      100% { transform: rotate(40deg) scaleX(.55); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .leaf-fall { animation: none; opacity: var(--alpha); transform: translateY(var(--still-y)); }
+      .leaf-sway, .leaf-turn { animation: none; }
+    }
+  </style>
+  <!-- The centre stays mostly clear so small profile and comment characters remain readable. -->
+  <g transform="translate(125 0)">
+    <g class="leaf-fall" style="--duration:8.6s;--delay:-1.4s;--alpha:0.95;--still-y:110px">
+      <g class="leaf-sway" style="--sway-duration:3.1s;--delay:-1.4s">
+        <g transform="scale(0.910)"><g class="leaf-turn" style="--turn-duration:4.7s;--delay:-1.4s"><use href="#maple" xlink:href="#maple"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(460 0)">
+    <g class="leaf-fall" style="--duration:10.8s;--delay:-6.8s;--alpha:0.9;--still-y:240px">
+      <g class="leaf-sway" style="--sway-duration:3.5s;--delay:-6.8s">
+        <g transform="scale(0.936)"><g class="leaf-turn" style="--turn-duration:5.3s;--delay:-6.8s"><use href="#ginkgo" xlink:href="#ginkgo"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(177 0)">
+    <g class="leaf-fall" style="--duration:12.2s;--delay:-8.7s;--alpha:0.72;--still-y:400px">
+      <g class="leaf-sway" style="--sway-duration:4.2s;--delay:-8.7s">
+        <g transform="scale(0.650)"><g class="leaf-turn" style="--turn-duration:4.7s;--delay:-8.7s"><use href="#oak" xlink:href="#oak"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(422 0)">
+    <g class="leaf-fall" style="--duration:9.8s;--delay:-3.1s;--alpha:0.86;--still-y:70px">
+      <g class="leaf-sway" style="--sway-duration:2.8s;--delay:-3.1s">
+        <g transform="scale(0.728)"><g class="leaf-turn" style="--turn-duration:3.8s;--delay:-3.1s"><use href="#maple" xlink:href="#maple"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(100 0)">
+    <g class="leaf-fall" style="--duration:11.6s;--delay:-7.4s;--alpha:0.84;--still-y:310px">
+      <g class="leaf-sway" style="--sway-duration:3.4s;--delay:-7.4s">
+        <g transform="scale(0.728)"><g class="leaf-turn" style="--turn-duration:5.6s;--delay:-7.4s"><use href="#ginkgo" xlink:href="#ginkgo"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(493 0)">
+    <g class="leaf-fall" style="--duration:10.4s;--delay:-1.2s;--alpha:0.78;--still-y:460px">
+      <g class="leaf-sway" style="--sway-duration:3.7s;--delay:-1.2s">
+        <g transform="scale(0.676)"><g class="leaf-turn" style="--turn-duration:4.5s;--delay:-1.2s"><use href="#oak" xlink:href="#oak"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(270 0)">
+    <g class="leaf-fall" style="--duration:12.8s;--delay:-3.7s;--alpha:0.72;--still-y:135px">
+      <g class="leaf-sway" style="--sway-duration:4.1s;--delay:-3.7s">
+        <g transform="scale(0.559)"><g class="leaf-turn" style="--turn-duration:5.8s;--delay:-3.7s"><use href="#ginkgo" xlink:href="#ginkgo"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(370 0)">
+    <g class="leaf-fall" style="--duration:11.4s;--delay:-9.1s;--alpha:0.72;--still-y:490px">
+      <g class="leaf-sway" style="--sway-duration:3.6s;--delay:-9.1s">
+        <g transform="scale(0.572)"><g class="leaf-turn" style="--turn-duration:4.9s;--delay:-9.1s"><use href="#maple" xlink:href="#maple"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(140 0)">
+    <g class="leaf-fall" style="--duration:13.6s;--delay:-5.6s;--alpha:0.65;--still-y:195px">
+      <g class="leaf-sway" style="--sway-duration:3.3s;--delay:-5.6s">
+        <g transform="scale(0.546)"><g class="leaf-turn" style="--turn-duration:4.3s;--delay:-5.6s"><use href="#oak" xlink:href="#oak"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(480 0)">
+    <g class="leaf-fall" style="--duration:13.2s;--delay:-10.6s;--alpha:0.7;--still-y:350px">
+      <g class="leaf-sway" style="--sway-duration:3.9s;--delay:-10.6s">
+        <g transform="scale(0.546)"><g class="leaf-turn" style="--turn-duration:5.2s;--delay:-10.6s"><use href="#maple" xlink:href="#maple"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(205 0)">
+    <g class="leaf-fall" style="--duration:10.6s;--delay:-9.7s;--alpha:0.86;--still-y:520px">
+      <g class="leaf-sway" style="--sway-duration:3.6s;--delay:-9.7s">
+        <g transform="scale(0.624)"><g class="leaf-turn" style="--turn-duration:4.1s;--delay:-9.7s"><use href="#ginkgo" xlink:href="#ginkgo"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(415 0)">
+    <g class="leaf-fall" style="--duration:12.4s;--delay:-7.2s;--alpha:0.92;--still-y:180px">
+      <g class="leaf-sway" style="--sway-duration:3.7s;--delay:-7.2s">
+        <g transform="scale(0.819)"><g class="leaf-turn" style="--turn-duration:5.3s;--delay:-7.2s"><use href="#maple" xlink:href="#maple"/></g></g>
+      </g>
+    </g>
+  </g>
+  <g class="leaf-bed">
+    <use href="#oak" xlink:href="#oak" transform="translate(166 547) rotate(-65) scale(0.52 .32)"/>
+    <use href="#ginkgo" xlink:href="#ginkgo" transform="translate(207 553) rotate(35) scale(0.57 .32)"/>
+    <use href="#maple" xlink:href="#maple" transform="translate(239 559) rotate(-72) scale(0.5 .32)"/>
+    <use href="#oak" xlink:href="#oak" transform="translate(376 555) rotate(60) scale(0.55 .32)"/>
+    <use href="#maple" xlink:href="#maple" transform="translate(413 546) rotate(35) scale(0.6 .32)"/>
+    <use href="#ginkgo" xlink:href="#ginkgo" transform="translate(445 554) rotate(65) scale(0.43 .32)"/>
+  </g>
+</svg>

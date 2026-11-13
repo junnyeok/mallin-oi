@@ -677,6 +677,16 @@ export const SPIDER_WEB_CHARACTER_EFFECT_PREVIEW = [
   },
 ];
 
+export const AUTUMN_LEAVES_CHARACTER_EFFECT_PREVIEW = [
+  {
+    code: 'cha-fall-01-preview',
+    label: '늦가을 산책 낙엽 애니메이션 미리보기',
+    imagePath: withAssetVersion('./images/character-effects/autumn-leaves-effect-01.svg'),
+    placement: 'front',
+    displayOrder: 1,
+  },
+];
+
 export const CHARACTER_EFFECT_CATALOG = [
   {
     itemId: 'cha-effects-cucumberheart-01',
@@ -825,6 +835,31 @@ export const CHARACTER_EFFECT_CATALOG = [
       animation: 'none',
     },
     displayOrder: 3,
+  },
+  {
+    itemId: 'cha-fall-01',
+    name: '늦가을 산책',
+    imagePath: withAssetVersion('./images/character-effects/autumn-leaves-effect-01.svg'),
+    placement: 'front',
+    layout: {
+      x: '0px',
+      y: '0px',
+      width: '165%',
+      zIndex: '30',
+      origin: '50% 100%',
+      rotation: '0deg',
+      aspectRatio: '1 / 1',
+    },
+    contexts: {
+      profile: { groundOffset: '4%' },
+      inventory: { groundOffset: '4%' },
+      post: { groundOffset: '4%' },
+      comment: { groundOffset: '4%' },
+      store: { width: '150%' },
+      thumbnail: { width: '150%' },
+    },
+    motion: { animation: 'none' },
+    displayOrder: 4,
   },
 ];
 
@@ -1417,6 +1452,22 @@ export const STORE_ITEMS = [
     detailDescription:
       '중앙경찰학교로 파견간 알감자 교수님이야.<br>구매하면 인벤토리의 스킨 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
     previewImages: EGGPOTATO_POLICE_SKIN_PREVIEW,
+    isPurchasable: true,
+  },
+  {
+    id: 'cha-fall-01',
+    name: '늦가을 산책',
+    category: 'cha-effects',
+    badge: '캐릭터효과',
+    icon: '🍂',
+    thumbImagePath: withAssetVersion('./images/character-effects/autumn-leaves-effect-01.svg'),
+    price: 455,
+    state: '판매 중',
+    description: '날씨가 추워졌어.',
+    detailDescription:
+      '구매하면 인벤토리의 캐릭터 효과 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: AUTUMN_LEAVES_CHARACTER_EFFECT_PREVIEW,
+    releaseDate: '2026-11-13',
     isPurchasable: true,
   },
   {
@@ -2368,6 +2419,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'cha-fall-01',
   'character-eggplant-01',
   'character-paprikagirl-01',
   'skin-cucumberboy-03',

@@ -77,8 +77,8 @@ test('신규 스킨 2종이 지정 가격·이미지·설명으로 한 번씩 �
   }
 
   assert.deepEqual(
-    getFeaturedStoreItems(14)
-      .slice(12)
+    getFeaturedStoreItems(15)
+      .slice(13)
       .map((item) => item.id),
     SKINS.map((item) => item.itemId),
   );

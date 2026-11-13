@@ -75,6 +75,7 @@ const nativeSkinImageFiles = [
   'images/skins/tomato_mexico.png',
 ];
 const nativeCharacterEffectImageFiles = [
+  'images/character-effects/autumn-leaves-effect-01.svg',
   'images/character-effects/cucumber-heart.png',
   'images/character-effects/fire-effect-01.png',
   'images/character-effects/spider-web-effect-01.png',

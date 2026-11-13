@@ -1003,6 +1003,7 @@
 ./images/calendar/logo-study.png
 ./images/calendar/logo-work.png
 ./images/calendar/study-completion-celebration.png
+./images/character-effects/autumn-leaves-effect-01.svg
 ./images/character-effects/cucumber-heart.png
 ./images/character-effects/fire-effect-01.png
 ./images/character-effects/spider-web-effect-01.png
@@ -1476,6 +1477,7 @@
 ./supabase-SQLEditor/20261028-calendar-manual-group-backup.sql
 ./supabase-SQLEditor/20261110-eggplant-character.sql
 ./supabase-SQLEditor/20261110-inquiry-notifications.sql
+./supabase-SQLEditor/20261113-autumn-leaves-character-effect.sql
 ./supabase-SQLEditor/99_all_backup.sql
 ./supabase-SQLEditor/account-delete.sql
 ./supabase-SQLEditor/calendar-event.sql
@@ -1544,6 +1546,7 @@
 ./supabase/migrations/20261028010000_calendar_manual_group_backup.sql
 ./supabase/migrations/20261110000000_eggplant_character.sql
 ./supabase/migrations/20261110010000_inquiry_notifications.sql
+./supabase/migrations/20261113000000_autumn_leaves_character_effect.sql
 ./sw.js
 ./tests/app-update-popup.test.mjs
 ./tests/bf02-profile-frame.test.mjs
@@ -1565,6 +1568,7 @@
 ./tests/calendar-shared-personal-readonly.test.mjs
 ./tests/calendar-time-settings.test.mjs
 ./tests/career-monthly-awards.test.mjs
+./tests/character-effects-autumn-leaves.test.mjs
 ./tests/character-effects-fire.test.mjs
 ./tests/character-effects-spider-web.test.mjs
 ./tests/cucumber-boy-emoticon-pack.test.mjs
@@ -1573,6 +1577,7 @@
 ./tests/emoticon-inventory-return.test.mjs
 ./tests/empty-road-bgm.test.mjs
 ./tests/fixtures/app-update-popup-browser.html
+./tests/fixtures/autumn-leaves-purchase.sql
 ./tests/fixtures/calendar-category-order-browser.html
 ./tests/fixtures/calendar-copy-paste-conflict-browser.html
 ./tests/fixtures/calendar-shared-personal-readonly-browser.html
@@ -1777,6 +1782,7 @@
 ./www/images/calendar/logo-study.png
 ./www/images/calendar/logo-work.png
 ./www/images/calendar/study-completion-celebration.png
+./www/images/character-effects/autumn-leaves-effect-01.svg
 ./www/images/character-effects/cucumber-heart.png
 ./www/images/character-effects/fire-effect-01.png
 ./www/images/character-effects/spider-web-effect-01.png

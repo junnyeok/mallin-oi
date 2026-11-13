@@ -369,6 +369,11 @@ begin
     v_name := '불꽃 효과';
     v_category := 'cha-effects';
 
+  elsif p_item_id = 'cha-fall-01' then
+    v_price := 455;
+    v_name := '늦가을 산책';
+    v_category := 'cha-effects';
+
   elsif p_item_id = 'cha-effects-web-01' then
     v_price := 523;
     v_name := '거미줄 효과';
@@ -581,6 +586,10 @@ begin
       end if;
 
       if p_item_id = 'character-eggplant-01' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'cha-fall-01' then
         v_is_auto_topup_admin := false;
       end if;
 
@@ -1457,6 +1466,10 @@ begin
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'cha-fall-01' then
+    -- 캐릭터 효과는 user_store_items 보유 기록을 인벤토리에서 사용한다.
+    null;
+
   elsif p_item_id = 'cha-effects-web-01' then
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -1707,6 +1720,8 @@ begin
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'cha-effects-fire-01'
         then '불꽃 효과 구매가 완료됐어. 496피클이 차감됐고 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'cha-fall-01'
+        then '늦가을 산책 구매가 완료됐어. 455피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'cha-effects-web-01'
         then '거미줄 효과 구매가 완료됐어. 523피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BF-01'
