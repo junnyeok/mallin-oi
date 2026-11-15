@@ -142,7 +142,6 @@ function updateProfileFeaturedBgmUi({
   const button = $('profileFeaturedBgmBtn');
   const image = $('profileFeaturedBgmImage');
   const status = $('profileFeaturedBgmStatus');
-  const settingLink = $('profileFeaturedBgmSettingLink');
 
   if (!wrap || !button) return;
 
@@ -152,7 +151,6 @@ function updateProfileFeaturedBgmUi({
     button.classList.remove('is-playing');
     button.setAttribute('aria-pressed', 'false');
     button.setAttribute('aria-label', '프로필 대표 BGM 재생');
-    if (settingLink) settingLink.hidden = true;
     if (image) image.removeAttribute('src');
     if (status) status.textContent = '';
     return;
@@ -166,7 +164,6 @@ function updateProfileFeaturedBgmUi({
   button.classList.toggle('is-playing', isPlaying);
   button.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
   button.setAttribute('aria-label', `${title} 대표 BGM ${actionText}`);
-  if (settingLink) settingLink.hidden = !isOwnProfile;
 
   if (image && image.getAttribute('src') !== track.coverPath) {
     image.src = track.coverPath;
