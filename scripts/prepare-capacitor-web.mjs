@@ -58,6 +58,8 @@ const nativeProfileBackgroundImageFiles = [
   'images/profile-background/idolstage-mobile.webp',
 ];
 const nativeProfileFrameImageFiles = [
+  'images/profile-frame/leaf-PC.png',
+  'images/profile-frame/leaf-mobile.png',
   'images/profile-frame/rainbow.png',
   'images/profile-frame/rainbow-mobile.png',
   'images/profile-frame/mallin-shiny.png',

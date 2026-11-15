@@ -13,11 +13,11 @@ const itemId = 'bgm-boygroup-01';
 const sqlPath = 'supabase-SQLEditor/20261116-boygroup-bgm.sql';
 const migrationPath = 'supabase/migrations/20261116000000_boygroup_bgm.sql';
 
-test('네가 머문 자리는 655피클·지정 문구로 NEW 첫 번째에 유일하게 등록된다', () => {
+test('네가 머문 자리는 655피클·지정 문구로 NEW 두 번째에 유일하게 등록된다', () => {
   const products = STORE_ITEMS.filter(item => item.id === itemId);
   assert.equal(products.length, 1);
   const [item] = products;
-  assert.equal(getFeaturedStoreItems(1)[0].id, itemId);
+  assert.equal(getFeaturedStoreItems(2)[1].id, itemId);
   assert.equal(item.name, '네가 머문 자리');
   assert.equal(item.category, 'bgm');
   assert.equal(item.price, 655);
@@ -73,7 +73,7 @@ test('로컬 SQL·마이그레이션·누적본과 구매 기준본의 이번 �
     readFile('supabase-SQLEditor/99_all_backup.sql', 'utf8'),
   ]);
   assert.equal(sql, migration);
-  assert.ok(backup.endsWith(sql));
+  assert.ok(backup.includes(sql));
   for (const source of [sql, canonical]) {
     assert.match(source, /elsif p_item_id = 'bgm-boygroup-01' then\s+v_price := 655;\s+v_name := '네가 머문 자리';\s+v_category := 'bgm';/);
     assert.match(source, /elsif p_item_id = 'bgm-boygroup-01' then\s+null;/);

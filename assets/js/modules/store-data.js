@@ -1160,7 +1160,20 @@ export const PROFILE_FRAME_MALLIN_SHINY_PREVIEW = [
   },
 ];
 
+export const PROFILE_FRAME_LEAF_PREVIEW = [
+  { code: 'BF-03-pc', label: 'PC 버전 미리보기', imagePath: withAssetVersion('./images/profile-frame/leaf-PC.png'), displayOrder: 1 },
+  { code: 'BF-03-mobile', label: '모바일 버전 미리보기', imagePath: withAssetVersion('./images/profile-frame/leaf-mobile.png'), displayOrder: 2 },
+];
+
 export const PROFILE_FRAME_CATALOG = [
+  {
+    itemId: 'BF-03',
+    name: '귀여운 덩쿨잎',
+    pcImagePath: withAssetVersion('./images/profile-frame/leaf-PC.png'),
+    mobileImagePath: withAssetVersion('./images/profile-frame/leaf-mobile.png'),
+    thumbImagePath: withAssetVersion('./images/profile-frame/leaf-PC.png'),
+    displayOrder: 0,
+  },
   {
     itemId: 'BF-02',
     name: '말린오이 테마 빛나는 테두리',
@@ -1198,6 +1211,23 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'BF-03',
+    name: '귀여운 덩쿨잎',
+    category: 'profile',
+    itemType: 'profile-frame',
+    badge: '프로필테두리',
+    icon: '🍃',
+    thumbImagePath: withAssetVersion('./images/profile-frame/leaf-PC.png'),
+    price: 421,
+    state: '판매 중',
+    description: '귀여운 디자인의 덩쿨잎 테두리야.',
+    detailDescription:
+      '구매하면 인벤토리의 프로필테두리 항목에 추가되고, 장착하면 프로필카드 테두리에 표시돼.',
+    previewImages: PROFILE_FRAME_LEAF_PREVIEW,
+    releaseDate: '2026-11-16',
+    isPurchasable: true,
+  },
   {
     id: 'bgm-boygroup-01',
     name: '네가 머문 자리',
@@ -2455,6 +2485,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'BF-03',
   'bgm-boygroup-01',
   'cha-fall-01',
   'character-eggplant-01',

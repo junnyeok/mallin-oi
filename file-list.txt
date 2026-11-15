@@ -1883,3 +1883,10 @@
 ./supabase-SQLEditor/20261116-boygroup-bgm.sql
 ./supabase/migrations/20261116000000_boygroup_bgm.sql
 ./tests/fixtures/boygroup-bgm-purchase.sql
+./images/profile-frame/leaf-PC.png
+./www/images/profile-frame/leaf-PC.png
+./images/profile-frame/leaf-mobile.png
+./www/images/profile-frame/leaf-mobile.png
+./tests/leaf-profile-frame.test.mjs
+./supabase-SQLEditor/20261116-leaf-profile-frame.sql
+./supabase/migrations/20261116010000_leaf_profile_frame.sql

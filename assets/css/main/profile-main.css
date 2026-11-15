@@ -1320,3 +1320,50 @@ button.profile-character-card:hover {
     line-height: 1.2;
   }
 }
+
+/* BF-03: leaf artwork surrounds the card without stretching the whole image. */
+body[data-page='profile'] .profile-card.has-profile-frame--leaf,
+.inventory-profile-preview.has-profile-frame.has-profile-frame--leaf {
+  border-color: transparent;
+  box-shadow: none;
+}
+body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
+.inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
+  inset: -28px;
+  background: none;
+  border: 54px solid transparent;
+  border-image-source: var(--profile-frame-desktop);
+  border-image-slice: 180;
+  border-image-width: 54px;
+  border-image-repeat: round;
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  /* The photo layer has its own straight edge even when the card border is
+     transparent. Blend only its outer 8px underneath the mobile foliage. */
+  body[data-page='profile'] .profile-card.has-profile-frame--leaf::before,
+  .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::before {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+  }
+  body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
+  .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
+    /* Draw the top/bottom strip once: repeating it adds too many tiny leaves.
+       Give those leaves extra height while keeping the side foliage in bounds. */
+    inset: -66px -24px -58px;
+    border-width: 88px 54px 80px;
+    border-image-source: var(--profile-frame-mobile, var(--profile-frame-desktop));
+    border-image-slice: 220 180 200 180;
+    border-image-width: 88px 54px 80px;
+    border-image-repeat: stretch round;
+  }
+}
+
+/* Wider mobile/tablet cards keep leaf proportions rather than stretching a
+   single horizontal strip across the full width. */
+@media (min-width: 481px) and (max-width: 700px) {
+  body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
+  .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
+    border-image-repeat: round;
+  }
+}

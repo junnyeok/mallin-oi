@@ -249,6 +249,11 @@ begin
     v_name := '말린오이 테마 빛나는 테두리';
     v_category := 'profile';
 
+  elsif p_item_id = 'BF-03' then
+    v_price := 421;
+    v_name := '귀여운 덩쿨잎';
+    v_category := 'profile';
+
   elsif p_item_id = 'skin-eggpotato-01' then
     v_price := 0;
     v_name := '찐감자 스킨';
@@ -578,6 +583,10 @@ begin
       v_can_bypass_store_balance := false;
     end if;
 
+    if p_item_id = 'BF-03' then
+      v_can_bypass_store_balance := false;
+    end if;
+
     if not v_can_bypass_store_balance then
       v_is_auto_topup_admin := public.is_auto_topup_admin_user(v_user_id)
         and p_item_id <> 'BG-06';
@@ -599,6 +608,10 @@ begin
       end if;
 
       if p_item_id = 'bgm-boygroup-01' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'BF-03' then
         v_is_auto_topup_admin := false;
       end if;
 
@@ -1494,6 +1507,10 @@ begin
     -- 프로필테두리는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
 
+  elsif p_item_id = 'BF-03' then
+    -- 프로필테두리는 user_store_items 보유 기록을 사용한다.
+    null;
+
   elsif p_item_id = 'BG-01' then
     -- 프로필배경은 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -1742,6 +1759,8 @@ begin
         then '무지개 프로필 테두리 구매가 완료됐어. 389피클이 차감됐고 프로필테두리 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BF-02'
         then '말린오이 테마 빛나는 테두리 구매가 완료됐어. 488피클이 차감됐고 프로필테두리 인벤토리에서 장착할 수 있어.'
+      when p_item_id = 'BF-03'
+        then '귀여운 덩쿨잎 구매가 완료됐어. 421피클이 차감됐고 프로필테두리 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-01'
         then '중앙경찰학교 카툰배경 구매가 완료됐어. 438피클이 차감됐고 프로필배경 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'BG-02'

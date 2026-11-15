@@ -2134,11 +2134,13 @@ function setProfileFrameStyle(targetEl, frameItemId = '') {
     syncMallinShinyFrameMotion(targetEl, false);
     targetEl.classList.remove('has-profile-frame');
     targetEl.classList.remove('has-profile-frame--mallin-shiny');
+    targetEl.classList.remove('has-profile-frame--leaf');
     targetEl.style.removeProperty('--profile-frame-desktop');
     targetEl.style.removeProperty('--profile-frame-mobile');
     return;
   }
 
+  targetEl.classList.toggle('has-profile-frame--leaf', frame.itemId === 'BF-03');
   const isMallinShinyFrame = frame.itemId === MALLIN_SHINY_FRAME_ITEM_ID;
 
   targetEl.classList.add('has-profile-frame');

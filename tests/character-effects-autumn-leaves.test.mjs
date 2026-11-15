@@ -12,11 +12,11 @@ const itemId = 'cha-fall-01';
 const asset = 'images/character-effects/autumn-leaves-effect-01.svg';
 const sqlPath = 'supabase-SQLEditor/20261113-autumn-leaves-character-effect.sql';
 
-test('늦가을 산책은 지정 문구·455피클로 NEW 두 번째에 유일하게 등록된다', () => {
+test('늦가을 산책은 지정 문구·455피클로 NEW 세 번째에 유일하게 등록된다', () => {
   const product = catalog.getStoreItemById(itemId);
   assert.equal(catalog.STORE_ITEMS.filter(item => item.id === itemId).length, 1);
   assert.equal(catalog.CHARACTER_EFFECT_CATALOG.filter(item => item.itemId === itemId).length, 1);
-  assert.equal(catalog.getFeaturedStoreItems(2)[1].id, itemId);
+  assert.equal(catalog.getFeaturedStoreItems(3)[2].id, itemId);
   assert.equal(product.name, '늦가을 산책');
   assert.equal(product.price, 455);
   assert.equal(product.category, 'cha-effects');
