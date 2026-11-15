@@ -1873,3 +1873,13 @@
 ./www/store-item.html
 ./www/store.html
 ./www/write.html
+./assets/js/modules/character-effect-autumn.js
+./www/assets/js/modules/character-effect-autumn.js
+./assets/mp3/네가머문자리.mp3
+./images/BGM/네가머문자리.png
+./tests/bgm-playback-controls.test.mjs
+./tests/boygroup-bgm.test.mjs
+./tests/character-effects-autumn.test.mjs
+./supabase-SQLEditor/20261116-boygroup-bgm.sql
+./supabase/migrations/20261116000000_boygroup_bgm.sql
+./tests/fixtures/boygroup-bgm-purchase.sql

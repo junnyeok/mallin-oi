@@ -12,11 +12,11 @@ const itemId = 'cha-fall-01';
 const asset = 'images/character-effects/autumn-leaves-effect-01.svg';
 const sqlPath = 'supabase-SQLEditor/20261113-autumn-leaves-character-effect.sql';
 
-test('늦가을 산책은 지정 문구·455피클로 NEW 첫 번째에 유일하게 등록된다', () => {
+test('늦가을 산책은 지정 문구·455피클로 NEW 두 번째에 유일하게 등록된다', () => {
   const product = catalog.getStoreItemById(itemId);
   assert.equal(catalog.STORE_ITEMS.filter(item => item.id === itemId).length, 1);
   assert.equal(catalog.CHARACTER_EFFECT_CATALOG.filter(item => item.itemId === itemId).length, 1);
-  assert.equal(catalog.getFeaturedStoreItems(1)[0].id, itemId);
+  assert.equal(catalog.getFeaturedStoreItems(2)[1].id, itemId);
   assert.equal(product.name, '늦가을 산책');
   assert.equal(product.price, 455);
   assert.equal(product.category, 'cha-effects');
@@ -38,7 +38,8 @@ test('모든 표시 문맥에서 공통 렌더러가 낙엽 SVG를 장식 레이
     assert.match(html, /data-character-effect-id="cha-fall-01"/);
     assert.match(html, new RegExp(`data-character-effect-context="${context}"`));
     assert.match(html, /aria-hidden="true"/);
-    assert.match(html, /autumn-leaves-effect-01\.svg\?v=test/);
+    assert.match(html, /class="character-effect-autumn-leaves"/);
+    assert.doesNotMatch(html, /<img/);
     assert.doesNotMatch(html, /data-character-effect-sprite/);
   }
 });
@@ -63,7 +64,7 @@ test('전용 SQL·마이그레이션·누적본과 구매 함수의 이번 상�
     readFile('supabase-SQLEditor/store-item_purchase-functions.sql', 'utf8'),
   ]);
   assert.equal(sql, migration);
-  assert.ok(backup.endsWith(sql));
+  assert.ok(backup.includes(sql));
   assert.match(purchase, /elsif p_item_id = 'cha-fall-01' then\s+v_price := 455;\s+v_name := '늦가을 산책';\s+v_category := 'cha-effects';/);
   assert.doesNotMatch(purchase, /if p_item_id = 'cha-fall-01' then\s+v_can_bypass_store_balance := false;/);
   assert.match(purchase, /permission.can_bypass_store_balance = true/);

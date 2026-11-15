@@ -439,6 +439,11 @@ begin
     v_name := 'PIXEL HEART';
     v_category := 'bgm';
 
+  elsif p_item_id = 'bgm-boygroup-01' then
+    v_price := 655;
+    v_name := '네가 머문 자리';
+    v_category := 'bgm';
+
   elsif p_item_id = 'emo-eat-01' then
     v_price := 220;
     v_name := '먹방오이 이모티콘팩';
@@ -590,6 +595,10 @@ begin
       end if;
 
       if p_item_id = 'cha-fall-01' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'bgm-boygroup-01' then
         v_is_auto_topup_admin := false;
       end if;
 
@@ -1458,6 +1467,9 @@ begin
   elsif p_item_id = 'bgm-cucumbergirl-03' then
     null;
 
+  elsif p_item_id = 'bgm-boygroup-01' then
+    null;
+
   elsif p_item_id = 'cha-effects-cucumberheart-01' then
     -- 캐릭터 효과는 user_store_items 보유 기록만 있으면 인벤토리에서 표시 가능
     null;
@@ -1716,6 +1728,8 @@ begin
         then 'MUSCLE NIGHT 구매가 완료됐어. 653피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-cucumbergirl-03'
         then 'PIXEL HEART 구매가 완료됐어. 588피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-boygroup-01'
+        then '네가 머문 자리 구매가 완료됐어. 655피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'
         then '말린오이테마 하트 캐릭터 효과 구매가 완료됐어. 385피클이 차감됐고 인벤토리에서 장착할 수 있어.'
       when p_item_id = 'cha-effects-fire-01'

@@ -351,6 +351,8 @@ function renderLoginRequiredState() {
   const toggleBtn = $('bgmPlayToggleBtn');
 
   if (toggleBtn) toggleBtn.disabled = true;
+  const stopBtn = $('bgmStopBtn');
+  if (stopBtn) stopBtn.disabled = true;
 
   setPanelDesc('로그인 후 BGM을 들을 수 있어.');
 
@@ -378,7 +380,8 @@ function bindPanelGlobalEvents() {
     if (!panelOpen) return;
 
     const menu = $('bgmMenu');
-    if (menu?.contains(event.target)) return;
+    // Playlist rendering can detach the clicked button before this event bubbles.
+    if (event.composedPath().includes(menu) || menu?.contains(event.target)) return;
 
     closePanel();
   });
@@ -485,7 +488,25 @@ function ensureAudio() {
   return audio;
 }
 
+function renderPlaybackIcon(action) {
+  const shapes = {
+    play: '<path d="M8 5.5a1 1 0 0 1 1.5-.86l10 5.75a1 1 0 0 1 0 1.72l-10 5.75A1 1 0 0 1 8 17Z"/>',
+    pause: '<rect x="6" y="5" width="4" height="14" rx="1.3"/><rect x="14" y="5" width="4" height="14" rx="1.3"/>',
+    stop: '<rect x="5.5" y="5.5" width="13" height="13" rx="2"/>',
+  };
+  return `<svg class="bgm-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${shapes[action] || shapes.play}</svg>`;
+}
+
 function updatePanelDesc() {
+  const toggleBtn = $('bgmPlayToggleBtn');
+  if (toggleBtn) {
+    const label = isPlaying ? '일시정지' : '재생';
+    toggleBtn.innerHTML = renderPlaybackIcon(isPlaying ? 'pause' : 'play');
+    toggleBtn.setAttribute('aria-label', label);
+    toggleBtn.title = label;
+  }
+  const stopBtn = $('bgmStopBtn');
+  if (stopBtn) stopBtn.disabled = !hasAuthenticatedUser() || !playlist.length;
   const track = getCurrentTrack();
 
   if (!track) {
@@ -544,10 +565,23 @@ function renderPlaylist() {
 
           <button
             type="button"
-            class="bgm-item__action"
+            class="bgm-item__action bgm-player-control"
             data-bgm-index="${index}"
+            aria-label="${escapeHtml(track.title)} ${isActive && isPlaying ? '일시정지' : '재생'}"
+            title="${isActive && isPlaying ? '일시정지' : '재생'}"
           >
-            ${isActive && isPlaying ? '일시정지' : '재생'}
+            ${renderPlaybackIcon(isActive && isPlaying ? 'pause' : 'play')}
+          </button>
+          <button
+            type="button"
+            class="bgm-item__action bgm-player-control"
+            data-bgm-index="${index}"
+            data-bgm-action="stop"
+            aria-label="${escapeHtml(track.title)} 정지"
+            title="정지"
+            ${isActive ? '' : 'disabled'}
+          >
+            ${renderPlaybackIcon('stop')}
           </button>
             </div>
           </div>
@@ -853,6 +887,32 @@ function pauseTrack() {
   savePlaybackState();
   updatePanelDesc();
   renderPlaylist();
+}
+
+function stopTrack() {
+  // Keep the selected source so the next play starts this track from the beginning.
+  externalPlaybackSession = null;
+  const player = ensureAudio();
+  player.pause();
+  player.currentTime = 0;
+  isPlaying = false;
+  playBlocked = false;
+  savePlaybackState();
+  updatePanelDesc();
+  renderPlaylist();
+}
+
+async function handleTrackAction(index, action = 'toggle') {
+  if (action === 'stop') {
+    if (index === currentIndex) stopTrack();
+    return;
+  }
+  if (index === currentIndex) {
+    if (isPlaying) pauseTrack();
+    else await tryPlayCurrentTrack();
+    return;
+  }
+  await playTrack(index, { startTime: 0, autoPlay: true });
 }
 
 function notifyPersonalBgmPlay(reason = 'play') {
@@ -1271,19 +1331,15 @@ export async function initBgmPlayer() {
     await togglePlayPause();
   };
 
+  const stopBtn = $('bgmStopBtn');
+  if (stopBtn) stopBtn.onclick = () => stopTrack();
+
   list.onclick = async (event) => {
     const actionBtn = event.target.closest('[data-bgm-index]');
     if (!actionBtn) return;
 
     const index = Number(actionBtn.dataset.bgmIndex || 0);
-    const isSameTrack = index === currentIndex;
-
-    if (isSameTrack && isPlaying) {
-      pauseTrack();
-      return;
-    }
-
-    await playTrack(index, { startTime: 0, autoPlay: true });
+    await handleTrackAction(index, actionBtn.dataset.bgmAction);
   };
 
   currentIndex = getPreferredIndex();

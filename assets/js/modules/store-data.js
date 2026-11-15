@@ -144,6 +144,15 @@ export const PIXEL_HEART_BGM_PREVIEW = [
   },
 ];
 
+export const BOYGROUP_BGM_PREVIEW = [
+  {
+    code: 'bgm-boygroup-01-lp',
+    label: '네가 머문 자리 LP',
+    imagePath: withAssetVersion('./images/BGM/네가머문자리.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -306,6 +315,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/Pixel-Heart_LP.png'),
     isDefault: false,
     displayOrder: 16,
+  },
+  {
+    id: 'mallin-oi-boygroup-01',
+    storeItemId: 'bgm-boygroup-01',
+    title: '네가 머문 자리',
+    artist: '말린오이닷컴',
+    audioPath: withAssetVersion('./assets/mp3/네가머문자리.mp3'),
+    coverPath: withAssetVersion('./images/BGM/네가머문자리.png'),
+    isDefault: false,
+    displayOrder: 17,
   },
 ];
 
@@ -1179,6 +1198,23 @@ export function getProfileFrameByItemId(itemId = '') {
 }
 
 export const STORE_ITEMS = [
+  {
+    id: 'bgm-boygroup-01',
+    name: '네가 머문 자리',
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒🙋‍♂️🎵',
+    thumbImagePath: withAssetVersion('./images/BGM/네가머문자리.png'),
+    previewAudioPath: withAssetVersion('./assets/mp3/네가머문자리.mp3'),
+    price: 655,
+    state: '판매 중',
+    description: '말린오이닷컴 대표 보컬들의 듀엣곡이야.',
+    detailDescription:
+      '메인보컬은 오이소년이야. <br>구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: BOYGROUP_BGM_PREVIEW,
+    releaseDate: '2026-11-16',
+    isPurchasable: true,
+  },
   {
     id: 'emo-broccoli-girl-01',
     name: '브로콜리 알바생 이모티콘팩',
@@ -2419,6 +2455,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'bgm-boygroup-01',
   'cha-fall-01',
   'character-eggplant-01',
   'character-paprikagirl-01',

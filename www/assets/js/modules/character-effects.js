@@ -1,3 +1,5 @@
+import { renderAutumnLeavesSvg } from './character-effect-autumn.js';
+
 const EFFECT_WRAP_SELECTOR = '.character-effect-wrap';
 const EFFECT_LAYER_SELECTOR = '.character-effect-layer';
 const CHARACTER_SELECTOR = '.character-effect-character';
@@ -443,7 +445,9 @@ export function renderCharacterEffectHtml(effect = null) {
   const initialSpriteBottomOffset = sprite
     ? (sprite.frameBottomOffsets[0] / sprite.frameHeight) * 100
     : 0;
-  const effectMedia = renderMode === 'spider-web-svg'
+  const effectMedia = effect.itemId === 'cha-fall-01'
+    ? renderAutumnLeavesSvg()
+    : renderMode === 'spider-web-svg'
     ? renderSpiderWebSvg(effect, effectClassName)
     : sprite
     ? `

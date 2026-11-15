@@ -322,9 +322,10 @@ body[data-page='post'] .logo #siteLogoImg {
     top: auto;
     left: 0;
     right: auto;
-    bottom: calc(100% + 8px);
+    /* Clear the pickle button, positioned 92px above the notification button. */
+    bottom: calc(100% + 92px + var(--space-8));
     width: min(360px, calc(100vw - 24px));
-    max-height: min(420px, 58vh);
+    max-height: min(420px, calc(100svh - 180px));
     overflow-x: hidden;
     overflow-y: auto;
   }
@@ -435,6 +436,13 @@ body[data-page='post'] .logo #siteLogoImg {
 .bgm-panel__title {
   font-size: 15px;
   font-weight: 800;
+}
+
+.bgm-panel__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-shrink: 0;
 }
 
 .bgm-panel__toggle {
@@ -803,6 +811,29 @@ body[data-page='post'] .logo #siteLogoImg {
     font-size: 11px;
   }
 }
+
+/* Compact leaf-green transport controls shared by the panel and track rows. */
+.bgm-panel__toggle.bgm-player-control,
+.bgm-item__action.bgm-player-control {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-primary);
+  border-radius: 50%;
+  background: var(--color-primary-sub);
+  color: #426317;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.bgm-panel__toggle.bgm-player-control { width: 36px; height: 36px; }
+.bgm-control-icon { display: block; width: 18px; height: 18px; fill: currentColor; }
+.bgm-player-control:not(:disabled):hover { background: #e4f2c1; border-color: #86ae35; }
+.bgm-player-control:focus-visible { outline: 2px solid #608d20; outline-offset: 2px; }
+.bgm-player-control:disabled { opacity: 0.4; cursor: default; }
+.bgm-item__controls { gap: var(--space-6); }
 
 /* =========================
   BGM RELOAD NOTICE
