@@ -344,6 +344,12 @@ body.service-menu-open {
     width: 100%;
     justify-content: flex-end;
     gap: var(--space-8);
+    /* The full-width row overlaps the member links; only controls receive taps. */
+    pointer-events: none;
+  }
+
+  .header-actions--corner > * {
+    pointer-events: auto;
   }
 
   .service-menu {
