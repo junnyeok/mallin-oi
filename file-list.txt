@@ -1911,3 +1911,6 @@
 ./supabase-SQLEditor/20261117-site-member-visit-stats.sql
 ./supabase-SQLEditor/20261117-site-people-today.sql
 ./supabase-SQLEditor/20261117-member-levels.sql
+./assets/js/modules/profile-leaf-frame.js
+./www/assets/js/modules/profile-leaf-frame.js
+./tests/profile-leaf-frame-size.test.mjs

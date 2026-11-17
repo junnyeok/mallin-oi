@@ -1303,14 +1303,22 @@ body[data-page='profile'] .profile-card.has-profile-frame--leaf,
 }
 body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
 .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
-  inset: -28px;
+  inset: -52px calc(10px - var(--leaf-side, 126px) * .65) -42px;
   background: none;
-  border: 54px solid transparent;
+  border: solid transparent;
+  border-width: var(--leaf-cap-top, 94px) var(--leaf-side, 116px) var(--leaf-cap-bottom, 94px);
   border-image-source: var(--profile-frame-desktop);
   border-image-slice: 180;
-  border-image-width: 54px;
-  border-image-repeat: round;
+  border-image-width: 1;
+  border-image-repeat: stretch;
   pointer-events: none;
+}
+@media (min-width: 701px) {
+  body[data-page='profile'] .profile-card.has-profile-frame--leaf::before,
+  .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::before {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+  }
 }
 @media (max-width: 700px) {
   /* The photo layer has its own straight edge even when the card border is
@@ -1322,25 +1330,15 @@ body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
   }
   body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
   .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
-    /* Draw the top/bottom strip once: repeating it adds too many tiny leaves.
-       Give those leaves extra height while keeping the side foliage in bounds. */
-    inset: -66px -24px -58px;
-    border-width: 88px 54px 112px;
+    /* Keep each complete strip once, with side width tracking card height. */
+    inset: -66px calc(10px - var(--leaf-side, 94px) * .5) -58px;
+    border-width: var(--leaf-cap-top, 88px) var(--leaf-side, 94px) var(--leaf-cap-bottom, 112px);
     border-image-source: var(--profile-frame-mobile, var(--profile-frame-desktop));
     /* Include the complete bottom leaves above the former 200px cut.
        Scale 280 source pixels into 112px to retain their original size. */
     border-image-slice: 220 180 280 180;
-    border-image-width: 88px 54px 112px;
-    border-image-repeat: stretch round;
-  }
-}
-
-/* Wider mobile/tablet cards keep leaf proportions rather than stretching a
-   single horizontal strip across the full width. */
-@media (min-width: 481px) and (max-width: 700px) {
-  body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
-  .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
-    border-image-repeat: round;
+    border-image-width: 1;
+    border-image-repeat: stretch;
   }
 }
 

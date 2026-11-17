@@ -20,7 +20,7 @@ test('PC/mobile exports retain alpha, exact dimensions and matching mirrors',asy
 test('equipment applies leaf styling and cleans it when switching or unequipping',async()=>{
  const s=await readFile('assets/js/modules/profile.js','utf8');const fn=s.slice(s.indexOf('function setProfileFrameStyle('),s.indexOf('\nfunction applyProfileFrame'));
  const classes=new Set();const styles=new Map();const target={classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},style:{setProperty:(k,v)=>styles.set(k,v),removeProperty:k=>styles.delete(k)}};
- const apply=vm.runInNewContext(fn+';setProfileFrameStyle',{getProfileFrameByItemId:catalog.getProfileFrameByItemId,syncMallinShinyFrameMotion:()=>{},MALLIN_SHINY_FRAME_ITEM_ID:'BF-02'});
+ const apply=vm.runInNewContext(fn+';setProfileFrameStyle',{getProfileFrameByItemId:catalog.getProfileFrameByItemId,syncMallinShinyFrameMotion:()=>{},syncLeafFrameSize:()=>{},MALLIN_SHINY_FRAME_ITEM_ID:'BF-02'});
  apply(target,'BF-03');assert.ok(classes.has('has-profile-frame--leaf'));assert.match(styles.get('--profile-frame-desktop'),/leaf-PC/);
  apply(target,'BF-02');assert.ok(!classes.has('has-profile-frame--leaf'));assert.ok(classes.has('has-profile-frame--mallin-shiny'));
  apply(target,'BF-03');apply(target,'');assert.ok(!classes.has('has-profile-frame--leaf'));assert.equal(styles.size,0);
@@ -28,5 +28,5 @@ test('equipment applies leaf styling and cleans it when switching or unequipping
 test('migration is isolated and preserves purchase ledger and ownership guard',async()=>{
  const sql=await readFile('supabase-SQLEditor/20261116-leaf-profile-frame.sql','utf8');assert.equal(sql,await readFile('supabase/migrations/20261116010000_leaf_profile_frame.sql','utf8'));
  assert.match(sql,/v_price := 421/);assert.match(sql,/v_can_bypass_store_balance := false/);assert.match(sql,/v_is_auto_topup_admin := false/);assert.match(sql,/usi.item_id in \('BF-01', 'BF-02', 'BF-03'\)/);assert.match(sql,/insert into public.pickle_ledger/);assert.doesNotMatch(sql,/delete from|drop table|update public.profiles/i);
- const css=await readFile('assets/css/main/profile-main.css','utf8');assert.match(css,/has-profile-frame--leaf[\s\S]*border-color: transparent/);assert.match(css,/border-image-repeat: round/);
+ const css=await readFile('assets/css/main/profile-main.css','utf8');assert.match(css,/has-profile-frame--leaf[\s\S]*border-color: transparent/);assert.match(css,/border-image-repeat: stretch/);
 });

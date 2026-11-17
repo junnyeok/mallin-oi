@@ -1,3 +1,4 @@
+import { syncLeafFrameSize } from './profile-leaf-frame.js';
 import { loadProfileLevel } from './profile-level.js';
 import { loadItemOrder, getItemOrder, sortByItemOrder, appendItemOrderButton } from './inventory-order.js';
 import { initEmoticonInventoryReturn } from './emoticon-inventory-return.js';
@@ -2133,6 +2134,7 @@ function setProfileFrameStyle(targetEl, frameItemId = '') {
   if (!targetEl) return;
 
   const frame = getProfileFrameByItemId(frameItemId);
+  syncLeafFrameSize(targetEl, frame?.itemId === 'BF-03');
 
   if (!frame) {
     syncMallinShinyFrameMotion(targetEl, false);
