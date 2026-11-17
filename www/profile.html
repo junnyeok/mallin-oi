@@ -40,7 +40,7 @@
     <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
     <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
     <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
-    <link rel="stylesheet" href="./assets/css/main/profile-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/profile-main.css?v=20261117-levels-transparent" />
     <link
       rel="stylesheet"
       href="./assets/css/components/character-effects.css"
@@ -80,6 +80,17 @@
                     hidden
                   ></p>
                   <p class="profile-hero__desc" id="profileDesc"></p>
+                  <section class="profile-level" id="profileLevel" aria-label="레벨과 경험치" hidden>
+                    <div class="profile-level__heading">
+                      <strong class="profile-level__badge" data-level-badge></strong>
+                      <span data-level-total></span>
+                    </div>
+                    <progress class="profile-level__bar" max="100" value="0" aria-label="다음 레벨 경험치"></progress>
+                    <div class="profile-level__detail">
+                      <span data-level-detail></span>
+                      <span data-level-remaining></span>
+                    </div>
+                  </section>
                 </div>
 
                 <div class="profile-hero__actions">

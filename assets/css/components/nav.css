@@ -415,7 +415,7 @@ body[data-page='post'] .logo #siteLogoImg {
   display: flex;
   flex-direction: column;
   width: min(380px, calc(100vw - 32px));
-  max-height: 440px;
+  max-height: min(780px, calc(100svh - 80px));
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -425,6 +425,7 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 .bgm-panel__head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -514,7 +515,7 @@ body[data-page='post'] .logo #siteLogoImg {
   flex-direction: column;
   gap: var(--space-8);
   min-height: 0;
-  max-height: 330px;
+  max-height: none;
   overflow-y: auto;
   padding: var(--space-12) 14px var(--space-16);
   -webkit-overflow-scrolling: touch;
@@ -532,6 +533,7 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 .bgm-item {
+  flex: none;
   display: grid;
   grid-template-columns: 68px minmax(0, 1fr);
   gap: 12px;
@@ -622,23 +624,6 @@ body[data-page='post'] .logo #siteLogoImg {
   line-height: 1.4;
 }
 
-.bgm-item__meta {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-text-sub);
-  line-height: 1.5;
-}
-
-.bgm-item__state {
-  display: inline-flex;
-  margin-top: 6px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  background: #f2f7ea;
-  color: #4a6b15;
-}
 
 .bgm-item__action {
   border: 1px solid var(--color-border);
@@ -709,7 +694,6 @@ body[data-page='post'] .logo #siteLogoImg {
   gap: 8px;
   margin-top: 4px;
 }
-.bgm-item__controls .bgm-item__state { margin-top: 0; }
 .bgm-item__controls .item-order-button { margin-left: auto; }
 
 .bgm-item__action:hover {
@@ -740,7 +724,7 @@ body[data-page='post'] .logo #siteLogoImg {
     /* Clear the pickle button, positioned 46px above the BGM button. */
     bottom: calc(100% + 46px + var(--space-8));
     width: min(330px, calc(100vw - var(--space-24)));
-    max-height: min(430px, calc(100svh - 180px));
+    max-height: min(720px, calc(100svh - 172px - env(safe-area-inset-bottom)));
   }
 
   .bgm-panel__head {
@@ -760,7 +744,7 @@ body[data-page='post'] .logo #siteLogoImg {
   }
 
   .bgm-panel__list {
-    max-height: 260px;
+    max-height: none;
     gap: var(--space-8);
     padding: var(--space-8) var(--space-12) var(--space-16);
   }
@@ -793,17 +777,6 @@ body[data-page='post'] .logo #siteLogoImg {
     line-height: 1.35;
   }
 
-  .bgm-item__meta {
-    font-size: 11px;
-    line-height: 1.35;
-  }
-
-  .bgm-item__state {
-    margin-top: 4px;
-    padding: 3px 7px;
-    font-size: 10px;
-  }
-
   .bgm-item__action {
     grid-column: auto;
     justify-self: end;
@@ -834,6 +807,81 @@ body[data-page='post'] .logo #siteLogoImg {
 .bgm-player-control:focus-visible { outline: 2px solid #608d20; outline-offset: 2px; }
 .bgm-player-control:disabled { opacity: 0.4; cursor: default; }
 .bgm-item__controls { gap: var(--space-6); }
+.bgm-panel__title { white-space: nowrap; }
+.bgm-panel__toggle[aria-pressed='true'] { background: #d9edaa; border-color: #729c2d; }
+.bgm-item__seek {
+  --bgm-progress: 0%;
+  position: relative;
+  flex: 1 1 110px;
+  min-width: 40px;
+}
+/* Keep the native range for touch/keyboard input; draw the rail separately so
+   browser-native blue controls cannot replace the site's green design. */
+.bgm-item__progress {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.bgm-item__rail {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  left: 8px;
+  height: 8px;
+  border: 1px solid #c8dc9b;
+  border-radius: 999px;
+  background: linear-gradient(to right, #8fba3e 0%, #b8d86b var(--bgm-progress), #f1f7df var(--bgm-progress));
+  box-shadow: inset 0 1px 2px #638c2014;
+  pointer-events: none;
+}
+.bgm-item__thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--bgm-progress);
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-radius: 65% 35% 60% 40%;
+  background: linear-gradient(135deg, #cde986 0%, #81b42f 70%);
+  box-shadow: 0 0 0 1px #7ea837, 0 2px 4px #42631726;
+  transform: translate(-50%, -50%) rotate(-12deg);
+}
+.bgm-item__thumb::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 5px;
+  width: 1px;
+  border-radius: 1px;
+  background: #5e8c25;
+  transform: rotate(35deg);
+}
+.bgm-item__progress:focus-visible + .bgm-item__rail {
+  outline: 2px solid #608d20;
+  outline-offset: 5px;
+}
+.bgm-item__progress:active + .bgm-item__rail .bgm-item__thumb {
+  box-shadow: 0 0 0 4px #b8d86b66, 0 0 0 1px #7ea837;
+}
+.bgm-item__time {
+  display: block;
+  margin-top: -3px;
+  text-align: center;
+  color: var(--color-text-sub);
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 
 /* =========================
   BGM RELOAD NOTICE
@@ -939,20 +987,20 @@ body[data-page='post'] .logo #siteLogoImg {
 
 .site-stats {
   position: absolute;
-  top: 27px;
+  top: 19px;
   left: 306px;
   right: calc(50% + 184px);
   z-index: 10;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: var(--space-16);
+  column-gap: var(--space-8);
   row-gap: var(--space-4);
   color: var(--color-text);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
-  text-decoration: underline;
+  text-decoration: none;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   white-space: nowrap;
@@ -961,6 +1009,23 @@ body[data-page='post'] .logo #siteLogoImg {
 .site-stats[hidden] {
   display: none;
 }
+
+.site-stats__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #93b64b;
+  border-radius: var(--radius-pill);
+  background: #f8ffe9;
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1;
+  box-shadow: 0 2px 5px #42631712;
+}
+.site-stats__item:hover { background: #ecfacd; border-color: #648f20; }
+.site-stats__item:focus-visible { outline: 2px solid #426317; outline-offset: 3px; }
 
 .site-stats__item strong {
   font-weight: 800;
@@ -1116,15 +1181,17 @@ body[data-page='post'] .logo #siteLogoImg {
 
 @media (max-width: 700px) {
   .site-stats {
-    top: 199px;
+    top: 193px;
     left: auto;
     right: calc(var(--space-24) * 3);
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    gap: var(--space-12);
-    font-size: 12px;
+    gap: var(--space-6);
+    font-size: 11px;
   }
+
+  .site-stats__item { min-height: 28px; padding: 4px 7px; gap: 3px; }
 
   .pickle-menu {
     position: fixed;

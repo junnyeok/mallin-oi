@@ -1032,6 +1032,7 @@ export const EGG_POTATO_CHARACTER_PREVIEW = [
 export const PROFILE_BACKGROUND_CATALOG = [
   {
     itemId: 'BG-01',
+    profileBioTone: 'default',
     name: '중앙경찰학교 카툰배경',
     pcImagePath: withAssetVersion('./images/profile-background/CPA.png'),
     mobileImagePath: withAssetVersion(
@@ -1042,6 +1043,7 @@ export const PROFILE_BACKGROUND_CATALOG = [
   },
   {
     itemId: 'BG-02',
+    profileBioTone: 'light',
     name: '야간 순찰 배경',
     pcImagePath: withAssetVersion('./images/profile-background/nightwork.png'),
     mobileImagePath: withAssetVersion(
@@ -1054,6 +1056,7 @@ export const PROFILE_BACKGROUND_CATALOG = [
   },
   {
     itemId: 'BG-03',
+    profileBioTone: 'default',
     name: '냉장고 프로필배경',
     pcImagePath: withAssetVersion(
       './images/profile-background/refrigerator.png',
@@ -1068,6 +1071,7 @@ export const PROFILE_BACKGROUND_CATALOG = [
   },
   {
     itemId: 'BG-04',
+    profileBioTone: 'light',
     name: '기동인의 행정당직 프로필배경',
     pcImagePath: withAssetVersion(
       './images/profile-background/changsin.png',
@@ -1082,6 +1086,7 @@ export const PROFILE_BACKGROUND_CATALOG = [
   },
   {
     itemId: 'BG-05',
+    profileBioTone: 'default',
     name: '오이소녀의 스테이지',
     pcImagePath: withAssetVersion(
       './images/profile-background/idolstage.webp',
@@ -1096,6 +1101,7 @@ export const PROFILE_BACKGROUND_CATALOG = [
   },
   {
     itemId: 'BG-06',
+    profileBioTone: 'default',
     name: 'DGB PARK',
     pcImagePath: withAssetVersion('./images/profile-background/DAEGU.png'),
     mobileImagePath: withAssetVersion(
@@ -1106,6 +1112,7 @@ export const PROFILE_BACKGROUND_CATALOG = [
   },
   {
     itemId: 'BG-07',
+    profileBioTone: 'light',
     name: '방울토마토리토 아지트',
     pcImagePath: withAssetVersion('./images/profile-background/mafia.png'),
     mobileImagePath: withAssetVersion(

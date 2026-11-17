@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>회원과 오늘의 방문 | 말린오이닷컴</title>
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/components/character-effects.css" />
+    <link rel="stylesheet" href="./assets/css/main/community-members-main.css?v=20261117-levels" />
+  </head>
+
+  <body data-page="community-members">
+    <div class="page">
+      <div data-include="header"></div>
+      <main class="site-main people-main">
+        <div class="container people-container" data-community-members aria-busy="true">
+          <section class="people-intro" aria-labelledby="peopleTitle">
+            <div>
+              <p class="people-eyebrow">OUR NEIGHBORS</p>
+              <h1 id="peopleTitle">함께하는 회원</h1>
+              <p class="people-description" id="peopleDescription">말린오이닷컴에서 함께 기록하는 이웃들을 만나봐.</p>
+            </div>
+            <div class="people-total"><span id="peopleTotalLabel">회원</span><strong id="peopleTotal">—</strong><span>명</span></div>
+          </section>
+          <nav class="people-tabs" aria-label="회원 목록 선택">
+            <a href="./community-members.html?view=members" data-people-tab="members" aria-current="page">회원</a>
+            <a href="./community-members.html?view=today" data-people-tab="today">금일 방문</a>
+          </nav>
+          <section class="people-directory" aria-label="회원 목록">
+            <div class="people-view" role="group" aria-label="회원 카드 보기 방식">
+              <button type="button" data-people-display="character" aria-pressed="true">캐릭터 카드</button>
+              <button type="button" data-people-display="photo" aria-pressed="false">프로필사진</button>
+            </div>
+            <details class="people-level-guide"><summary>레벨순 · 경험치 안내</summary>
+          <p>글쓰기 20 XP · 댓글/답글 5 XP · 출석 10 XP · 좋아요/참신해요 누르기 2 XP · 받기 3 XP</p>
+          <p>1레벨부터 시작해 다음 레벨에 100 × 현재 레벨만큼 경험치가 필요해. 같은 반응은 한 번만, 출석은 하루 한 번만 반영돼. 내 글에 누른 반응은 제외해.</p>
+          <p>기존에 남아 있는 활동 기록도 합산했어. 획득한 경험치는 글이나 반응을 삭제해도 유지돼. 레벨이 같으면 총 경험치가 높은 회원부터 보여줘.</p>
+        </details>
+        <div class="people-tools">
+              <form class="people-search" id="peopleSearchForm" role="search">
+                <label class="people-search__label" for="peopleSearch">닉네임 검색</label>
+                <div class="people-search__row">
+                  <input type="search" id="peopleSearch" name="q" placeholder="찾고 싶은 닉네임" autocomplete="off" maxlength="80" />
+                  <button type="submit">검색</button>
+                </div>
+              </form>
+              <button type="button" class="people-refresh" id="peopleRefresh">새로고침</button>
+            </div>
+            <p class="people-guest-note" id="peopleGuestNote" hidden></p>
+            <p class="people-status" id="peopleStatus" role="status" aria-live="polite">회원 목록을 불러오는 중이야.</p>
+            <div class="people-grid" id="peopleGrid" role="list" aria-label="회원 프로필"></div>
+            <div class="people-state" id="peopleState" hidden></div>
+            <nav class="people-pagination" id="peoplePagination" aria-label="회원 목록 페이지" hidden></nav>
+          </section>
+        </div>
+      </main>
+      <div data-include="footer"></div>
+    </div>
+    <img id="cukeBuddy" src="./images/logo-home.png" alt="말린오이" class="cursor-buddy" />
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

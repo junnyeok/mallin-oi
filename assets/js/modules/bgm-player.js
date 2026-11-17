@@ -24,11 +24,20 @@ const BGM_STATE_STORAGE_LEGACY_KEY = 'mallin_bgm_play_state_v2';
 const STORE_BGM_PREVIEW_EVENT = 'mallin:store-bgm-preview';
 export const PERSONAL_BGM_PLAY_EVENT = 'mallin:personal-bgm-play';
 const BGM_RELOAD_NOTICE_ID = 'bgmReloadResumeNotice';
+const BGM_MODE_STORAGE_KEY = 'mallin_bgm_playback_mode_v1';
 
+let playbackMode = localStorage.getItem(BGM_MODE_STORAGE_KEY) === 'shuffle' ? 'shuffle' : 'sequential';
+let shuffleHistory = [];
+let shuffleCursor = -1;
+const trackDurations = new Map();
+let scrubbingSeek = null;
+let playbackRequest = 0;
 let audio = null;
 let playlist = [];
 let currentIndex = 0;
 let panelOpen = false;
+let lastRevealedTrackId = '';
+let revealFrame = null;
 let playBlocked = false;
 let isPlaying = false;
 let currentTrackId = '';
@@ -320,6 +329,10 @@ function scheduleRemotePreferenceSave() {
 }
 
 function stopAndResetPlayback() {
+  playbackRequest += 1;
+  shuffleHistory = [];
+  shuffleCursor = -1;
+  scrubbingSeek = null;
   externalPlaybackSession = null;
 
   if (audio) {
@@ -351,8 +364,10 @@ function renderLoginRequiredState() {
   const toggleBtn = $('bgmPlayToggleBtn');
 
   if (toggleBtn) toggleBtn.disabled = true;
-  const stopBtn = $('bgmStopBtn');
-  if (stopBtn) stopBtn.disabled = true;
+  ['bgmModeBtn', 'bgmPreviousBtn', 'bgmNextBtn'].forEach((id) => {
+    const button = $(id);
+    if (button) button.disabled = true;
+  });
 
   setPanelDesc('로그인 후 BGM을 들을 수 있어.');
 
@@ -466,11 +481,18 @@ function ensureAudio() {
 
   audio.addEventListener('timeupdate', () => {
     scheduleSavePlaybackState();
+    updateSeekControls();
   });
 
-  audio.addEventListener('loadedmetadata', () => {
+  const updateDuration = () => {
+    if (currentTrackId && Number.isFinite(audio.duration) && audio.duration > 0) {
+      trackDurations.set(currentTrackId, audio.duration);
+    }
     scheduleSavePlaybackState();
-  });
+    updateSeekControls();
+  };
+  audio.addEventListener('loadedmetadata', updateDuration);
+  audio.addEventListener('durationchange', updateDuration);
 
   audio.addEventListener('ended', () => {
     playNextTrack().catch((error) => {
@@ -492,7 +514,10 @@ function renderPlaybackIcon(action) {
   const shapes = {
     play: '<path d="M8 5.5a1 1 0 0 1 1.5-.86l10 5.75a1 1 0 0 1 0 1.72l-10 5.75A1 1 0 0 1 8 17Z"/>',
     pause: '<rect x="6" y="5" width="4" height="14" rx="1.3"/><rect x="14" y="5" width="4" height="14" rx="1.3"/>',
-    stop: '<rect x="5.5" y="5.5" width="13" height="13" rx="2"/>',
+    previous: '<rect x="5" y="5" width="3" height="14" rx="1"/><path d="M18 5.5v13L8 12Z"/>',
+    next: '<rect x="16" y="5" width="3" height="14" rx="1"/><path d="M6 5.5v13L16 12Z"/>',
+    shuffle: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h2c5 0 5 12 10 12h6m-4-4 4 4-4 3M3 18h2c1.4 0 2.5-1.2 3.5-3M12 8c1-1.2 1.8-2 3-2h6m-4-3 4 3-4 4"/></g>',
+    sequential: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6h16m-4-4 4 4-4 4M20 15v3H4m4-4-4 4 4 4"/></g>',
   };
   return `<svg class="bgm-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${shapes[action] || shapes.play}</svg>`;
 }
@@ -505,8 +530,21 @@ function updatePanelDesc() {
     toggleBtn.setAttribute('aria-label', label);
     toggleBtn.title = label;
   }
-  const stopBtn = $('bgmStopBtn');
-  if (stopBtn) stopBtn.disabled = !hasAuthenticatedUser() || !playlist.length;
+  const disabled = !hasAuthenticatedUser() || !playlist.length;
+  ['bgmPlayToggleBtn', 'bgmModeBtn', 'bgmPreviousBtn', 'bgmNextBtn'].forEach((id) => {
+    const button = $(id);
+    if (button) button.disabled = disabled;
+  });
+  const modeButton = $('bgmModeBtn');
+  if (modeButton) {
+    const label = playbackMode === 'shuffle'
+      ? '랜덤 재생 중 · 순차 반복 재생으로 전환'
+      : '순차 반복 재생 중 · 랜덤 재생으로 전환';
+    modeButton.innerHTML = renderPlaybackIcon(playbackMode);
+    modeButton.setAttribute('aria-label', label);
+    modeButton.setAttribute('aria-pressed', String(playbackMode === 'shuffle'));
+    modeButton.title = label;
+  }
   const track = getCurrentTrack();
 
   if (!track) {
@@ -529,6 +567,25 @@ function updatePanelDesc() {
   setPanelDesc(`현재 선택된 곡: ${track.title}`);
 }
 
+// Scroll only the BGM list, leaving the page and the saved playlist order alone.
+function revealCurrentTrack({ force = false } = {}) {
+  if (!panelOpen) return;
+  const id = getCurrentTrack()?.id;
+  if (!id || (!force && id === lastRevealedTrackId)) return;
+  if (revealFrame !== null) cancelAnimationFrame(revealFrame);
+  revealFrame = requestAnimationFrame(() => {
+    revealFrame = null;
+    if (!panelOpen) return;
+    const list = $('bgmList');
+    const card = list?.children[currentIndex];
+    if (!list || !card) return;
+    const padding = parseFloat(getComputedStyle(list).paddingTop) || 0;
+    // Native scroll limits keep the final song at the bottom without empty space.
+    list.scrollTop += card.getBoundingClientRect().top - list.getBoundingClientRect().top - list.clientTop - padding;
+    lastRevealedTrackId = getCurrentTrack()?.id || '';
+  });
+}
+
 function renderPlaylist() {
   const list = $('bgmList');
   if (!list) return;
@@ -543,8 +600,6 @@ function renderPlaylist() {
       const isActive = index === currentIndex;
       const activeClass = isActive ? ' is-active' : '';
       const playingClass = isActive && isPlaying ? ' is-playing' : '';
-      const stateText =
-        isActive && isPlaying ? '재생 중' : isActive ? '선택됨' : '대기 중';
 
       return `
         <div class="bgm-item${activeClass}${playingClass}">
@@ -559,9 +614,7 @@ function renderPlaylist() {
 
           <div class="bgm-item__body">
             <p class="bgm-item__title">${escapeHtml(track.title)}</p>
-            <p class="bgm-item__meta">${escapeHtml(track.artist || '말린오이닷컴')}</p>
             <div class="bgm-item__controls">
-            <span class="bgm-item__state">${stateText}</span>
 
           <button
             type="button"
@@ -572,17 +625,14 @@ function renderPlaylist() {
           >
             ${renderPlaybackIcon(isActive && isPlaying ? 'pause' : 'play')}
           </button>
-          <button
-            type="button"
-            class="bgm-item__action bgm-player-control"
-            data-bgm-index="${index}"
-            data-bgm-action="stop"
-            aria-label="${escapeHtml(track.title)} 정지"
-            title="정지"
-            ${isActive ? '' : 'disabled'}
-          >
-            ${renderPlaybackIcon('stop')}
-          </button>
+          <div class="bgm-item__seek">
+            <input type="range" class="bgm-item__progress" data-bgm-seek="${index}"
+              min="0" max="1000" step="1" value="0"
+              aria-label="${escapeHtml(track.title)} 재생 위치" aria-valuetext="0:00"
+            />
+            <span class="bgm-item__rail" aria-hidden="true"><span class="bgm-item__thumb"></span></span>
+            <span class="bgm-item__time" aria-hidden="true">0:00</span>
+          </div>
             </div>
           </div>
         </div>
@@ -594,6 +644,8 @@ function renderPlaylist() {
     appendItemOrderButton(card, {userId: authenticatedUserId, type: 'bgm', items, itemId: playlist[index].id});
     card.querySelector('.bgm-item__controls').append(card.querySelector('.item-order-button'));
   });
+  updateSeekControls();
+  revealCurrentTrack();
 }
 
 
@@ -639,18 +691,18 @@ async function loadOwnedBgmList() {
 }
 
 function waitForSeekable(player) {
-  return new Promise((resolve) => {
-    if (player.readyState >= 1) {
-      resolve();
-      return;
-    }
-
-    const onReady = () => {
+  if (player.readyState >= 1) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timer);
       player.removeEventListener('loadedmetadata', onReady);
-      resolve();
+      player.removeEventListener('error', onError);
     };
-
+    const onReady = () => { cleanup(); resolve(); };
+    const onError = () => { cleanup(); reject(new Error('BGM metadata unavailable')); };
+    const timer = setTimeout(onError, 10000);
     player.addEventListener('loadedmetadata', onReady, { once: true });
+    player.addEventListener('error', onError, { once: true });
   });
 }
 
@@ -801,6 +853,7 @@ async function restorePlaybackPosition() {
 }
 
 async function tryPlayCurrentTrack() {
+  const request = ++playbackRequest;
   const player = ensureAudio();
   const track = getCurrentTrack();
 
@@ -819,10 +872,12 @@ async function tryPlayCurrentTrack() {
 
   try {
     await player.play();
+    if (request !== playbackRequest || currentTrackId !== track.id) return;
     isPlaying = true;
     playBlocked = false;
     removeReloadResumeNotice();
   } catch (error) {
+    if (request !== playbackRequest || currentTrackId !== track.id) return;
     isPlaying = false;
     playBlocked = true;
     console.warn('[bgm] autoplay blocked or failed:', error);
@@ -881,32 +936,17 @@ async function playTrack(index = 0, options = {}) {
 }
 
 function pauseTrack() {
-  const player = ensureAudio();
-  player.pause();
-  isPlaying = false;
-  savePlaybackState();
-  updatePanelDesc();
-  renderPlaylist();
-}
-
-function stopTrack() {
-  // Keep the selected source so the next play starts this track from the beginning.
-  externalPlaybackSession = null;
-  const player = ensureAudio();
-  player.pause();
-  player.currentTime = 0;
-  isPlaying = false;
+  playbackRequest += 1;
   playBlocked = false;
+  const player = ensureAudio();
+  player.pause();
+  isPlaying = false;
   savePlaybackState();
   updatePanelDesc();
   renderPlaylist();
 }
 
-async function handleTrackAction(index, action = 'toggle') {
-  if (action === 'stop') {
-    if (index === currentIndex) stopTrack();
-    return;
-  }
+async function handleTrackAction(index) {
   if (index === currentIndex) {
     if (isPlaying) pauseTrack();
     else await tryPlayCurrentTrack();
@@ -1039,15 +1079,123 @@ export async function restoreBgmAfterExternalAudio(
   return Boolean(isPlaying && audio && !audio.paused);
 }
 
-async function playNextTrack() {
+function getAdjacentTrackIndex(direction) {
+  if (playlist.length < 2) return 0;
+  if (playbackMode !== 'shuffle') {
+    return (currentIndex + direction + playlist.length) % playlist.length;
+  }
+
+  const currentId = getCurrentTrack()?.id;
+  if (shuffleHistory[shuffleCursor] !== currentId) {
+    shuffleHistory = [currentId];
+    shuffleCursor = 0;
+  }
+  // Keep actual listening history so Previous reverses a random Next.
+  const historyId = shuffleHistory[shuffleCursor + direction];
+  const historyIndex = playlist.findIndex((track) => track.id === historyId);
+  if (historyIndex >= 0) {
+    shuffleCursor += direction;
+    return historyIndex;
+  }
+  if (direction < 0) return currentIndex;
+
+  const choices = playlist.map((_, index) => index).filter((index) => index !== currentIndex);
+  const nextIndex = choices[Math.floor(Math.random() * choices.length)];
+  shuffleHistory = shuffleHistory.slice(0, shuffleCursor + 1);
+  shuffleHistory.push(playlist[nextIndex].id);
+  shuffleCursor += 1;
+  return nextIndex;
+}
+
+function togglePlaybackMode() {
+  playbackMode = playbackMode === 'shuffle' ? 'sequential' : 'shuffle';
+  shuffleHistory = [];
+  shuffleCursor = -1;
+  localStorage.setItem(BGM_MODE_STORAGE_KEY, playbackMode);
+  updatePanelDesc();
+}
+
+async function playAdjacentTrack(direction) {
   if (!playlist.length) return;
-
-  const nextIndex = (currentIndex + 1) % playlist.length;
-  currentIndex = nextIndex;
-  saveIndex(currentIndex);
-
+  const nextIndex = getAdjacentTrackIndex(direction);
   clearSavedPlaybackState();
   await playTrack(nextIndex, { startTime: 0, autoPlay: true });
+}
+
+async function playNextTrack() {
+  await playAdjacentTrack(1);
+}
+
+function formatPlaybackTime(seconds) {
+  const value = Math.max(0, Math.floor(Number(seconds) || 0));
+  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
+}
+
+function paintSeekControl(input, ratio, duration = 0) {
+  const fraction = Math.min(1, Math.max(0, ratio));
+  input.style.setProperty('--bgm-progress', `${fraction * 100}%`);
+  input.parentElement?.style?.setProperty('--bgm-progress', `${fraction * 100}%`);
+  const text = duration > 0
+    ? `${formatPlaybackTime(fraction * duration)} / ${formatPlaybackTime(duration)}`
+    : `${Math.round(fraction * 100)}%`;
+  input.setAttribute('aria-valuetext', text);
+  input.title = text;
+  const time = input.parentElement?.querySelector('.bgm-item__time');
+  if (time) time.textContent = duration > 0 ? text : '—:—';
+}
+
+function updateSeekControls() {
+  const list = $('bgmList');
+  if (!list) return;
+  list.querySelectorAll('[data-bgm-seek]').forEach((input) => {
+    // Never replace the thumb under a user's finger or keyboard focus.
+    if (scrubbingSeek === input) return;
+    const track = playlist[Number(input.dataset.bgmSeek)];
+    const loaded = track?.id === currentTrackId;
+    const duration = loaded && Number.isFinite(audio?.duration) && audio.duration > 0
+      ? audio.duration : trackDurations.get(track?.id) || 0;
+    const ratio = loaded && duration > 0 ? audio.currentTime / duration : 0;
+    input.value = String(Math.round(ratio * 1000));
+    paintSeekControl(input, ratio, duration);
+  });
+}
+
+function previewSeek(input) {
+  const track = playlist[Number(input.dataset.bgmSeek)];
+  const ratio = Number(input.value) / 1000;
+  const loaded = track?.id === currentTrackId;
+  const duration = loaded && Number.isFinite(audio?.duration) && audio.duration > 0
+    ? audio.duration : trackDurations.get(track?.id) || 0;
+  paintSeekControl(input, ratio, duration);
+  if (loaded && duration > 0) {
+    audio.currentTime = ratio * duration;
+    scheduleSavePlaybackState();
+  }
+}
+
+async function seekTrack(index, ratio) {
+  const track = playlist[index];
+  if (!track) return;
+  const player = ensureAudio();
+  const alreadyLoaded = currentTrackId === track.id && Boolean(player.src);
+  if (!alreadyLoaded) {
+    currentIndex = index;
+    saveIndex(currentIndex);
+    setTrackSource(track, { waitForMetadata: false });
+    // Request playback inside the user's gesture, before awaiting metadata (iOS).
+    void tryPlayCurrentTrack();
+  }
+  try {
+    await waitForSeekable(player);
+    // A different track may have been selected while this file was loading.
+    if (currentTrackId !== track.id || getCurrentTrack()?.id !== track.id) return;
+    if (!Number.isFinite(player.duration) || player.duration <= 0) return;
+    player.currentTime = Math.min(1, Math.max(0, ratio)) * player.duration;
+    savePlaybackState();
+    updateSeekControls();
+  } catch (error) {
+    console.warn('[bgm] seek failed:', error);
+  }
 }
 
 async function togglePlayPause() {
@@ -1080,9 +1228,13 @@ function openPanel() {
   panel.hidden = false;
   btn.setAttribute('aria-expanded', 'true');
   panelOpen = true;
+  revealCurrentTrack({ force: true });
   const userId = authenticatedUserId;
   if (userId) loadItemOrder(userId, 'bgm').then(() => {
-    if (authenticatedUserId === userId) applyPlaylistOrder();
+    if (authenticatedUserId === userId) {
+      applyPlaylistOrder();
+      revealCurrentTrack({ force: true });
+    }
   });
 }
 
@@ -1265,6 +1417,13 @@ export async function initBgmPlayer() {
 
   if (!menu || !btn || !panel || !list || !toggleBtn) return;
 
+  // Inject SVG only after the header partial is fetched: Live Server otherwise
+  // injects its reload script at every </svg> and truncates the response body.
+  for (const [id, icon] of [['bgmModeBtn', playbackMode], ['bgmPreviousBtn', 'previous'], ['bgmPlayToggleBtn', 'play'], ['bgmNextBtn', 'next']]) {
+    const control = $(id);
+    if (control) control.innerHTML = renderPlaybackIcon(icon);
+  }
+
   bindBgmSettingsQuickLink();
 
   bindRetryOnUserGesture();
@@ -1331,15 +1490,44 @@ export async function initBgmPlayer() {
     await togglePlayPause();
   };
 
-  const stopBtn = $('bgmStopBtn');
-  if (stopBtn) stopBtn.onclick = () => stopTrack();
+  const modeButton = $('bgmModeBtn');
+  if (modeButton) modeButton.onclick = togglePlaybackMode;
+  const previousButton = $('bgmPreviousBtn');
+  if (previousButton) previousButton.onclick = () => playAdjacentTrack(-1);
+  const nextButton = $('bgmNextBtn');
+  if (nextButton) nextButton.onclick = playNextTrack;
+
+  list.onpointerdown = (event) => {
+    scrubbingSeek = event.target.closest('[data-bgm-seek]');
+  };
+  const releaseSeek = () => { scrubbingSeek = null; };
+  list.onpointerup = releaseSeek;
+  list.onpointercancel = releaseSeek;
+  list.onkeydown = (event) => {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) {
+      scrubbingSeek = event.target.closest('[data-bgm-seek]');
+    }
+  };
+  list.onkeyup = releaseSeek;
+  list.oninput = (event) => {
+    const input = event.target.closest('[data-bgm-seek]');
+    if (input) previewSeek(input);
+  };
+  list.onchange = async (event) => {
+    const input = event.target.closest('[data-bgm-seek]');
+    if (input) await seekTrack(Number(input.dataset.bgmSeek), Number(input.value) / 1000);
+  };
+  list.addEventListener('focusout', () => {
+    releaseSeek();
+    updateSeekControls();
+  });
 
   list.onclick = async (event) => {
     const actionBtn = event.target.closest('[data-bgm-index]');
     if (!actionBtn) return;
 
     const index = Number(actionBtn.dataset.bgmIndex || 0);
-    await handleTrackAction(index, actionBtn.dataset.bgmAction);
+    await handleTrackAction(index);
   };
 
   currentIndex = getPreferredIndex();

@@ -243,3 +243,18 @@ test('프로필 대비 로직과 스타일은 루트 웹과 www 앱 번들이 �
     assert.deepEqual(appSource, webSource, `${filePath} must stay mirrored`);
   }
 });
+
+test('catalog tone wins without measuring an empty biography or decoding its image', async () => {
+  let calls = 0;
+  const tones = [];
+  const updater = createLatestProfileBioToneUpdater({
+    analyze: async () => { calls += 1; throw new Error('must not analyze'); },
+    applyTone: tone => tones.push(tone),
+  });
+  for (const toneOverride of ['light', 'default', 'light']) {
+    const result = await updater.update({ imageUrl: 'catalog-background', toneOverride, targetRect: { width: 0, height: 0 } });
+    assert.equal(result.tone, toneOverride);
+  }
+  assert.equal(calls, 0);
+  assert.deepEqual(tones, ['light', 'default', 'light']);
+});

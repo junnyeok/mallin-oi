@@ -73,6 +73,7 @@ const CORE_MODULE_SPECS = [
   ['bgmPlayerModule', './modules/bgm-player.js'],
   ['pickleStatusModule', './modules/pickle-status.js'],
   ['siteStatsModule', './modules/site-stats.js'],
+  ['communityMembersModule', './modules/community-members.js'],
   ['pjaxRouterModule', './modules/pjax-router.js'],
   ['qnaBoardModule', './modules/qna-board.js'],
   ['studyCalendarModule', './modules/study-calendar.js'],
@@ -230,6 +231,11 @@ async function initPageModules(modules) {
   });
 
   switch (page) {
+    case 'community-members':
+      await runSafe('community members page', async () => {
+        await modules.communityMembersModule.initCommunityMembers();
+      });
+      break;
     case 'home':
     case 'index':
     case 'study':

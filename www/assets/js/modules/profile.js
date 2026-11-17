@@ -1,3 +1,4 @@
+import { loadProfileLevel } from './profile-level.js';
 import { loadItemOrder, getItemOrder, sortByItemOrder, appendItemOrderButton } from './inventory-order.js';
 import { initEmoticonInventoryReturn } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
@@ -1750,6 +1751,7 @@ function createProfileBioContrastController(cardEl, descEl) {
     applyTone(tone, result) {
       lastResult = result;
       descEl.classList.toggle(PROFILE_BIO_LIGHT_CLASS, tone === 'light');
+      cardEl.dataset.profileTextTone = tone;
     },
   });
 
@@ -1790,6 +1792,11 @@ function createProfileBioContrastController(cardEl, descEl) {
 
   const analyzeCurrentBackground = () => {
     animationFrame = null;
+    // Catalog tones also apply when the biography is empty or hidden.
+    if (toneOverride && backgroundKey) {
+      void toneUpdater.update({ imageUrl: backgroundKey, toneOverride });
+      return;
+    }
     const options = getAnalysisOptions();
     if (!options) {
       toneUpdater.reset('no-background');
@@ -3404,6 +3411,7 @@ export async function initProfile() {
   if (!['profile', 'profile-setting', 'inventory'].includes(pageName)) return;
 
   destroyProfileBioContrastController();
+  void loadProfileLevel(null);
 
   if (pageName !== 'profile') {
     await destroyProfileFeaturedBgm({
@@ -3495,6 +3503,7 @@ export async function initProfile() {
     currentUser,
     profileRow,
   });
+  if (pageName === 'profile') void loadProfileLevel(targetUserId);
   let characterRows = [];
   let characterSkinRows = [];
   let ownedStoreItemIds = new Set();

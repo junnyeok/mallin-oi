@@ -78,11 +78,17 @@
       <div class="bgm-panel__head">
         <strong class="bgm-panel__title">배경음악</strong>
         <div class="bgm-panel__controls">
-          <button type="button" class="bgm-panel__toggle bgm-player-control" id="bgmPlayToggleBtn" aria-label="재생" title="재생">
-            <svg class="bgm-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5a1 1 0 0 1 1.5-.86l10 5.75a1 1 0 0 1 0 1.72l-10 5.75A1 1 0 0 1 8 17Z"/></svg>
+          <button type="button" class="bgm-panel__toggle bgm-player-control" id="bgmModeBtn" aria-label="순차 반복 재생 중 · 랜덤 재생으로 전환" title="순차 반복 재생 중 · 랜덤 재생으로 전환" aria-pressed="false">
+            <span aria-hidden="true"></span>
           </button>
-          <button type="button" class="bgm-panel__toggle bgm-player-control" id="bgmStopBtn" aria-label="정지" title="정지" disabled>
-            <svg class="bgm-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>
+          <button type="button" class="bgm-panel__toggle bgm-player-control" id="bgmPreviousBtn" aria-label="이전 곡" title="이전 곡">
+            <span aria-hidden="true"></span>
+          </button>
+          <button type="button" class="bgm-panel__toggle bgm-player-control" id="bgmPlayToggleBtn" aria-label="재생" title="재생">
+            <span aria-hidden="true"></span>
+          </button>
+          <button type="button" class="bgm-panel__toggle bgm-player-control" id="bgmNextBtn" aria-label="다음 곡" title="다음 곡">
+            <span aria-hidden="true"></span>
           </button>
         </div>
       </div>
@@ -187,12 +193,12 @@
   </div>
 
   <div class="site-stats" data-site-stats hidden aria-live="polite">
-    <span class="site-stats__item">
+    <a class="site-stats__item" href="__BASE__community-members.html?view=members" aria-label="전체 회원 보기">
       회원 <strong data-site-member-count>0</strong>명
-    </span>
-    <span class="site-stats__item">
+    </a>
+    <a class="site-stats__item" href="__BASE__community-members.html?view=today" aria-label="오늘 방문자 보기">
       금일 방문 <strong data-site-today-visit-count>0</strong>명
-    </span>
+    </a>
   </div>
 
   <div class="container header-inner">

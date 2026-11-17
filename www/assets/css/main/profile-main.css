@@ -1343,3 +1343,34 @@ body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
     border-image-repeat: round;
   }
 }
+
+/* XP sits directly on the existing profile hero. */
+.profile-level { max-width: 360px; width: 100%; box-sizing: border-box; margin-top: 16px; padding: 0; border: 0; background: transparent; color: #304b15; text-shadow: 0 1px 2px rgba(255, 255, 255, .5); text-align: left; }
+.profile-level[hidden] { display: none; }
+.profile-level__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; font-size: 12px; }
+.profile-level__badge { padding: 0; background: transparent; color: inherit; font-size: 15px; font-weight: 800; }
+.profile-level__bar { display: block; appearance: none; width: 100%; height: 9px; margin: 10px 0 8px; border: 0; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, .35); accent-color: #84ad37; }
+.profile-level__bar::-webkit-progress-bar { background: rgba(255, 255, 255, .35); border-radius: 999px; }
+.profile-level__bar::-webkit-progress-value { background: linear-gradient(90deg, #d3f28d, #95c445); border-radius: 999px; }
+.profile-level__bar::-moz-progress-bar { background: #84ad37; border-radius: 999px; }
+.profile-level__detail { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; font-size: 11px; line-height: 1.6; }
+@media (max-width: 768px) {
+  .profile-level { margin: 14px auto 0; }
+}
+
+.profile-hero__desc.is-on-dark-profile-background ~ .profile-level { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .65); }
+.profile-level__heading, .profile-level__detail { font-weight: 700; }
+
+/* Reviewed catalog tones apply to the complete transparent profile header. */
+body[data-page='profile'] .profile-card[data-profile-text-tone] .profile-hero {
+  --profile-readable-text: #182018;
+  --profile-readable-shadow: 0 1px 2px rgba(255, 255, 255, .65);
+}
+body[data-page='profile'] .profile-card[data-profile-text-tone='light'] .profile-hero {
+  --profile-readable-text: #fff;
+  --profile-readable-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+}
+body[data-page='profile'] .profile-card[data-profile-text-tone] :is(.profile-hero__nickname, .profile-hero__desc, .profile-hero__meta, .profile-level) {
+  color: var(--profile-readable-text);
+  text-shadow: var(--profile-readable-shadow);
+}

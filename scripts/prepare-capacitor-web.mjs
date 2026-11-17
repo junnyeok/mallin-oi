@@ -16,6 +16,7 @@ const filesToCopy = [
   'post.html',
   'profile.html',
   'notifications.html',
+  'community-members.html',
   calendarLauncherFile,
   'app-calendar-settings.html',
   'prev-mypage.html',
