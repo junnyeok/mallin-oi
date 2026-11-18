@@ -1148,21 +1148,20 @@ export const PROFILE_FRAME_RAINBOW_PREVIEW = [
   },
 ];
 
+const shinyFrameDesktop = withAssetVersion('./images/profile-frame/mallin-shiny.png?design=jelly1');
+const shinyFrameMobile = withAssetVersion('./images/profile-frame/mallin-shiny-mobile.png?design=jelly1');
+
 export const PROFILE_FRAME_MALLIN_SHINY_PREVIEW = [
   {
     code: 'BF-02-pc',
     label: 'PC 버전 미리보기',
-    imagePath: withAssetVersion(
-      './images/profile-frame/mallin-shiny.png',
-    ),
+    imagePath: shinyFrameDesktop,
     displayOrder: 1,
   },
   {
     code: 'BF-02-mobile',
     label: '모바일 버전 미리보기',
-    imagePath: withAssetVersion(
-      './images/profile-frame/mallin-shiny-mobile.png',
-    ),
+    imagePath: shinyFrameMobile,
     displayOrder: 2,
   },
 ];
@@ -1184,15 +1183,9 @@ export const PROFILE_FRAME_CATALOG = [
   {
     itemId: 'BF-02',
     name: '말린오이 테마 빛나는 테두리',
-    pcImagePath: withAssetVersion(
-      './images/profile-frame/mallin-shiny.png',
-    ),
-    mobileImagePath: withAssetVersion(
-      './images/profile-frame/mallin-shiny-mobile.png',
-    ),
-    thumbImagePath: withAssetVersion(
-      './images/profile-frame/mallin-shiny.png',
-    ),
+    pcImagePath: shinyFrameDesktop,
+    mobileImagePath: shinyFrameMobile,
+    thumbImagePath: shinyFrameDesktop,
     displayOrder: 1,
   },
   {
@@ -1308,9 +1301,7 @@ export const STORE_ITEMS = [
     itemType: 'profile-frame',
     badge: '프로필테두리',
     icon: '🥒🌟',
-    thumbImagePath: withAssetVersion(
-      './images/profile-frame/mallin-shiny.png',
-    ),
+    thumbImagePath: shinyFrameDesktop,
     price: 488,
     state: '판매 중',
     description: '프로필을 꾸밀 수 있는 말린오이 테마의 빛나는 테두리야.',

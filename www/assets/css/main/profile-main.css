@@ -89,7 +89,7 @@ body[data-page='profile'] .profile-card.has-profile-frame::after {
 
   50% {
     opacity: 1;
-    filter: brightness(1.06) drop-shadow(0 0 7px rgba(181, 255, 0, 0.58));
+    filter: brightness(1.04) drop-shadow(0 0 5px rgba(181, 255, 0, 0.46));
   }
 }
 
@@ -136,10 +136,7 @@ body[data-page='profile'] .profile-card.has-profile-frame--mallin-shiny,
 
 body[data-page='profile']
   .profile-card.has-profile-frame--mallin-shiny::after {
-  top: -50px;
-  right: -50px;
-  bottom: -50px;
-  left: -50px;
+  inset: -11px -12px;
   background-image: none;
   border: 50px solid transparent;
   border-image-source: var(--profile-frame-desktop);
@@ -172,7 +169,7 @@ body[data-page='profile']
 .profile-frame-motion__sparkle::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: -1px;
   background:
     linear-gradient(90deg, transparent 43%, #ffffff 50%, transparent 57%),
     linear-gradient(0deg, transparent 43%, #ffffff 50%, transparent 57%),
@@ -180,7 +177,7 @@ body[data-page='profile']
       circle,
       #ffffff 0 12%,
       #efffb2 13% 27%,
-      rgba(181, 255, 0, 0.92) 28% 42%,
+      rgba(193, 255, 56, 0.65) 28% 36%,
       transparent 70%
     );
   filter: drop-shadow(0 0 3px rgba(181, 255, 0, 0.82));
@@ -194,7 +191,7 @@ body[data-page='profile']
   .profile-frame-motion__sparkle {
     offset-path: inset(2px round calc(var(--radius-card) + var(--space-12)));
     offset-rotate: 0deg;
-    animation: profile-frame-mallin-shiny-orbit 9.6s linear infinite;
+    animation: profile-frame-mallin-shiny-orbit 12s linear infinite;
     will-change: offset-distance, opacity;
   }
 
@@ -238,10 +235,7 @@ body[data-page='profile']
 
   body[data-page='profile']
     .profile-card.has-profile-frame--mallin-shiny::after {
-    top: -42px;
-    right: -42px;
-    bottom: -42px;
-    left: -42px;
+    inset: -9px;
     background-image: none;
     border-width: 42px;
     border-image-source: var(
@@ -1321,17 +1315,23 @@ body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
   }
 }
 @media (max-width: 700px) {
-  /* The photo layer has its own straight edge even when the card border is
-     transparent. Blend only its outer 8px underneath the mobile foliage. */
+  /* Blend the straight photo edges beneath the curved mobile vine. */
   body[data-page='profile'] .profile-card.has-profile-frame--leaf::before,
   .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::before {
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
-    mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+    -webkit-mask-image:
+      linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent),
+      linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+    mask-image:
+      linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent),
+      linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
   }
   body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
   .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
     /* Keep each complete strip once, with side width tracking card height. */
-    inset: -60.72px calc(10px - var(--leaf-side, 86px) * .5) -53.36px;
+    /* The vine center follows the photo edge; no extra inward 10px offset. */
+    inset: -60.72px calc(var(--leaf-side, 86px) * -.5) -53.36px;
     border-width: var(--leaf-cap-top, 88px) var(--leaf-side, 94px) var(--leaf-cap-bottom, 112px);
     border-image-source: var(--profile-frame-mobile, var(--profile-frame-desktop));
     /* Include the complete bottom leaves above the former 200px cut.

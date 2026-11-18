@@ -106,10 +106,7 @@
 }
 
 .inventory-profile-preview.has-profile-frame--mallin-shiny::after {
-  top: -50px;
-  right: -50px;
-  bottom: -50px;
-  left: -50px;
+  inset: -11px -12px;
   background-image: none;
   border: 50px solid transparent;
   border-image-source: var(--profile-frame-desktop);
@@ -131,10 +128,7 @@
   }
 
   .inventory-profile-preview.has-profile-frame--mallin-shiny::after {
-    top: -42px;
-    right: -42px;
-    bottom: -42px;
-    left: -42px;
+    inset: -9px;
     background-image: none;
     border-width: 42px;
     border-image-source: var(

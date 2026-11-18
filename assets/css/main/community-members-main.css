@@ -61,25 +61,83 @@
 .people-view { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
 .people-view button { min-height: 40px; padding: 0 16px; border: 1px solid #d5e2c0; border-radius: 12px; background: #fff; color: #65764d; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .people-view button[aria-pressed='true'] { background: #eaffb0; border-color: #a8c865; color: #426317; }
-.people-grid[data-display='character'] .people-card__link { padding: 12px 12px 18px; }
+.people-grid[data-display='character'] .people-card__link { padding: 20px 20px 20px; }
 .people-card__scene { position: relative; isolation: isolate; display: block; width: 100%; height: 190px; border-radius: 16px; background: #f2f9e7; }
 .people-card__backdrop { position: absolute; inset: 0; border-radius: inherit; background-image: var(--people-background, linear-gradient(145deg, #f4fbe7, #dceebd)); background-size: cover; background-position: center; }
 .people-card__character.character-effect-wrap { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 108px; height: 130px; z-index: 1; }
 .people-card__character > .character-effect-character { width: 100%; height: 130px; min-height: 0; min-width: 0; object-fit: contain; }
-.people-card__scene.has-frame::after { content: ''; position: absolute; inset: -12px; border: 24px solid transparent; border-image-source: var(--people-frame); border-image-slice: 180; border-image-width: 24px; border-image-repeat: round; pointer-events: none; z-index: 3; }
-.people-card__scene.has-frame--rainbow::after { inset: -6% -8% -5.5%; border: 0; background-image: var(--people-frame); background-size: 100% 100%; background-repeat: no-repeat; }
-.people-card__scene.has-frame--shiny::after { animation: people-frame-shimmer 5s ease-in-out infinite; }
-@keyframes people-frame-shimmer { 50% { filter: brightness(1.13) drop-shadow(0 0 3px #a5d45d66); } }
-@media (prefers-reduced-motion: reduce) { .people-card__scene.has-frame--shiny::after { animation: none; } }
+.people-card__scene.has-frame::after { content: ''; position: absolute; inset: -24px; border: 48px solid transparent; border-image-source: var(--people-frame); border-image-slice: 180; border-image-width: 1; border-image-repeat: stretch; pointer-events: none; z-index: 3; }
+.people-card__scene.has-frame--rainbow, .people-card__scene.has-frame--shiny { border-radius: 24px; }
+.people-card__scene.has-frame--rainbow::after {
+  /* Align the opaque inner stroke, excluding the PNG's transparent padding. */
+  inset: -18.3px -31.5px -15.9px -32.7px;
+  border-width: 48px;
+  border-image-source: var(--people-frame);
+  border-image-slice: 160;
+  border-image-width: 1;
+  border-image-repeat: stretch;
+}
+.people-card__scene.has-frame--shiny::after {
+  inset: -15.27px -16.31px -15.41px -16.31px;
+  border-width: 46.6667px;
+  border-image-source: var(--people-frame);
+  border-image-slice: 110 103 109 103;
+  border-image-width: 1;
+  border-image-repeat: stretch;
+}
+/* A small highlight travels along the neon tube outside the backdrop. */
+@supports (offset-path: inset(1px round 1px)) {
+  .people-card__scene.has-frame--shiny::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 19px;
+    height: 5px;
+    z-index: 4;
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, white 8%, #eeffa6 38%, transparent 74%);
+    filter: drop-shadow(0 0 2px #c5ff47);
+    offset-path: inset(-5px round 29px);
+    animation: people-frame-shimmer 7s linear infinite;
+  }
+}
+@keyframes people-frame-shimmer {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+@media (max-width: 600px) {
+  .people-card__scene.has-frame--shiny::before { offset-path: inset(-4px round 23px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .people-card__scene.has-frame--shiny::before { display: none; animation: none; }
+}
 @media (max-width: 600px) {
   .people-view button { font-size: 12px; padding: 0 12px; }
-  .people-grid[data-display='character'] .people-card__link { padding: 10px 10px 16px; }
+  .people-grid[data-display='character'] .people-card__link { padding: 16px 16px 18px; }
   .people-card__scene { height: 156px; border-radius: 12px; }
   .people-card__character.character-effect-wrap { width: 78px; height: 100px; bottom: 12px; }
   .people-card__character > .character-effect-character { height: 100px; }
   .people-card__backdrop { background-image: var(--people-background-mobile, var(--people-background, linear-gradient(145deg, #f4fbe7, #dceebd))); }
-  .people-card__scene.has-frame::after { inset: -9px; border-width: 18px; border-image-width: 18px; }
-  .people-card__scene.has-frame--rainbow::after { inset: -6% -8% -5.5%; border: 0; background-image: var(--people-frame-mobile, var(--people-frame)); }
+  .people-card__scene.has-frame::after { inset: -18px; border-width: 36px; border-image-width: 1; }
+  .people-card__scene.has-frame--rainbow, .people-card__scene.has-frame--shiny { border-radius: 18px; }
+  .people-card__scene.has-frame--rainbow::after {
+    inset: -26.16px -37.56px -22.48px -37.8px;
+    border-width: 44px 56px;
+    border-image-source: var(--people-frame-mobile, var(--people-frame));
+    border-image-slice: 180 240;
+    border-image-width: 1;
+    border-image-repeat: stretch;
+  }
+  .people-card__scene.has-frame--shiny::after {
+    inset: -13.62px -12.71px -14.54px -12.92px;
+    border-width: 42px;
+    border-image-source: var(--people-frame-mobile, var(--people-frame));
+    border-image-slice: 111 119 104 117;
+    border-image-width: 1;
+    border-image-repeat: stretch;
+  }
 }
 
 .people-card__level { margin: 0 0 5px; padding: 3px 10px; border-radius: 999px; background: #eaffb0; color: #426317; font-size: 13px; font-weight: 800; }

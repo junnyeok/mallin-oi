@@ -48,11 +48,16 @@ test('BF-02 상품과 프로필테두리 카탈로그가 정확히 한 번 연�
   );
   assert.equal(
     frames[0].pcImagePath,
-    '/images/profile-frame/mallin-shiny.png?v=test',
+    '/images/profile-frame/mallin-shiny.png?design=jelly1&v=test',
   );
   assert.equal(
     frames[0].mobileImagePath,
-    '/images/profile-frame/mallin-shiny-mobile.png?v=test',
+    '/images/profile-frame/mallin-shiny-mobile.png?design=jelly1&v=test',
+  );
+  assert.equal(products[0].thumbImagePath, frames[0].thumbImagePath);
+  assert.deepEqual(
+    products[0].previewImages.map((image) => image.imagePath),
+    [frames[0].pcImagePath, frames[0].mobileImagePath],
   );
   assert.equal(getProfileFrameByItemId(ITEM_ID)?.itemId, ITEM_ID);
 });
