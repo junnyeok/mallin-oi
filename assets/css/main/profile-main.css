@@ -1303,7 +1303,7 @@ body[data-page='profile'] .profile-card.has-profile-frame--leaf,
 }
 body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
 .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
-  inset: -52px calc(10px - var(--leaf-side, 126px) * .65) -42px;
+  inset: -47.84px calc(10px - var(--leaf-side, 116px) * .65) -38.64px;
   background: none;
   border: solid transparent;
   border-width: var(--leaf-cap-top, 94px) var(--leaf-side, 116px) var(--leaf-cap-bottom, 94px);
@@ -1331,7 +1331,7 @@ body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
   body[data-page='profile'] .profile-card.has-profile-frame--leaf::after,
   .inventory-profile-preview.has-profile-frame.has-profile-frame--leaf::after {
     /* Keep each complete strip once, with side width tracking card height. */
-    inset: -66px calc(10px - var(--leaf-side, 94px) * .5) -58px;
+    inset: -60.72px calc(10px - var(--leaf-side, 86px) * .5) -53.36px;
     border-width: var(--leaf-cap-top, 88px) var(--leaf-side, 94px) var(--leaf-cap-bottom, 112px);
     border-image-source: var(--profile-frame-mobile, var(--profile-frame-desktop));
     /* Include the complete bottom leaves above the former 200px cut.

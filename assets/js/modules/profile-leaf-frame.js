@@ -1,4 +1,4 @@
-// Match the side strip's horizontal scale to its actual vertical scale.
+// Track card height while keeping the foliage slightly more compact.
 // A single copy keeps the vine continuous instead of introducing tiled seams.
 const observers = new WeakMap();
 export function syncLeafFrameSize(target, enabled) {
@@ -13,10 +13,11 @@ export function syncLeafFrameSize(target, enabled) {
     if (!width || !height) return;
     const mobile = window.matchMedia('(max-width: 700px)').matches;
     const scale = mobile ? (width + 48) / 393 : (width + 56) / 816;
-    const top = (mobile ? 88 : 94) * scale;
-    const bottom = (mobile ? 112 : 94) * scale;
-    const edgeHeight = height + (mobile ? 124 : 94) - top - bottom;
-    const side = Math.max(1, edgeHeight) * 180 / (mobile ? 1143 : 700);
+    const foliageScale = 0.92;
+    const top = (mobile ? 88 : 94) * scale * foliageScale;
+    const bottom = (mobile ? 112 : 94) * scale * foliageScale;
+    const edgeHeight = height + (mobile ? 124 : 94) * foliageScale - top - bottom;
+    const side = Math.max(1, edgeHeight) * 180 / (mobile ? 1143 : 700) * foliageScale;
     target.style.setProperty('--leaf-cap-top', top + 'px');
     target.style.setProperty('--leaf-cap-bottom', bottom + 'px');
     target.style.setProperty('--leaf-side', side + 'px');

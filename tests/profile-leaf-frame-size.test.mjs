@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-test('side leaves keep equal X/Y scale after XP height changes; resizing and unequip clean up',async()=>{
+test('compact side leaves track XP height changes; resizing and unequip clean up',async()=>{
  const code=(await readFile('assets/js/modules/profile-leaf-frame.js','utf8')).replace('export function','function');
  const listeners=new Map();let callback,stops=0,mobile=true,height=670;
  const properties=new Map();
@@ -12,7 +12,7 @@ test('side leaves keep equal X/Y scale after XP height changes; resizing and une
  for(const h of [670,780]){
   height=h;callback();
   const top=parseFloat(properties.get('--leaf-cap-top')),bottom=parseFloat(properties.get('--leaf-cap-bottom')),side=parseFloat(properties.get('--leaf-side'));
-  assert.ok(Math.abs(side/180-(height+124-top-bottom)/1143)<.00001);
+  assert.ok(Math.abs(side/180-(height+124*.92-top-bottom)/1143*.92)<.00001);
  }
  mobile=false;listeners.get('resize')();
  assert.ok(parseFloat(properties.get('--leaf-side'))>100);
