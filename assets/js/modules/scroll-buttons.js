@@ -27,6 +27,9 @@
   [mallin-plus.html]
   - TOP / END
 
+  [community-members.html]
+  - TOP / END
+
   [notifications.html]
   - TOP / END
 
@@ -74,6 +77,7 @@ function getPageType() {
   if (path.includes('suggestion.html')) return 'suggestion';
   if (path.includes('qna.html')) return 'qna';
   if (path.includes('notifications.html')) return 'notifications';
+  if (path.includes('community-members.html')) return 'community-members';
   if (path.includes('mallin-plus.html')) return 'mallin-plus';
 
   const page = String(document.body?.dataset?.page || '')
@@ -108,6 +112,7 @@ function getPageType() {
 
   if (page === 'suggestion') return 'suggestion';
   if (page === 'notifications') return 'notifications';
+  if (page === 'community-members') return 'community-members';
   if (page === 'posts-all' || page === 'postsall' || page === 'all') {
     return 'posts-all';
   }

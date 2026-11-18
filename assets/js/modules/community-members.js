@@ -277,7 +277,7 @@ export async function initCommunityMembers() {
     grid: root.querySelector('#peopleGrid'), status: root.querySelector('#peopleStatus'),
     message: root.querySelector('#peopleState'), pagination: root.querySelector('#peoplePagination'),
     form: root.querySelector('#peopleSearchForm'), input: root.querySelector('#peopleSearch'),
-    submit: root.querySelector('#peopleSearchForm button'), refresh: root.querySelector('#peopleRefresh'),
+    submit: root.querySelector('#peopleSearchForm button[type="submit"]'), refresh: root.querySelector('#peopleRefresh'),
     totalLabel: root.querySelector('#peopleTotalLabel'), total: root.querySelector('#peopleTotal'),
     guestNote: root.querySelector('#peopleGuestNote'),
   };
@@ -306,12 +306,20 @@ export async function initCommunityMembers() {
     });
   });
   state.input.value = state.search;
-  state.form.addEventListener('submit', event => {
-    event.preventDefault();
-    state.search = state.input.value.trim().slice(0, 80);
+  const applySearch = (search) => {
+    state.search = search;
     state.page = 1;
     history.replaceState(history.state, '', pageHref({ view: state.view, display: state.display, search: state.search }));
     void loadPage(state);
+  };
+  state.form.addEventListener('submit', event => {
+    event.preventDefault();
+    applySearch(state.input.value.trim().slice(0, 80));
+  });
+  state.form.addEventListener('reset', event => {
+    event.preventDefault();
+    state.input.value = '';
+    applySearch('');
   });
   state.refresh.addEventListener('click', () => void loadPage(state));
   if (!lifecycleBound) {

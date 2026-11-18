@@ -15,7 +15,7 @@
 .people-search__row { display: flex; gap: 8px; }
 .people-search input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 14px; background: #fff; color: var(--color-text); font: inherit; font-size: 14px; }
 .people-search button, .people-refresh, .people-state__button { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid #c6dc9e; border-radius: 14px; background: #f4fade; color: #426317; font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; }
-.people-refresh { background: #fff; border-color: var(--color-border); }
+.people-search button[type="reset"], .people-refresh { background: #fff; border-color: var(--color-border); }
 .people-search button:disabled, .people-refresh:disabled { opacity: .55; cursor: default; }
 .people-status { margin: 20px 0 12px; font-size: 13px; color: var(--color-text-sub); line-height: 1.7; }
 .people-guest-note { margin: 18px 0 0; padding: 12px 14px; border-radius: 12px; background: #f5f8ef; color: #5f6f48; font-size: 12px; line-height: 1.7; }
@@ -38,6 +38,10 @@
 .people-main a:focus-visible, .people-main button:focus-visible, .people-main input:focus-visible { outline: 3px solid #789f36; outline-offset: 3px; }
 .people-main [hidden] { display: none !important; }
 @media (max-width: 850px) { .people-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Keep iOS Safari from zooming when the search field receives focus. */
+@media (max-width: 700px), (pointer: coarse) {
+  .people-search input { font-size: 16px; }
+}
 @media (max-width: 600px) {
   .people-main { padding: 24px 0 40px; }
   .people-intro { align-items: flex-start; padding: 22px 20px; gap: 18px; flex-direction: column; border-radius: 20px; }
@@ -49,12 +53,17 @@
   .people-tools { gap: 8px; align-items: flex-end; }
   .people-search__row { gap: 6px; }
   .people-search button, .people-refresh { padding: 0 12px; font-size: 12px; border-radius: 12px; }
-  .people-search input { font-size: 13px; padding: 10px 12px; }
+  .people-search input { padding: 10px 12px; }
   .people-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .people-card__link { min-height: 185px; padding: 20px 10px 16px; border-radius: 16px; }
   .people-card__avatar { width: 68px; height: 68px; }
   .people-card__name { font-size: 14px; margin: 12px 0 8px; }
   .people-card__cta { font-size: 10px; gap: 5px; }
+}
+
+@media (max-width: 380px) {
+  .people-tools { flex-wrap: wrap; }
+  .people-refresh { margin-inline-start: auto; }
 }
 
 /* The decorated view uses the same equipped assets as the public profile. */

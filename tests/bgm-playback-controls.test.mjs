@@ -14,9 +14,10 @@ function harness() {
   const handlers = {};
   const menu = { contains: () => false };
   const panel = { hidden: false };
+  const list = { innerHTML: '', querySelectorAll: () => [] };
   const button = { setAttribute() {} };
   const player = { src: 'track-1.mp3', duration: 200, readyState: 1, currentTime: 37.5, paused: false, pause() { this.paused = true; }, async play() { this.paused = false; } };
-  const context = { window: {__SITE_VERSION__: 'test'}, document: {getElementById: id => ({bgmMenu: menu, bgmPanel: panel, bgmBtn: button})[id], addEventListener: (type, fn) => { handlers[type] = fn; }}, localStorage: storage, sessionStorage: storage, console, player, setTimeout, clearTimeout };
+  const context = { window: {__SITE_VERSION__: 'test'}, document: {getElementById: id => ({bgmMenu: menu, bgmPanel: panel, bgmBtn: button, bgmList: list})[id], addEventListener: (type, fn) => { handlers[type] = fn; }}, localStorage: storage, sessionStorage: storage, console, player, setTimeout, clearTimeout };
   const api = vm.runInNewContext(source + `
     audio = player;
     playlist = [1,2,3].map(i => ({id: 'track-'+i, title: 'Track '+i}));
@@ -24,6 +25,8 @@ function harness() {
     currentTrackId = 'track-1';
     isPlaying = true;
     panelOpen = true;
+    const renderRows = renderPlaylist;
+    revealCurrentTrack = () => {};
     renderPlaylist = () => {};
     updatePanelDesc = () => {};
     notifyPersonalBgmPlay = () => {};
@@ -32,11 +35,11 @@ function harness() {
     setTrackSource = (track) => { currentTrackId = track.id; player.src = track.id+'.mp3'; };
     removeReloadResumeNotice = () => {};
     bindPanelGlobalEvents();
-    ({pauseTrack, handleTrackAction, playAdjacentTrack, playNextTrack, togglePlaybackMode, seekTrack, previewSeek,
+    ({pauseTrack, handleTrackAction, playAdjacentTrack, playNextTrack, togglePlaybackMode, seekTrack, previewSeek, renderRows,
       getAdjacentTrackIndex, getBgmPlaybackState, mode: () => playbackMode, setIndex: i => {currentIndex=i;currentTrackId=playlist[i].id;},
       reorder: () => { const id=getCurrentTrack().id; playlist.reverse(); currentIndex=playlist.findIndex(t=>t.id===id); }});
   `, context);
-  return {api, player, stored, handlers, menu, panel};
+  return {api, player, stored, handlers, menu, panel, list};
 }
 
 test('pause preserves time and same-track play resumes', async () => {
@@ -47,6 +50,22 @@ test('pause preserves time and same-track play resumes', async () => {
   await api.handleTrackAction(0);
   assert.equal(player.paused, false);
   assert.equal(player.currentTime, 37.5);
+});
+
+test('only the playing song has a seek bar, which follows pause, resume and track changes', async () => {
+  const {api, player, list} = harness();
+  const renderedSeekIndices = () => {
+    api.renderRows();
+    return Array.from(list.innerHTML.matchAll(/data-bgm-seek="(\d+)"/g), match => Number(match[1]));
+  };
+  assert.deepEqual(renderedSeekIndices(), [0]);
+  api.pauseTrack();
+  assert.deepEqual(renderedSeekIndices(), []);
+  await api.handleTrackAction(0);
+  assert.deepEqual(renderedSeekIndices(), [0]);
+  assert.equal(player.currentTime, 37.5);
+  await api.playNextTrack();
+  assert.deepEqual(renderedSeekIndices(), [1]);
 });
 
 test('rerendered controls remain inside the popup event path; outside clicks close it', () => {

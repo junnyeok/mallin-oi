@@ -1027,6 +1027,21 @@ body[data-page='post'] .logo #siteLogoImg {
 .site-stats__item:hover { background: #ecfacd; border-color: #648f20; }
 .site-stats__item:focus-visible { outline: 2px solid #426317; outline-offset: 3px; }
 
+body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__item {
+  border-color: color-mix(in srgb, var(--color-primary) 70%, var(--color-text));
+  background: var(--color-primary-sub);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 10%);
+}
+
+body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__item:hover {
+  background: color-mix(in srgb, var(--color-primary-sub) 82%, var(--color-surface));
+}
+
+body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__item:focus-visible {
+  outline-color: var(--color-text);
+  box-shadow: 0 0 0 5px var(--color-surface);
+}
+
 .site-stats__item strong {
   font-weight: 800;
 }

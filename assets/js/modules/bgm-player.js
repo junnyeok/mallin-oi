@@ -599,7 +599,9 @@ function renderPlaylist() {
     .map((track, index) => {
       const isActive = index === currentIndex;
       const activeClass = isActive ? ' is-active' : '';
-      const playingClass = isActive && isPlaying ? ' is-playing' : '';
+      const isTrackPlaying = isActive && isPlaying && audio &&
+        !audio.paused && !audio.ended && track.id === currentTrackId;
+      const playingClass = isTrackPlaying ? ' is-playing' : '';
 
       return `
         <div class="bgm-item${activeClass}${playingClass}">
@@ -615,24 +617,25 @@ function renderPlaylist() {
           <div class="bgm-item__body">
             <p class="bgm-item__title">${escapeHtml(track.title)}</p>
             <div class="bgm-item__controls">
-
-          <button
-            type="button"
-            class="bgm-item__action bgm-player-control"
-            data-bgm-index="${index}"
-            aria-label="${escapeHtml(track.title)} ${isActive && isPlaying ? '일시정지' : '재생'}"
-            title="${isActive && isPlaying ? '일시정지' : '재생'}"
-          >
-            ${renderPlaybackIcon(isActive && isPlaying ? 'pause' : 'play')}
-          </button>
-          <div class="bgm-item__seek">
-            <input type="range" class="bgm-item__progress" data-bgm-seek="${index}"
-              min="0" max="1000" step="1" value="0"
-              aria-label="${escapeHtml(track.title)} 재생 위치" aria-valuetext="0:00"
-            />
-            <span class="bgm-item__rail" aria-hidden="true"><span class="bgm-item__thumb"></span></span>
-            <span class="bgm-item__time" aria-hidden="true">0:00</span>
-          </div>
+              <button
+                type="button"
+                class="bgm-item__action bgm-player-control"
+                data-bgm-index="${index}"
+                aria-label="${escapeHtml(track.title)} ${isTrackPlaying ? '일시정지' : '재생'}"
+                title="${isTrackPlaying ? '일시정지' : '재생'}"
+              >
+                ${renderPlaybackIcon(isTrackPlaying ? 'pause' : 'play')}
+              </button>
+              ${isTrackPlaying ? `
+              <div class="bgm-item__seek">
+                <input type="range" class="bgm-item__progress" data-bgm-seek="${index}"
+                  min="0" max="1000" step="1" value="0"
+                  aria-label="${escapeHtml(track.title)} 재생 위치" aria-valuetext="0:00"
+                />
+                <span class="bgm-item__rail" aria-hidden="true"><span class="bgm-item__thumb"></span></span>
+                <span class="bgm-item__time" aria-hidden="true">0:00</span>
+              </div>
+              ` : ''}
             </div>
           </div>
         </div>
