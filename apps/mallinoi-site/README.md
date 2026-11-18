@@ -9,5 +9,5 @@
 ## 로컬 실행
 
 - iOS 16 이상. `ios/MallinoiSite.xcodeproj`를 Xcode에서 열고 `MallinoiSite`를 실행한다. 실제 iPhone에서는 Signing & Capabilities에서 이 앱의 개발 팀을 선택한다.
-- Android 6.0 이상. Android Studio에서 `android/`를 열고 실행한다. 터미널에서는 JDK 17 이상과 Android SDK 36을 준비하고 `android/`에서 `./gradlew :app:assembleDebug`를 실행한다.
+- Android 7.0 이상. Android Studio에서 `android/`를 열고 실행한다. 터미널에서는 JDK 17 이상과 Android SDK 36을 준비하고 `android/`에서 `./gradlew :app:assembleDebug`를 실행한다.
 - 두 플랫폼의 앱 식별자는 `com.mallinoi.site`다. 개발용 iOS 설치 파일은 서명에 사용한 프로파일에 등록된 기기에서 사용할 수 있다.
