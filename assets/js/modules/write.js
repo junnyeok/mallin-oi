@@ -361,6 +361,9 @@ function getReadableErrorMessage(error, fallback = '잠시 후 다시 시도해�
 function formatSaveErrorMessage(error) {
   const raw = getReadableErrorMessage(error, '');
 
+  if (raw.includes('MALLINOI_COMMUNITY_CONTENT_RESTRICTED')) {
+    return '커뮤니티 운영 기준을 확인하고 내용을 수정해 주세요.';
+  }
   if (!raw) {
     return '저장 중 문제가 생겼어. 잠시 후 다시 시도해줘.';
   }

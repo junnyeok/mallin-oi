@@ -1,0 +1,29 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center" android:padding="24dp"
+    android:background="@color/site_paper">
+
+    <ImageView
+        android:layout_width="128dp" android:layout_height="128dp"
+        android:src="@drawable/site_mark" android:importantForAccessibility="no" />
+
+    <Button
+        android:id="@+id/open_site" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:minHeight="48dp"
+        android:layout_marginTop="16dp" android:paddingStart="24dp" android:paddingEnd="24dp"
+        android:text="@string/open_site" android:textColor="@color/site_ink"
+        android:backgroundTint="@color/site_green" />
+
+    <Button
+        android:id="@+id/open_offline_articles"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:text="@string/offline_articles"
+        android:textColor="@color/site_ink" />
+
+    <TextView
+        android:id="@+id/browser_error" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        android:gravity="center" android:accessibilityLiveRegion="polite"
+        android:text="@string/no_browser" android:visibility="gone" />
+</LinearLayout>

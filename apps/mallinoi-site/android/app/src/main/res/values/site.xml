@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">말린오이닷컴</string>
+    <string name="open_site">말린오이닷컴 열기</string>
+    <string name="no_browser">사이트를 열 수 있는 브라우저를 설치한 뒤 다시 시도해 주세요.</string>
+    <string name="save_offline_article">오프라인에 저장</string>
+    <string name="offline_articles">저장한 게시글</string>
+    <string name="offline_article_loading">게시글을 저장하는 중…</string>
+    <string name="offline_article_saved">게시글을 오프라인에 저장했어요.</string>
+    <string name="offline_article_unavailable">공개 게시글 화면에서만 본문을 저장할 수 있어요.</string>
+    <string name="offline_article_error">게시글을 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.</string>
+    <string name="offline_articles_empty">아직 저장한 게시글이 없어요. 공개 게시글에서 메뉴(⋮)의 ‘오프라인에 저장’을 선택해 주세요.</string>
+    <string name="offline_article_disclaimer">저장할 때의 본문입니다. 사진과 첨부파일, 댓글은 온라인에서 볼 수 있어요.</string>
+    <string name="offline_article_missing">이 게시글은 저장 목록에 없어요.</string>
+    <string name="offline_article_remove">저장 삭제</string>
+    <string name="offline_article_remove_confirmation">이 기기에 저장한 본문을 삭제할까요?</string>
+    <string name="offline_article_storage_error">저장한 게시글을 처리할 수 없어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="go_back">뒤로</string>
+    <color name="site_paper">#F5FBDD</color>
+    <color name="site_green">#B5D76C</color>
+    <color name="site_ink">#233510</color>
+    <style name="SiteTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">@color/site_ink</item>
+        <item name="android:windowBackground">@color/site_paper</item>
+        <item name="android:statusBarColor">@color/site_paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

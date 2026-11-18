@@ -26,6 +26,7 @@ const filesToCopy = [
   'calendar-event.html',
   'calendar-groups.html',
   'privacy.html',
+  'community-guidelines.html',
   'assets/version.json',
   'assets/app-version.json',
   'site.webmanifest',

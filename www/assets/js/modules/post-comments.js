@@ -1,5 +1,6 @@
 import { initEmoticonSettingsNavigation } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
+import { mountCommunityActions, withoutBlockedMembers } from './community-safety.js';
 import { loadPostById } from './posts-repo.js';
 import {
   getCurrentUser,
@@ -595,6 +596,7 @@ function renderReplyItem(
         }
       </div>
 
+      <div class="community-safety__actions" data-comment-safety></div>
       <div class="comment-item__view" data-role="comment-view">
         <div class="comment-item__body">${nl2brSafe(reply.body || '')}</div>
       </div>
@@ -706,6 +708,7 @@ function renderCommentItem(
         }
       </div>
 
+      <div class="community-safety__actions" data-comment-safety></div>
       <div class="comment-item__view" data-role="comment-view">
         <div class="comment-item__body">${nl2brSafe(comment.body || '')}</div>
       </div>
@@ -920,7 +923,7 @@ async function loadComments(postId, secretPassword = null) {
   });
 
   if (error) throw error;
-  return data || [];
+  return withoutBlockedMembers(data || []);
 }
 
 async function renderComments(postId, secretPassword = null) {
@@ -957,8 +960,9 @@ async function renderComments(postId, secretPassword = null) {
       comments.map((comment) => comment.author_id),
     );
 
-    const rootComments = comments.filter(
-      (comment) => !Number(comment.parent_comment_id || 0),
+    const visibleById = new Map(comments.map((comment) => [Number(comment.id), comment]));
+    const rootComments = comments.filter((comment) =>
+      !visibleById.has(Number(comment.parent_comment_id || 0)),
     );
 
     listEl.innerHTML = rootComments
@@ -973,6 +977,18 @@ async function renderComments(postId, secretPassword = null) {
       )
       .join('');
 
+    for (const container of listEl.querySelectorAll('[data-comment-safety]')) {
+      const item = container.closest('[data-comment-id]');
+      const comment = visibleById.get(Number(item?.dataset.commentId));
+      if (!comment) continue;
+      void mountCommunityActions(container, {
+        authorId: comment.author_id,
+        kind: 'comment',
+        id: comment.id,
+        secretPassword,
+        onBlock: () => renderComments(postId, secretPassword),
+      });
+    }
     prepareCharacterEffects(listEl);
     bindAllCommentRichEditors(listEl);
     focusTargetCommentFromUrl();
@@ -1426,7 +1442,9 @@ async function handleCreateComment(postId) {
     if (error) {
       console.error('[post-comments] insert failed:', error);
       setFormMessage(
-        '댓글 등록에 실패했어. 잠시 후 다시 시도해줘.',
+        error.message?.includes('MALLINOI_COMMUNITY_CONTENT_RESTRICTED')
+          ? '커뮤니티 운영 기준을 확인하고 댓글을 수정해 주세요.'
+          : '댓글 등록에 실패했어. 잠시 후 다시 시도해줘.',
         'is-error',
       );
       return;
@@ -1509,7 +1527,9 @@ async function handleCreateReply(replyForm, postId, parentCommentId) {
     console.error('[post-comments] reply insert failed:', error);
     setReplyFormMessage(
       replyForm,
-      '답글 등록에 실패했어. 잠시 후 다시 시도해줘.',
+      error.message?.includes('MALLINOI_COMMUNITY_CONTENT_RESTRICTED')
+        ? '커뮤니티 운영 기준을 확인하고 답글을 수정해 주세요.'
+        : '답글 등록에 실패했어. 잠시 후 다시 시도해줘.',
       'is-error',
     );
     return;
@@ -1585,7 +1605,12 @@ async function handleSaveEdit(commentId, postId) {
 
   if (error) {
     console.error('[post-comments] update failed:', error);
-    setEditMessage(commentId, '댓글 수정에 실패했어.', 'is-error');
+    setEditMessage(commentId,
+      error.message?.includes('MALLINOI_COMMUNITY_CONTENT_RESTRICTED')
+        ? '커뮤니티 운영 기준을 확인하고 댓글을 수정해 주세요.'
+        : '댓글 수정에 실패했어.',
+      'is-error',
+    );
     return;
   }
 

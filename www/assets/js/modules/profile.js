@@ -3,6 +3,7 @@ import { loadProfileLevel } from './profile-level.js';
 import { loadItemOrder, getItemOrder, sortByItemOrder, appendItemOrderButton } from './inventory-order.js';
 import { initEmoticonInventoryReturn } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
+import { mountCommunityActions } from './community-safety.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
 import { getCurrentUser, loginHref, getUserEmail } from './auth-store.js';
 import {
@@ -3485,6 +3486,12 @@ export async function initProfile() {
 
   if (pageName === 'profile') {
     await initProfileFeaturedBgm(profileRow, { isOwnProfile });
+    void mountCommunityActions($('profileSafetyActions'), {
+      authorId: targetUserId,
+      kind: 'member',
+      id: targetUserId,
+      onBlock: () => window.location.reload(),
+    });
   }
 
   const currentNickname =

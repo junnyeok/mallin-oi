@@ -1,0 +1,6 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/site_paper" />
+    <foreground>
+        <inset android:drawable="@drawable/site_mark" android:inset="12%" />
+    </foreground>
+</adaptive-icon>

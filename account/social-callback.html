@@ -20,10 +20,13 @@
       <div id="socialSignupFields">
         <h2>기본 정보</h2>
         <label>닉네임<input id="socialNickname" autocomplete="nickname" minlength="2" maxlength="20" placeholder="닉네임 2~20자" /></label>
-        <label><input id="socialTerms" type="checkbox" />이용약관에 동의합니다 (필수)</label>
+        <label><input id="socialTerms" type="checkbox" />커뮤니티 이용약관에 동의합니다 (필수)</label>
         <label><input id="socialPrivacy" type="checkbox" />개인정보처리방침에 동의합니다 (필수)</label>
         <label><input id="socialMarketing" type="checkbox" />마케팅 수신 동의 (선택)</label>
-        <a href="../privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침 보기</a>
+        <div class="social-auth-actions">
+          <a class="social-auth-link" href="https://mallin-oi.com/community-guidelines.html" target="_blank" rel="noopener noreferrer">커뮤니티 이용약관 보기</a>
+          <a class="social-auth-link" href="../privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침 보기</a>
+        </div>
       </div>
       <button id="socialFinish" type="submit">가입하고 시작하기</button>
     </form>

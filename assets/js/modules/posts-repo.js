@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client.js';
+import { withoutBlockedMembers } from './community-safety.js';
 
 export const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
 
@@ -177,7 +178,7 @@ export async function loadPosts() {
 
   if (error) throw error;
 
-  const rows = data || [];
+  const rows = await withoutBlockedMembers(data || []);
   const commentCountMap = await loadCommentCountMap(rows.map((row) => row.id));
 
   return rows.map((row) =>
@@ -200,7 +201,8 @@ export async function loadCareerMonthlyBest(awardMonth, limit = 5) {
 
   if (error) throw error;
 
-  return (data || []).map((row) => {
+  const visiblePosts = await withoutBlockedMembers(data || []);
+  return visiblePosts.map((row) => {
     const post = mapPostRow(
       {
         id: row.post_id,
@@ -247,7 +249,7 @@ export async function loadPostById(id, secretPassword = null) {
   if (error) throw error;
 
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return null;
+  if (!row || !(await withoutBlockedMembers([row])).length) return null;
 
   const commentCountMap = await loadCommentCountMap([safeId]);
   return mapPostRow(row, commentCountMap.get(safeId) || 0);
@@ -310,7 +312,7 @@ export async function loadPostsByAuthorId(authorId) {
 
   if (error) throw error;
 
-  const rows = data || [];
+  const rows = await withoutBlockedMembers(data || []);
   const commentCountMap = await loadCommentCountMap(rows.map((row) => row.id));
 
   return rows.map((row) =>

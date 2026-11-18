@@ -87,9 +87,19 @@
   color: var(--color-text-sub);
   font-size: var(--text-body);
   line-height: 1.65;
+  list-style-type: disc;
+}
+
+ol.privacy-list {
+  list-style-type: decimal;
 }
 
 .privacy-card__text + .privacy-list {
+  margin-top: var(--space-12);
+}
+
+.privacy-list + .privacy-card__text,
+.privacy-card__text + .privacy-card__text {
   margin-top: var(--space-12);
 }
 

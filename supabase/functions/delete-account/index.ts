@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { createProviders } from '../social-auth/providers.mjs';
 import { revokePendingApple } from '../social-auth/revocation.mjs';
+import { removeAccountUploads } from './account-storage.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +95,15 @@ Deno.serve(async (req) => {
     } catch {
       return jsonResponse({ success: false,
         message: 'Apple 연결 해제를 완료하지 못했습니다. 잠시 후 회원탈퇴를 다시 시도해 주세요.' }, 503);
+    }
+    try {
+      await removeAccountUploads(userClient.storage, userId);
+    } catch (storageError) {
+      console.error('[delete-account] storage cleanup failed:', storageError);
+      return jsonResponse({
+        success: false,
+        message: '업로드한 파일을 삭제하지 못했습니다. 잠시 후 회원탈퇴를 다시 시도해 주세요.',
+      }, 503);
     }
     const { error: cleanupError } = await userClient.rpc(
       'cleanup_my_account_data',

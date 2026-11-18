@@ -1,4 +1,5 @@
 import { loadPostById } from './posts-repo.js';
+import { mountCommunityActions } from './community-safety.js';
 import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, publicProfileHref } from './auth-store.js';
@@ -916,7 +917,7 @@ function renderUnlockedState(post) {
   }
 }
 
-async function applyPost(post) {
+async function applyPost(post, secretPassword = null) {
   syncThemeByCategory(post.category || 'home');
 
   const titleEl = $('postTitle');
@@ -961,6 +962,13 @@ async function applyPost(post) {
   }
 
   await bindOwnerActions(post);
+  await mountCommunityActions($('postSafetyActions'), {
+    authorId: post.authorId,
+    kind: 'post',
+    id: post.isPrivate && !post.isUnlocked ? null : post.id,
+    secretPassword,
+    onBlock: () => redirectToPostList(post.category),
+  });
   document.title = `${post.title} | 말린오이닷컴`;
 }
 
@@ -1068,7 +1076,7 @@ export async function initPostDetail() {
   let activePost = post;
 
   if (!post) {
-    alert('삭제됐거나 존재하지 않는 글이야. 전체 게시물로 이동할게.');
+    alert('지금 볼 수 없는 글이야. 전체 게시물로 이동할게.');
     redirectToPostList('home');
     return;
   }
@@ -1128,7 +1136,7 @@ export async function initPostDetail() {
         secretInput.value = '';
         setSecretMessage('');
         activePost = unlockedPost;
-        await applyPost(unlockedPost);
+        await applyPost(unlockedPost, pw);
         emitPostAccessState(unlockedPost, pw);
       } catch (error) {
         console.error('[post-detail] unlock failed:', error);

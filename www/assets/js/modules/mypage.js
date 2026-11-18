@@ -1,5 +1,6 @@
 // assets/js/modules/mypage.js
 import { supabase } from './supabase-client.js';
+import { mountCommunitySettings } from './community-safety.js';
 import { isMypageVerified, saveRedirect, signOutUser, getUserEmail } from './auth-store.js';
 import { loadPostsByAuthorId } from './posts-repo.js';
 
@@ -353,6 +354,11 @@ export async function initMypage() {
   try {
     const role = await getMyRole();
     syncRoleBadge(role.isAdmin);
+    const communitySettings = $('communitySafetySettings');
+    if (communitySettings && !isCalendarAppMode()) {
+      communitySettings.hidden = false;
+      void mountCommunitySettings(communitySettings, role.isAdmin);
+    }
   } catch (e) {
     console.error('[mypage] role check failed:', e);
     syncRoleBadge(false);

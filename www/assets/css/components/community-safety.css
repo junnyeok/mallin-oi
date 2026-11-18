@@ -1,0 +1,68 @@
+.community-safety__actions,
+.community-safety__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.community-safety__row {
+  justify-content: space-between;
+  padding-block: 8px;
+}
+
+.community-safety__button {
+  padding: 7px 12px;
+  border: 1px solid var(--color-border, #d5d5d5);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+  color: #232b15;
+  font: inherit;
+  font-size: .875rem;
+  cursor: pointer;
+}
+
+.community-safety__button:focus-visible,
+.community-safety__dialog select:focus-visible {
+  outline: 2px solid #486622;
+  outline-offset: 2px;
+}
+
+.community-safety__dialog {
+  width: min(380px, calc(100% - 32px));
+  margin: auto;
+  padding: 22px;
+  border: 1px solid var(--color-border, #d5d5d5);
+  border-radius: 18px;
+  background: #fff;
+  color: #232b15;
+}
+
+.community-safety__dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.community-safety__dialog h2 {
+  margin: 0 0 12px;
+}
+
+.community-safety__dialog select {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  margin-block: 6px 12px;
+  font: inherit;
+}
+
+.community-safety__dialog .community-safety__actions {
+  justify-content: flex-end;
+}
+
+.community-safety__actions:empty {
+  display: none;
+}
+
+.community-safety__preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
