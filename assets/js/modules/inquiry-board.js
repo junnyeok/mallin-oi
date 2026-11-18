@@ -6,6 +6,7 @@ import {
   saveRedirect,
 } from './auth-store.js';
 import { supabase } from './supabase-client.js';
+import { getBlockedMemberIds, mountCommunityActions } from './community-safety.js';
 import {
   loadBoardThreads,
   loadBoardReplies,
@@ -92,6 +93,7 @@ export async function initInquiryBoard(config) {
   }
 
   const PER_PAGE = 3;
+  const targetThread = new URLSearchParams(window.location.search).get('thread');
 
   const state = {
     page: 1,
@@ -135,22 +137,29 @@ export async function initInquiryBoard(config) {
   }
 
   async function refreshData() {
-    const threads = await loadBoardThreads(config.boardType);
+    const [loaded, blocked] = await Promise.all([
+      loadBoardThreads(config.boardType),
+      getBlockedMemberIds(),
+    ]);
+    const isAdminTarget = (threadId) => state.isAdmin && String(threadId) === targetThread;
+    const threads = loaded.filter((item) =>
+      item.is_secret || isAdminTarget(item.id) || !blocked.has(item.author_id));
     const visibleIds = threads
       .filter(
         (item) =>
           !item.is_secret ||
-          item.can_view_full ||
-          state.unlockedMap.has(Number(item.id)),
+          item.can_view_full,
       )
       .map((item) => Number(item.id));
 
-    const replies = await loadBoardReplies(config.boardType, visibleIds);
+    const secretIds = new Set(threads.filter((item) => item.is_secret).map((item) => Number(item.id)));
+    const replies = (await loadBoardReplies(config.boardType, visibleIds)).filter((reply) =>
+      secretIds.has(Number(reply.thread_id)) || isAdminTarget(reply.thread_id) || !blocked.has(reply.author_id));
     state.threads = threads;
     state.repliesMap = groupRepliesByThread(replies);
   }
 
-  function renderReply(reply, canDelete = false) {
+  function renderReply(reply, isPublic) {
     return `
       <div class="suggestion-reply" data-reply-id="${reply.id}">
         <div class="suggestion-reply__head">
@@ -159,7 +168,7 @@ export async function initInquiryBoard(config) {
             <span class="suggestion-reply__date">${formatDateTime(reply.created_at)}</span>
           </div>
           ${
-            canDelete
+            state.isAdmin
               ? `
             <div class="suggestion-reply__actions">
               <button type="button" class="suggestion-action-btn is-danger" data-action="delete-reply" data-reply-id="${reply.id}">
@@ -169,6 +178,7 @@ export async function initInquiryBoard(config) {
           `
               : ''
           }
+          ${isPublic ? `<div class="community-safety__actions" data-reply-safety="${reply.id}"></div>` : ''}
         </div>
         <div class="suggestion-reply__view">
           <div class="suggestion-reply__body">${nl2brSafe(reply.body || '')}</div>
@@ -199,7 +209,6 @@ export async function initInquiryBoard(config) {
   function renderThread(item) {
     const unlocked = state.unlockedMap.get(Number(item.id));
     const canViewFull = !!item.can_view_full || !!unlocked;
-    const isMine = !!item.is_mine;
     const canDelete = !!item.can_delete;
     const replies = canViewFull
       ? unlocked?.replies || state.repliesMap.get(Number(item.id)) || []
@@ -238,6 +247,7 @@ export async function initInquiryBoard(config) {
 `
               : ''
           }
+          ${!item.is_secret ? `<div class="community-safety__actions" data-thread-safety="${item.id}"></div>` : ''}
         </div>
 
         <div class="suggestion-item__view">
@@ -247,7 +257,7 @@ export async function initInquiryBoard(config) {
         ${
           canViewFull && replies.length
             ? `<div class="suggestion-replies">${replies
-                .map((reply) => renderReply(reply, state.isAdmin))
+                .map((reply) => renderReply(reply, !item.is_secret))
                 .join('')}</div>`
             : ''
         }
@@ -294,6 +304,26 @@ export async function initInquiryBoard(config) {
 
     listEl.innerHTML = pageItems.map(renderThread).join('');
     renderPager(totalPages);
+    for (const item of pageItems) {
+      if (item.is_secret) continue;
+      const onBlock = () => refreshAll().catch((error) => {
+        console.error(`[${config.boardType}] block refresh failed`, error);
+      });
+      void mountCommunityActions(listEl.querySelector(`[data-thread-safety="${item.id}"]`), {
+        authorId: item.author_id,
+        kind: config.boardType,
+        id: item.id,
+        onBlock,
+      });
+      for (const reply of state.repliesMap.get(Number(item.id)) || []) {
+        void mountCommunityActions(listEl.querySelector(`[data-reply-safety="${reply.id}"]`), {
+          authorId: reply.author_id,
+          kind: config.boardType + '-reply',
+          id: reply.id,
+          onBlock,
+        });
+      }
+    }
   }
 
   async function refreshAll({ keepPage = true } = {}) {
@@ -374,7 +404,9 @@ export async function initInquiryBoard(config) {
       await refreshAll({ keepPage: false });
     } catch (error) {
       console.error(`[${config.boardType}] create failed`, error);
-      setFormMessage(config.submitFailText, 'is-error');
+      setFormMessage(error.message?.includes('MALLINOI_COMMUNITY_CONTENT_RESTRICTED')
+        ? '운영 기준에 맞지 않는 내용은 등록할 수 없어요.'
+        : config.submitFailText, 'is-error');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
     }
@@ -439,7 +471,9 @@ export async function initInquiryBoard(config) {
         await refreshAll({ keepPage: true });
       } catch (error) {
         console.error(`[${config.boardType}] reply failed`, error);
-        if (msg) msg.textContent = '댓글 등록에 실패했어.';
+        if (msg) msg.textContent = error.message?.includes('MALLINOI_COMMUNITY_CONTENT_RESTRICTED')
+          ? '운영 기준에 맞지 않는 내용은 등록할 수 없어요.'
+          : '댓글 등록에 실패했어.';
       }
     }
   });
@@ -497,7 +531,6 @@ export async function initInquiryBoard(config) {
   await refreshAll({ keepPage: false });
 
   // 알림에서 들어온 글이 뒤쪽 페이지에 있어도 해당 글로 이동한다.
-  const targetThread = new URLSearchParams(window.location.search).get('thread');
   const targetIndex = state.threads.findIndex((item) => String(item.id) === targetThread);
   if (targetIndex >= 0) {
     state.page = Math.floor(targetIndex / PER_PAGE) + 1;

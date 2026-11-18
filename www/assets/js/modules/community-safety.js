@@ -7,7 +7,15 @@ const reportReasons = new Map([
   ['child-safety', '아동 안전을 위협하는 내용'],
   ['other', '그 외 운영 기준 위반'],
 ]);
-const labels = { post: '게시글', comment: '댓글', member: '회원' };
+const labels = {
+  post: '게시글',
+  comment: '댓글',
+  member: '회원',
+  suggestion: '건의사항',
+  'suggestion-reply': '건의사항 답변',
+  qna: '질문',
+  'qna-reply': '질문 답변',
+};
 
 let blockCache = null;
 
@@ -168,7 +176,7 @@ function mountReportQueue(container) {
     if (!details.open) return;
     const { data, error } = await supabase
       .from('community_reports')
-      .select('id,target_kind,target_id,post_id,reason,created_at')
+      .select('id,target_kind,target_id,post_id,inquiry_thread_id,reason,created_at')
       .eq('resolved', false)
       .order('created_at', { ascending: true })
       .limit(100);
@@ -181,10 +189,18 @@ function mountReportQueue(container) {
       const row = element('div');
       row.className = 'community-safety__row';
       const target = element('a', labels[item.target_kind] + ' #' + item.target_id);
-      target.href = item.target_kind === 'member'
-        ? './profile.html?user=' + encodeURIComponent(item.target_id)
-        : './post.html?id=' + encodeURIComponent(item.post_id) +
+      if (item.inquiry_thread_id) {
+        const board = item.target_kind.startsWith('qna') ? 'qna' : 'suggestion';
+        const base = window.Capacitor?.isNativePlatform?.() ? 'https://mallin-oi.com/' : window.location.href;
+        const url = new URL(board + '.html', base);
+        url.searchParams.set('thread', item.inquiry_thread_id);
+        target.href = url.href;
+      } else if (item.target_kind === 'member') {
+        target.href = './profile.html?user=' + encodeURIComponent(item.target_id);
+      } else {
+        target.href = './post.html?id=' + encodeURIComponent(item.post_id) +
           (item.target_kind === 'comment' ? '&comment=' + encodeURIComponent(item.target_id) : '');
+      }
       const date = new Date(item.created_at).toLocaleDateString('ko-KR');
       row.append(target, element('span', reportReasons.get(item.reason)), element('time', date),
         button('검토 완료', async (event) => {
