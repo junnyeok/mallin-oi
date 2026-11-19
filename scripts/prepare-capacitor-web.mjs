@@ -80,6 +80,7 @@ const nativeSkinImageFiles = [
 ];
 const nativeCharacterEffectImageFiles = [
   'images/character-effects/autumn-leaves-effect-01.svg',
+  'images/character-effects/banknote-toss-effect-01.svg',
   'images/character-effects/cucumber-heart.png',
   'images/character-effects/fire-effect-01.png',
   'images/character-effects/spider-web-effect-01.png',

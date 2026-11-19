@@ -670,6 +670,20 @@ export const AUTUMN_LEAVES_CHARACTER_EFFECT_PREVIEW = [
   },
 ];
 
+const BANKNOTE_TOSS_EFFECT_IMAGE = withAssetVersion(
+  './images/character-effects/banknote-toss-effect-01.svg',
+);
+
+const BANKNOTE_TOSS_CHARACTER_EFFECT_PREVIEW = [
+  {
+    code: 'cha-cash-01-preview',
+    label: '지폐 흩뿌리기 애니메이션 미리보기',
+    imagePath: BANKNOTE_TOSS_EFFECT_IMAGE,
+    placement: 'front',
+    displayOrder: 1,
+  },
+];
+
 export const CHARACTER_EFFECT_CATALOG = [
   {
     itemId: 'cha-effects-cucumberheart-01',
@@ -843,6 +857,31 @@ export const CHARACTER_EFFECT_CATALOG = [
     },
     motion: { animation: 'none' },
     displayOrder: 4,
+  },
+  {
+    itemId: 'cha-cash-01',
+    name: '지폐 흩뿌리기',
+    imagePath: BANKNOTE_TOSS_EFFECT_IMAGE,
+    placement: 'front',
+    layout: {
+      x: '0px',
+      y: '0px',
+      width: '165%',
+      zIndex: '30',
+      origin: '50% 100%',
+      rotation: '0deg',
+      aspectRatio: '1 / 1',
+    },
+    contexts: {
+      profile: { groundOffset: '4%' },
+      inventory: { groundOffset: '4%' },
+      post: { groundOffset: '4%' },
+      comment: { groundOffset: '4%' },
+      store: { width: '150%' },
+      thumbnail: { width: '150%' },
+    },
+    motion: { animation: 'none' },
+    displayOrder: 5,
   },
 ];
 
@@ -2374,6 +2413,22 @@ export const STORE_ITEMS = [
     releaseDate: '2026-09-13',
     isPurchasable: true,
   },
+  {
+    id: 'cha-cash-01',
+    name: '지폐 흩뿌리기',
+    category: 'cha-effects',
+    badge: '캐릭터효과',
+    icon: '💸',
+    thumbImagePath: BANKNOTE_TOSS_EFFECT_IMAGE,
+    price: 413,
+    state: '판매 중',
+    description: '지폐를 흩뿌리는 효과야.',
+    detailDescription:
+      '구매하면 인벤토리의 캐릭터 효과 항목에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
+    previewImages: BANKNOTE_TOSS_CHARACTER_EFFECT_PREVIEW,
+    releaseDate: '2026-11-19',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -2383,6 +2438,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'cha-cash-01',
   'BF-03',
   'bgm-boygroup-01',
   'cha-fall-01',

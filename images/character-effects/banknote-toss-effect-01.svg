@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" role="img" aria-labelledby="effect-title effect-description">
+  <title id="effect-title">지폐 흩뿌리기</title>
+  <desc id="effect-description">오이색 손이 지폐 다발에서 몇 장을 집어 위로 던지면, 지폐가 좌우로 퍼지며 팔랑팔랑 내려온다.</desc>
+  <defs>
+    <linearGradient id="lime-note" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#f5f7b8"/>
+      <stop offset=".44" stop-color="#dce982"/>
+      <stop offset="1" stop-color="#a4c554"/>
+    </linearGradient>
+    <linearGradient id="mint-note" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#effad5"/>
+      <stop offset=".48" stop-color="#c5e5a3"/>
+      <stop offset="1" stop-color="#75b887"/>
+    </linearGradient>
+    <linearGradient id="gold-note" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#fff7c5"/>
+      <stop offset=".52" stop-color="#ebda84"/>
+      <stop offset="1" stop-color="#cfb04e"/>
+    </linearGradient>
+    <linearGradient id="hand-color" x1="0" y1="0" x2=".86" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#f2f893"/>
+      <stop offset=".4" stop-color="#c4de63"/>
+      <stop offset=".78" stop-color="#8eb744"/>
+      <stop offset="1" stop-color="#648e38"/>
+    </linearGradient>
+    <linearGradient id="cuff-color" x1="0" y1="0" x2=".85" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#658c40"/>
+      <stop offset="1" stop-color="#324f29"/>
+    </linearGradient>
+
+    <!-- Original banknotes with a pickle seal. Each has a different paper tint. -->
+    <g id="note" stroke-linejoin="round">
+      <path d="M-46-18 Q-19-22 0-18 Q23-14 47-19 L48 18 Q25 23 0 19 Q-22 15-47 20Z" transform="translate(0 2)" fill="#284727" opacity=".25"/>
+      <path d="M-46-18 Q-19-22 0-18 Q23-14 47-19 L48 18 Q25 23 0 19 Q-22 15-47 20Z" stroke="#405c2d" stroke-width="2.3"/>
+      <path d="M-40-11 Q-34-11-33-14 Q-17-17-1-14 Q21-10 34-13 Q35-9 41-10 L42 10 Q36 11 35 15 Q18 18 0 15 Q-16 12-34 15 Q-35 11-41 12Z" fill="none" stroke="#5f7e3d" stroke-width="1"/>
+      <path d="M-26-10Q-17-5-26 0Q-35-5-26-10ZM26-6Q35-3 26 2Q17-2 26-6ZM-28 3Q-18 7-28 12Q-36 9-28 3ZM28 4Q37 7 28 12Q17 9 28 4Z" fill="none" stroke="#6e8a44" stroke-width=".75" opacity=".65"/>
+      <path d="M-43-14Q-26-18-14-16 M15 17Q29 19 44 15" fill="none" stroke="#fffad3" stroke-width="1.2" stroke-linecap="round" opacity=".85"/>
+      <ellipse cx="0" cy="0" rx="13" ry="12" fill="#f4f7c8" fill-opacity=".68" stroke="#67823f" stroke-width="1.15"/>
+      <ellipse cx="0" cy="0" rx="10.3" ry="9.3" fill="none" stroke="#69863e" stroke-dasharray="1 1.7" stroke-width=".8"/>
+      <path d="M-4 4C-9 0-4-7 2-7C7-7 7-2 4 3C2 7-2 8-4 4Z" fill="#779d3b" stroke="#446631" stroke-width=".8"/>
+      <path d="M-2 3Q-4-1-1-2M1 3Q2 0 3-2" fill="none" stroke="#e6f18f" stroke-width="1.1" stroke-linecap="round"/>
+      <path d="M-37-3h6m-6 3h4m67-2h5m-5 3h5" stroke="#52703a" stroke-width="1.1" stroke-linecap="round" opacity=".75"/>
+    </g>
+
+    <path id="glint" d="M0-8 Q.9-1 7 0 Q.9 1 0 8 Q-.9 1-7 0 Q-.9-1 0-8Z"/>
+  </defs>
+
+  <style>
+    .stack, .pitch, .flight, .trail, .flash { transform-origin: 0 0; }
+    .stack { animation: hold 4.8s ease-in-out infinite; }
+    .pitch { animation: flick 4.8s ease-in-out infinite; }
+    .grip { animation: grip 4.8s steps(1, end) infinite; }
+    .spread { animation: spread 4.8s steps(1, end) infinite; }
+    .lifted-notes { animation: lift 4.8s steps(1, end) infinite; }
+    .trail { animation: swish 4.8s ease-out infinite; }
+    .flash { animation: flash 4.8s ease-out infinite; }
+    .flight { animation: scatter 4.8s linear var(--delay, 0s) infinite both; }
+    .still { display: none; }
+
+    @keyframes hold {
+      0%, 100% { opacity: 0; transform: translate(30px, 24px) rotate(9deg) scale(.86); }
+      8%, 16% { opacity: 1; transform: translate(0, 0) rotate(-4deg) scale(1); }
+      21% { opacity: 1; transform: translate(-7px, -7px) rotate(-8deg) scale(1); }
+      31% { opacity: 1; transform: translate(1px, 3px) rotate(1deg) scale(1); }
+      44% { opacity: 1; transform: translate(8px, 7px) rotate(3deg) scale(.98); }
+      59%, 96% { opacity: 0; transform: translate(33px, 34px) rotate(12deg) scale(.86); }
+    }
+
+    @keyframes flick {
+      0%, 9%, 100% { opacity: 0; transform: translate(105px, 77px) rotate(28deg) scale(.93); }
+      14% { opacity: 1; transform: translate(83px, 64px) rotate(22deg) scale(.98); }
+      19% { opacity: 1; transform: translate(68px, 59px) rotate(13deg) scale(1); }
+      22% { opacity: 1; transform: translate(60px, 42px) rotate(1deg) scale(1); }
+      26.7% { opacity: 1; transform: translate(17px, 3px) rotate(-21deg) scale(1); }
+      32% { opacity: 1; transform: translate(12px, 1px) rotate(-27deg) scale(1); }
+      40% { opacity: .88; transform: translate(36px, 26px) rotate(-13deg) scale(.97); }
+      53%, 95% { opacity: 0; transform: translate(103px, 85px) rotate(18deg) scale(.9); }
+    }
+
+    @keyframes grip { 0%, 100% { opacity: 1; } 26.7%, 53% { opacity: 0; } }
+    @keyframes spread { 0%, 100% { opacity: 0; } 26.7%, 53% { opacity: 1; } }
+    @keyframes lift { 0%, 26.7%, 100% { opacity: 0; } 19% { opacity: 1; } }
+
+    @keyframes swish {
+      0%, 19%, 100% { opacity: 0; stroke-dashoffset: 140; }
+      24% { opacity: .74; stroke-dashoffset: 35; }
+      28% { opacity: .85; stroke-dashoffset: 0; }
+      35%, 96% { opacity: 0; stroke-dashoffset: -118; }
+    }
+
+    @keyframes flash {
+      0%, 25%, 100% { opacity: 0; transform: scale(.3) rotate(-10deg); }
+      29% { opacity: .94; transform: scale(1.06) rotate(8deg); }
+      36%, 96% { opacity: 0; transform: scale(.64) rotate(30deg); }
+    }
+
+    @keyframes scatter {
+      0%, 25.8% { opacity: 0; transform: translate(0, 0) rotate(-17deg) scale(.28, .5); }
+      27.4% { opacity: 1; transform: translate(var(--early-x), -21px) rotate(var(--start-tilt)) scale(.7, .64); }
+      35% { opacity: 1; transform: translate(var(--rise-x), var(--rise-y)) rotate(var(--turn-a)) scale(.95, .94); }
+      44% { opacity: 1; transform: translate(var(--peak-x), var(--peak-y)) rotate(var(--turn-b)) scale(.97, .31); }
+      54% { opacity: 1; transform: translate(var(--drift-x), var(--drift-y)) rotate(var(--turn-c)) scale(1, .86); }
+      64% { opacity: .94; transform: translate(var(--sway-x), var(--sway-y)) rotate(var(--turn-d)) scale(.8, .45); }
+      75% { opacity: .72; transform: translate(var(--finish-x), var(--finish-y)) rotate(var(--turn-e)) scale(.88, .91); }
+      89%, 100% { opacity: 0; transform: translate(var(--fade-x), var(--fade-y)) rotate(var(--turn-f)) scale(.68, .36); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .motion { display: none; }
+      .still { display: inline; }
+    }
+  </style>
+
+  <g class="motion" aria-hidden="true">
+    <g transform="translate(482 418)">
+      <g class="stack">
+        <path d="M41 62C32 53 28 44 21 35C16 27 1 30-6 25C-13 20-12 13-5 10C1 7 8 11 15 13C9 8 7 3 11-2C16-7 23-4 29 2L44 17C52 21 60 28 65 39L72 61L54 72Z" fill="url(#hand-color)" stroke="#436731" stroke-width="3.2" stroke-linejoin="round"/>
+        <g transform="translate(-5 0) rotate(-11) scale(.92)">
+          <use href="#note" y="8" fill="url(#mint-note)"/>
+          <use href="#note" x="-2" y="5" fill="url(#gold-note)"/>
+          <use href="#note" x="-3" y="1" fill="url(#mint-note)"/>
+          <use href="#note" x="-4" y="-3" fill="url(#lime-note)"/>
+        </g>
+        <path d="M24 32C16 27 9 24 3 21C-1 18 0 11 4 9C11 5 19 12 23 13L35 16C46 16 51 22 55 28" fill="url(#hand-color)" stroke="#476d34" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M7 12Q13 13 18 17" fill="none" stroke="#f1f7ad" stroke-width="2.7" stroke-linecap="round" opacity=".8"/>
+        <path d="M40 60Q52 52 68 47L79 66Q70 76 55 80Z" fill="url(#cuff-color)" stroke="#35562b" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M45 62Q55 55 67 52" fill="none" stroke="#a8c869" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+    </g>
+
+    <g fill="none" stroke-linecap="round" stroke-dasharray="115 175" class="trail">
+      <path d="M534 418Q479 418 434 352Q415 318 401 298" stroke="#f6eca1" stroke-width="3.6"/>
+      <path d="M517 427Q472 413 446 373" stroke="#c4dc6d" stroke-width="2.3"/>
+    </g>
+
+    <g transform="translate(430 352)">
+      <g class="flight" style="--early-x:-24px;--rise-x:-129px;--rise-y:-104px;--peak-x:-207px;--peak-y:-178px;--drift-x:-249px;--drift-y:-157px;--sway-x:-277px;--sway-y:-89px;--finish-x:-301px;--finish-y:12px;--fade-x:-320px;--fade-y:147px;--start-tilt:-33deg;--turn-a:-36deg;--turn-b:-104deg;--turn-c:-159deg;--turn-d:-218deg;--turn-e:-269deg;--turn-f:-327deg">
+        <use href="#note" fill="url(#mint-note)" transform="scale(.87)"/>
+      </g>
+      <g class="flight" style="--delay:.065s;--early-x:-17px;--rise-x:-90px;--rise-y:-119px;--peak-x:-147px;--peak-y:-218px;--drift-x:-172px;--drift-y:-198px;--sway-x:-159px;--sway-y:-137px;--finish-x:-197px;--finish-y:-54px;--fade-x:-210px;--fade-y:120px;--start-tilt:-19deg;--turn-a:40deg;--turn-b:102deg;--turn-c:157deg;--turn-d:228deg;--turn-e:285deg;--turn-f:346deg">
+        <use href="#note" fill="url(#lime-note)" transform="scale(.95)"/>
+      </g>
+      <g class="flight" style="--delay:.105s;--early-x:5px;--rise-x:22px;--rise-y:-108px;--peak-x:48px;--peak-y:-220px;--drift-x:69px;--drift-y:-198px;--sway-x:45px;--sway-y:-129px;--finish-x:99px;--finish-y:-35px;--fade-x:114px;--fade-y:108px;--start-tilt:24deg;--turn-a:73deg;--turn-b:130deg;--turn-c:188deg;--turn-d:228deg;--turn-e:307deg;--turn-f:354deg">
+        <use href="#note" fill="url(#gold-note)" transform="scale(.83)"/>
+      </g>
+      <g class="flight" style="--delay:.042s;--early-x:17px;--rise-x:65px;--rise-y:-79px;--peak-x:101px;--peak-y:-155px;--drift-x:115px;--drift-y:-127px;--sway-x:94px;--sway-y:-67px;--finish-x:119px;--finish-y:33px;--fade-x:124px;--fade-y:165px;--start-tilt:27deg;--turn-a:52deg;--turn-b:120deg;--turn-c:170deg;--turn-d:218deg;--turn-e:276deg;--turn-f:343deg">
+        <use href="#note" fill="url(#lime-note)" transform="scale(.94)"/>
+      </g>
+      <g class="flight" style="--delay:.16s;--early-x:-14px;--rise-x:-49px;--rise-y:-133px;--peak-x:-85px;--peak-y:-233px;--drift-x:-103px;--drift-y:-201px;--sway-x:-79px;--sway-y:-135px;--finish-x:-48px;--finish-y:-40px;--fade-x:-55px;--fade-y:108px;--start-tilt:-43deg;--turn-a:-70deg;--turn-b:-113deg;--turn-c:-179deg;--turn-d:-246deg;--turn-e:-286deg;--turn-f:-337deg">
+        <use href="#note" fill="url(#mint-note)" transform="scale(.64)"/>
+      </g>
+      <g class="flight" style="--delay:.125s;--early-x:-28px;--rise-x:-151px;--rise-y:-72px;--peak-x:-254px;--peak-y:-118px;--drift-x:-294px;--drift-y:-96px;--sway-x:-318px;--sway-y:-34px;--finish-x:-341px;--finish-y:66px;--fade-x:-360px;--fade-y:182px;--start-tilt:-16deg;--turn-a:28deg;--turn-b:94deg;--turn-c:149deg;--turn-d:208deg;--turn-e:260deg;--turn-f:314deg">
+        <use href="#note" fill="url(#gold-note)" transform="scale(.75)"/>
+      </g>
+      <g class="flight" style="--delay:.24s;--early-x:-22px;--rise-x:-118px;--rise-y:-65px;--peak-x:-169px;--peak-y:-120px;--drift-x:-197px;--drift-y:-104px;--sway-x:-210px;--sway-y:-52px;--finish-x:-252px;--finish-y:41px;--fade-x:-264px;--fade-y:169px;--start-tilt:-24deg;--turn-a:-46deg;--turn-b:-98deg;--turn-c:-147deg;--turn-d:-208deg;--turn-e:-273deg;--turn-f:-341deg">
+        <use href="#note" fill="url(#lime-note)" transform="scale(.61)"/>
+      </g>
+      <g class="flight" style="--delay:.22s;--early-x:8px;--rise-x:38px;--rise-y:-109px;--peak-x:75px;--peak-y:-204px;--drift-x:98px;--drift-y:-175px;--sway-x:89px;--sway-y:-108px;--finish-x:71px;--finish-y:4px;--fade-x:84px;--fade-y:137px;--start-tilt:16deg;--turn-a:45deg;--turn-b:92deg;--turn-c:154deg;--turn-d:208deg;--turn-e:263deg;--turn-f:330deg">
+        <use href="#note" fill="url(#mint-note)" transform="scale(.66)"/>
+      </g>
+      <g class="flight" style="--delay:.287s;--early-x:-11px;--rise-x:-60px;--rise-y:-127px;--peak-x:-107px;--peak-y:-195px;--drift-x:-145px;--drift-y:-166px;--sway-x:-122px;--sway-y:-104px;--finish-x:-147px;--finish-y:16px;--fade-x:-154px;--fade-y:163px;--start-tilt:-7deg;--turn-a:47deg;--turn-b:96deg;--turn-c:148deg;--turn-d:215deg;--turn-e:269deg;--turn-f:325deg">
+        <use href="#note" fill="url(#gold-note)" transform="scale(.72)"/>
+      </g>
+    </g>
+
+    <g transform="translate(430 352)">
+      <g class="pitch">
+        <g class="lifted-notes" transform="translate(-25 -8) rotate(-24) scale(.63)">
+          <use href="#note" x="3" y="4" fill="url(#mint-note)"/>
+          <use href="#note" fill="url(#lime-note)"/>
+        </g>
+        <g class="grip">
+          <path d="M43 40C35 35 26 33 20 27L4 13C-2 8-9 10-15 8C-22 6-25 1-20-3C-14-8-6-3-2-1L1-3C-4-7-8-9-17-11C-24-13-25-19-19-22C-12-25-3-18 4-16C11-14 19-9 24-3C31 3 39 8 46 12L59 29Z" fill="url(#hand-color)" stroke="#426732" stroke-width="3.1" stroke-linejoin="round"/>
+          <path d="M-15-18Q-4-15 3-10 M-16 2Q-6 1 2 5" stroke="#f4f8ab" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".85"/>
+        </g>
+        <g class="spread">
+          <path d="M49 34C36 31 27 31 19 23C12 15 7 9-1 8
+            L-14 4C-23 1-23-6-16-7L-4-5
+            L-24-15C-30-18-29-24-23-24C-18-24-6-18 2-16
+            L-10-27C-15-33-11-38-5-36C1-32 9-26 15-21
+            L9-32C7-38 12-42 17-36L27-17
+            L27-29C27-36 34-37 38-31C41-25 42-15 45-8
+            C47-4 51 1 55 4L62 22Z" fill="url(#hand-color)" stroke="#426732" stroke-width="3.1" stroke-linejoin="round"/>
+          <path d="M-20-20L-3-13M-6-32L7-21M13-35L21-23M32-30L36-19M3 3Q10 3 15 8" fill="none" stroke="#f2f8a7" stroke-width="2.25" stroke-linecap="round" opacity=".87"/>
+        </g>
+        <path d="M38 35Q48 24 58 17L74 30Q68 43 53 48Z" fill="url(#cuff-color)" stroke="#35562b" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M43 35Q52 26 58 21" fill="none" stroke="#a8c869" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+    </g>
+
+    <g transform="translate(396 323)">
+      <g class="flash" fill="#fff3aa" stroke="#d2ac50" stroke-width=".8" paint-order="stroke fill">
+        <use href="#glint" transform="translate(-10 -14) scale(.95)"/>
+        <use href="#glint" transform="translate(17 -28) scale(.57)"/>
+        <use href="#glint" transform="translate(-31 -7) scale(.45)"/>
+      </g>
+    </g>
+  </g>
+
+  <g class="still" aria-hidden="true">
+    <use href="#note" transform="translate(177 203) rotate(-28) scale(.78)" fill="url(#mint-note)"/>
+    <use href="#note" transform="translate(299 142) rotate(13) scale(.89)" fill="url(#gold-note)"/>
+    <use href="#note" transform="translate(413 174) rotate(-21) scale(.84)" fill="url(#lime-note)"/>
+    <use href="#note" transform="translate(484 256) rotate(22) scale(.68)" fill="url(#mint-note)"/>
+    <use href="#note" transform="translate(478 420) rotate(-12) scale(.9)" fill="url(#gold-note)"/>
+    <use href="#note" transform="translate(476 413) rotate(-12) scale(.9)" fill="url(#lime-note)"/>
+    <use href="#glint" transform="translate(420 223) scale(.75)" fill="#f8de80"/>
+  </g>
+</svg>

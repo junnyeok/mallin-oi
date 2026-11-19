@@ -1004,6 +1004,7 @@
 ./images/calendar/logo-work.png
 ./images/calendar/study-completion-celebration.png
 ./images/character-effects/autumn-leaves-effect-01.svg
+./images/character-effects/banknote-toss-effect-01.svg
 ./images/character-effects/cucumber-heart.png
 ./images/character-effects/fire-effect-01.png
 ./images/character-effects/spider-web-effect-01.png
@@ -1569,6 +1570,7 @@
 ./tests/calendar-time-settings.test.mjs
 ./tests/career-monthly-awards.test.mjs
 ./tests/character-effects-autumn-leaves.test.mjs
+./tests/character-effects-banknote-toss.test.mjs
 ./tests/character-effects-fire.test.mjs
 ./tests/character-effects-spider-web.test.mjs
 ./tests/cucumber-boy-emoticon-pack.test.mjs
@@ -1783,6 +1785,7 @@
 ./www/images/calendar/logo-work.png
 ./www/images/calendar/study-completion-celebration.png
 ./www/images/character-effects/autumn-leaves-effect-01.svg
+./www/images/character-effects/banknote-toss-effect-01.svg
 ./www/images/character-effects/cucumber-heart.png
 ./www/images/character-effects/fire-effect-01.png
 ./www/images/character-effects/spider-web-effect-01.png

@@ -13,11 +13,11 @@ const itemId = 'bgm-boygroup-01';
 const sqlPath = 'supabase-SQLEditor/20261116-boygroup-bgm.sql';
 const migrationPath = 'supabase/migrations/20261116000000_boygroup_bgm.sql';
 
-test('네가 머문 자리는 655피클·지정 문구로 NEW 두 번째에 유일하게 등록된다', () => {
+test('네가 머문 자리는 655피클·지정 문구로 NEW에서 귀여운 덩쿨잎 다음에 등록된다', () => {
   const products = STORE_ITEMS.filter(item => item.id === itemId);
   assert.equal(products.length, 1);
   const [item] = products;
-  assert.equal(getFeaturedStoreItems(2)[1].id, itemId);
+  assert.deepEqual(getFeaturedStoreItems(3).slice(1).map(item => item.id), ['BF-03', itemId]);
   assert.equal(item.name, '네가 머문 자리');
   assert.equal(item.category, 'bgm');
   assert.equal(item.price, 655);
