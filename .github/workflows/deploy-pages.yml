@@ -26,11 +26,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Prepare Pages files
         run: |
           mkdir -p _site
           cp -R account assets images partials _site/
           cp ./*.html .nojekyll CNAME site.webmanifest sw.js _site/
+          # The database checks this catalog only after it is published with the store.
+          node scripts/build-store-release-catalog.mjs _site/assets/store-release-catalog.json
           du -sh _site
           find _site -type f | wc -l
 
