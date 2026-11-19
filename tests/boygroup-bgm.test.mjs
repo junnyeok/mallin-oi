@@ -17,7 +17,7 @@ test('네가 머문 자리는 655피클·지정 문구로 NEW에서 귀여운 �
   const products = STORE_ITEMS.filter(item => item.id === itemId);
   assert.equal(products.length, 1);
   const [item] = products;
-  assert.deepEqual(getFeaturedStoreItems(3).slice(1).map(item => item.id), ['BF-03', itemId]);
+  assert.deepEqual(getFeaturedStoreItems(4).slice(2).map(item => item.id), ['BF-03', itemId]);
   assert.equal(item.name, '네가 머문 자리');
   assert.equal(item.category, 'bgm');
   assert.equal(item.price, 655);

@@ -12,12 +12,12 @@ const { renderCharacterEffectHtml } = await import('../assets/js/modules/charact
 const itemId = 'cha-cash-01';
 const asset = 'images/character-effects/banknote-toss-effect-01.svg';
 
-test('지폐 흩뿌리기 is first in New and in release-date order', () => {
+test('지폐 흩뿌리기 follows the sports day pack in New and in release-date order', () => {
   const item = catalog.getStoreItemById(itemId);
   assert.equal(catalog.STORE_ITEMS.filter(product => product.id === itemId).length, 1);
   assert.equal(catalog.CHARACTER_EFFECT_CATALOG.filter(effect => effect.itemId === itemId).length, 1);
-  assert.equal(catalog.getFeaturedStoreItems(1)[0], item);
-  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[0], item);
+  assert.equal(catalog.getFeaturedStoreItems(2)[1], item);
+  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[1], item);
   assert.equal(catalog.getStoreItemDetailHref(itemId), './store-item.html?id=cha-cash-01');
   assert.equal(item.name, '지폐 흩뿌리기');
   assert.equal(item.price, 413);

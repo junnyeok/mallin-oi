@@ -20,6 +20,7 @@ const {
   CUCUMBER_GIRL_EMOTICON_PACK,
   CUCUMBER_BOY_EMOTICON_PACK,
   BROCCOLI_GIRL_EMOTICON_PACK,
+  SPORTS_DAY_EMOTICON_PACK = [],
 } = await import(`./store-data.js?v=${MODULE_VERSION}`);
 
 const EMOTICON_MAP = new Map(
@@ -37,6 +38,7 @@ const EMOTICON_MAP = new Map(
     ...CUCUMBER_GIRL_EMOTICON_PACK,
     ...CUCUMBER_BOY_EMOTICON_PACK,
     ...BROCCOLI_GIRL_EMOTICON_PACK,
+    ...SPORTS_DAY_EMOTICON_PACK,
   ].map((item) => [item.code, item]),
 );
 
@@ -133,6 +135,13 @@ const PACK_META = [
     label: '브로콜리 알바생',
     iconPath: BROCCOLI_GIRL_EMOTICON_PACK[0]?.imagePath || '',
     prefix: 'broccoli-girl-',
+  },
+  {
+    key: 'sportsday',
+    itemId: 'emo-sportsday-01',
+    label: '말오닷 운동회',
+    iconPath: SPORTS_DAY_EMOTICON_PACK[0]?.imagePath || '',
+    prefix: 'sportsday-',
   },
 ];
 
@@ -293,6 +302,10 @@ export function getEmoticonPackByItemId(itemId = '') {
 
   if (safeItemId === 'emo-broccoli-girl-01') {
     return BROCCOLI_GIRL_EMOTICON_PACK;
+  }
+
+  if (safeItemId === 'emo-sportsday-01') {
+    return SPORTS_DAY_EMOTICON_PACK;
   }
 
   return [];

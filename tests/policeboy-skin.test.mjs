@@ -16,8 +16,8 @@ const migrationPath = 'supabase/migrations/20261012000000_policeboy_skin.sql';
 
 test('지구대 오이소년이 파프리카걸 다음이고 488피클·지정 문구·미리보기가 정확하다', () => {
   const item = catalog.getStoreItemById(itemId);
-  assert.deepEqual(catalog.getFeaturedStoreItems(7).slice(5).map(item => item.id), ['character-paprikagirl-01', itemId]);
-  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[6].id, itemId);
+  assert.deepEqual(catalog.getFeaturedStoreItems(8).slice(6).map(item => item.id), ['character-paprikagirl-01', itemId]);
+  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[7].id, itemId);
   assert.equal(item.name, '지구대 오이소년');
   assert.equal(item.category, 'skin');
   assert.equal(item.badge, '스킨');

@@ -488,6 +488,11 @@ begin
     v_name := '오이소년 이모티콘팩';
     v_category := 'emoticon';
 
+  elsif p_item_id = 'emo-sportsday-01' then
+    v_price := 521;
+    v_name := '말오닷 운동회 이모티콘팩';
+    v_category := 'emoticon';
+
   elsif p_item_id = 'emo-broccoli-girl-01' then
     v_price := 443;
     v_name := '브로콜리 알바생 이모티콘팩';
@@ -582,6 +587,10 @@ begin
       v_can_bypass_store_balance := false;
     end if;
 
+    if p_item_id = 'emo-sportsday-01' then
+      v_can_bypass_store_balance := false;
+    end if;
+
     if p_item_id = 'cha-cash-01' then
       v_can_bypass_store_balance := false;
     end if;
@@ -623,6 +632,10 @@ begin
       end if;
 
       if p_item_id = 'character-eggplant-01' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'emo-sportsday-01' then
         v_is_auto_topup_admin := false;
       end if;
 
@@ -1622,6 +1635,22 @@ begin
       (v_user_id, 'emo_cucumbergirl_01', 'cucumbergirl-10', '오이소녀 이모티콘 10', './images/emoticons/emo_cucumbergirl_10.png', 1010)
     on conflict (user_id, emoticon_code) do nothing;
 
+  elsif p_item_id = 'emo-sportsday-01' then
+    insert into public.user_emoticons (
+      user_id, item_id, emoticon_code, emoticon_label, image_path, display_order, is_equipped
+    )
+    values
+      (v_user_id, 'emo-sportsday-01', 'sportsday-01', '축구', './images/emoticons/sports-pack/sports-01-soccer-cucumber.png', 1301, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-02', '헬스', './images/emoticons/sports-pack/sports-02-strength-grilled-egg.png', 1302, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-03', '러닝', './images/emoticons/sports-pack/sports-03-running-teto-carrot.png', 1303, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-04', '줄넘기', './images/emoticons/sports-pack/sports-04-jump-rope-cucumber-girl.png', 1304, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-05', '농구', './images/emoticons/sports-pack/sports-05-basketball-cucumber-boy.png', 1305, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-06', '배드민턴', './images/emoticons/sports-pack/sports-06-badminton-paprika-girl.png', 1306, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-07', '요가', './images/emoticons/sports-pack/sports-07-yoga-broccoli.png', 1307, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-08', '스케이트보드', './images/emoticons/sports-pack/sports-08-skateboarding-eggplant.png', 1308, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-09', '수영', './images/emoticons/sports-pack/sports-09-swimming-avocado.png', 1309, true),
+      (v_user_id, 'emo-sportsday-01', 'sportsday-10', '자전거', './images/emoticons/sports-pack/sports-10-cycling-tomato.png', 1310, true);
+
   elsif p_item_id = 'emo-broccoli-girl-01' then
     insert into public.user_emoticons (
       user_id, item_id, emoticon_code, emoticon_label, image_path, display_order, is_equipped
@@ -1816,6 +1845,8 @@ begin
         then '오이소녀 이모티콘팩 구매가 완료됐어. 380피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-cucumberboy-01'
         then '오이소년 이모티콘팩 구매가 완료됐어. 391피클이 차감됐고 바로 사용할 수 있어.'
+      when p_item_id = 'emo-sportsday-01'
+        then '말오닷 운동회 이모티콘팩 구매가 완료됐어. 521피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'emo-broccoli-girl-01'
         then '브로콜리 알바생 이모티콘팩 구매가 완료됐어. 443피클이 차감됐고 바로 사용할 수 있어.'
       when p_item_id = 'skin-grilledegg-01'

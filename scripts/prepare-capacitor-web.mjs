@@ -97,6 +97,7 @@ const nativeEmoticonImageFiles = [
     (_, index) =>
       `images/emoticons/${String(index + 1).padStart(2, '0')}-broccoli-girl.png`,
   ),
+  ...listFilesByExtension('images/emoticons/sports-pack', '.png'),
 ];
 const nativeCareerAwardImageFiles = [
   'images/reward/reward-career-1st.png',

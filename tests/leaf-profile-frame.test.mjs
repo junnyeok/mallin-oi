@@ -4,11 +4,11 @@ import test from 'node:test';
 import vm from 'node:vm';
 globalThis.window={__SITE_VERSION__:'test',location:{hostname:'localhost',origin:'http://localhost',pathname:'/',href:'http://localhost/'}};
 const catalog=await import('../assets/js/modules/store-data.js');
-test('BF-03 keeps exact copy, price, two previews and follows the new banknote effect',()=>{
+test('BF-03 keeps exact copy, price, two previews and follows the banknote effect',()=>{
  const item=catalog.getStoreItemById('BF-03');
  assert.equal(item.name,'귀여운 덩쿨잎');assert.equal(item.price,421);assert.equal(item.itemType,'profile-frame');
  assert.equal(item.description,'귀여운 디자인의 덩쿨잎 테두리야.');assert.equal(item.detailDescription,'구매하면 인벤토리의 프로필테두리 항목에 추가되고, 장착하면 프로필카드 테두리에 표시돼.');
- assert.deepEqual(catalog.getFeaturedStoreItems(2).map(i=>i.id),['cha-cash-01','BF-03']);assert.equal(catalog.STORE_ITEMS.filter(i=>i.id==='BF-03').length,1);
+ assert.deepEqual(catalog.getFeaturedStoreItems(3).slice(1).map(i=>i.id),['cha-cash-01','BF-03']);assert.equal(catalog.STORE_ITEMS.filter(i=>i.id==='BF-03').length,1);
  assert.deepEqual(item.previewImages.map(i=>i.code),['BF-03-pc','BF-03-mobile']);
  assert.ok(catalog.getProfileFrameByItemId('BF-03').mobileImagePath.endsWith('leaf-mobile.png?v=test'));
 });

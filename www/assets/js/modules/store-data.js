@@ -489,6 +489,31 @@ export const BROCCOLI_GIRL_EMOTICON_PACK = Array.from(
   },
 );
 
+export const SPORTS_DAY_EMOTICON_PACK = [
+  ['soccer-cucumber', '축구'],
+  ['strength-grilled-egg', '헬스'],
+  ['running-teto-carrot', '러닝'],
+  ['jump-rope-cucumber-girl', '줄넘기'],
+  ['basketball-cucumber-boy', '농구'],
+  ['badminton-paprika-girl', '배드민턴'],
+  ['yoga-broccoli', '요가'],
+  ['skateboarding-eggplant', '스케이트보드'],
+  ['swimming-avocado', '수영'],
+  ['cycling-tomato', '자전거'],
+].map(([fileName, label], index) => {
+  const order = index + 1;
+  const paddedOrder = String(order).padStart(2, '0');
+
+  return {
+    code: `sportsday-${paddedOrder}`,
+    label,
+    imagePath: withAssetVersion(
+      `./images/emoticons/sports-pack/sports-${paddedOrder}-${fileName}.png`,
+    ),
+    displayOrder: 1300 + order,
+  };
+});
+
 export const TETO_CARROT_CHARACTER_PREVIEW = [
   {
     code: 'char-teto-carrot-basic',
@@ -2414,6 +2439,22 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
+    id: 'emo-sportsday-01',
+    name: '말오닷 운동회 이모티콘팩',
+    category: 'emoticon',
+    badge: '이모티콘',
+    icon: '🏂',
+    thumbImagePath: SPORTS_DAY_EMOTICON_PACK[0].imagePath,
+    price: 521,
+    state: '판매 중',
+    description: '말오닷 운동회 이모티콘 팩이야.',
+    detailDescription:
+      '축구부터 자전거까지, 말오닷 친구들의 운동 이모티콘 10종을 담았어. 구매 후 인벤토리에서 장착하면 게시글 본문, 댓글, 답글에서 쓸 수 있어.',
+    previewImages: SPORTS_DAY_EMOTICON_PACK,
+    releaseDate: '2026-11-19',
+    isPurchasable: true,
+  },
+  {
     id: 'cha-cash-01',
     name: '지폐 흩뿌리기',
     category: 'cha-effects',
@@ -2438,6 +2479,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  'emo-sportsday-01',
   'cha-cash-01',
   'BF-03',
   'bgm-boygroup-01',
