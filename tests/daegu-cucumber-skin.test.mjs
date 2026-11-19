@@ -12,38 +12,18 @@ const skinCode = 'char-cucumber-daegu';
 const imagePath = 'images/skins/cucumber-daegu.png';
 const editorPath = 'supabase-SQLEditor/20260913-daegu-cucumber-skin.sql';
 const migrationPath = 'supabase/migrations/20260913010000_daegu_cucumber_skin.sql';
+const retirementPath = 'supabase/migrations/20261119000000_retire_daegu_cucumber_skin.sql';
 
-test('대구FC 오이가 DGB PARK 다음이며 가격·문구·미리보기가 정확하다', () => {
-  const item = catalog.getStoreItemById(itemId);
-  assert.equal(catalog.getFeaturedStoreItems(9)[8].id, itemId);
-  assert.equal(item.name, '대구FC 오이');
-  assert.equal(item.category, 'skin');
-  assert.equal(item.badge, '스킨');
-  assert.equal(item.icon, '🏟️🥒');
-  assert.equal(item.price, 389);
-  assert.equal(item.state, '판매 중');
-  assert.equal(item.description, '주인장의 사심이 들어간 스킨이야.');
-  assert.equal(item.detailDescription, '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.');
-  assert.equal(item.isPurchasable, true);
-  assert.equal(item.releaseDate, '2026-09-13');
-  assert.equal(item.thumbImagePath, `/${imagePath}?v=test`);
-  assert.deepEqual(item.previewImages, [{
-    code: skinCode, label: item.name, imagePath: item.thumbImagePath, displayOrder: 1,
-  }]);
-  assert.equal(catalog.getStoreItemDetailHref(itemId), `./store-item.html?id=${itemId}`);
-  const newest = catalog.STORE_ITEMS.toSorted((a, b) =>
-    String(b.releaseDate).localeCompare(String(a.releaseDate)));
-  assert.equal(newest[8].id, itemId);
+test('대구FC 오이는 상점 목록과 상세 조회에서 빠지고 DGB PARK는 판매된다', () => {
+  assert.equal(catalog.getStoreItemById(itemId), null);
+  assert.equal(catalog.STORE_ITEMS.some(item => item.id === itemId), false);
+  assert.equal(catalog.getFeaturedStoreItems(catalog.STORE_ITEMS.length).some(item => item.id === itemId), false);
+  assert.equal(catalog.getStoreItemById('BG-06').isPurchasable, true);
 });
 
-test('기본오이 전용 스킨 매핑과 ID·정렬 순서는 중복되지 않는다', () => {
-  assert.deepEqual(catalog.getSkinCatalogItemBySkinCode(skinCode), {
-    character_code: 'char-cucumber', skin_code: skinCode, skin_name: '대구FC 오이',
-    image_path: `/${imagePath}?v=test`, display_order: 7, store_item_id: itemId,
-  });
-  assert.deepEqual(catalog.getSkinParentRequirementByStoreItemId(itemId), {
-    character_code: 'char-cucumber', character_name: '기본오이', parent_store_item_id: null,
-  });
+test('대구FC 오이는 미보유 스킨 목록에서도 빠지고 카탈로그 ID와 순서는 중복되지 않는다', () => {
+  assert.equal(catalog.getSkinCatalogItemBySkinCode(skinCode), null);
+  assert.equal(catalog.getSkinParentRequirementByStoreItemId(itemId), null);
   for (const ids of [
     catalog.STORE_ITEMS.map(item => item.id),
     catalog.CHARACTER_SKIN_CATALOG.map(item => item.skin_code),
@@ -66,11 +46,18 @@ test('제공 PNG와 www 복사본·준비 목록·파일 목록이 일치한다'
   }
 });
 
-test('구매 SQL은 389피클 고정 차감·우회 금지·기본오이와 스킨 지급을 보장한다', async () => {
+test('과거 판매 SQL과 지급 기록용 매핑을 확인한다', async () => {
   const sql = await readFile('supabase-SQLEditor/store-item_purchase-functions.sql', 'utf8');
   const migration = await readFile(migrationPath, 'utf8');
+  const retirement = await readFile(retirementPath, 'utf8');
+  const backup = await readFile('supabase-SQLEditor/99_all_backup.sql', 'utf8');
   assert.equal(migration, await readFile(editorPath, 'utf8'));
-  assert.ok((await readFile('supabase-SQLEditor/99_all_backup.sql', 'utf8')).includes(migration));
+  assert.equal(retirement, await readFile('supabase-SQLEditor/20261119-retire-daegu-cucumber-skin.sql', 'utf8'));
+  assert.ok(backup.includes(migration));
+  assert.ok(backup.includes(retirement));
+  const guard = /if p_item_id = 'skin-cucumber-07' then\s+return query\s+select false, '판매가 종료된 상품이야.'/;
+  assert.match(retirement, guard);
+  assert.match(sql.split("if p_item_id = 'emo-basic-01' then")[0], guard);
   for (const name of ['price', 'inventory', 'message', 'balance', 'topup']) {
     const start = migration.indexOf(`  v_${name} text := $b$`) + `  v_${name} text := $b$`.length;
     assert.ok(sql.includes(migration.slice(start, migration.indexOf('$b$;', start))), `${name} 분기 동기화`);
@@ -101,6 +88,7 @@ test('상품 상세·인벤토리·프로필·글·댓글·답글·피클 내역
     ['store', 'profile', 'post-detail', 'post-comments', 'profile-history'].map(read));
   assert.match(store, /getSkinParentRequirementByStoreItemId\(item.id\)/);
   assert.match(profile, /CHARACTER_SKIN_CATALOG.map/);
+  assert.match(profile, /\(skinRows \|\| \[\]\).forEach\(\(row\) => \{[\s\S]*?merged.push\(\{[\s\S]*?is_owned: true/);
   assert.match(profile, /equipped_character_image_url: nextImagePath/);
   assert.match(profile, /previewEl.src = getPreviewImageForCharacter/);
   assert.match(post, /select\('id, equipped_character_image_url'\)/);

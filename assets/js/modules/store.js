@@ -1241,13 +1241,14 @@ async function initStoreItemPage() {
 
   const params = new URLSearchParams(window.location.search);
   const itemId = params.get('id') || 'emo-basic-01';
-  const item = getStoreItemById(itemId) || getStoreItemById('emo-basic-01');
+  const item = getStoreItemById(itemId);
 
   if (!item) {
     root.innerHTML = `
       <div class="store-item-detail">
         <div class="store-item-detail__main">
           <p class="store-item-detail__desc">품목 정보를 찾지 못했어.</p>
+          <a class="store-item-buybox__back" href="${storeListStateHref('./store.html', readStoreListState())}">← 상점으로 돌아가기</a>
         </div>
       </div>
     `;

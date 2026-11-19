@@ -40,7 +40,7 @@ test('DGB PARK가 신규 아지트 다음이며 538피클·지정 문구·두 �
 test('프로필배경 카탈로그에서 PC·모바일 파일을 구분하며 ID와 순서가 중복되지 않는다', () => {
   assert.deepEqual(catalog.getProfileBackgroundByItemId(itemId), {
     itemId, name:'DGB PARK', pcImagePath:desktop, mobileImagePath:mobile,
-    thumbImagePath:desktop, displayOrder:6,
+    thumbImagePath:desktop, displayOrder:6, profileBioTone:'default',
   });
   for (const values of [
     catalog.STORE_ITEMS.map(item=>item.id),

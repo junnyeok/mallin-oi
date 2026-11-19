@@ -62,8 +62,8 @@ function readPngAlpha(png) {
   return { alpha, width, height };
 }
 
-test('DGB PARK와 대구FC 오이 다음 토마토 스킨 두 상품의 순서, 가격, 원본 문구와 미리보기', () => {
-  assert.deepEqual(catalog.getFeaturedStoreItems(11).slice(9).map(item => item.id), specs.map(item => item.id));
+test('DGB PARK 다음 토마토 스킨 두 상품의 순서, 가격, 원본 문구와 미리보기', () => {
+  assert.deepEqual(catalog.getFeaturedStoreItems(10).slice(8).map(item => item.id), specs.map(item => item.id));
   for (const spec of specs) {
     const item = catalog.getStoreItemById(spec.id);
     assert.equal(catalog.STORE_ITEMS.filter(row => row.id === spec.id).length, 1);

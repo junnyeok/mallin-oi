@@ -90,6 +90,13 @@ begin
     return;
   end if;
 
+  if p_item_id = 'skin-cucumber-07' then
+    return query
+    select false, '판매가 종료된 상품이야.',
+      coalesce((select p.pickles from public.profiles p where p.id = v_user_id), 0);
+    return;
+  end if;
+
   if p_item_id = 'emo-basic-01' then
     v_price := 0;
     v_name := '기본 말린오이 이모티콘팩';

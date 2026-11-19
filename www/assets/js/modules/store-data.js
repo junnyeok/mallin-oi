@@ -570,15 +570,6 @@ export const SOCCEROI_CUCUMBER_SKIN_PREVIEW = [
   },
 ];
 
-export const DAEGU_CUCUMBER_SKIN_PREVIEW = [
-  {
-    code: 'char-cucumber-daegu',
-    label: '대구FC 오이',
-    imagePath: withAssetVersion('./images/skins/cucumber-daegu.png'),
-    displayOrder: 1,
-  },
-];
-
 export const SUMMER_CUCUMBER_BOY_SKIN_PREVIEW = [
   {
     code: 'char-cucumber-boy-summer',
@@ -2427,22 +2418,6 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'skin-cucumber-07',
-    name: '대구FC 오이',
-    category: 'skin',
-    badge: '스킨',
-    icon: '🏟️🥒',
-    thumbImagePath: withAssetVersion('./images/skins/cucumber-daegu.png'),
-    price: 389,
-    state: '판매 중',
-    description: '주인장의 사심이 들어간 스킨이야.',
-    detailDescription:
-      '구매하면 내프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
-    previewImages: DAEGU_CUCUMBER_SKIN_PREVIEW,
-    releaseDate: '2026-09-13',
-    isPurchasable: true,
-  },
-  {
     id: 'skin-tomato-01',
     name: '방울토마(피아)토리토',
     category: 'skin',
@@ -2491,7 +2466,6 @@ const FEATURED_STORE_ITEM_PRIORITY = [
   'skin-cucumberboy-03',
   'BG-07',
   'BG-06',
-  'skin-cucumber-07',
   'skin-tomato-01',
   'skin-tomato-02',
   'emo-broccoli-girl-01',
@@ -2662,14 +2636,6 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/skins/socceroi.png'),
     display_order: 5,
     store_item_id: 'skin-cucumber-05',
-  },
-  {
-    character_code: 'char-cucumber',
-    skin_code: 'char-cucumber-daegu',
-    skin_name: '대구FC 오이',
-    image_path: withAssetVersion('./images/skins/cucumber-daegu.png'),
-    display_order: 7,
-    store_item_id: 'skin-cucumber-07',
   },
   {
     character_code: 'char-cucumber-girl',
