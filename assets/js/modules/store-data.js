@@ -543,24 +543,6 @@ export const CUCUMBER_SOLDIER_SKIN_PREVIEW = [
   },
 ];
 
-export const OZYO_CUCUMBER_SKIN_PREVIEW = [
-  {
-    code: 'char-cucumber-ozyo',
-    label: '오죠 이토루',
-    imagePath: withAssetVersion('./images/skins/ozyo.png'),
-    displayOrder: 1,
-  },
-];
-
-export const KIND_CUCUMBER_SKIN_PREVIEW = [
-  {
-    code: 'char-cucumber-kind',
-    label: '당신의 친절한 오이',
-    imagePath: withAssetVersion('./images/skins/spioi.png'),
-    displayOrder: 1,
-  },
-];
-
 export const SOCCEROI_CUCUMBER_SKIN_PREVIEW = [
   {
     code: 'char-cucumber-socceroi',
@@ -584,15 +566,6 @@ export const POLICE_STATION_CUCUMBER_BOY_SKIN_PREVIEW = [
     code: 'char-cucumber-boy-police-station',
     label: '지구대 오이소년',
     imagePath: withAssetVersion('./images/skins/policeboy.png'),
-    displayOrder: 1,
-  },
-];
-
-export const INOMSKE_GRILLED_EGG_SKIN_PREVIEW = [
-  {
-    code: 'char-grilled-egg-inomske',
-    label: '이놈스케',
-    imagePath: withAssetVersion('./images/skins/inomske.png'),
     displayOrder: 1,
   },
 ];
@@ -1622,7 +1595,7 @@ export const STORE_ITEMS = [
     state: '판매 중',
     description: '전쟁터에 뛰어든 오이스킨.',
     detailDescription:
-      '관리자는 총게임을 좋아해. 모바일배그 닉네임은 말오닷사장이고 클랜명은 말린오이닷컴이야. 친추 및 클랜신청 부탁해. <br>(구매하면 내프로필의 기본오이 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
+      '구매하면 내프로필의 기본오이 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
     previewImages: CUCUMBER_SOLDIER_SKIN_PREVIEW,
     isPurchasable: true,
   },
@@ -2212,54 +2185,6 @@ export const STORE_ITEMS = [
     isPurchasable: true,
   },
   {
-    id: 'skin-cucumber-03',
-    name: '오죠 이토루',
-    category: 'skin',
-    badge: '스킨',
-    icon: '🥒😎',
-    thumbImagePath: withAssetVersion('./images/skins/ozyo.png'),
-    price: 775,
-    state: '판매 중',
-    description: '정크푸드 주물과 맞서 싸우는 오죠 이토루야.',
-    detailDescription:
-      '구매하면 내 프로필의 스킨 인벤토리에 추가되고, 클릭해서 바로 착용할 수 있어.',
-    previewImages: OZYO_CUCUMBER_SKIN_PREVIEW,
-    releaseDate: '2026-07-28',
-    isPurchasable: true,
-  },
-  {
-    id: 'skin-cucumber-04',
-    name: '당신의 친절한 오이',
-    category: 'skin',
-    badge: '스킨',
-    icon: '🥒🤝',
-    thumbImagePath: withAssetVersion('./images/skins/spioi.png'),
-    price: 621,
-    state: '판매 중',
-    description: '냉장고의 안전을 지키는 다정한 오이야.',
-    detailDescription:
-      '구매하면 내 프로필의 기본오이 스킨 인벤토리에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
-    previewImages: KIND_CUCUMBER_SKIN_PREVIEW,
-    releaseDate: '2026-08-03',
-    isPurchasable: true,
-  },
-  {
-    id: 'skin-grilled-egg-02',
-    name: '이놈스케',
-    category: 'skin',
-    badge: '스킨',
-    icon: '🥚⚔️',
-    thumbImagePath: withAssetVersion('./images/skins/inomske.png'),
-    price: 689,
-    state: '판매 중',
-    description: '오늘 헬스를 완료하지 않았다면 이놈스케가 가만히 두지 않을 거야.',
-    detailDescription:
-      '구매하면 내 프로필의 구운계란 스킨 인벤토리에 추가되고, 장착하면 프로필/게시물/댓글/답글의 내 캐릭터에 표시돼.',
-    previewImages: INOMSKE_GRILLED_EGG_SKIN_PREVIEW,
-    releaseDate: '2026-08-03',
-    isPurchasable: true,
-  },
-  {
     id: 'skin-cucumber-05',
     name: '카를레스 푸오이욜',
     category: 'skin',
@@ -2477,14 +2402,11 @@ const FEATURED_STORE_ITEM_PRIORITY = [
   'bgm-cucumbergirl-02',
   'bgm-grilledegg-02',
   'cha-effects-web-01',
-  'skin-cucumber-04',
-  'skin-grilled-egg-02',
   'bgm-potato-02',
   'BF-02',
   'bgm-tetocarrto-02',
   'cha-effects-fire-01',
   'BG-04',
-  'skin-cucumber-03',
   'BG-03',
   'bgm-cucumberboy-01',
   'bgm-tomato-01',
@@ -2615,22 +2537,6 @@ export const CHARACTER_SKIN_CATALOG = [
   },
   {
     character_code: 'char-cucumber',
-    skin_code: 'char-cucumber-ozyo',
-    skin_name: '오죠 이토루',
-    image_path: withAssetVersion('./images/skins/ozyo.png'),
-    display_order: 3,
-    store_item_id: 'skin-cucumber-03',
-  },
-  {
-    character_code: 'char-cucumber',
-    skin_code: 'char-cucumber-kind',
-    skin_name: '당신의 친절한 오이',
-    image_path: withAssetVersion('./images/skins/spioi.png'),
-    display_order: 4,
-    store_item_id: 'skin-cucumber-04',
-  },
-  {
-    character_code: 'char-cucumber',
     skin_code: 'char-cucumber-socceroi',
     skin_name: '카를레스 푸오이욜',
     image_path: withAssetVersion('./images/skins/socceroi.png'),
@@ -2724,14 +2630,6 @@ export const CHARACTER_SKIN_CATALOG = [
     image_path: withAssetVersion('./images/skins/grilledegg-PT.png'),
     display_order: 402,
     store_item_id: 'skin-grilledegg-01',
-  },
-  {
-    character_code: 'char-grilled-egg',
-    skin_code: 'char-grilled-egg-inomske',
-    skin_name: '이놈스케',
-    image_path: withAssetVersion('./images/skins/inomske.png'),
-    display_order: 403,
-    store_item_id: 'skin-grilled-egg-02',
   },
   {
     character_code: 'char-cucumber',

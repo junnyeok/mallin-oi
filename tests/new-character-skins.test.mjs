@@ -16,18 +16,17 @@ const {
   CHARACTER_SKIN_CATALOG,
   STORE_ITEMS,
   getFeaturedStoreItems,
+  getSkinCatalogItemBySkinCode,
   getSkinParentRequirementByStoreItemId,
+  getStoreItemById,
 } = await import('../assets/js/modules/store-data.js');
 
 const SKINS = [
   {
     itemId: 'skin-cucumber-04',
     name: '당신의 친절한 오이',
-    description: '냉장고의 안전을 지키는 다정한 오이야.',
     price: 621,
     characterCode: 'char-cucumber',
-    characterName: '기본오이',
-    parentStoreItemId: null,
     skinCode: 'char-cucumber-kind',
     imageFile: 'spioi.png',
     displayOrder: 4,
@@ -35,16 +34,18 @@ const SKINS = [
   {
     itemId: 'skin-grilled-egg-02',
     name: '이놈스케',
-    description:
-      '오늘 헬스를 완료하지 않았다면 이놈스케가 가만히 두지 않을 거야.',
     price: 689,
     characterCode: 'char-grilled-egg',
-    characterName: '구운계란 캐릭터',
-    parentStoreItemId: 'character-grilled-egg-01',
     skinCode: 'char-grilled-egg-inomske',
     imageFile: 'inomske.png',
     displayOrder: 403,
   },
+];
+
+const RETIRED_SKINS = [
+  ...SKINS,
+  { itemId: 'skin-cucumber-03', skinCode: 'char-cucumber-ozyo' },
+  { itemId: 'skin-cucumber-07', skinCode: 'char-cucumber-daegu' },
 ];
 
 const SQL_EDITOR_PATH =
@@ -52,63 +53,26 @@ const SQL_EDITOR_PATH =
 const MIGRATION_PATH =
   'supabase/migrations/20260803010000_new_character_skins.sql';
 
-test('신규 스킨 상품 2종이 가격·이미지·출시일과 함께 정확히 한 번 등록된다', () => {
-  for (const expected of SKINS) {
-    const products = STORE_ITEMS.filter((item) => item.id === expected.itemId);
-
-    assert.equal(products.length, 1);
-    assert.equal(products[0].name, expected.name);
-    assert.equal(products[0].description, expected.description);
-    assert.equal(products[0].category, 'skin');
-    assert.equal(products[0].badge, '스킨');
-    assert.equal(products[0].price, expected.price);
-    assert.equal(products[0].releaseDate, '2026-08-03');
-    assert.equal(products[0].state, '판매 중');
-    assert.equal(products[0].isPurchasable, true);
-    assert.equal(
-      products[0].thumbImagePath,
-      `/images/skins/${expected.imageFile}?v=test`,
-    );
-    assert.equal(products[0].previewImages.length, 1);
-    assert.equal(
-      products[0].previewImages[0].imagePath,
-      products[0].thumbImagePath,
-    );
+test('판매 종료 스킨 4종을 상점 목록·추천·상품 상세에서 찾을 수 없다', () => {
+  const featuredIds = new Set(getFeaturedStoreItems(STORE_ITEMS.length).map((item) => item.id));
+  for (const { itemId } of RETIRED_SKINS) {
+    assert.equal(getStoreItemById(itemId), null, itemId);
+    assert.equal(featuredIds.has(itemId), false, itemId);
   }
 
-  assert.deepEqual(
-    getFeaturedStoreItems(22)
-      .slice(20, 22)
-      .map((item) => item.id),
-    SKINS.map((item) => item.itemId),
-  );
+  const background = getStoreItemById('BG-06');
+  assert.equal(background.name, 'DGB PARK');
+  assert.equal(background.isPurchasable, true);
+  assert.equal(featuredIds.has(background.id), true);
 });
 
-test('각 스킨은 지정 캐릭터 카탈로그에만 연결되고 부모 구매 조건을 노출한다', () => {
-  for (const expected of SKINS) {
-    const catalogRows = CHARACTER_SKIN_CATALOG.filter(
-      (item) => item.store_item_id === expected.itemId,
-    );
-
-    assert.equal(catalogRows.length, 1);
-    assert.equal(catalogRows[0].character_code, expected.characterCode);
-    assert.equal(catalogRows[0].skin_code, expected.skinCode);
-    assert.equal(catalogRows[0].skin_name, expected.name);
-    assert.equal(catalogRows[0].display_order, expected.displayOrder);
-    assert.equal(
-      catalogRows[0].image_path,
-      `/images/skins/${expected.imageFile}?v=test`,
-    );
-
-    assert.deepEqual(
-      getSkinParentRequirementByStoreItemId(expected.itemId),
-      {
-        character_code: expected.characterCode,
-        character_name: expected.characterName,
-        parent_store_item_id: expected.parentStoreItemId,
-      },
-    );
+test('판매 종료 스킨 4종은 미보유 인벤토리에도 나타나지 않는다', () => {
+  for (const { itemId, skinCode } of RETIRED_SKINS) {
+    assert.equal(getSkinCatalogItemBySkinCode(skinCode), null, skinCode);
+    assert.equal(getSkinParentRequirementByStoreItemId(itemId), null, itemId);
   }
+
+  assert.equal(getSkinCatalogItemBySkinCode('char-cucumber-basic').skin_name, '기본오이');
 
   const itemIds = STORE_ITEMS.map((item) => item.id);
   const skinCodes = CHARACTER_SKIN_CATALOG.map((item) => item.skin_code);
@@ -155,9 +119,10 @@ test('구매 SQL은 서버 가격·캐릭터 제한·스킨 지급·원장·엄�
   assert.equal(sqlEditor, migration);
   assert.ok(backup.includes(sqlEditor));
 
+  const productBranches = purchaseSql.slice(purchaseSql.indexOf("if p_item_id = 'emo-basic-01' then"));
   for (const expected of SKINS) {
     assert.equal(
-      [...purchaseSql.matchAll(new RegExp(`'${expected.itemId}'`, 'g'))].length,
+      [...productBranches.matchAll(new RegExp(`'${expected.itemId}'`, 'g'))].length,
       5,
       `${expected.itemId} must appear in price, two strict lists, inventory, and message`,
     );
@@ -242,6 +207,7 @@ test('인벤토리 장착값이 프로필·게시물·댓글 표시 경로로 �
   const siteVersion = JSON.parse(rootVersion).siteVersion;
   assert.match(siteVersion, /^\d{8}-\d{2}$/);
   assert.match(serviceWorker, new RegExp(`const SITE_VERSION = '${siteVersion}';`));
+  assert.match(storeJs, /const item = getStoreItemById\(itemId\);\s*if \(!item\) \{[\s\S]*?품목 정보를 찾지 못했어/);
   assert.match(storeJs, /getSkinParentRequirementByStoreItemId\(item\.id\)/);
   assert.match(storeJs, /loadOwnedCharacterCodes\(\)/);
   assert.match(profileJs, /CHARACTER_SKIN_CATALOG\.map\(\(item\) =>/);
