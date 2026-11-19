@@ -1,5 +1,5 @@
 import { supabase } from './supabase-client.js';
-import { resolveSitePath, homeHref, saveLoginPolicy, setMypageVerified, clearMypageVerified,
+import { beginSecondFactor, resolveSitePath, homeHref, saveLoginPolicy, setMypageVerified, clearMypageVerified,
   consumeRedirect, mypageHref } from './auth-store.js';
 
 export const SOCIAL_PROVIDERS = [ ['google', 'Google'], ['kakao', '카카오'], ['apple', 'Apple'] ];
@@ -11,7 +11,7 @@ const messages = {
   NOT_CONFIGURED: '소셜 로그인을 준비하고 있어요. 지금은 이메일 로그인을 이용해 주세요.',
   PROVIDER_UNAVAILABLE: '아직 준비 중인 로그인 방법이에요.',
   UNSAFE_AUTH_CONFIGURATION: '소셜 로그인 설정을 확인 중이에요. 이메일 로그인을 이용해 주세요.',
-  MFA_REQUIRED: '추가 인증이 설정된 계정이에요. 기존 로그인 방법으로 인증해 주세요.',
+  MFA_REQUIRED: '6자리 인증번호로 2차 인증을 먼저 완료해 주세요.',
   IDENTITY_ALREADY_LINKED: '이 소셜 계정은 다른 회원 계정에 연결되어 있어요.',
   REVOCATION_PENDING: '이전 Apple 연결 해제를 처리 중이에요. 잠시 후 다시 시도해 주세요.',
   INVALID_OR_USED_REQUEST: '이미 처리되었거나 만료된 요청이에요. 처음부터 다시 시도해 주세요.',
@@ -140,15 +140,13 @@ export async function acceptSocialResult(result) {
     saveLoginPolicy({ autoLogin: pendingRequest()?.autoLogin === true });
   }
   clearSocialRequest();
-  if (result.verified === true) { enterVerifiedAccountPage(); return; }
-  let destination = consumeRedirect(homeHref());
-  try {
-    if (new URL(destination, location.href).origin !== location.origin) destination = homeHref();
-  } catch { destination = homeHref(); }
-  window.location.replace(destination);
+  if (result.verified === true) return enterVerifiedAccountPage();
+  beginSecondFactor(consumeRedirect(homeHref()));
 }
-export function enterVerifiedAccountPage() {
-  setMypageVerified(true);
+export async function enterVerifiedAccountPage() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session) throw new Error('LOGIN_REQUIRED');
+  setMypageVerified(true, data.session);
   window.location.assign(mypageHref());
 }
 

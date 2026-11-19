@@ -649,6 +649,7 @@ async function initApp() {
     return;
   }
 
+  if (await modules.authStoreModule.routePendingSecondFactor?.()) return;
   await initGlobalModules(modules);
   await initPageModules(modules);
 }

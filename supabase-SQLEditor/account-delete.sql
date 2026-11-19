@@ -14,6 +14,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
 begin
+  perform public.require_recent_account_mfa();
   if v_uid is null then
     raise exception '로그인이 필요합니다.';
   end if;

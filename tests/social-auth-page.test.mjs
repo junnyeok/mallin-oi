@@ -25,6 +25,7 @@ async function render({ purpose='login', decision='ready', provider='google', fa
     },
     acceptSocialResult:async result=>accepted.push(result),socialMessage:error=>error.message,
     supabase:{auth:{getSession:async()=>({data:{session:{user:{id:'user'}}}})}},
+    routePendingSecondFactor:async()=>false,
     loginHref:()=>'/login.html',mypageHref:()=>'/mypage.html',homeHref:()=>'/index.html',
     initSocialAuthNative:async()=>{},initCalendarWidgetNavigation:async()=>false,
     startSocialLogin:async(...args)=>calls.push({start:args}),enterVerifiedAccountPage:()=>{},

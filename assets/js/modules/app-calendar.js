@@ -2,6 +2,7 @@
 import {
   getCurrentUser,
   getDisplayName,
+  routePendingSecondFactor,
   saveRedirect,
   signOutUser,
 } from './auth-store.js';
@@ -153,6 +154,7 @@ async function initAppCalendarLauncher() {
   enableCalendarAppMode();
   const homeRequested = new URLSearchParams(window.location.search).get('home') === '1';
   if (await initCalendarWidgetNavigation({ discardPending: homeRequested })) return;
+  if (await routePendingSecondFactor()) return;
   bindCalendarLinks();
   initRefreshControls();
   await initAppCalendarAccount();

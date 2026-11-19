@@ -1,10 +1,13 @@
 // assets/js/modules/auth-store.js
 
 import {
+  checkPasswordWithoutReplacingSession,
   clearStoredAuthSession,
   readStoredAuthSession,
   supabase,
 } from './supabase-client.js';
+
+import { hasSecondFactor, restoreSecondFactor, safeMfaReturn, sessionClaims, usesEmailMfa } from './mfa-session.js';
 
 export const SUPABASE_AUTH_STORAGE_KEY = 'sb-tfztkeihdqkfzwpilyky-auth-token';
 export const REDIRECT_KEY = 'authRedirectTo';
@@ -259,6 +262,29 @@ export function signupHref() {
   return withCalendarAppParam(resolveSitePath('account/signup.html'));
 }
 
+export function beginSecondFactor(destination) {
+  clearMypageVerified();
+  saveRedirect(safeMfaReturn(destination, window.location.href, homeHref()));
+  window.location.replace(withCalendarAppParam(resolveSitePath('account/mfa.html')));
+}
+
+// Recover an unfinished login even on a direct URL, reload or email confirmation.
+export async function routePendingSecondFactor() {
+  const { data, error } = await supabase.auth.getSession();
+  const session = error ? readStoredAuthSession() : data.session;
+  if (!session) return false;
+  const recovery = isResetPasswordPage() && usesEmailMfa(session.user) &&
+    sessionClaims(session).amr?.some(p => ['otp', 'recovery'].includes(p.method));
+  const page = document.body.dataset.page;
+  const needsPassword = usesEmailMfa(session.user) && !sessionClaims(session).amr?.some(p => p.method === 'password');
+  if (recovery || (page === 'login' && needsPassword) || await restoreSecondFactor(session, supabase)) return false;
+  const destination = ['login', 'signup'].includes(page)
+    ? new URLSearchParams(location.search).get('redirect') || consumeRedirect()
+    : location.href;
+  beginSecondFactor(destination);
+  return true;
+}
+
 export function mypageHref() {
   return withCalendarAppParam(resolveSitePath('mypage.html'));
 }
@@ -400,8 +426,10 @@ export function consumeRedirect(defaultUrl = homeHref()) {
   return saved || defaultUrl;
 }
 
-export function setMypageVerified(value = true) {
-  sessionStorage.setItem(MYPAGE_VERIFY_KEY, value ? 'true' : 'false');
+export function setMypageVerified(value = true, session = authState.cachedSession) {
+  const id = sessionClaims(session).session_id;
+  if (value && id) sessionStorage.setItem(MYPAGE_VERIFY_KEY, id);
+  else clearMypageVerified();
 }
 
 export function clearMypageVerified() {
@@ -409,11 +437,12 @@ export function clearMypageVerified() {
 }
 
 export function isMypageVerified() {
-  return sessionStorage.getItem(MYPAGE_VERIFY_KEY) === 'true';
+  const id = sessionClaims(authState.cachedSession).session_id;
+  return !!id && sessionStorage.getItem(MYPAGE_VERIFY_KEY) === id;
 }
 
 function applySession(session) {
-  if (session?.user) {
+  if (hasSecondFactor(session)) {
     authState.cachedSession = session;
     authState.status = 'authenticated';
     return session;
@@ -593,12 +622,9 @@ export async function verifyCurrentPassword(password) {
     return { ok: false, message: '현재 로그인 사용자 정보를 찾지 못했어.' };
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password,
-  });
+  const verified = await checkPasswordWithoutReplacingSession(user, password);
 
-  if (error) {
+  if (!verified) {
     return { ok: false, message: '현재 비밀번호가 올바르지 않아.' };
   }
 
@@ -738,6 +764,7 @@ export async function initAuthUI() {
           'INITIAL_SESSION',
           'SIGNED_IN',
           'TOKEN_REFRESHED',
+          'MFA_CHALLENGE_VERIFIED',
           'USER_UPDATED',
         ].includes(event)
       ) {
@@ -777,6 +804,9 @@ export async function initAuthUI() {
       if (event === 'SIGNED_IN' && session?.user) {
         const policy = readAuthPolicy();
         if (!policy) saveLoginPolicy({ autoLogin: true });
+        if (!hasSecondFactor(session) && !['login', 'signup'].includes(document.body.dataset.page)) {
+          window.setTimeout(() => { void routePendingSecondFactor(); }, 0);
+        }
       }
 
       if (event !== 'SIGNED_OUT') {

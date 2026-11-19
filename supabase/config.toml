@@ -1,2 +1,14 @@
 [functions.social-auth]
 verify_jwt = false
+
+[auth.email]
+# An email change requires confirmation from the previous and the new mailbox.
+double_confirm_changes = true
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[functions.account-email-mfa]
+# The handler validates each bearer token with Auth.getUser, including asymmetric signing keys.
+verify_jwt = false

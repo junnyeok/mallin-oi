@@ -61,7 +61,11 @@
           </a>
         </div>
 
-        <div class="mypage-card">
+        <section class="mypage-section" id="mypageMfaGate" aria-labelledby="mypageMfaTitle">
+          <h1 class="mypage-section-title" id="mypageMfaTitle">마이페이지 2차 인증</h1>
+          <div id="mypageMfaProof">인증 정보를 확인하고 있어요.</div>
+        </section>
+        <div class="mypage-card" id="mypagePrivate" hidden>
           <div class="mypage-summary">
             <div class="mypage-summary-item">
               <span class="mypage-summary-label">이메일</span>
@@ -102,6 +106,11 @@
           </div>
 
           <section id="communitySafetySettings" class="mypage-section" aria-label="커뮤니티 설정" hidden></section>
+
+          <section class="mypage-section" aria-labelledby="mypageMfaHeading">
+            <h2 class="mypage-section-title" id="mypageMfaHeading">2차 인증 관리</h2>
+            <div id="mypageMfaSettings"></div>
+          </section>
 
           <form id="mypageForm" class="mypage-form">
             <section class="mypage-section" aria-label="기본 회원정보">

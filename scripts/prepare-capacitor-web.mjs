@@ -35,6 +35,7 @@ const filesToCopy = [
 const filesToCopyIfExists = [
   'account/signup.html',
   'account/verify.html',
+  'account/mfa.html',
   'account/social-callback.html',
   'account/find-password.html',
   'account/reset-password.html',

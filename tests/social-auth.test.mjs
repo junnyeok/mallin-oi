@@ -203,7 +203,7 @@ test('reauthentication email limit stays bound to the account across changing IP
       return { data: count <= args.p_limit };
     },
   };
-  const anon = { auth: {
+  const anon = { rpc: async () => ({ error: null }), auth: {
     getUser: async () => ({ data: { user: { id: 'member', email: 'member@example.test', email_confirmed_at: '2026-01-01' } } }),
     signInWithOtp: async () => { sent++; return { data: {} }; },
   } };
@@ -278,7 +278,15 @@ test('independent social login issues a session only for its registered UUID', a
     assert.equal(input.email, 'original@example.com'); events.push('generate');
     return { data: { properties: { hashed_token: 'one-time-proof' } } };
   };
-  const anon = { auth: { verifyOtp: async input => {
+  let gateError = { code:'42501', message:'MFA_REQUIRED' };
+  let rolloutAllowsLegacy = false;
+  const anon = {
+    rpc: async name => {
+      assert.equal(name, 'account_mfa_legacy_access');
+      return { data: rolloutAllowsLegacy };
+    },
+    from: () => ({ select: () => ({ limit: async () => ({ error:gateError }) }) }),
+    auth: { verifyOtp: async input => {
     assert.equal(input.token_hash,'one-time-proof'); events.push('verify');
     return { data: { user: { id: userId }, session: { access_token: 'test-access', refresh_token: 'test-refresh' } } };
   } } };
@@ -290,8 +298,15 @@ test('independent social login issues a session only for its registered UUID', a
   assert.equal((await (await handler(request('finish',{ request: row.id,verifier }))).json()).error,'ACCOUNT_UNAVAILABLE');
   assert.ok(!events.includes('generate'));
   user = { ...user, banned_until: null, factors: [{status:'verified'}] }; events.length=0;
-  assert.equal((await (await handler(request('finish',{ request: row.id,verifier }))).json()).error,'MFA_REQUIRED');
-  assert.ok(!events.includes('generate'));
+  const provisional = await handler(request('finish',{ request: row.id,verifier }));
+  assert.equal(provisional.status, 200);
+  assert.equal((await provisional.json()).session.access_token, 'test-access');
+  gateError = null;
+  const premature = await handler(request('finish',{ request: row.id,verifier }));
+  assert.equal(premature.status, 503);
+  assert.equal((await premature.json()).error, 'UNSAFE_AUTH_CONFIGURATION');
+  rolloutAllowsLegacy = true;
+  assert.equal((await handler(request('finish', { request: row.id, verifier }))).status, 200);
 });
 
 test('removed link, unlink, password-add and signup email APIs fail closed', async () => {
@@ -310,4 +325,16 @@ test('independent account code refuses an unapplied schema migration', async () 
   const response = await handler(request('config'));
   assert.equal(response.status,503);
   assert.equal((await response.json()).error,'ACCOUNT_MIGRATION_REQUIRED');
+});
+
+test('account management rejects a first-factor session before issuing email proof', async () => {
+  const db = stubDb(null);
+  const anon = { auth: {
+    getUser: async () => ({ data: { user: { id: 'member', email: 'member@example.test' } } }),
+    signInWithOtp: () => { throw new Error('unexpected email'); },
+  }, rpc: async () => ({ error: { message: 'MFA_REQUIRED' } }) };
+  const handler = createHandler({ env, createClient: (_, key) => key === 'test-server' ? db : anon, providers: {} });
+  const response = await handler(request('reauth-email'));
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, 'MFA_REQUIRED');
 });

@@ -32,3 +32,16 @@
 .social-auth-page p { line-height: 1.6; }
 
 .social-auth-page input:disabled { opacity: .55; cursor: not-allowed; }
+
+#mypagePrivate[hidden], #mypageMfaGate[hidden], .mfa-form [hidden] { display: none; }
+.mfa-form { display: grid; gap: 14px; }
+.mfa-form label { display: grid; gap: 6px; }
+.mfa-form :is(input, select), .mfa-form button, #mypageMfaSettings button {
+  min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn); background: var(--color-surface); color: var(--color-text); font-size: 16px;
+}
+.mfa-form img { display: block; width: min(192px, 100%); height: auto; background: white; margin: 0 auto 12px; }
+.mfa-form code { overflow-wrap: anywhere; user-select: all; }
+.mfa-form button, #mypageMfaSettings button { cursor: pointer; font-weight: 700; }
+.mfa-form button[type=submit] { background: var(--color-primary); }
+.mfa-form [data-status]:empty { display: none; }

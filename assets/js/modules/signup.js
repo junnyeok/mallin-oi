@@ -1,6 +1,6 @@
 // assets/js/modules/signup.js
 import { supabase } from './supabase-client.js';
-import { loginHref } from './auth-store.js';
+import { beginSecondFactor, consumeRedirect, loginHref } from './auth-store.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -359,7 +359,7 @@ export function initSignup() {
 
       if (!data.session) {
         setSignupMsg(
-          '인증메일을 보냈어. 메일에서 인증 버튼을 누르면 가입이 완료돼.',
+          '인증메일을 보냈어. 이메일을 확인한 다음 비밀번호로 로그인해줘.',
           'green',
         );
 
@@ -369,13 +369,8 @@ export function initSignup() {
         return;
       }
 
-      setSignupMsg('인증이 완료된 상태야. 로그인 페이지로 이동할게.', 'green');
-
       form.reset();
-
-      setTimeout(() => {
-        window.location.href = loginHref();
-      }, 800);
+      beginSecondFactor(consumeRedirect());
     } catch (err) {
       console.error('[signup] unexpected error:', err);
 

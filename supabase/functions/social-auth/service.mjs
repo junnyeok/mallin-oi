@@ -13,6 +13,10 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const admin = () => client(env('MALLINOI_SERVICE_ROLE_KEY'));
   const auth = () => client(env('SUPABASE_ANON_KEY'));
+  const asMember = jwt => createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), {
+    global: { headers: { Authorization: 'Bearer ' + jwt } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
   const callback = provider => `${env('SUPABASE_URL')}/functions/v1/social-auth/callback/${provider}`;
   function checked(result) {
     if (result.error) {
@@ -39,6 +43,8 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const { data, error } = await auth().auth.getUser(jwt);
     demand(!error && data?.user?.id, 'LOGIN_REQUIRED', 401);
+    const gate = await asMember(jwt).rpc('require_account_mfa');
+    demand(!gate.error, 'MFA_REQUIRED', 403);
     allowTestEmail(socialAccount(data.user)?.contact_email || data.user.email);
     return data.user;
   }
@@ -53,7 +59,6 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
   }
   async function reauthenticate(db, user, proof) {
     demand(user.email && user.email_confirmed_at, 'VERIFIED_ACCOUNT_REQUIRED');
-    demand(!user.factors?.some(f => f.status === 'verified'), 'MFA_REQUIRED', 403);
     const a = auth();
     let result;
     if (proof?.password) {
@@ -80,13 +85,19 @@ export function createHandler({ env, createClient, providers, fetcher = fetch })
     const { user } = checked(await db.auth.admin.getUserById(userId));
     demand(user?.email && user.email_confirmed_at &&
       (!user.banned_until || new Date(user.banned_until).getTime() <= Date.now()), 'ACCOUNT_UNAVAILABLE', 403);
-    demand(!user.factors?.some(f => f.status === 'verified'), 'MFA_REQUIRED', 403);
     // Public OAuth endpoints remain disabled. A verified provider mapping, not email equality,
     // authorizes this server-side, single-use session exchange. No email is sent by generateLink.
     const link = checked(await db.auth.admin.generateLink({ type: 'magiclink', email: user.email }));
     const a = auth();
     const verified = checked(await a.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' }));
     demand(verified.user?.id === userId && verified.session, 'ACCOUNT_MISMATCH', 403);
+    // Only an explicitly staged account may use legacy access during store review.
+    const member = asMember(verified.session.access_token);
+    const probe = await member.from('profiles').select('id').limit(0);
+    const enforcing = probe.error?.code === '42501' && probe.error.message === 'MFA_REQUIRED';
+    const staged = !probe.error && (await member.rpc('account_mfa_legacy_access')).data === true;
+    demand(enforcing || staged,
+      'UNSAFE_AUTH_CONFIGURATION', 503);
     return verified.session;
   }
   async function independentUser(db, row, body) {

@@ -84,6 +84,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    const { error: proofError } = await userClient.rpc('require_recent_account_mfa');
+    if (proofError) {
+      return jsonResponse({ success: false, message: '마이페이지에 다시 들어와 2차 인증을 한 후 탈퇴해 주세요.' }, 403);
+    }
     const userId = userData.user.id;
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },

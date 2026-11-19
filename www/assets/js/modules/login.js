@@ -1,11 +1,13 @@
 // assets/js/modules/login.js
 import { supabase } from './supabase-client.js';
 import {
+  beginSecondFactor,
   consumeRedirect,
   homeHref,
   saveLoginPolicy,
   saveRedirect,
 } from './auth-store.js';
+import { sessionClaims, usesEmailMfa } from './mfa-session.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
 
 function $(id) {
@@ -162,14 +164,17 @@ export function initLogin() {
 
   if (hasEmailConfirmationParams()) {
     supabase.auth.getSession().then(({ data }) => {
+      if (usesEmailMfa(data?.session?.user) && !sessionClaims(data.session).amr?.some(p => p.method === 'password')) {
+        setMsg(msg, '이메일 확인이 끝났어. 비밀번호로 로그인하면 인증번호를 보내줄게.', 'green');
+        idInput.value = data.session.user.email || '';
+        return;
+      }
       if (data?.session?.user) {
         saveLoginPolicy({ autoLogin: true });
-        setMsg(msg, '이메일 인증이 완료됐어. 이동할게.', 'green');
+        setMsg(msg, '이메일 확인이 끝났어. 2차 인증으로 이동할게.', 'green');
 
         const redirectTo = consumeRedirect(redirectFromQuery || homeHref());
-        setTimeout(() => {
-          window.location.href = redirectTo;
-        }, 500);
+        beginSecondFactor(redirectTo);
         return;
       }
 
@@ -243,12 +248,8 @@ export function initLogin() {
       autoLogin: !!rememberInput?.checked,
     });
 
-    setMsg(msg, '로그인 성공! 이동할게.', 'green');
-
-    const redirectTo = consumeRedirect(redirectFromQuery || homeHref());
-
-    setTimeout(() => {
-      window.location.href = redirectTo;
-    }, 300);
+    pwInput.value = '';
+    setMsg(msg, '2차 인증으로 이동할게.', 'green');
+    beginSecondFactor(consumeRedirect(redirectFromQuery || homeHref()));
   });
 }

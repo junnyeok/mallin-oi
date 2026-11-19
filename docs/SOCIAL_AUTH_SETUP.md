@@ -1,5 +1,14 @@
 # Google·카카오·Apple 로그인 연결 설정
 
+## 2026-11-20 로그인 2차 인증의 운영 설정
+
+일반 계정은 비밀번호 입력 후 가입 이메일로 코드를 받는다. 마이페이지 진입에는 별도의 코드가 필요하다. 인증 앱을 쓰는 일반 계정과 소셜 계정은 Supabase의 인증 앱 검증을 사용한다.
+
+- 이메일 발신 기본값은 기존 주소 `auth@mallin-oi.com`이다. `account-email-mfa` 서버 함수의 비밀 설정에 해당 도메인에서 발송할 수 있는 `RESEND_API_KEY`를 등록한다. 발신 주소를 바꿀 때는 `MFA_EMAIL_FROM`을 지정한다.
+- 운영 서버에 두 인증 마이그레이션을 파일명 순서로 적용하면 기존 설치본을 위한 전환 기간이 시작된다. `account_mfa_rollout.everyone`의 초기값은 false이고 시험 대상은 `account_mfa_pilots`에서 관리한다. 두 테이블은 일반 회원이 수정할 수 없다.
+- 지정한 계정으로 수신함의 코드를 입력하고 웹과 캘린더 앱에서 로그인 및 마이페이지 재인증을 확인한다. 호환 앱이 양 스토어에서 실제로 배포된 뒤 운영자가 `update public.account_mfa_rollout set everyone = true where singleton`을 실행하면 모든 계정의 회원 데이터 접근에 서버 검증이 적용된다. Supabase의 이메일 변경 이중 확인과 인증 앱 등록·검증도 확인한다.
+- 이메일 확인은 현재 비밀번호 세션에 대한 사이트 권한이다. 회원 데이터 API, 저장소 정책, 실시간 데이터, 계정 관리 함수에서 확인한다. Supabase Auth 자체의 계정 API에는 Supabase의 보안 설정이 적용된다. 새로 회원 데이터를 다루는 서버 함수도 회원 권한으로 `require_account_mfa`를 호출해야 한다.
+
 ## 2026-10-18 후속 수정: 가입 방식별 독립 계정 (배포 준비)
 
 - 이번 직접 확인: 승인된 독립 계정 SQL 적용 및 social-auth/delete-account 배포 완료. 운영 응답 accountMode=separate, RLS 켜짐, 일반 회원 매핑 조회 금지, 구 연결 해제 실행권한 제거, Auth 보호 트리거 활성 확인. 기존 회원 데이터 일괄 변경 없음. 개인정보처리방침도 독립 가입·탈퇴 범위에 맞춰 수정. 전체 Node 374/374, 독립 계정 통합 검사, Android Debug/iOS Simulator 빌드 통과.

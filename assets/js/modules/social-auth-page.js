@@ -1,7 +1,7 @@
 import { SOCIAL_PROVIDERS, socialApi, socialMessage, pendingRequest,
   startSocialLogin, acceptSocialResult, enterVerifiedAccountPage } from './social-auth.js';
 import { supabase } from './supabase-client.js';
-import { loginHref, mypageHref, homeHref } from './auth-store.js';
+import { loginHref, mypageHref, homeHref, routePendingSecondFactor } from './auth-store.js';
 import { initSocialAuthNative } from './social-auth-native.js';
 import { initCalendarWidgetNavigation } from './calendar-native-widgets.js';
 
@@ -80,7 +80,8 @@ async function managementPage() {
 $('socialLoginLink').href = loginHref();
 if ($('socialBack')) $('socialBack').href = mypageHref();
 await initSocialAuthNative().catch(() => {});
-if (!await initCalendarWidgetNavigation()) {
+if (!await initCalendarWidgetNavigation() &&
+    !(document.body.dataset.page === 'account-verification' && await routePendingSecondFactor())) {
   await (document.body.dataset.page === 'social-callback' ? callbackPage() : managementPage())
     .catch(error => {
       status(socialMessage(error));

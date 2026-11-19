@@ -110,6 +110,18 @@ export function clearStoredAuthSession() {
   authStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
 }
 
+// Password rechecks must not replace the current AAL2 session with a new AAL1 login.
+export async function checkPasswordWithoutReplacingSession(user, password) {
+  const client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false,
+      storageKey: 'mallin-password-proof-' + crypto.randomUUID() },
+  });
+  const { data, error } = await client.auth.signInWithPassword({ email: user.email, password });
+  if (error || !data.session) return false;
+  try { return data.user?.id === user.id; }
+  finally { await client.auth.signOut({ scope: 'local' }); }
+}
+
 function createSupabaseSingleton() {
   return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {

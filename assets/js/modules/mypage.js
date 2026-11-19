@@ -1,5 +1,7 @@
 // assets/js/modules/mypage.js
-import { supabase } from './supabase-client.js';
+import { hasSecondFactor, sessionClaims } from './mfa-session.js';
+import { mountMfa, mountMfaSettings } from './mfa.js';
+import { checkPasswordWithoutReplacingSession, supabase } from './supabase-client.js';
 import { mountCommunitySettings } from './community-safety.js';
 import { isMypageVerified, saveRedirect, signOutUser, getUserEmail } from './auth-store.js';
 import { loadPostsByAuthorId } from './posts-repo.js';
@@ -316,6 +318,61 @@ export async function initMypage() {
   if (form.dataset.mypageBound === 'true') return;
   form.dataset.mypageBound = 'true';
 
+  const user = await getCurrentUser();
+  if (!form.isConnected) return;
+  if (!user) {
+    saveRedirectHere();
+    window.location.href = getLoginRedirectHref();
+    return;
+  }
+  if (!isMypageVerified()) {
+    window.location.replace(getPrevMypageRedirectHref());
+    return;
+  }
+  const { data: { session: entrySession } } = await supabase.auth.getSession();
+  if (!form.isConnected) return;
+  const entryId = sessionClaims(entrySession).session_id;
+  const card = $('mypagePrivate');
+  const gate = $('mypageMfaGate');
+  const proof = $('mypageMfaProof');
+  // Browsers can restore an entire document from the back/forward cache.
+  const lock = () => { card.hidden = true; gate.hidden = false; };
+  const onRestore = event => { if (event.persisted) window.location.reload(); };
+  window.addEventListener('pagehide', lock);
+  window.addEventListener('pageshow', onRestore);
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || (session && (!hasSecondFactor(session) ||
+        session.user.id !== user.id || sessionClaims(session).session_id !== entryId))) {
+      lock();
+      if (form.isConnected) window.location.reload();
+    }
+  });
+  window.addEventListener('mallin:before-pjax-swap', () => {
+    subscription.unsubscribe();
+    window.removeEventListener('pagehide', lock);
+    window.removeEventListener('pageshow', onRestore);
+  }, { once: true });
+
+  async function askForCode() {
+    await mountMfa(proof, { mode: 'entry', userId: user.id, onVerified: async factorId => {
+      const { error } = await supabase.rpc('require_recent_account_mfa');
+      if (!form.isConnected) return;
+      if (error) {
+        await askForCode();
+        proof.querySelector('[data-status]').textContent = '계정 보호 상태를 확인하지 못했어요. 다시 인증해 주세요.';
+        return;
+      }
+      await mountMfaSettings($('mypageMfaSettings'), user.id, factorId);
+      if (!form.isConnected) return;
+      card.hidden = false;
+      gate.hidden = true;
+      await showVerifiedMypage(form, user);
+    } });
+  }
+  await askForCode();
+}
+
+async function showVerifiedMypage(form, user) {
   const msgEl = $('mypageMsg');
   const withdrawMsgEl = $('mypageWithdrawMsg');
   const logoutBtn = $('mypageLogoutBtn');
@@ -337,19 +394,6 @@ export async function initMypage() {
   const mypageCommentPrevBtn = $('mypageCommentPrevBtn');
   const mypageCommentNextBtn = $('mypageCommentNextBtn');
   const mypageCommentPageInfo = $('mypageCommentPageInfo');
-
-  const user = await getCurrentUser();
-
-  if (!user) {
-    saveRedirectHere();
-    window.location.href = getLoginRedirectHref();
-    return;
-  }
-
-  if (!isMypageVerified()) {
-    window.location.href = getPrevMypageRedirectHref();
-    return;
-  }
 
   try {
     const role = await getMyRole();
@@ -480,13 +524,7 @@ export async function initMypage() {
       }
 
       if (newPw || newPw2 || currentPw) {
-        const { error: reauthError } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password: currentPw,
-        });
-
-        if (reauthError) {
-          console.error('[mypage] current password check failed:', reauthError);
+        if (!await checkPasswordWithoutReplacingSession(user, currentPw)) {
           if (msgEl) msgEl.textContent = '현재 비밀번호가 맞지 않아.';
           return;
         }
@@ -526,6 +564,17 @@ export async function initMypage() {
   withdrawBtn?.addEventListener('click', async () => {
     if (withdrawBtn.disabled) return;
 
+    withdrawBtn.disabled = true;
+    try {
+      const { error } = await supabase.rpc('require_recent_account_mfa');
+      if (error) throw error;
+    } catch {
+      setWithdrawMessage(withdrawMsgEl, '마이페이지에 다시 들어와 2차 인증을 한 뒤 탈퇴해 주세요.', 'error');
+      return;
+    } finally {
+      withdrawBtn.disabled = false;
+    }
+    if (!form.isConnected) return;
     const firstOk = window.confirm(
       '회원탈퇴를 진행할까요?\n계정과 프로필, 캘린더 기록 등 계정에 연결된 데이터가 삭제됩니다.',
     );

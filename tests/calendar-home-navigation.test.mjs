@@ -119,6 +119,7 @@ test('실제 홈 초기화는 명시적인 홈 이동을 우선하고 일반 위
       console, URLSearchParams,
       sessionStorage: { setItem() {} },
       initSocialAuthNative: async () => false,
+      routePendingSecondFactor: async () => false,
       initRefreshControls() {},
       document: {
         readyState: 'loading', addEventListener() {},
