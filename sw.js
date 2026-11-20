@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20261120-04';
+const SITE_VERSION = '20261121-01';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -248,6 +248,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (url.pathname.endsWith('/assets/version.json')) {
+    // Boot may use its cached manifest offline. A live update must come from the network.
+    event.respondWith(url.searchParams.has('check')
+      ? fetch(request, { cache: 'no-store' })
+      : networkFirstStatic(request));
     return;
   }
 

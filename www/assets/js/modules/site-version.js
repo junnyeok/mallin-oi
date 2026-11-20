@@ -5,38 +5,6 @@ const FALLBACK_SITE_VERSION = 'dev';
 export const SITE_VERSION = String(
   window.__SITE_VERSION__ || FALLBACK_SITE_VERSION,
 ).trim();
-const VERSION_STORAGE_KEY = 'mallin_site_version';
-const ACKNOWLEDGED_VERSION_STORAGE_KEY = 'mallin_site_acknowledged_version';
-const PENDING_VERSION_STORAGE_KEY = 'mallin_site_pending_update_version';
-
-function getStoredVersion(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch (error) {
-    console.warn('[site-version] storage read failed:', error);
-    return null;
-  }
-}
-
-function setStoredVersion(key, version) {
-  const normalizedVersion = String(version || '').trim();
-  if (!normalizedVersion) return;
-
-  try {
-    localStorage.setItem(key, normalizedVersion);
-  } catch (error) {
-    console.warn('[site-version] storage write failed:', error);
-  }
-}
-
-function removeStoredVersion(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch (error) {
-    console.warn('[site-version] storage remove failed:', error);
-  }
-}
-
 function isExternalPath(path = '') {
   return /^(https?:)?\/\//i.test(path);
 }
@@ -121,70 +89,92 @@ export function withAssetVersion(path = '') {
   return `${url.pathname}${url.search}${hash}`;
 }
 
-export function getVersionChangeInfo() {
-  const prevVersion = getStoredVersion(VERSION_STORAGE_KEY);
-  const acknowledgedVersion = getStoredVersion(ACKNOWLEDGED_VERSION_STORAGE_KEY);
-  const pendingVersion = getStoredVersion(PENDING_VERSION_STORAGE_KEY);
-  const changed = prevVersion !== null && prevVersion !== SITE_VERSION;
-  const alreadyAcknowledged =
-    acknowledgedVersion === SITE_VERSION || pendingVersion === SITE_VERSION;
+const versionManifest = new URL('../../version.json?check', import.meta.url);
+const updateInterval = 60_000;
+let updatesInitialized = false;
 
-  return {
-    prevVersion,
-    currentVersion: SITE_VERSION,
-    acknowledgedVersion,
-    pendingVersion,
-    changed,
-    shouldShowUpdate: changed && !alreadyAcknowledged,
-    firstVisit: prevVersion === null,
+function hasPendingEdits() {
+  // These flows can hold attachments, an in-flight login, or a one-time code.
+  if (
+    document.querySelector('#writeForm, #loginForm, .mfa-form') ||
+    window.location.pathname.includes('/account/')
+  ) return true;
+  if (document.activeElement?.matches('input, textarea, select, [contenteditable="true"]')) return true;
+
+  // Rich comment editors also mirror sticker-only drafts into their source textareas.
+  return [...document.querySelectorAll(
+    '#commentBody, [data-role="reply-textarea"], [data-role="comment-edit-textarea"]',
+  )].some(field => field.value !== field.defaultValue);
+}
+
+export function initSiteAutoUpdates() {
+  if (updatesInitialized) return;
+  updatesInitialized = true;
+
+  let checking = false;
+  let reloading = false;
+  const editedFields = new Set();
+  const trackEdit = ({ target }) => {
+    if (target.matches?.('input, textarea, select, [contenteditable="true"]')) {
+      editedFields.add(target);
+    }
   };
-}
+  document.addEventListener('input', trackEdit, true);
+  document.addEventListener('change', trackEdit, true);
 
-export async function clearOldStaticCaches() {
-  // Supabase 세션과 자동로그인 정책은 localStorage에 있으므로
-  // 버전 갱신에서는 Cache Storage와 service worker만 정리한다.
-  try {
-    if ('caches' in window) {
-      const cacheKeys = await caches.keys();
-      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+  function hasEditedFields() {
+    for (const field of editedFields) {
+      if (!field.isConnected || field.closest('[hidden]')) {
+        editedFields.delete(field);
+        continue;
+      }
+      if (field.isContentEditable) {
+        if (field.textContent.trim() || field.querySelector('img')) return true;
+      } else if (field.type === 'checkbox' || field.type === 'radio') {
+        if (field.checked !== field.defaultChecked) return true;
+      } else if (field.tagName === 'SELECT') {
+        const options = [...field.options];
+        const hasDefault = options.some(option => option.defaultSelected);
+        if (options.some((option, index) => option.selected !==
+            (option.defaultSelected || (!hasDefault && !field.multiple && index === 0)))) return true;
+      } else if (field.value !== field.defaultValue) {
+        return true;
+      }
+      editedFields.delete(field);
     }
-  } catch (error) {
-    console.error('[site-version] cache delete failed:', error);
+    return false;
   }
 
-  try {
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((reg) => reg.unregister()));
+  async function check() {
+    if (checking || reloading || document.hidden || navigator.onLine === false) return;
+    checking = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(versionManifest, { cache: 'no-store', signal: controller.signal });
+      if (!response.ok) return;
+      const { siteVersion } = await response.json();
+      if (typeof siteVersion !== 'string' || !siteVersion.trim()) return;
+      const latest = siteVersion.trim();
+      if (latest === SITE_VERSION || document.hidden || hasPendingEdits() || hasEditedFields()) return;
+
+      const url = new URL(window.location.href);
+      // If the host serves a stale bundle after the reload, don't loop on this release.
+      if (url.searchParams.get('_updated') === latest) return;
+      url.searchParams.set('_updated', latest);
+      reloading = true;
+      window.location.replace(url.href);
+    } catch {
+      // A failed check leaves the current page usable and is retried on the next check.
+    } finally {
+      clearTimeout(timeout);
+      checking = false;
     }
-  } catch (error) {
-    console.error('[site-version] service worker unregister failed:', error);
   }
-}
 
-export function markVersionUpdateAcknowledged(version = SITE_VERSION) {
-  const targetVersion = String(version || SITE_VERSION).trim();
-  setStoredVersion(ACKNOWLEDGED_VERSION_STORAGE_KEY, targetVersion);
-  setStoredVersion(PENDING_VERSION_STORAGE_KEY, targetVersion);
-}
-
-export function markCurrentVersionApplied(version = SITE_VERSION) {
-  const targetVersion = String(version || SITE_VERSION).trim();
-  setStoredVersion(VERSION_STORAGE_KEY, targetVersion);
-
-  if (getStoredVersion(PENDING_VERSION_STORAGE_KEY) === targetVersion) {
-    removeStoredVersion(PENDING_VERSION_STORAGE_KEY);
-  }
-}
-
-export async function applyVersionUpdateAndReload(version = SITE_VERSION) {
-  const targetVersion = String(version || SITE_VERSION).trim();
-  markVersionUpdateAcknowledged(targetVersion);
-
-  await clearOldStaticCaches();
-  markCurrentVersionApplied(targetVersion);
-
-  const url = new URL(window.location.href);
-  url.searchParams.set('_updated', targetVersion);
-  window.location.replace(url.toString());
+  window.setInterval(check, updateInterval);
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('online', check);
+  window.addEventListener('pageshow', event => { if (event.persisted) void check(); });
+  void check();
 }

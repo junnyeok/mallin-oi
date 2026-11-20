@@ -33,7 +33,6 @@ const CALENDAR_APP_DOWNLOAD_POPUP_PAGES = new Set([
 const CORE_MODULE_SPECS = [
   ['mobileStabilityModule', './modules/mobile-stability.js'],
   ['siteVersionModule', './modules/site-version.js'],
-  ['updateBannerModule', './modules/update-banner.js'],
   ['appUpdatePopupModule', './modules/app-update-popup.js'],
   ['refreshControlModule', './modules/refresh-control.js'],
   ['appCalendarModeModule', './modules/app-calendar-mode.js'],
@@ -434,7 +433,6 @@ async function initGlobalModules(modules) {
   const {
     mobileStabilityModule,
     siteVersionModule,
-    updateBannerModule,
     appUpdatePopupModule,
     refreshControlModule,
     pwaInstallModule,
@@ -458,16 +456,10 @@ async function initGlobalModules(modules) {
   const { initMobileStability = () => {} } = mobileStabilityModule;
 
   const {
-    getVersionChangeInfo = () => ({
-      changed: false,
-      firstVisit: false,
-    }),
-    markCurrentVersionApplied = () => {},
-    applyVersionUpdateAndReload = async () => {},
+    initSiteAutoUpdates = () => {},
     withAssetVersion = (path) => path,
   } = siteVersionModule;
 
-  const { showUpdateBanner = () => {} } = updateBannerModule;
   const { initAppUpdatePopup = async () => {} } = appUpdatePopupModule;
   const { initRefreshControls = () => {} } = refreshControlModule;
   const { initPwaInstall = async () => {} } = pwaInstallModule;
@@ -518,21 +510,7 @@ async function initGlobalModules(modules) {
   });
 
   if (!calendarAppMode) {
-    await runSafe('site version check', async () => {
-      const versionInfo = getVersionChangeInfo();
-
-      if (versionInfo.shouldShowUpdate) {
-        showUpdateBanner(async (targetVersion) => {
-          await applyVersionUpdateAndReload(targetVersion);
-        }, {
-          targetVersion: versionInfo.currentVersion,
-        });
-      } else if (versionInfo.changed) {
-        markCurrentVersionApplied(versionInfo.currentVersion);
-      } else if (versionInfo.firstVisit) {
-        markCurrentVersionApplied();
-      }
-    });
+    initSiteAutoUpdates();
   }
 
   // 저장된 세션 판정을 먼저 끝내 비로그인 UI가 잠깐 확정되는 것을 막는다.
