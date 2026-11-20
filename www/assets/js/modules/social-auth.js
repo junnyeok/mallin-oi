@@ -132,16 +132,18 @@ export async function mountSocialLogin(root) {
   status.textContent = available.length ? '이메일·Google·카카오·Apple은 각각 별개의 계정이에요. 가입한 방법으로 로그인해 주세요.' : messages.NOT_CONFIGURED;
 }
 export async function acceptSocialResult(result) {
+  let session;
   if (result.session) {
     clearMypageVerified();
-    const { error } = await supabase.auth.setSession({ access_token: result.session.access_token,
+    const { data, error } = await supabase.auth.setSession({ access_token: result.session.access_token,
       refresh_token: result.session.refresh_token });
     if (error) throw new Error('AUTH_FAILED');
+    session = data?.session;
     saveLoginPolicy({ autoLogin: pendingRequest()?.autoLogin === true });
   }
   clearSocialRequest();
   if (result.verified === true) return enterVerifiedAccountPage();
-  beginSecondFactor(consumeRedirect(homeHref()));
+  beginSecondFactor(consumeRedirect(homeHref()), session);
 }
 export async function enterVerifiedAccountPage() {
   const { data, error } = await supabase.auth.getSession();

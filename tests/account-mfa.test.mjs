@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
-import { hasSecondFactor, hasNativeSecondFactor, restoreSecondFactor, usesEmailMfa, safeMfaReturn } from '../assets/js/modules/mfa-session.js';
+import { hasSecondFactor, hasNativeSecondFactor, restoreSecondFactor, usesEmailMfa, sessionAllowsAccess, mfaEnabled, safeMfaReturn } from '../assets/js/modules/mfa-session.js';
 
 const claims = (aal, sub = 'member') => ({
   access_token: 'test.' + Buffer.from(JSON.stringify({ aal, sub, session_id: 'session' })).toString('base64url') + '.test',
@@ -14,6 +14,21 @@ test('primary and malformed sessions never count as completed second factors', (
   assert.equal(hasSecondFactor(claims('aal2', 'another-member')), false);
   assert.equal(hasSecondFactor({ user: { id: 'member' } }), false);
   assert.equal(hasSecondFactor(claims('aal2')), true);
+});
+
+test('optional protection follows verified enrollment, never pending QR setups or editable profile fields', () => {
+  const session = claims('aal1');
+  session.user.app_metadata = {mallinoi_auth: {kind: 'social'}};
+  session.user.user_metadata = {mallinoi_mfa_method: 'totp'};
+  session.user.factors = [{status: 'unverified'}];
+  assert.equal(mfaEnabled(session.user), false);
+  assert.equal(sessionAllowsAccess(session), true);
+  session.user.factors[0].status = 'verified';
+  assert.equal(sessionAllowsAccess(session), false);
+  session.user.factors = [];
+  session.user.app_metadata = {mallinoi_mfa_method: 'email'};
+  assert.equal(sessionAllowsAccess(session), false);
+  assert.equal(sessionAllowsAccess(null), false);
 });
 
 test('post-verification destinations stay on site and discard callback credentials', () => {
@@ -60,7 +75,7 @@ async function fixture(mode, factors, session = claims('aal2')) {
 
 const totp = [{ id: 'first', factor_type: 'totp', status: 'verified' }];
 test('setup only succeeds after verifying the newly enrolled authenticator', async () => {
-  const view = await fixture('login', []);
+  const view = await fixture('activate', []);
   assert.equal(view.calls.length, 0);
   await view.submit();
   assert.equal(view.calls[0].factorType, 'totp');

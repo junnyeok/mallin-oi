@@ -1,5 +1,5 @@
 // assets/js/modules/mypage.js
-import { hasSecondFactor, sessionClaims } from './mfa-session.js';
+import { mfaEnabled, sessionAllowsAccess, sessionClaims } from './mfa-session.js';
 import { mountMfa, mountMfaSettings } from './mfa.js';
 import { checkPasswordWithoutReplacingSession, supabase } from './supabase-client.js';
 import { mountCommunitySettings } from './community-safety.js';
@@ -341,7 +341,7 @@ export async function initMypage() {
   window.addEventListener('pagehide', lock);
   window.addEventListener('pageshow', onRestore);
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || (session && (!hasSecondFactor(session) ||
+    if (event === 'SIGNED_OUT' || (session && (!sessionAllowsAccess(session) ||
         session.user.id !== user.id || sessionClaims(session).session_id !== entryId))) {
       lock();
       if (form.isConnected) window.location.reload();
@@ -353,23 +353,28 @@ export async function initMypage() {
     window.removeEventListener('pageshow', onRestore);
   }, { once: true });
 
-  async function askForCode() {
-    await mountMfa(proof, { mode: 'entry', userId: user.id, onVerified: async factorId => {
-      const { error } = await supabase.rpc('require_recent_account_mfa');
-      if (!form.isConnected) return;
-      if (error) {
-        await askForCode();
-        proof.querySelector('[data-status]').textContent = '계정 보호 상태를 확인하지 못했어요. 다시 인증해 주세요.';
-        return;
-      }
-      await mountMfaSettings($('mypageMfaSettings'), user.id, factorId);
-      if (!form.isConnected) return;
-      card.hidden = false;
-      gate.hidden = true;
-      await showVerifiedMypage(form, user);
-    } });
+  async function openMypage(factorId) {
+    const { error } = await supabase.rpc('require_recent_account_mfa');
+    if (!form.isConnected) return;
+    if (error) throw error;
+    await mountMfaSettings($('mypageMfaSettings'), user.id, factorId);
+    if (!form.isConnected) return;
+    card.hidden = false;
+    gate.hidden = true;
+    await showVerifiedMypage(form, user);
   }
-  await askForCode();
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || data.user?.id !== user.id) throw error || new Error('account changed');
+    if (mfaEnabled(data.user)) {
+      await mountMfa(proof, { mode: 'entry', userId: user.id, onVerified: openMypage });
+    } else {
+      await openMypage();
+    }
+  } catch {
+    proof.textContent = '계정 설정을 확인하지 못했어요. 새로고침 후 다시 시도해 주세요.';
+  }
 }
 
 async function showVerifiedMypage(form, user) {

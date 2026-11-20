@@ -1957,3 +1957,5 @@
 ./supabase/functions/account-email-mfa/index.ts
 ./supabase/functions/account-email-mfa/service.mjs
 ./tests/account-email-mfa.test.mjs
+./supabase/migrations/20261120030000_optional_account_mfa.sql
+./supabase-SQLEditor/20261120-optional-account-mfa.sql

@@ -370,7 +370,7 @@ export function initSignup() {
       }
 
       form.reset();
-      beginSecondFactor(consumeRedirect());
+      beginSecondFactor(consumeRedirect(), data.session);
     } catch (err) {
       console.error('[signup] unexpected error:', err);
 

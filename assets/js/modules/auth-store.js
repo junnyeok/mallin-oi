@@ -7,7 +7,7 @@ import {
   supabase,
 } from './supabase-client.js';
 
-import { hasSecondFactor, restoreSecondFactor, safeMfaReturn, sessionClaims, usesEmailMfa } from './mfa-session.js';
+import { sessionAllowsAccess, restoreSecondFactor, safeMfaReturn, sessionClaims, usesEmailMfa } from './mfa-session.js';
 
 export const SUPABASE_AUTH_STORAGE_KEY = 'sb-tfztkeihdqkfzwpilyky-auth-token';
 export const REDIRECT_KEY = 'authRedirectTo';
@@ -262,9 +262,14 @@ export function signupHref() {
   return withCalendarAppParam(resolveSitePath('account/signup.html'));
 }
 
-export function beginSecondFactor(destination) {
+export function beginSecondFactor(destination, session) {
   clearMypageVerified();
-  saveRedirect(safeMfaReturn(destination, window.location.href, homeHref()));
+  const next = safeMfaReturn(destination, window.location.href, homeHref());
+  if (sessionAllowsAccess(session)) {
+    window.location.replace(next);
+    return;
+  }
+  saveRedirect(next);
   window.location.replace(withCalendarAppParam(resolveSitePath('account/mfa.html')));
 }
 
@@ -277,7 +282,13 @@ export async function routePendingSecondFactor() {
     sessionClaims(session).amr?.some(p => ['otp', 'recovery'].includes(p.method));
   const page = document.body.dataset.page;
   const needsPassword = usesEmailMfa(session.user) && !sessionClaims(session).amr?.some(p => p.method === 'password');
-  if (recovery || (page === 'login' && needsPassword) || await restoreSecondFactor(session, supabase)) return false;
+  if (recovery || (page === 'login' && needsPassword)) return false;
+  if (sessionAllowsAccess(session)) {
+    // A member can enable protection on a different device while this token is still valid.
+    const { error: gateError } = await supabase.rpc('require_account_mfa');
+    if (gateError?.message !== 'MFA_REQUIRED') return false;
+    await supabase.auth.refreshSession();
+  } else if (await restoreSecondFactor(session, supabase)) return false;
   const destination = ['login', 'signup'].includes(page)
     ? new URLSearchParams(location.search).get('redirect') || consumeRedirect()
     : location.href;
@@ -442,7 +453,7 @@ export function isMypageVerified() {
 }
 
 function applySession(session) {
-  if (hasSecondFactor(session)) {
+  if (sessionAllowsAccess(session)) {
     authState.cachedSession = session;
     authState.status = 'authenticated';
     return session;
@@ -804,7 +815,7 @@ export async function initAuthUI() {
       if (event === 'SIGNED_IN' && session?.user) {
         const policy = readAuthPolicy();
         if (!policy) saveLoginPolicy({ autoLogin: true });
-        if (!hasSecondFactor(session) && !['login', 'signup'].includes(document.body.dataset.page)) {
+        if (!sessionAllowsAccess(session) && !['login', 'signup'].includes(document.body.dataset.page)) {
           window.setTimeout(() => { void routePendingSecondFactor(); }, 0);
         }
       }

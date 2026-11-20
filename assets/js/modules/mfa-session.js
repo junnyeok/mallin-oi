@@ -19,6 +19,19 @@ export function usesEmailMfa(user) {
     user.app_metadata?.mallinoi_mfa_method !== 'totp';
 }
 
+export function mfaEnabled(user) {
+  return ['email', 'totp'].includes(user?.app_metadata?.mallinoi_mfa_method) ||
+    !!user?.factors?.some(factor => factor.status === 'verified');
+}
+
+export function sessionAllowsAccess(session) {
+  if (mfaEnabled(session?.user)) return hasSecondFactor(session);
+  const c = sessionClaims(session);
+  return !!session?.user?.id && c.sub === session.user.id && !!c.session_id &&
+    (session.user.app_metadata?.mallinoi_auth?.kind === 'social' ||
+      !!c.amr?.some(proof => proof.method === 'password'));
+}
+
 function passwordSessionKey(session) {
   const c = sessionClaims(session);
   if (!usesEmailMfa(session?.user) || c.sub !== session.user.id || !c.session_id ||

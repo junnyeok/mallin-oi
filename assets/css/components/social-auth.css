@@ -47,3 +47,15 @@
 .mfa-form [data-status]:empty { display: none; }
 .mfa-countdown { margin: 0; font-variant-numeric: tabular-nums; }
 .mfa-countdown strong { margin-inline-start: .3em; }
+
+.mfa-notice {
+  max-width: min(24rem, 88vw);
+  padding: 1.25rem;
+  border: 1px solid var(--color-divider);
+  border-radius: 1rem;
+  background: var(--color-surface, white);
+  color: var(--color-text);
+}
+.mfa-notice::backdrop { background: rgb(0 0 0 / 40%); }
+.mfa-notice p { margin: 0 0 1rem; line-height: 1.6; }
+.mfa-notice button { min-height: 44px; padding: .5rem 1rem; cursor: pointer; }

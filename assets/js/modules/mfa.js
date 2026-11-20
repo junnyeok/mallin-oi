@@ -1,5 +1,5 @@
 import { supabase } from './supabase-client.js';
-import { hasNativeSecondFactor, usesEmailMfa } from './mfa-session.js';
+import { hasNativeSecondFactor, mfaEnabled, restoreSecondFactor, usesEmailMfa } from './mfa-session.js';
 
 import { mountEmailCode } from './mfa-email.js';
 
@@ -75,7 +75,7 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
     const factors = await factorsFor(userId);
     if (!form.isConnected) return;
     const totp = factors.filter(f => f.factor_type === 'totp');
-    enrolling = mode === 'add' || (['login', 'activate'].includes(mode) && !factors.length);
+    enrolling = mode === 'add' || (mode === 'activate' && !factors.length);
     if (!enrolling && !totp.length) throw new Error('no usable factor');
     for (const factor of totp) el('factors').add(new Option(label(factor), factor.id));
     el('choice').hidden = enrolling || totp.length <= 1;
@@ -127,7 +127,7 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
         if (!/^\d{6}$/.test(code)) { el('status').textContent = '숫자 6자리를 입력해 주세요.'; return; }
         el('code').value = '';
         const factorId = enrolledId || el('factors').value;
-        if (mode === 'activate') value(await supabase.rpc('prepare_account_authenticator', { p_factor: factorId }));
+        if (mode === 'activate' && usesEmailMfa(await currentAccount(userId))) value(await supabase.rpc('prepare_account_authenticator', { p_factor: factorId }));
         const verified = value(await supabase.auth.mfa.challengeAndVerify({ factorId, code }));
         if (verified?.user?.id !== userId || !hasNativeSecondFactor(verified)) throw new Error('invalid session');
         if (!form.isConnected) return;
@@ -150,6 +150,22 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
   el('submit').disabled = false;
 }
 
+function showMfaNotice(message) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'mfa-notice';
+  dialog.setAttribute('aria-label', message);
+  const text = document.createElement('p');
+  text.textContent = message;
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.textContent = '확인';
+  close.onclick = () => dialog.close();
+  dialog.append(text, close);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  dialog.showModal();
+}
+
 export async function mountMfaSettings(root, userId, verifiedId) {
   const account = await currentAccount(userId);
   const emailMode = usesEmailMfa(account);
@@ -157,7 +173,8 @@ export async function mountMfaSettings(root, userId, verifiedId) {
   if (!root.isConnected) return;
   root.replaceChildren();
   const help = document.createElement('p');
-  help.textContent = emailMode ? '현재 가입 이메일로 인증번호를 받아요. 인증 앱으로 변경하면 다음 로그인부터 앱에 표시된 코드를 사용해요.' : '휴대폰을 잃어버릴 때를 대비해 다른 기기에 예비 인증 앱을 등록할 수 있어요.';
+  const enabled = mfaEnabled(account);
+  help.textContent = !enabled ? '2차 인증이 꺼져 있어요. 켜면 로그인하거나 마이페이지에 들어갈 때 6자리 코드를 확인해요.' : emailMode ? '2차 인증이 켜져 있어요. 가입 이메일로 인증번호를 받아요. 인증 앱으로 변경하면 다음 로그인부터 앱에 표시된 코드를 사용해요.' : '2차 인증이 켜져 있어요. 인증 앱을 사용 중이에요. 휴대폰을 잃어버릴 때를 대비해 다른 기기에 예비 인증 앱을 등록할 수 있어요.';
   root.append(help);
   const status = document.createElement('p');
   status.setAttribute('role', 'status');
@@ -169,6 +186,45 @@ export async function mountMfaSettings(root, userId, verifiedId) {
     root.replaceChildren('인증 앱을 변경하려면 다시 인증해 주세요.', editor);
     await mountMfa(editor, { mode: 'entry', userId, onVerified: id => mountMfaSettings(root, userId, id) });
     return false;
+  }
+  async function refreshSettings(message, id) {
+    const { session } = value(await supabase.auth.refreshSession());
+    if (session?.user?.id !== userId) throw new Error('account changed');
+    if (root.isConnected) {
+      showMfaNotice(message);
+      await mountMfaSettings(root, userId, id);
+    }
+  }
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.textContent = enabled ? '2차 인증 끄기' : '2차 인증 켜기';
+  toggle.onclick = async () => {
+    if (enabled && !window.confirm('2차 인증을 끌까요? 등록한 인증 앱도 이 계정에서 해제돼요.')) return;
+    toggle.disabled = true;
+    try {
+      await currentAccount(userId);
+      if (enabled) {
+        if (!await readyToChange()) return;
+        value(await supabase.rpc('disable_account_mfa'));
+        await refreshSettings('2차 인증을 껐어요.');
+      } else if (emailMode) {
+        await mountEmailCode(editor, { mode: 'login', userId, onVerified: async () => {
+          value(await supabase.rpc('enable_account_email_mfa'));
+          const { session } = value(await supabase.auth.getSession());
+          await restoreSecondFactor(session, supabase);
+          await refreshSettings('이메일 2차 인증 등록이 완료됐어요.');
+        } });
+      } else {
+        await mountMfa(editor, { mode: 'activate', userId, onVerified: id =>
+          refreshSettings('인증 앱 등록이 완료됐어요. 다음 로그인부터 앱의 6자리 코드를 입력해 주세요.', id) });
+      }
+    } catch (error) { status.textContent = explain(error); }
+    finally { toggle.disabled = false; }
+  };
+  root.append(toggle);
+  if (!enabled) {
+    root.append(editor, status);
+    return;
   }
   for (const factor of (emailMode ? [] : factors)) {
     const row = document.createElement('div');
@@ -204,9 +260,8 @@ export async function mountMfaSettings(root, userId, verifiedId) {
       await mountMfa(editor, { mode: emailMode ? 'activate' : 'add', userId, onVerified: async id => {
         if (emailMode) {
           value(await supabase.rpc('activate_account_authenticator'));
-          value(await supabase.auth.refreshSession());
         }
-        await mountMfaSettings(root, userId, id);
+        await refreshSettings('인증 앱 등록이 완료됐어요. 다음 로그인부터 앱의 6자리 코드를 입력해 주세요.', id);
       } });
     } catch (error) { status.textContent = explain(error); add.disabled = false; }
   };

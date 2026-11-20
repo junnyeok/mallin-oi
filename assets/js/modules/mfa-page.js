@@ -1,6 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { consumeRedirect, homeHref, loginHref, clearMypageVerified } from './auth-store.js';
-import { restoreSecondFactor, safeMfaReturn, sessionClaims, usesEmailMfa } from './mfa-session.js';
+import { sessionAllowsAccess, restoreSecondFactor, safeMfaReturn, sessionClaims, usesEmailMfa } from './mfa-session.js';
 import { mountMfa } from './mfa.js';
 
 const root = document.querySelector('#loginMfa');
@@ -30,12 +30,15 @@ cancel.onclick = async () => {
 };
 
 async function start() {
-  const { data, error } = await supabase.auth.getSession();
+  const { data: stored, error: loadError } = await supabase.auth.getSession();
+  if (loadError) throw loadError;
+  if (!stored.session) return location.replace(loginHref());
+  const { data, error } = await supabase.auth.refreshSession();
   if (error) throw error;
   if (!data.session) return location.replace(loginHref());
-  if (await restoreSecondFactor(data.session, supabase)) return finish();
+  if (sessionAllowsAccess(data.session) || await restoreSecondFactor(data.session, supabase)) return finish();
   if (usesEmailMfa(data.session.user) && !sessionClaims(data.session).amr?.some(p => p.method === 'password')) {
-    root.textContent = '이메일 확인이 끝났어요. 가입한 비밀번호로 로그인하면 2차 인증번호를 보내드려요.';
+    root.textContent = '이메일 확인이 끝났어요. 가입한 비밀번호로 로그인해 주세요.';
     needsPassword = true;
     cancel.textContent = '비밀번호로 로그인';
     return;

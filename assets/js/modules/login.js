@@ -165,16 +165,16 @@ export function initLogin() {
   if (hasEmailConfirmationParams()) {
     supabase.auth.getSession().then(({ data }) => {
       if (usesEmailMfa(data?.session?.user) && !sessionClaims(data.session).amr?.some(p => p.method === 'password')) {
-        setMsg(msg, '이메일 확인이 끝났어. 비밀번호로 로그인하면 인증번호를 보내줄게.', 'green');
+        setMsg(msg, '이메일 확인이 끝났어. 가입한 비밀번호로 로그인해줘.', 'green');
         idInput.value = data.session.user.email || '';
         return;
       }
       if (data?.session?.user) {
         saveLoginPolicy({ autoLogin: true });
-        setMsg(msg, '이메일 확인이 끝났어. 2차 인증으로 이동할게.', 'green');
+        setMsg(msg, '이메일 확인이 끝났어.', 'green');
 
         const redirectTo = consumeRedirect(redirectFromQuery || homeHref());
-        beginSecondFactor(redirectTo);
+        beginSecondFactor(redirectTo, data.session);
         return;
       }
 
@@ -230,7 +230,7 @@ export function initLogin() {
     hideResend();
     setMsg(msg, '로그인 중...', 'var(--color-text-sub)');
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -249,7 +249,7 @@ export function initLogin() {
     });
 
     pwInput.value = '';
-    setMsg(msg, '2차 인증으로 이동할게.', 'green');
-    beginSecondFactor(consumeRedirect(redirectFromQuery || homeHref()));
+    setMsg(msg, '로그인 정보를 확인했어.', 'green');
+    beginSecondFactor(consumeRedirect(redirectFromQuery || homeHref()), data.session);
   });
 }
