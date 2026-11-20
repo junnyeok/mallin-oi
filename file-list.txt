@@ -1953,6 +1953,7 @@
 ./www/assets/js/modules/mfa-email.js
 ./supabase-SQLEditor/20261120-account-email-mfa.sql
 ./supabase/migrations/20261120010000_account_email_mfa.sql
+./supabase/migrations/20261120020000_email_mfa_countdown.sql
 ./supabase/functions/account-email-mfa/index.ts
 ./supabase/functions/account-email-mfa/service.mjs
 ./tests/account-email-mfa.test.mjs

@@ -15,7 +15,7 @@ function setup({ verified = true, method = 'password', kind = 'regular', app = f
       calls.push({ name, args });
       if (name === 'begin_account_email_mfa') {
         pending = args;
-        return {data:{id:args.p_id,send:true,email:mailbox}};
+        return {data:{id:args.p_id,send:true,email:mailbox,expires_at:new Date(Date.now()+300000).toISOString()}};
       }
       if (name === 'cancel_undelivered_account_code') { pending = null; return {}; }
       return {data:pending?.p_digest === args.p_digest};
@@ -32,7 +32,8 @@ test('registered mailbox receives a six-digit code and neither code nor recipien
   const sent = await call({action:'send',purpose:'login',email:'untrusted@example.test'});
   assert.equal(sent.status,200);
   const body=await sent.json();
-  assert.deepEqual(Object.keys(body),['id']);
+  assert.deepEqual(Object.keys(body),['id','remainingMs']);
+  assert.ok(body.remainingMs > 299000 && body.remainingMs <= 300000);
   const [to,code,purpose,id]=deliveries[0];
   assert.equal(to,mailbox); assert.match(code,/^\d{6}$/); assert.equal(purpose,'login'); assert.equal(id,body.id);
   assert.match(calls[0].args.p_digest,/^[a-f0-9]{64}$/);

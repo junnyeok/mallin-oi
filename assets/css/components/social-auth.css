@@ -45,3 +45,5 @@
 .mfa-form button, #mypageMfaSettings button { cursor: pointer; font-weight: 700; }
 .mfa-form button[type=submit] { background: var(--color-primary); }
 .mfa-form [data-status]:empty { display: none; }
+.mfa-countdown { margin: 0; font-variant-numeric: tabular-nums; }
+.mfa-countdown strong { margin-inline-start: .3em; }

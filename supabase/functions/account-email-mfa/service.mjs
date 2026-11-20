@@ -59,7 +59,9 @@ export function createEmailMfaHandler({ auth, db, send, digestKey }) {
           return reply(503, { code: 'MAIL_UNAVAILABLE' });
         }
       }
-      return reply(200, { id: result.data.id });
+      const expiresAt = Date.parse(result.data.expires_at);
+      if (!Number.isFinite(expiresAt)) return reply(503, { code: 'UNAVAILABLE' });
+      return reply(200, { id: result.data.id, remainingMs: Math.max(0, expiresAt - Date.now()) });
     } catch {
       return reply(503, { code: 'UNAVAILABLE' });
     }

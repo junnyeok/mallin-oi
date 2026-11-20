@@ -18,6 +18,7 @@ export async function mountEmailCode(root, { mode, userId, onVerified }) {
       <label>이메일 인증번호
         <input data-code type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
       </label>
+      <p class="mfa-countdown" role="timer" hidden>남은 시간 <strong></strong></p>
       <button type="submit">인증하기</button>
       <button type="button" data-resend>인증번호 다시 받기</button>
       <p data-status role="status" aria-live="polite"></p>
@@ -27,12 +28,43 @@ export async function mountEmailCode(root, { mode, userId, onVerified }) {
   const submit = form.querySelector('[type=submit]');
   const resend = form.querySelector('[data-resend]');
   const status = form.querySelector('[data-status]');
+  const timer = form.querySelector('[role=timer]');
+  const clock = timer.querySelector('strong');
   form.querySelector('[data-help]').textContent = session.user.email + '로 받은 6자리 코드를 5분 안에 입력해 주세요.';
   let id = '';
   let busy = false;
+  let deadline = 0;
+  let tick;
+
+  function stopTimer() {
+    clearTimeout(tick);
+    document.removeEventListener('visibilitychange', updateTimer);
+  }
+
+  function updateTimer() {
+    clearTimeout(tick);
+    if (!form.isConnected || !id) return stopTimer();
+    const ms = Math.max(0, deadline - Date.now());
+    const seconds = Math.ceil(ms / 1000);
+    clock.textContent = [Math.floor(seconds / 60), seconds % 60]
+      .map(value => String(value).padStart(2, '0')).join(':');
+    if (!seconds) {
+      id = '';
+      input.value = '';
+      submit.disabled = input.disabled = true;
+      status.textContent = '인증 시간이 끝났어요. 인증번호 다시 받기를 눌러 주세요.';
+      stopTimer();
+      return;
+    }
+    tick = setTimeout(updateTimer, ms % 1000 || 1000);
+  }
 
   async function request(action, again = false) {
     if (busy) return;
+    if (action === 'verify' && Date.now() >= deadline) {
+      updateTimer();
+      return;
+    }
     busy = true;
     resend.disabled = submit.disabled = true;
     status.textContent = action === 'send' ? '인증메일을 준비하고 있어요.' : '코드를 확인하고 있어요.';
@@ -48,14 +80,28 @@ export async function mountEmailCode(root, { mode, userId, onVerified }) {
       if (!form.isConnected) return;
       if (error) {
         const result = await error.context?.json?.().catch(() => null);
+        if (result?.code === 'MAIL_UNAVAILABLE') {
+          stopTimer();
+          id = '';
+          timer.hidden = true;
+          input.disabled = true;
+          input.value = '';
+        }
         status.textContent = messages[result?.code] || '인증 서버에 연결하지 못했어요. 다시 시도해 주세요.';
         return;
       }
-      if (action === 'send' && data?.id) {
+      if (action === 'send' && data?.id && Number.isFinite(data.remainingMs)) {
         id = data.id;
+        deadline = Date.now() + data.remainingMs;
+        timer.hidden = false;
+        input.disabled = false;
+        input.value = '';
         status.textContent = '메일함을 확인해 주세요. 메일이 보이지 않으면 스팸함도 확인해 주세요.';
+        document.addEventListener('visibilitychange', updateTimer);
+        updateTimer();
       } else if (action === 'verify' && data?.verified === true) {
         await onVerified();
+        stopTimer();
         if (form.isConnected) form.replaceChildren();
       } else throw new Error();
     } catch {

@@ -73,7 +73,8 @@ begin
   select * into prior from public.account_email_mfa_codes where session_id=p_session and purpose=p_purpose;
   if found then
     if not p_resend and prior.email=recipient and prior.attempts<5 and prior.sent_at>now()-interval '5 minutes' then
-      return jsonb_build_object('id',prior.challenge_id,'send',false);
+      return jsonb_build_object('id',prior.challenge_id,'send',false,
+        'expires_at',prior.sent_at + interval '5 minutes');
     end if;
     if prior.sent_at>now()-interval '60 seconds' then raise exception 'MFA_RATE_LIMIT'; end if;
   end if;
@@ -86,7 +87,8 @@ begin
   insert into public.account_email_mfa_codes(session_id,purpose,challenge_id,email,digest)
     values (p_session,p_purpose,p_id,recipient,p_digest)
     on conflict(session_id,purpose) do update set challenge_id=p_id,email=recipient,digest=p_digest,sent_at=now(),attempts=0;
-  return jsonb_build_object('id',p_id,'send',true,'email',recipient);
+  return jsonb_build_object('id',p_id,'send',true,'email',recipient,
+    'expires_at',now() + interval '5 minutes');
 end;
 $$;
 
