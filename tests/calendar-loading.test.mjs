@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 import {
   CALENDAR_LOADING_IMAGE_PATHS,
@@ -579,6 +580,88 @@ test('현재와 동일한 요청만 중복 실행하지 않고 재방문한 최�
   assert.equal(callCount, 2);
   first.resolve();
   await firstPromise;
+});
+
+test('그룹 일정 표시는 최초 개인 일정 재조회와 백업 비교를 기다리지 않는다', async () => {
+  const source = await readFile('assets/js/modules/calendar-groups.js', 'utf8');
+  const methods = ['loadGroupEvents', 'getCalendarLoadKey', 'refreshCalendar', 'loadGroups']
+    .map(name => source.match(new RegExp(`^  (?:async )?function ${name}\\([\\s\\S]*?^  }`, 'm'))[0]);
+  const group = { id: 'group', name: '그룹', allow_work: true };
+  const state = { eventsByDate: {}, groupLoadId: 0, backupCheckId: 0 };
+  const firstView = deferred();
+  const nextView = deferred();
+  const backup = deferred();
+  const rpcCalls = [];
+  let viewDate = new Date(2026, 10, 1);
+  let renderCount = 0;
+  let loaderCount = 0;
+  let comparisonCount = 0;
+  const { loadGroups, refreshCalendar } = runInNewContext(
+    `${methods.join('\n')}\n({ loadGroups, refreshCalendar });`,
+    {
+      state,
+      groupsPromise: Promise.resolve([group]),
+      fetchCalendarGroups: () => assert.fail('이미 시작한 그룹 요청을 재사용해야 한다'),
+      calendarType: 'work',
+      CALENDAR_LABELS: { work: '업무' },
+      isInitialLoadCurrent: () => true,
+      copyPaste: null,
+      getSelectedGroupId: () => group.id,
+      getAllowedGroups: groups => groups,
+      getCalendarMode: selected => selected ? 'shared-group' : 'personal',
+      isCalendarGroupActive: value => Boolean(value.selectedGroup),
+      isAllowed: () => true,
+      onModeChange: () => assert.fail('초기 및 월 이동에 개인 일정을 재조회해서는 안 된다'),
+      renderSelect() {},
+      setBackupNeeded() {},
+      setStatus() {},
+      getViewDate: () => viewDate,
+      getMonthRange: date => ({ startDate: date.getMonth(), endDate: date.getMonth() + 2 }),
+      rpc(name, params) {
+        rpcCalls.push([name, params.p_group_id, params.p_start_date, params.p_end_date]);
+        return rpcCalls.length === 1 ? firstView.promise : nextView.promise;
+      },
+      groupEventsByDateAndUser: rows => ({ '2026-11-21': rows }),
+      renderAll() { renderCount += 1; },
+      refreshBackupNeeded() {
+        comparisonCount += 1;
+        return backup.promise;
+      },
+      runCalendarLoad(task) {
+        loaderCount += 1;
+        return task();
+      },
+    },
+  );
+
+  const firstLoad = loadGroups();
+  await flushMicrotasks();
+  assert.equal(state.selectedGroup, group);
+  assert.equal(loaderCount, 0);
+  assert.deepEqual(rpcCalls, [['get_group_calendar_view', group.id, 10, 12]]);
+
+  const firstRows = [{ title: '첫 일정' }];
+  firstView.resolve(firstRows);
+  await firstLoad;
+  assert.equal(state.eventsByDate['2026-11-21'], firstRows);
+  assert.equal(comparisonCount, 1);
+
+  viewDate = new Date(2026, 11, 1);
+  const nextLoad = refreshCalendar({ reason: 'month-navigation' });
+  assert.equal(state.eventsByDate['2026-11-21'], firstRows);
+  assert.equal(loaderCount, 1);
+  const nextRows = [{ title: '새 일정' }];
+  nextView.resolve(nextRows);
+  await nextLoad;
+  assert.equal(state.eventsByDate['2026-11-21'], nextRows);
+  assert.equal(renderCount, 1);
+  assert.equal(comparisonCount, 2);
+
+  state.selectedGroup = null;
+  await refreshCalendar({ reason: 'month-navigation' });
+  assert.equal(rpcCalls.length, 2);
+  assert.equal(loaderCount, 1);
+  backup.resolve();
 });
 
 test('세 캘린더의 최초·이전·다음·그룹 적용 로딩 경로와 단순 설정 열기를 구분한다', async () => {

@@ -486,6 +486,10 @@ async function rpc(name, params = {}) {
   return data;
 }
 
+export async function fetchCalendarGroups() {
+  return (await rpc('get_my_calendar_groups')) || [];
+}
+
 function getRelatedCategory(row, relation) {
   const category = row?.[relation];
   return Array.isArray(category) ? category[0] || null : category || null;
@@ -984,20 +988,22 @@ export function appendCalendarGroupBoard(
 
 export async function initCalendarGroupBar({
   calendarType,
+  userId,
+  groupsPromise,
   pageRoot,
   getViewDate,
   renderAll,
   onModeChange,
   runCalendarLoad,
+  isCurrent: isInitialLoadCurrent = () => true,
 }) {
-  if (!pageRoot || !CALENDAR_LABELS[calendarType]) return null;
-
-  const user = await getCurrentUser();
-  if (!user?.id) return null;
+  if (!pageRoot || !userId || !CALENDAR_LABELS[calendarType] || !isInitialLoadCurrent()) {
+    return null;
+  }
 
   const head = pageRoot.querySelector('[class$="-calendar-page__head"]');
   const state = {
-    userId: user.id,
+    userId,
     calendarType,
     selectedGroup: null,
     groups: [],
@@ -1059,7 +1065,7 @@ export async function initCalendarGroupBar({
       <div class="calendar-group-bar__main">
         <label class="calendar-group-bar__field">
           <span>그룹</span>
-          <select class="calendar-group-bar__select" aria-label="연동 그룹 선택">
+          <select class="calendar-group-bar__select" aria-label="연동 그룹 선택" disabled>
             <option value="">그룹 연동 OFF</option>
           </select>
         </label>
@@ -1079,8 +1085,14 @@ export async function initCalendarGroupBar({
   }
   bar.append(panel);
 
-  const { initCalendarCopyPaste } = await loadCalendarCopyPasteModule();
-  const copyPaste = initCalendarCopyPaste({ bar: panel, calendarType });
+  let copyPaste = null;
+  void loadCalendarCopyPasteModule().then(({ initCalendarCopyPaste }) => {
+    if (!panel.isConnected) return;
+    copyPaste = initCalendarCopyPaste({ bar: panel, calendarType });
+    copyPaste?.setGroup(state.selectedGroup);
+  }).catch((error) => {
+    console.error('[calendar-groups] copy and paste controls failed:', error);
+  });
 
   const dialog = panel.querySelector('.calendar-group-bar__dialog');
   const select = panel.querySelector('.calendar-group-bar__select');
@@ -1310,10 +1322,15 @@ export async function initCalendarGroupBar({
     updateBackupButtonState();
   }
 
-  async function loadGroupEvents({ isCurrent = () => true } = {}) {
+  async function loadGroupEvents(reason, { isCurrent = () => true } = {}) {
+    if (!isCurrent()) return;
+
     const loadId = ++state.groupLoadId;
     const selectedGroup = state.selectedGroup;
-    state.eventsByDate = {};
+    const isInitialLoad = reason === 'initial-group';
+    const isMonthNavigation = reason === 'month-navigation';
+    const reloadPersonalStore = !isInitialLoad && !isMonthNavigation;
+    if (!isMonthNavigation) state.eventsByDate = {};
     state.mode = getCalendarMode(selectedGroup);
 
     if (!state.selectedGroup?.id) {
@@ -1321,11 +1338,11 @@ export async function initCalendarGroupBar({
       setStatus('그룹 연동 OFF 상태야.');
       state.backupChecking = false;
       setBackupNeeded(false);
-      await onModeChange?.({ group: null, rows: [], mode: CALENDAR_MODES.PERSONAL });
-      if (!isCurrent() || loadId !== state.groupLoadId || state.selectedGroup) {
-        return;
+      if (reloadPersonalStore) {
+        await onModeChange?.({ group: null, rows: [], mode: CALENDAR_MODES.PERSONAL });
+        if (!isCurrent() || loadId !== state.groupLoadId || state.selectedGroup) return;
+        renderAll?.();
       }
-      renderAll?.();
       return;
     }
 
@@ -1339,7 +1356,9 @@ export async function initCalendarGroupBar({
       return;
     }
 
-    await onModeChange?.({ group: state.selectedGroup, rows: [], mode: CALENDAR_MODES.SHARED_GROUP });
+    if (reloadPersonalStore) {
+      await onModeChange?.({ group: selectedGroup, rows: [], mode: CALENDAR_MODES.SHARED_GROUP });
+    }
 
     if (
       !isCurrent() ||
@@ -1349,12 +1368,14 @@ export async function initCalendarGroupBar({
       return;
     }
 
-    state.backupCheckId += 1;
-    state.backupChecking = false;
-    setBackupNeeded(false);
+    if (!isMonthNavigation) {
+      state.backupCheckId += 1;
+      state.backupChecking = false;
+      setBackupNeeded(false);
+    }
     const { startDate, endDate } = getMonthRange(getViewDate());
     setStatus('그룹 일정을 불러오는 중...');
-    renderAll?.();
+    if (reloadPersonalStore) renderAll?.();
 
     const rows = await rpc('get_group_calendar_view', {
       p_group_id: selectedGroup.id,
@@ -1372,19 +1393,11 @@ export async function initCalendarGroupBar({
     }
 
     state.eventsByDate = groupEventsByDateAndUser(rows || []);
-    await refreshBackupNeeded();
-
-    if (
-      !isCurrent() ||
-      loadId !== state.groupLoadId ||
-      selectedGroup.id !== state.selectedGroup?.id
-    ) {
-      return;
-    }
     setStatus(
       `${selectedGroup.name} · ${CALENDAR_LABELS[calendarType]} 그룹 일정 표시 중`,
     );
-    renderAll?.();
+    if (!isInitialLoad) renderAll?.();
+    void refreshBackupNeeded();
   }
 
   function getCalendarLoadKey(reason) {
@@ -1400,15 +1413,19 @@ export async function initCalendarGroupBar({
   }
 
   function refreshCalendar({ reason = 'refresh' } = {}) {
-    const task = (loadContext) => loadGroupEvents(loadContext);
+    if (reason === 'month-navigation' && !isCalendarGroupActive(state)) return;
+
+    const task = (loadContext) => loadGroupEvents(reason, loadContext);
     return typeof runCalendarLoad === 'function'
       ? runCalendarLoad(task, { key: getCalendarLoadKey(reason) })
       : task();
   }
 
   async function loadGroups() {
-    const groups = await rpc('get_my_calendar_groups');
-    state.groups = groups || [];
+    const groups = await (groupsPromise ?? fetchCalendarGroups());
+    if (!isInitialLoadCurrent()) return;
+
+    state.groups = groups;
     const selectedId = getSelectedGroupId();
     // 선택 키는 세 캘린더가 공유하므로 저장값은 보존하고,
     // 현재 캘린더에서 허용되는 그룹만 이 화면의 선택으로 복원한다.
@@ -1416,7 +1433,7 @@ export async function initCalendarGroupBar({
       .find((group) => group.id === selectedId) || null;
 
     renderSelect();
-    await refreshCalendar({ reason: 'initial-group' });
+    await loadGroupEvents('initial-group', { isCurrent: isInitialLoadCurrent });
   }
 
   select.addEventListener('change', async () => {
@@ -1498,6 +1515,8 @@ export async function initCalendarGroupBar({
   } catch (error) {
     console.error('[calendar-groups] init bar failed:', error);
     setStatus('그룹 기능을 불러오지 못했어. Supabase SQL 적용이 필요해.');
+  } finally {
+    select.disabled = false;
   }
 
   return {

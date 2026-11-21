@@ -1051,10 +1051,16 @@ body.theme-work[data-page='calendar-work']
   padding-left: 44px;
 }
 
-.calendar-category-handle {
+.study-todo-item.calendar-schedule-sortable,
+.event-todo-item.calendar-schedule-sortable {
+  position: relative;
+  padding-inline-end: calc(44px + var(--space-12));
+}
+
+.calendar-category-handle,
+.calendar-schedule-handle {
   position: absolute;
   top: 50%;
-  left: 2px;
   transform: translateY(-50%);
   display: grid;
   place-items: center;
@@ -1074,13 +1080,26 @@ body.theme-work[data-page='calendar-work']
   -webkit-touch-callout: none;
 }
 
+.calendar-category-handle {
+  left: 2px;
+}
+
+.calendar-schedule-handle {
+  inset-inline-end: var(--space-4);
+  width: 44px;
+  font-size: 20px;
+}
+
 .calendar-category-handle:hover,
-.calendar-category-handle:focus-visible {
+.calendar-category-handle:focus-visible,
+.calendar-schedule-handle:hover,
+.calendar-schedule-handle:focus-visible {
   background: var(--color-primary-sub);
   color: var(--color-text);
 }
 
-.calendar-category-handle:focus-visible {
+.calendar-category-handle:focus-visible,
+.calendar-schedule-handle:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
 }
@@ -1096,11 +1115,20 @@ body.theme-work[data-page='calendar-work']
   background: var(--color-primary-sub);
 }
 
-.is-category-placeholder > * {
+.calendar-schedule-sortable.is-schedule-placeholder {
+  outline: 1px dashed var(--color-primary);
+  outline-offset: -2px;
+  border-radius: var(--radius-btn);
+  background: var(--color-primary-sub);
+}
+
+.is-category-placeholder > *,
+.is-schedule-placeholder > * {
   opacity: 0;
 }
 
-.calendar-category-drag-preview {
+.calendar-category-drag-preview,
+:is(.study-todo-item, .event-todo-item).calendar-schedule-drag-preview {
   position: fixed;
   z-index: 1201;
   margin: 0;
@@ -1112,15 +1140,27 @@ body.theme-work[data-page='calendar-work']
   will-change: transform;
 }
 
-.calendar-category-drag-preview .calendar-category-handle {
+.calendar-category-drag-preview .calendar-category-handle,
+.calendar-schedule-drag-preview .calendar-schedule-handle {
   cursor: grabbing;
 }
 
-.calendar-category-order-status {
+.calendar-category-order-status,
+.calendar-schedule-order-status {
   margin: var(--space-8) 0 0;
   color: var(--color-text-sub);
   font-size: var(--text-small);
   line-height: var(--line-body);
+}
+
+.calendar-schedule-order-status:not([data-error]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Match the calendar column above the desktop two-column layout. */

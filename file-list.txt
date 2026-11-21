@@ -526,6 +526,7 @@
 ./assets/js/modules/calendar-loading.js
 ./assets/js/modules/calendar-native-widgets.js
 ./assets/js/modules/calendar-preview-summary.js
+./assets/js/modules/calendar-schedule-order.js
 ./assets/js/modules/calendar-selection-scroll.js
 ./assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./assets/js/modules/calendar-shared-personal-readonly.js
@@ -1576,6 +1577,7 @@
 ./tests/calendar-home-navigation.test.mjs
 ./tests/calendar-loading.test.mjs
 ./tests/calendar-preview-summary.test.mjs
+./tests/calendar-schedule-order.test.mjs
 ./tests/calendar-shared-personal-readonly.test.mjs
 ./tests/calendar-time-settings.test.mjs
 ./tests/career-monthly-awards.test.mjs
@@ -1711,6 +1713,7 @@
 ./www/assets/js/modules/calendar-loading.js
 ./www/assets/js/modules/calendar-native-widgets.js
 ./www/assets/js/modules/calendar-preview-summary.js
+./www/assets/js/modules/calendar-schedule-order.js
 ./www/assets/js/modules/calendar-selection-scroll.js
 ./www/assets/js/modules/calendar-shared-personal-readonly-collector.js
 ./www/assets/js/modules/calendar-shared-personal-readonly.js

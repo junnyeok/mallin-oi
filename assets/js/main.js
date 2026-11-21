@@ -23,11 +23,22 @@ let globalInitialized = false;
 let calendarAppModeInitialized = false;
 let calendarAppModeEarlyResult = false;
 
-const CALENDAR_APP_DOWNLOAD_POPUP_PAGES = new Set([
-  'calendar-study',
-  'calendar-work',
-  'calendar-event',
-  'calendar-groups',
+const CALENDAR_APP_PAGE_MODULES = new Map([
+  ['calendar-study', 'studyCalendarModule'],
+  ['calendar-work', 'workCalendarModule'],
+  ['calendar-event', 'eventCalendarModule'],
+  ['calendar-groups', 'calendarGroupsModule'],
+]);
+
+const CALENDAR_APP_CORE_MODULES = new Set([
+  'mobileStabilityModule',
+  'siteVersionModule',
+  'appUpdatePopupModule',
+  'refreshControlModule',
+  'appCalendarModeModule',
+  'scrollButtonsModule',
+  'authStoreModule',
+  'calendarGroupsModule',
 ]);
 
 const CORE_MODULE_SPECS = [
@@ -97,25 +108,28 @@ async function initCalendarAppModeEarly() {
   }
 }
 
-async function loadCoreModules() {
+async function loadCoreModules(calendarPageModule) {
   if (coreModules) return coreModules;
 
+  const specs = calendarPageModule
+    ? CORE_MODULE_SPECS.filter(([key]) =>
+      key === calendarPageModule || CALENDAR_APP_CORE_MODULES.has(key),
+    )
+    : CORE_MODULE_SPECS;
   const results = await Promise.allSettled(
-    CORE_MODULE_SPECS.map(([, path]) => import(withModuleVersion(path))),
+    specs.map(([, path]) => import(withModuleVersion(path))),
   );
 
-  coreModules = CORE_MODULE_SPECS.reduce((modules, [key, path], index) => {
+  coreModules = Object.fromEntries(CORE_MODULE_SPECS.map(([key]) => [key, {}]));
+  specs.forEach(([key, path], index) => {
     const result = results[index];
 
     if (result.status === 'fulfilled') {
-      modules[key] = result.value;
-      return modules;
+      coreModules[key] = result.value;
+    } else {
+      console.error(`[main] module load failed: ${path}`, result.reason);
     }
-
-    console.error(`[main] module load failed: ${path}`, result.reason);
-    modules[key] = {};
-    return modules;
-  }, {});
+  });
 
   return coreModules;
 }
@@ -417,7 +431,7 @@ async function initPageModules(modules) {
       break;
   }
 
-  if (CALENDAR_APP_DOWNLOAD_POPUP_PAGES.has(page)) {
+  if (CALENDAR_APP_PAGE_MODULES.has(page)) {
     await runSafe('calendar app download popup page retry', async () => {
       initCalendarAppDownloadPopup();
     });
@@ -598,9 +612,23 @@ async function initGlobalModules(modules) {
 async function initApp() {
   let modules;
 
-  await initCalendarAppModeEarly();
+  const page = String(document.body?.dataset?.page || '').trim().toLowerCase();
+  const calendarType = /^calendar-(study|work|event)$/.exec(page)?.[1];
+  if (calendarType) {
+    const monthLabel = document.getElementById(`${calendarType}CalendarMonthLabel`);
+    if (monthLabel) {
+      const date = new Date();
+      monthLabel.textContent = `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+    }
+  }
+
+  const calendarAppMode = await initCalendarAppModeEarly();
+  const calendarPageModule = calendarAppMode && CALENDAR_APP_PAGE_MODULES.get(page);
   // Authentication controls do not depend on slower site counters, feeds or store modules.
   void initSocialAuthControls();
+
+  // Warm the active calendar while native routing checks for an incoming link.
+  const calendarModules = calendarPageModule ? loadCoreModules(calendarPageModule) : null;
 
   if (window.Capacitor?.isNativePlatform?.()) {
     let socialReturned = false;
@@ -621,7 +649,7 @@ async function initApp() {
   }
 
   try {
-    modules = await loadCoreModules();
+    modules = await (calendarModules || loadCoreModules());
   } catch (error) {
     console.error('[main] core module load failed:', error);
     return;

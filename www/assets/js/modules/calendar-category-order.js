@@ -1,4 +1,4 @@
-// Shared category ordering for the website and Capacitor calendars.
+// Shared list ordering for the website and Capacitor calendars.
 const controllers = new WeakMap();
 
 export function orderCategories(categories, ids) {
@@ -58,33 +58,40 @@ export async function persistCategoryOrder({ client, table, userId, categories, 
   return ordered;
 }
 
-export function resetCategoryReorder(root) {
+export function resetCalendarListReorder(root) {
   controllers.get(root)?.destroy();
 }
 
-function lockDragScroll(root) {
+export const resetCategoryReorder = resetCalendarListReorder;
+
+function lockDragScroll(root, allowPageScroll) {
   const snapshots = [];
   const documentRef = root.ownerDocument;
   const windowRef = documentRef.defaultView;
   let scrollTarget = null;
   for (let element = root; element; element = element.parentElement) {
-    const properties = ['overflow', 'overflow-anchor', 'overscroll-behavior', 'scroll-behavior', 'scrollbar-gutter'];
+    // A page drag must keep its existing overflow layout. Changing overflow on
+    // html/body can clip a scrolled schedule panel in iOS WebKit.
+    const lockOverflow = !allowPageScroll && (
+      element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth
+    );
+    const properties = ['overflow-anchor', 'overscroll-behavior', 'scroll-behavior'];
+    if (lockOverflow) properties.push('overflow', 'scrollbar-gutter');
     const snapshot = {
       element, top: element.scrollTop, left: element.scrollLeft,
       styles: properties.map((name) => [name, element.style.getPropertyValue(name), element.style.getPropertyPriority(name)]),
     };
     snapshots.push(snapshot);
-    // Only the nearest scrollable category container may move, never the page.
-    if (!scrollTarget && element !== documentRef.body && element !== documentRef.documentElement &&
-        element.scrollHeight > element.clientHeight &&
-        /auto|scroll/.test(windowRef.getComputedStyle(element).overflowY)) {
-      scrollTarget = snapshot;
+    if (!scrollTarget && element.scrollHeight > element.clientHeight) {
+      const isPage = element === documentRef.scrollingElement;
+      const isListContainer = element !== documentRef.body && element !== documentRef.documentElement &&
+        /auto|scroll/.test(windowRef.getComputedStyle(element).overflowY);
+      if (isListContainer || (isPage && allowPageScroll)) scrollTarget = { snapshot, isPage };
     }
     element.style.setProperty('overflow-anchor', 'none');
     element.style.setProperty('overscroll-behavior', 'none');
     element.style.setProperty('scroll-behavior', 'auto');
-    // Preserve layout for non-scrollable ancestors and reserve existing scrollbar space.
-    if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+    if (lockOverflow) {
       element.style.setProperty('scrollbar-gutter', 'stable');
       element.style.setProperty('overflow', 'hidden');
     }
@@ -96,17 +103,21 @@ function lockDragScroll(root) {
   return {
     hold,
     scrollAtEdge(pointerY, elapsedSeconds) {
-      if (!scrollTarget) return;
-      const { element } = scrollTarget;
-      const rect = element.getBoundingClientRect();
-      const top = Math.max(0, rect.top + element.clientTop);
-      const bottom = Math.min(windowRef.innerHeight, rect.top + element.clientTop + element.clientHeight);
+      if (!scrollTarget) return false;
+      const { snapshot, isPage } = scrollTarget;
+      const { element } = snapshot;
+      const viewportHeight = windowRef.innerHeight;
+      const contentTop = isPage ? 0 : element.getBoundingClientRect().top + element.clientTop;
+      const top = Math.max(0, contentTop);
+      const bottom = isPage ? viewportHeight : Math.min(viewportHeight, contentTop + element.clientHeight);
       const speed = getCategoryEdgeScrollSpeed(pointerY, top, bottom);
-      if (!speed) return;
+      if (!speed) return false;
+      const previousTop = snapshot.top;
       const maximum = Math.max(0, element.scrollHeight - element.clientHeight);
-      element.scrollTop = Math.max(0, Math.min(maximum, scrollTarget.top + speed * elapsedSeconds));
+      element.scrollTop = Math.max(0, Math.min(maximum, previousTop + speed * elapsedSeconds));
       // The lock accepts this controlled movement and still rejects touch/anchor scrolling.
-      scrollTarget.top = element.scrollTop;
+      snapshot.top = element.scrollTop;
+      return snapshot.top !== previousTop;
     },
     restore() {
       hold();
@@ -130,18 +141,19 @@ export function getCategoryEdgeScrollSpeed(pointerY, top, bottom) {
   return 0;
 }
 
-function createDragPreview(row, documentRef) {
+function createDragPreview(row, documentRef, previewClass) {
   const rect = row.getBoundingClientRect();
   const preview = row.cloneNode(true);
   preview.removeAttribute('id');
   preview.removeAttribute('data-category-order-id');
+  preview.removeAttribute('data-category-order-name');
   preview.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
   const inputs = row.querySelectorAll('input, textarea, select');
   preview.querySelectorAll('input, textarea, select').forEach((element, index) => {
     element.value = inputs[index].value;
     if ('checked' in element) element.checked = inputs[index].checked;
   });
-  preview.classList.add('calendar-category-drag-preview');
+  preview.classList.add(previewClass);
   preview.setAttribute('aria-hidden', 'true');
   preview.inert = true;
   preview.style.left = `${rect.left}px`;
@@ -154,44 +166,77 @@ function createDragPreview(row, documentRef) {
 
 export function enableCategoryReorder({ root, categories, onReorder }) {
   if (!root || !onReorder) return;
-  resetCategoryReorder(root);
-  const documentRef = root.ownerDocument;
-  const windowRef = documentRef.defaultView;
-  const abort = new AbortController();
-  const options = { signal: abort.signal };
-  const status = documentRef.createElement('p');
-  status.className = 'calendar-category-order-status';
-  status.setAttribute('role', 'status');
-  status.textContent = '왼쪽 손잡이를 누른 채 위아래로 끌어 순서를 바꿔요.';
-  root.after(status);
-  let drag = null;
-  let frame = null;
-  let busy = false;
-  let destroyed = false;
-  const rows = () => Array.from(root.children).filter((row) => row.dataset.categoryOrderId);
-  const ids = () => rows().map((row) => row.dataset.categoryOrderId);
-  const restore = (order) => {
-    const byId = new Map(rows().map((row) => [row.dataset.categoryOrderId, row]));
-    order.forEach((id) => { if (byId.has(id)) root.append(byId.get(id)); });
-  };
-  const announcePosition = (row) => {
-    status.textContent = `${row.dataset.categoryOrderName}, ${rows().indexOf(row) + 1}번째`;
-  };
-
+  // Keep the category list's identifiers available to its existing diagnostics.
   Array.from(root.children).forEach((row, index) => {
     const category = categories[index];
     if (!category) return;
     row.dataset.categoryOrderId = String(category.id);
     row.dataset.categoryOrderName = category.name;
-    row.classList.add('calendar-category-sortable');
+  });
+  enableCalendarListReorder({ root, items: categories, onReorder });
+}
+
+export function enableCalendarListReorder({
+  root,
+  items,
+  onReorder,
+  handleSide = 'left',
+  allowPageScroll = false,
+  statusClass = 'calendar-category-order-status',
+  instructions = `${handleSide === 'right' ? '오른쪽' : '왼쪽'} 손잡이를 누른 채 위아래로 끌어 순서를 바꿔요.`,
+  itemClass = 'calendar-category-sortable',
+  handleClass = 'calendar-category-handle',
+  placeholderClass = 'is-category-placeholder',
+  previewClass = 'calendar-category-drag-preview',
+  failureMessage = '순서를 저장하지 못했어요. 연결을 확인한 뒤 다시 이동해 주세요.',
+}) {
+  if (!root || !onReorder) return;
+  resetCalendarListReorder(root);
+  const documentRef = root.ownerDocument;
+  const windowRef = documentRef.defaultView;
+  const abort = new AbortController();
+  const options = { signal: abort.signal };
+  const status = documentRef.createElement('p');
+  status.className = statusClass;
+  status.setAttribute('role', 'status');
+  status.textContent = instructions;
+  root.after(status);
+  let drag = null;
+  let frame = null;
+  let busy = false;
+  let destroyed = false;
+  const itemsByRow = new Map();
+  const rowByHandle = new Map();
+  const handleSelector = `.${handleClass}`;
+  const rows = () => Array.from(root.children).filter((row) => itemsByRow.has(row));
+  const ids = () => rows().map((row) => itemsByRow.get(row).id);
+  // Shared/read-only schedules follow the editable entries in the same list.
+  const boundary = () => Array.from(root.children).find((row) => !itemsByRow.has(row)) || null;
+  const restore = (order) => {
+    const byId = new Map(rows().map((row) => [itemsByRow.get(row).id, row]));
+    const afterEditable = boundary();
+    order.forEach((id) => { if (byId.has(id)) root.insertBefore(byId.get(id), afterEditable); });
+  };
+  const announcePosition = (row) => {
+    status.textContent = `${itemsByRow.get(row).name}, ${rows().indexOf(row) + 1}번째`;
+  };
+
+  Array.from(root.children).forEach((row, index) => {
+    const item = items[index];
+    if (!item) return;
+    itemsByRow.set(row, { id: String(item.id), name: item.name });
+    row.classList.add(itemClass);
     const handle = documentRef.createElement('button');
     handle.type = 'button';
-    handle.className = 'calendar-category-handle';
+    handle.className = handleClass;
     handle.textContent = '⠿';
-    handle.setAttribute('aria-label', `${category.name} 순서 이동`);
+    handle.setAttribute('aria-label', `${item.name} 순서 이동`);
+    handle.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
     handle.title = '누른 채 위아래로 이동 · 키보드 위/아래 방향키';
-    handle.disabled = categories.length < 2;
-    row.prepend(handle);
+    handle.disabled = items.length < 2;
+    rowByHandle.set(handle, row);
+    if (handleSide === 'right') row.append(handle);
+    else row.prepend(handle);
   });
 
   async function commit(before, focusHandle) {
@@ -200,20 +245,24 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
     busy = true;
     root.inert = true;
     root.setAttribute('aria-busy', 'true');
+    status.removeAttribute('data-error');
     status.textContent = '순서를 저장하고 있어요…';
     try {
       await onReorder(order);
       if (!destroyed) status.textContent = '순서를 저장했어요.';
     } catch (error) {
       if (!destroyed) {
-        restore(error.categoryOrder || before);
-        status.textContent = '순서를 저장하지 못했어요. 연결을 확인한 뒤 다시 이동해 주세요.';
+        restore(error?.categoryOrder || before);
+        status.setAttribute('data-error', '');
+        status.textContent = failureMessage;
       }
     } finally {
       busy = false;
-      root.inert = false;
-      root.removeAttribute('aria-busy');
-      if (!destroyed && focusHandle?.isConnected) focusHandle.focus({ preventScroll: true });
+      if (!destroyed) {
+        root.inert = false;
+        root.removeAttribute('aria-busy');
+        if (focusHandle?.isConnected) focusHandle.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -224,20 +273,18 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
     windowRef.cancelAnimationFrame(frame);
     frame = null;
     current.preview.remove();
-    current.row.classList.remove('is-category-placeholder');
+    current.row.classList.remove(placeholderClass);
     if (root.hasPointerCapture?.(current.pointerId)) root.releasePointerCapture(current.pointerId);
     if (cancel) {
       restore(current.before);
       status.textContent = '순서 이동을 취소했어요.';
     }
     current.scrollLock.restore();
-    if (!cancel) {
-      void commit(current.before, current.handle);
-    }
+    if (!cancel && current.hasMoved) void commit(current.before, current.handle);
   }
 
   function moveAtPointer() {
-    if (!drag) return;
+    if (!drag?.hasMoved) return;
     drag.scrollLock.hold();
     drag.preview.style.transform = `translate3d(0, ${drag.y - drag.startY}px, 0)`;
     const siblings = rows().filter((row) => row !== drag.row);
@@ -245,8 +292,9 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
       const rect = row.getBoundingClientRect();
       return drag.y < rect.top + rect.height / 2;
     });
-    if (drag.row.nextElementSibling !== (next || null)) {
-      root.insertBefore(drag.row, next || null);
+    const reference = next || boundary();
+    if (drag.row.nextElementSibling !== reference) {
+      root.insertBefore(drag.row, reference);
       drag.scrollLock.hold();
       announcePosition(drag.row);
     }
@@ -254,26 +302,30 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
 
   function tick(timestamp) {
     if (!drag) return;
-    if (!root.isConnected || !root.getClientRects().length) { stop(true); return; }
+    if (!root.isConnected || !root.getClientRects().length || drag.row.parentElement !== root) { stop(true); return; }
     const elapsed = Math.min(32, Math.max(0, timestamp - (drag.lastFrame ?? timestamp - 16))) / 1000;
     drag.lastFrame = timestamp;
     drag.scrollLock.hold();
-    drag.scrollLock.scrollAtEdge(drag.y, elapsed);
-    moveAtPointer();
+    if (drag.hasMoved && drag.scrollLock.scrollAtEdge(drag.y, elapsed)) moveAtPointer();
     frame = windowRef.requestAnimationFrame(tick);
   }
 
   root.addEventListener('pointerdown', (event) => {
-    const handle = event.target.closest('.calendar-category-handle');
-    if (!handle || handle.disabled || busy || drag || event.button !== 0 || event.isPrimary === false) return;
+    const handle = event.target.closest(handleSelector);
+    const row = rowByHandle.get(handle);
+    if (!row || handle.disabled || busy || drag || event.button !== 0 || event.isPrimary === false) return;
     event.preventDefault();
-    const row = handle.closest('[data-category-order-id]');
-    const scrollLock = lockDragScroll(root);
-    const preview = createDragPreview(row, documentRef);
-    drag = { row, handle, pointerId: event.pointerId, y: event.clientY, startY: event.clientY, before: ids(), scrollLock, preview };
-    root.setPointerCapture(event.pointerId);
-    row.classList.add('is-category-placeholder');
+    try { root.setPointerCapture(event.pointerId); }
+    catch { return; }
+    const scrollLock = lockDragScroll(root, allowPageScroll);
+    const preview = createDragPreview(row, documentRef, previewClass);
+    drag = {
+      row, handle, pointerId: event.pointerId, y: event.clientY, startY: event.clientY,
+      before: ids(), scrollLock, preview, hasMoved: false,
+    };
+    row.classList.add(placeholderClass);
     handle.focus({ preventScroll: true });
+    status.removeAttribute('data-error');
     announcePosition(row);
     frame = windowRef.requestAnimationFrame(tick);
   }, options);
@@ -281,15 +333,26 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
     drag.y = event.clientY;
+    if (Math.abs(drag.y - drag.startY) >= 4) drag.hasMoved = true;
     moveAtPointer();
   }, options);
   root.addEventListener('pointerup', (event) => {
     if (drag?.pointerId === event.pointerId) stop();
   }, options);
-  root.addEventListener('pointercancel', () => stop(true), options);
-  root.addEventListener('lostpointercapture', () => stop(true), options);
+  const cancelPointerDrag = (event) => {
+    if (drag?.pointerId === event.pointerId) stop(true);
+  };
+  root.addEventListener('pointercancel', cancelPointerDrag, options);
+  root.addEventListener('lostpointercapture', (event) => {
+    if (event.target === root) cancelPointerDrag(event);
+  }, options);
+  root.addEventListener('contextmenu', (event) => {
+    if (drag || rowByHandle.has(event.target.closest(handleSelector))) event.preventDefault();
+  }, options);
   windowRef.addEventListener('blur', () => stop(true), options);
   windowRef.addEventListener('resize', () => stop(true), options);
+  windowRef.addEventListener('pagehide', () => stop(true), options);
+  windowRef.addEventListener('mallin:before-pjax-swap', () => resetCalendarListReorder(root), options);
   documentRef.addEventListener('visibilitychange', () => {
     if (documentRef.hidden) stop(true);
   }, options);
@@ -299,19 +362,25 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
   };
   documentRef.addEventListener('touchmove', preventDragScroll, { ...options, passive: false, capture: true });
   documentRef.addEventListener('wheel', preventDragScroll, { ...options, passive: false, capture: true });
-  root.addEventListener('keydown', (event) => {
-    if (drag) {
-      if (event.key === 'Escape') { event.preventDefault(); stop(true); }
-      else if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.preventDefault();
-      return;
+  // Moving a row can remove focus from its handle until drop. Escape still works.
+  documentRef.addEventListener('keydown', (event) => {
+    if (!drag) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      const handle = drag.handle;
+      stop(true);
+      handle.focus({ preventScroll: true });
     }
-    const handle = event.target.closest('.calendar-category-handle');
-    if (!handle || busy || drag || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    else if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.preventDefault();
+  }, { ...options, capture: true });
+  root.addEventListener('keydown', (event) => {
+    const handle = event.target.closest(handleSelector);
+    const row = rowByHandle.get(handle);
+    if (event.defaultPrevented || !row || handle.disabled || busy || drag || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault();
-    const row = handle.closest('[data-category-order-id]');
     const before = ids();
     const adjacent = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
-    if (!adjacent) return;
+    if (!itemsByRow.has(adjacent)) return;
     if (event.key === 'ArrowUp') root.insertBefore(row, adjacent);
     else root.insertBefore(adjacent, row);
     void commit(before, handle);
@@ -325,7 +394,10 @@ export function enableCategoryReorder({ root, categories, onReorder }) {
       status.remove();
       root.inert = false;
       root.removeAttribute('aria-busy');
-      root.querySelectorAll('.calendar-category-handle').forEach((handle) => handle.remove());
+      rowByHandle.forEach((row, handle) => {
+        handle.remove();
+        row.classList.remove(itemClass);
+      });
       controllers.delete(root);
     },
   });

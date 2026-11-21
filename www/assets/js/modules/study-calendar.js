@@ -4,6 +4,11 @@ import { supabase } from './supabase-client.js';
 import { normalizeCategoryColor, readCategoryColor, setCategoryColor, initCategoryColorInput, createCategoryNoColorButton } from './calendar-category-color.js';
 import { enableCategoryReorder, resetCategoryReorder, persistCategoryOrder, nextCategorySortOrder, syncReorderedCategorySelection } from './calendar-category-order.js';
 import {
+  applyCalendarScheduleOrder,
+  enableCalendarScheduleOrder,
+  resetCalendarListReorder,
+} from './calendar-schedule-order.js';
+import {
   getCurrentUser,
   loginHref,
   resolveSitePath,
@@ -46,6 +51,7 @@ import {
 } from './calendar-time.js';
 
 let appendCalendarGroupBoard;
+let fetchCalendarGroups;
 let getVisiblePersonalTodos;
 let initCalendarGroupBar;
 let isCalendarGroupActive;
@@ -61,6 +67,7 @@ async function loadCalendarGroupsModule() {
 
   const module = await calendarGroupsModulePromise;
   appendCalendarGroupBoard = module.appendCalendarGroupBoard;
+  fetchCalendarGroups = module.fetchCalendarGroups;
   getVisiblePersonalTodos = module.getVisiblePersonalTodos;
   initCalendarGroupBar = module.initCalendarGroupBar;
   isCalendarGroupActive = module.isCalendarGroupActive;
@@ -349,20 +356,8 @@ async function fetchCategoryById(userId, categoryId) {
 async function ensureDefaultCategories(userId) {
   if (!userId) return [];
 
-  const { data: existing, error: fetchError } = await supabase
-    .from(CATEGORY_TABLE_NAME)
-    .select('slug')
-    .eq('user_id', userId);
-
-  if (fetchError) {
-    console.error(
-      '[study-calendar] ensureDefaultCategories fetch error:',
-      fetchError.message,
-    );
-    throw fetchError;
-  }
-
-  const existingSlugs = new Set((existing || []).map((item) => item.slug));
+  const existing = await fetchUserCategories(userId);
+  const existingSlugs = new Set(existing.map((item) => item.slug));
 
   const rowsToInsert = DEFAULT_CATEGORIES.filter(
     (category) => !existingSlugs.has(category.slug),
@@ -375,18 +370,18 @@ async function ensureDefaultCategories(userId) {
     sort_order: category.sort_order,
   }));
 
-  if (rowsToInsert.length > 0) {
-    const { error: insertError } = await supabase
-      .from(CATEGORY_TABLE_NAME)
-      .insert(rowsToInsert);
+  if (rowsToInsert.length === 0) return existing;
 
-    if (insertError) {
-      console.error(
-        '[study-calendar] ensureDefaultCategories insert error:',
-        insertError.message,
-      );
-      throw insertError;
-    }
+  const { error: insertError } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .insert(rowsToInsert);
+
+  if (insertError) {
+    console.error(
+      '[study-calendar] ensureDefaultCategories insert error:',
+      insertError.message,
+    );
+    throw insertError;
   }
 
   return fetchUserCategories(userId);
@@ -646,11 +641,9 @@ function renderPreviewLoginMessage(root) {
   root.append(empty);
 }
 
-async function renderPreviewCalendar() {
+async function renderPreviewCalendar(user) {
   const root = document.getElementById('studyCalendarPreview');
   if (!root) return;
-
-  const user = await getCurrentUser();
 
   if (!user?.id) {
     renderPreviewLoginMessage(root);
@@ -658,8 +651,10 @@ async function renderPreviewCalendar() {
     return;
   }
 
-  const categories = await ensureDefaultCategories(user.id);
-  const store = await fetchUserTodos(user.id);
+  const [categories, store] = await Promise.all([
+    ensureDefaultCategories(user.id),
+    fetchUserTodos(user.id),
+  ]);
   const today = new Date();
   const todayKey = getTodayKey();
 
@@ -697,7 +692,12 @@ async function renderPreviewCalendar() {
     }
 
     const dateKey = toDateKey(item.date);
-    const todos = store[dateKey] || [];
+    const todos = applyCalendarScheduleOrder({
+      userId: user.id,
+      calendarType: 'study',
+      dateKey,
+      todos: store[dateKey] || [],
+    });
 
     if (dateKey === todayKey) {
       dayEl.classList.add('study-calendar-day--today');
@@ -722,13 +722,19 @@ function createDayButton({
   isCurrentMonth,
   selectedDateKey,
   onSelect,
+  userId,
   store,
   categories,
   groupState,
 }) {
   const dateKey = toDateKey(date);
   const todayKey = getTodayKey();
-  const todos = getVisiblePersonalTodos(store[dateKey] || [], dateKey, groupState);
+  const todos = applyCalendarScheduleOrder({
+    userId,
+    calendarType: 'study',
+    dateKey,
+    todos: getVisiblePersonalTodos(store[dateKey] || [], dateKey, groupState),
+  });
 
   const button = document.createElement('button');
   button.type = 'button';
@@ -764,12 +770,14 @@ function createDayButton({
 
 function renderTodoList({
   selectedDateKey,
+  userId,
   store,
   categories,
   onToggle,
   onDelete,
   onSaveEdit,
   onOpenDetail,
+  onReorder,
   readonlyDetails = [],
   groupActive = false,
   selectedGroupId = '',
@@ -780,9 +788,15 @@ function renderTodoList({
 
   if (!list || !empty || !selectedDate) return;
 
-  const todos = store[selectedDateKey] || [];
+  const todos = applyCalendarScheduleOrder({
+    userId,
+    calendarType: 'study',
+    dateKey: selectedDateKey,
+    todos: store[selectedDateKey] || [],
+  });
 
   selectedDate.textContent = getReadableDate(selectedDateKey);
+  resetCalendarListReorder(list);
   list.innerHTML = '';
 
   empty.hidden = todos.length > 0 || readonlyDetails.length > 0;
@@ -846,6 +860,15 @@ function renderTodoList({
       detail,
       itemClass: 'study-todo-item',
     });
+  });
+
+  enableCalendarScheduleOrder({
+    root: list,
+    userId,
+    calendarType: 'study',
+    dateKey: selectedDateKey,
+    todos,
+    onChange: onReorder,
   });
 }
 
@@ -1003,6 +1026,7 @@ function renderPageCalendar(
         date: item.date,
         isCurrentMonth: item.isCurrentMonth,
         selectedDateKey: state.selectedDateKey,
+        userId: state.userId,
         store: state.store,
         categories: state.categories,
         groupState: state.group?.state,
@@ -1050,6 +1074,7 @@ function renderPageLoginRequired() {
   }
 
   if (todoList) {
+    resetCalendarListReorder(todoList);
     todoList.innerHTML = '';
   }
 
@@ -1082,11 +1107,9 @@ function renderPageLoginRequired() {
   });
 }
 
-async function initPageCalendar(loadingController) {
+async function initPageCalendar(loadingController, user, isCurrent) {
   const pageRoot = document.getElementById('studyCalendarPage');
   if (!pageRoot) return;
-
-  const user = await getCurrentUser();
 
   if (!user?.id) {
     renderPageLoginRequired();
@@ -1116,12 +1139,22 @@ async function initPageCalendar(loadingController) {
 
   const today = new Date();
 
+  // The group list does not depend on categories or the personal schedule.
+  const groupsPromise = fetchCalendarGroups();
+  // The group bar handles the error when it consumes this request.
+  void groupsPromise.catch(() => {});
+  const [categories, store] = await Promise.all([
+    ensureDefaultCategories(user.id),
+    fetchUserTodos(user.id),
+  ]);
+  if (!isCurrent()) return;
+
   const state = {
     userId: user.id,
     viewDate: new Date(today.getFullYear(), today.getMonth(), 1),
     selectedDateKey: getTodayKey(),
-    categories: await ensureDefaultCategories(user.id),
-    store: await fetchUserTodos(user.id),
+    categories,
+    store,
     personalStore: null,
     isAddingTodo: false,
     onSelect: null,
@@ -1197,12 +1230,16 @@ async function initPageCalendar(loadingController) {
 
     renderTodoList({
       selectedDateKey: state.selectedDateKey,
+      userId: state.userId,
       store: state.store,
       categories: state.categories,
       onToggle: toggleTodo,
       onDelete: deleteTodo,
       onSaveEdit: saveTodoEdit,
       onOpenDetail: openTodoDetail,
+      onReorder: () => {
+        if (!groupActive) renderPageCalendar(state);
+      },
       readonlyDetails,
       groupActive,
       selectedGroupId: state.group?.state?.selectedGroup?.id || '',
@@ -1573,13 +1610,16 @@ async function initPageCalendar(loadingController) {
 
   state.group = await initCalendarGroupBar({
     calendarType: 'study',
+    userId: user.id,
+    groupsPromise,
+    isCurrent,
     pageRoot,
     getViewDate: () => state.viewDate,
     renderAll,
     onModeChange: handleGroupModeChange,
     runCalendarLoad: loadingController?.runLatest,
   });
-  renderAll();
+  if (!isCurrent()) return;
 
   function openCategoryModal() {
     if (!categoryToggle || !categoryPanel) return;
@@ -1911,10 +1951,14 @@ export async function initStudyCalendar() {
     ? createCalendarLoadingController({ root: loadingRegion })
     : null;
 
-  const initialize = async () => {
-    await loadCalendarGroupsModule();
-    await renderPreviewCalendar();
-    await initPageCalendar(loadingController);
+  const initialize = async ({ isCurrent = () => true } = {}) => {
+    const [user] = await Promise.all([getCurrentUser(), loadCalendarGroupsModule()]);
+    if (!isCurrent()) return;
+
+    await Promise.all([
+      renderPreviewCalendar(user),
+      initPageCalendar(loadingController, user, isCurrent),
+    ]);
   };
 
   try {

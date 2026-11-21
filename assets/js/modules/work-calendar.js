@@ -38,6 +38,7 @@ import {
 } from './calendar-time.js';
 
 let appendCalendarGroupBoard;
+let fetchCalendarGroups;
 let getVisiblePersonalTodos;
 let initCalendarGroupBar;
 let isCalendarGroupActive;
@@ -53,6 +54,7 @@ async function loadCalendarGroupsModule() {
 
   const module = await calendarGroupsModulePromise;
   appendCalendarGroupBoard = module.appendCalendarGroupBoard;
+  fetchCalendarGroups = module.fetchCalendarGroups;
   getVisiblePersonalTodos = module.getVisiblePersonalTodos;
   initCalendarGroupBar = module.initCalendarGroupBar;
   isCalendarGroupActive = module.isCalendarGroupActive;
@@ -540,20 +542,8 @@ async function fetchCategoryById(userId, categoryId) {
 async function ensureDefaultCategories(userId) {
   if (!userId) return [];
 
-  const { data: existing, error: fetchError } = await supabase
-    .from(CATEGORY_TABLE_NAME)
-    .select('slug')
-    .eq('user_id', userId);
-
-  if (fetchError) {
-    console.error(
-      '[work-calendar] ensureDefaultCategories fetch error:',
-      fetchError.message,
-    );
-    throw fetchError;
-  }
-
-  const existingSlugs = new Set((existing || []).map((item) => item.slug));
+  const existing = await fetchUserCategories(userId);
+  const existingSlugs = new Set(existing.map((item) => item.slug));
 
   const rowsToInsert = DEFAULT_CATEGORIES.filter(
     (category) => !existingSlugs.has(category.slug),
@@ -566,18 +556,18 @@ async function ensureDefaultCategories(userId) {
     sort_order: category.sort_order,
   }));
 
-  if (rowsToInsert.length > 0) {
-    const { error: insertError } = await supabase
-      .from(CATEGORY_TABLE_NAME)
-      .insert(rowsToInsert);
+  if (rowsToInsert.length === 0) return existing;
 
-    if (insertError) {
-      console.error(
-        '[work-calendar] ensureDefaultCategories insert error:',
-        insertError.message,
-      );
-      throw insertError;
-    }
+  const { error: insertError } = await supabase
+    .from(CATEGORY_TABLE_NAME)
+    .insert(rowsToInsert);
+
+  if (insertError) {
+    console.error(
+      '[work-calendar] ensureDefaultCategories insert error:',
+      insertError.message,
+    );
+    throw insertError;
   }
 
   return fetchUserCategories(userId);
@@ -1316,11 +1306,9 @@ function renderPreviewSkeleton(root, message) {
   root.append(makeEl('div', 'work-calendar-mini__empty', message));
 }
 
-async function renderPreviewCalendar() {
+async function renderPreviewCalendar(user) {
   const root = document.getElementById('workCalendarPreview');
   if (!root) return;
-
-  const user = await getCurrentUser();
 
   if (!user?.id) {
     renderPreviewSkeleton(
@@ -1332,8 +1320,10 @@ async function renderPreviewCalendar() {
   }
 
   const viewDate = new Date();
-  const categories = await ensureDefaultCategories(user.id);
-  const store = await fetchUserTodosInMonth(user.id, viewDate);
+  const [categories, store] = await Promise.all([
+    ensureDefaultCategories(user.id),
+    fetchUserTodosInMonth(user.id, viewDate),
+  ]);
   renderPreviewSummary('work', { store, todayKey: getTodayKey(), categories });
   const header = makeEl('div', 'work-calendar-mini__month');
   const title = makeEl('strong', '', getMonthTitle(viewDate));
@@ -1382,11 +1372,9 @@ function bindPreviewLinkLoginGuard() {
   });
 }
 
-async function initPageCalendar(loadingController) {
+async function initPageCalendar(loadingController, user, isCurrent) {
   const pageRoot = document.getElementById('workCalendarPage');
   if (!pageRoot) return;
-
-  const user = await getCurrentUser();
 
   if (!user?.id) {
     showLoginRequiredPopup({
@@ -1450,12 +1438,22 @@ async function initPageCalendar(loadingController) {
 
   const todayKey = getTodayKey();
 
+  // The group list does not depend on categories or the personal schedule.
+  const groupsPromise = fetchCalendarGroups();
+  // The group bar handles the error when it consumes this request.
+  void groupsPromise.catch(() => {});
+  const [categories, store] = await Promise.all([
+    ensureDefaultCategories(user.id),
+    fetchUserTodos(user.id),
+  ]);
+  if (!isCurrent()) return;
+
   const state = {
     userId: user.id,
     viewDate: new Date(),
     selectedDateKey: todayKey,
-    categories: await ensureDefaultCategories(user.id),
-    store: await fetchUserTodos(user.id),
+    categories,
+    store,
     personalStore: null,
     isAddingTodo: false,
     onSelect: null,
@@ -2181,13 +2179,16 @@ async function initPageCalendar(loadingController) {
 
   state.group = await initCalendarGroupBar({
     calendarType: 'work',
+    userId: user.id,
+    groupsPromise,
+    isCurrent,
     pageRoot,
     getViewDate: () => state.viewDate,
     renderAll,
     onModeChange: handleGroupModeChange,
     runCalendarLoad: loadingController?.runLatest,
   });
-  renderAll();
+  if (!isCurrent()) return;
 
   async function changeMonth(offset) {
     state.viewDate = new Date(
@@ -2560,10 +2561,14 @@ export async function initWorkCalendar() {
     ? createCalendarLoadingController({ root: loadingRegion })
     : null;
 
-  const initialize = async () => {
-    await loadCalendarGroupsModule();
-    await renderPreviewCalendar();
-    await initPageCalendar(loadingController);
+  const initialize = async ({ isCurrent = () => true } = {}) => {
+    const [user] = await Promise.all([getCurrentUser(), loadCalendarGroupsModule()]);
+    if (!isCurrent()) return;
+
+    await Promise.all([
+      renderPreviewCalendar(user),
+      initPageCalendar(loadingController, user, isCurrent),
+    ]);
   };
 
   try {
