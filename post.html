@@ -46,13 +46,13 @@
     <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
 
     <!-- main -->
-    <link rel="stylesheet" href="./assets/css/main/post-main.css" />
+    <link rel="stylesheet" href="./assets/css/main/post-main.css?layout=comment-actions-row" />
     <link
       rel="stylesheet"
       href="./assets/css/components/character-effects.css"
     />
     <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
-    <link rel="stylesheet" href="./assets/css/components/community-safety.css" />
+    <link rel="stylesheet" href="./assets/css/components/community-safety.css?layout=compact" />
   </head>
 
   <body class="theme-home" data-page="post">
@@ -108,14 +108,35 @@
                     <p class="post-datetime" id="postDateTime">
                       작성일 : 0000.00.00 00:00
                     </p>
-                    <button
-                      type="button"
-                      class="post-share-btn"
-                      id="postShareBtn"
-                      aria-label="게시물 링크 복사"
-                    >
-                      <span aria-hidden="true">🔗</span> 공유
-                    </button>
+                    <div class="post-datetime-actions">
+                      <button
+                        type="button"
+                        class="post-share-btn post-save-btn"
+                        id="postOfflineSaveBtn"
+                        aria-label="게시글 저장"
+                        hidden
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path d="M6 4h12v16l-6-4-6 4z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="post-share-btn"
+                        id="postShareBtn"
+                        aria-label="게시물 링크 복사"
+                      >
+                        <span aria-hidden="true">🔗</span> 공유
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -158,7 +179,7 @@
             <section
               class="post-reactions"
               id="postReactionsSection"
-              aria-label="좋아요 참신해요"
+              aria-label="게시글 반응"
             >
               <div class="post-reactions__inner">
                 <button
@@ -169,7 +190,7 @@
                   aria-pressed="false"
                 >
                   <span class="post-reaction-btn__icon" aria-hidden="true">
-                    <img src="./images/good.png" alt="" />
+                    <img src="./images/good.webp" alt="" />
                   </span>
                   <span class="post-reaction-btn__label">
                     좋아요
@@ -187,7 +208,7 @@
                   aria-pressed="false"
                 >
                   <span class="post-reaction-btn__icon" aria-hidden="true">
-                    <img src="./images/bad.png" alt="" />
+                    <img src="./images/bad.webp" alt="" />
                   </span>
                   <span class="post-reaction-btn__label">
                     참신해요
@@ -268,7 +289,7 @@
                       data-action="toggle-emoticon"
                       aria-label="이모티콘 열기" aria-expanded="false"
                     >
-                      <img src="./images/good.png" alt="" />
+                      <img src="./images/good.webp" alt="" />
                     </button>
                   </div>
 

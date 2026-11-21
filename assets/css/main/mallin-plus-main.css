@@ -75,6 +75,10 @@
   box-shadow: var(--shadow-card);
 }
 
+.mallin-plus-card + .mallin-plus-card {
+  margin-top: var(--space-16);
+}
+
 .mallin-plus-card__media {
   display: grid;
   min-height: 380px;
@@ -228,7 +232,7 @@
 
 .mallin-plus-upcoming__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-16);
 }
 
@@ -254,6 +258,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mallin-plus-preview-card__media--illustration .mallin-plus-preview-card__image {
+  object-fit: contain;
 }
 
 .mallin-plus-preview-card__body {

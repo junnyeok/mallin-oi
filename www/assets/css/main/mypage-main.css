@@ -7,6 +7,10 @@
   align-items: center;
   padding: var(--space-32);
   min-height: 60vh;
+  background: linear-gradient(
+    color-mix(in srgb, var(--color-primary-sub) 18%, var(--color-bg)),
+    var(--color-bg) 26rem
+  );
 }
 
 html.is-calendar-app-mode .mypage-main {
@@ -23,7 +27,7 @@ html.is-calendar-app-mode .mypage-main {
 html.is-calendar-app-mode .calendar-app-back-row {
   display: flex;
   width: 100%;
-  max-width: 760px;
+  max-width: var(--container-max);
   margin-bottom: var(--space-16);
 }
 
@@ -48,194 +52,259 @@ html.is-calendar-app-mode .calendar-app-back-row {
   opacity: 0.9;
 }
 
-.mypage-card {
-  width: 100%;
-  max-width: 760px;
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: var(--space-32);
-  box-shadow: var(--shadow-card);
+.mypage-dashboard {
+  display: grid;
+  gap: var(--space-16);
+  width: min(100%, var(--container-max));
 }
 
 .mypage-summary {
-  margin-bottom: var(--space-24);
+  display: grid;
+  gap: var(--space-16);
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--color-primary-sub) 60%, var(--color-surface)),
+    var(--color-surface)
+  );
 }
 
-.mypage-summary-item {
-  display: none;
+.mypage-summary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.mypage-summary-heading img {
+  width: 46px;
+  height: 54px;
+  object-fit: contain;
 }
 
 .mypage-summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-12);
+  grid-template-columns: minmax(0, 1.65fr) repeat(3, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin: 0;
 }
 
-.mypage-summary-box {
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: var(--space-16);
+.mypage-summary-grid > div {
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
   background: var(--color-surface);
 }
 
-.mypage-summary-box__label {
-  font-size: var(--text-small);
+.mypage-summary-grid dt {
   color: var(--color-text-sub);
-  margin-bottom: var(--space-8);
+  font-size: var(--text-small);
 }
 
-.mypage-summary-box__value {
-  font-size: var(--text-body);
-  color: var(--color-text);
+.mypage-summary-grid dd {
+  margin: var(--space-4) 0 0;
   font-weight: 700;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.mypage-summary-value {
-  font-size: var(--text-body);
-  color: var(--color-text);
-}
-
-.mypage-form {
+.mypage-nav {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-24);
-  margin-bottom: var(--space-24);
-}
-
-.mypage-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-}
-
-.mypage-section + .mypage-section {
-  margin-top: var(--space-24);
-  padding-top: var(--space-24);
-  border-top: 2px solid var(--color-border);
-}
-
-.mypage-section--account,
-.mypage-section--danger {
-  margin-top: 0;
-  padding-top: var(--space-24);
-  border-top: 2px solid var(--color-border);
-}
-
-.mypage-section--danger {
-  margin-top: var(--space-24);
-}
-
-.mypage-section-title {
-  margin: 0;
-  font-size: var(--text-h2);
-  color: var(--color-text);
-}
-
-.mypage-field {
-  display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-8);
 }
 
-.mypage-field label {
-  font-size: var(--text-body);
-  color: var(--color-text);
-}
-
-.mypage-field input,
-.mypage-field select {
-  padding: var(--space-12);
-  border-radius: var(--radius-btn);
-  border: 2px solid var(--color-border);
-  font-size: var(--text-body);
+.mypage-nav button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mypage-nav button:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary-sub) 28%, var(--color-surface));
+}
+
+.mypage-content,
+.mypage-column {
+  display: grid;
+  align-items: start;
+  align-content: start;
+  gap: var(--space-16);
+}
+
+.mypage-content {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+.mypage-column,
+.mypage-panel {
+  min-width: 0;
+}
+
+.mypage-panel,
+#mypageMfaGate {
+  display: grid;
+  align-content: start;
+  gap: var(--space-16);
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.mypage-panel[id] {
+  scroll-margin-top: var(--space-16);
+}
+
+#mypageMfaGate {
+  width: min(100%, 520px);
+}
+
+.mypage-section {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.mypage-section + .mypage-section,
+.mypage-form-footer {
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-divider);
+}
+
+.mypage-section-title {
+  color: var(--color-text);
+  font-size: var(--text-h2);
+}
+
+.mypage-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-16);
+}
+
+.mypage-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.mypage-field label {
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+
+.mypage-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px;
 }
 
 .mypage-field input::placeholder {
   color: var(--color-text-sub);
 }
 
-.mypage-field input:focus,
-.mypage-field select:focus {
-  outline: none;
+.mypage-field input:focus {
   border-color: var(--color-primary);
 }
 
-.mypage-field input[readonly],
-.mypage-field input:disabled,
-.mypage-field select:disabled {
-  background: var(--calendar-account-disabled-bg);
+.mypage-field input[readonly] {
+  background: var(--color-surface-muted);
   color: var(--color-text-sub);
-  cursor: not-allowed;
 }
 
-.mypage-field .help-text,
-.mypage-field .field-msg {
-  margin: 0;
-  font-size: var(--text-small);
+.mypage-main .help-text,
+.mypage-msg,
+.mypage-withdraw-msg {
   color: var(--color-text-sub);
-  line-height: var(--line-body);
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+.mypage-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
 }
 
 .mypage-btn,
 .mypage-sub-btn,
 .mypage-danger-btn {
-  padding: var(--space-12);
+  justify-self: start;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid transparent;
   border-radius: var(--radius-btn);
-  font-size: var(--text-body);
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .mypage-btn {
-  border: none;
   background: var(--color-primary);
   color: var(--color-on-accent);
-  margin-top: var(--space-24);
-  margin-bottom: 0;
 }
 
 .mypage-sub-btn {
-  border: 2px solid var(--color-border);
+  border-color: var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
 }
 
 .mypage-danger-btn {
-  border: 2px solid #f0b9b9;
-  background: var(--calendar-account-danger-bg);
-  color: var(--calendar-account-danger-text);
+  border-color: color-mix(in srgb, var(--color-danger) 26%, var(--color-border));
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .mypage-btn:hover,
 .mypage-sub-btn:hover,
 .mypage-danger-btn:hover {
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
-.mypage-sub-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.mypage-panel button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
-.mypage-action-row {
-  display: flex;
-  gap: var(--space-12);
+.mypage-withdraw {
+  display: grid;
+  gap: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-divider);
 }
 
-.mypage-action-row > * {
-  flex: 1;
+.mypage-withdraw h3 {
+  font-size: var(--text-body);
 }
 
-.mypage-msg,
-.mypage-withdraw-msg {
-  margin: 0;
-  text-align: center;
-  font-size: var(--text-small);
-  color: var(--color-text-sub);
-  line-height: 1.5;
+.mypage-msg:empty,
+.mypage-withdraw-msg:empty {
+  position: absolute;
+}
+
+.mypage-withdraw-msg[data-state="error"] {
+  color: var(--color-danger);
 }
 
 .mypage-list {
@@ -325,9 +394,149 @@ html.is-calendar-app-mode .calendar-app-back-row {
   background: var(--color-surface);
 }
 
+#mypageMfaSettings {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.mypage-mfa-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--color-primary-sub) 32%, var(--color-surface));
+}
+
+.mypage-mfa-overview > div {
+  flex: 1 1 17rem;
+}
+
+.mypage-mfa-overview p {
+  margin-top: var(--space-4);
+}
+
+.mypage-mfa-overview p,
+.mypage-main .mfa-form [data-help],
+.mypage-main .mfa-setup__key p + p,
+#mypageMfaSettings [role="status"] {
+  color: var(--color-text-sub);
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+#mypageMfaSettings :is(.mypage-btn, .mypage-sub-btn) {
+  min-height: 44px;
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  font-weight: 700;
+  font-size: var(--text-small);
+}
+
+#mypageMfaSettings > .mypage-btn {
+  justify-self: start;
+}
+
+.mypage-mfa-devices {
+  display: grid;
+  gap: var(--space-8);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.mypage-mfa-devices .social-auth-row {
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  overflow-wrap: anywhere;
+}
+
+.mypage-mfa-editor {
+  min-width: 0;
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.mypage-mfa-editor:empty,
+#mypageMfaSettings > [role="status"]:empty {
+  display: none;
+}
+
+.mypage-main .mfa-setup:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-8);
+}
+
+.mypage-main .mfa-setup > div {
+  display: grid;
+  align-content: start;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-surface-muted);
+}
+
+.mypage-main .mfa-setup img {
+  width: min(208px, 100%);
+  margin: 0 auto;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+}
+
+.mypage-main .mfa-setup code {
+  background: var(--color-surface);
+}
+
+.mypage-main .mfa-authenticator-links .social-auth-link {
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.mypage-main .mfa-form :is(input, select) {
+  width: min(100%, 22rem);
+}
+
+.mypage-main .mfa-form [data-code] {
+  width: min(100%, 14rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.22em;
+}
+
+.mypage-main .mfa-form > button {
+  justify-self: start;
+  padding-inline: var(--space-16);
+}
+
+.mypage-main .mfa-form > button[type="submit"] {
+  color: var(--color-on-accent);
+  border-color: transparent;
+}
+
+.mypage-main :is(.mfa-form, #mypageMfaSettings) button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+@media (max-width: 960px) {
+  .mypage-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 700px) {
   .mypage-main {
-    padding: var(--space-24);
+    padding: var(--space-16);
   }
 
   html.is-calendar-app-mode .mypage-main {
@@ -337,12 +546,45 @@ html.is-calendar-app-mode .calendar-app-back-row {
     padding-bottom: calc(var(--space-32) + env(safe-area-inset-bottom));
   }
 
-  .mypage-card {
-    padding: var(--space-24);
+  .mypage-summary,
+  .mypage-panel,
+  #mypageMfaGate {
+    padding: var(--space-16);
   }
 
   .mypage-summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(6rem, 1.2fr) repeat(2, minmax(0, 1fr));
+  }
+
+  .mypage-summary-email {
+    grid-column: 1 / -1;
+  }
+
+  .mypage-summary-grid > div {
+    padding: var(--space-8);
+  }
+
+  .mypage-summary-grid dd {
+    font-size: var(--text-small);
+  }
+
+  #mypageCreatedAt {
+    font-size: 0.8125rem;
+  }
+
+  .mypage-nav button {
+    justify-content: center;
+    flex: 1 1 auto;
+    padding-inline: var(--space-12);
+  }
+
+  .mypage-mfa-editor {
+    padding: var(--space-12);
+  }
+
+  .mypage-main .mfa-form > button,
+  .mypage-main .mfa-form :is(input, select, [data-code]) {
+    width: 100%;
   }
 
   .mypage-row {
@@ -353,11 +595,18 @@ html.is-calendar-app-mode .calendar-app-back-row {
     white-space: normal;
   }
 
-  .mypage-action-row {
-    flex-direction: column;
-  }
-
   .mypage-pager {
     gap: var(--space-8);
+  }
+}
+
+@media (max-width: 480px) {
+  .mypage-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #mypageCommunityShortcut[hidden] + button {
+    grid-column: 1 / -1;
   }
 }

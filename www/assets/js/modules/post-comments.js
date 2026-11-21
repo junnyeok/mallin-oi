@@ -1,7 +1,6 @@
 import { initEmoticonSettingsNavigation } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
-import { mountCommunityActions, withoutBlockedMembers } from './community-safety.js';
-import { loadPostById } from './posts-repo.js';
+import { getBlockedMemberIds, mountCommunityActions } from './community-safety.js';
 import {
   getCurrentUser,
   getDisplayName,
@@ -10,31 +9,30 @@ import {
   saveRedirect,
 } from './auth-store.js';
 import { playPickleBurst } from './pickle-burst.js';
+import { bindInlineEmoticonDeletion, placeCaretAfterEmoticon, stripEmoticonCaretMarkers } from './editor-emoticon.js';
 
 const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
 
-const { getCharacterEffectRenderMeta } = await import(
-  `./store-data.js?v=${MODULE_VERSION}`
-);
-
-const { prepareCharacterEffects, renderCharacterEffectHtml } = await import(
-  `./character-effects.js?v=${MODULE_VERSION}`
-);
-
-const { listenEquipmentChanged } = await import(
-  `./equipment-events.js?v=${MODULE_VERSION}`
-);
-
-const {
-  loadOwnedEmoticons,
-  renderOwnedEmoticonPicker,
-  insertEmoticonToken,
-  renderTextWithEmoticons,
-  switchEmoticonPickerPack,
-  createInlineEmoticonNode,
-} = await import(`./emoticons.js?v=${MODULE_VERSION}`);
+const [
+  { getCharacterEffectRenderMeta },
+  { prepareCharacterEffects, renderCharacterEffectHtml },
+  { listenEquipmentChanged },
+  {
+    loadOwnedEmoticons,
+    renderOwnedEmoticonPicker,
+    insertEmoticonToken,
+    renderTextWithEmoticons,
+    switchEmoticonPickerPack,
+    createInlineEmoticonNode,
+  },
+] = await Promise.all([
+  import(`./store-data.js?v=${MODULE_VERSION}`),
+  import(`./character-effects.js?v=${MODULE_VERSION}`),
+  import(`./equipment-events.js?v=${MODULE_VERSION}`),
+  import(`./emoticons.js?v=${MODULE_VERSION}`),
+]);
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
@@ -183,28 +181,18 @@ function formatDateTime(value) {
 function renderAuthorProfileLink(
   authorId,
   authorNickname,
-  profileImageUrl = '',
-  characterImageUrl = '',
-  characterEffectItemId = '',
   className = '',
 ) {
   const nickname = escapeHtml(authorNickname || '익명');
   const safeAuthorId = String(authorId || '').trim();
-  const avatarSrc = escapeHtml(getProfileImageSrc(profileImageUrl));
-  const characterSrc = escapeHtml(getCharacterImageSrc(characterImageUrl));
-
-  const characterEffectHtml = renderCharacterEffectHtml(
-    getCharacterEffectRenderMeta(characterEffectItemId, 'comment'),
-  );
 
   const characterHtml = `
   <span class="character-effect-wrap comment-author-character-effect-wrap">
     <img
       class="comment-author-character character-effect-character"
-      src="${characterSrc}"
+      src="${DEFAULT_CHARACTER_IMAGE}"
       alt="${nickname} 캐릭터"
     />
-    ${characterEffectHtml}
   </span>
 `;
 
@@ -213,7 +201,7 @@ function renderAuthorProfileLink(
       <span class="comment-author-wrap">
         <img
           class="comment-author-avatar"
-          src="${avatarSrc}"
+          src="${DEFAULT_PROFILE_IMAGE}"
           alt="${nickname} 프로필 사진"
         />
         <strong class="${className}">${nickname}</strong>
@@ -231,7 +219,7 @@ function renderAuthorProfileLink(
       >
         <img
           class="comment-author-avatar"
-          src="${avatarSrc}"
+          src="${DEFAULT_PROFILE_IMAGE}"
           alt="${nickname} 프로필 사진"
         />
       </a>
@@ -354,7 +342,7 @@ function editorToTokenText(editor) {
     text += editorNodeToTokenText(node);
   });
 
-  return text
+  return stripEmoticonCaretMarkers(text)
     .replaceAll('\u00A0', ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trimEnd();
@@ -405,7 +393,7 @@ function ensureCommentRichEditor(textarea) {
     editor.className = 'comment-rich-editor';
     editor.dataset.role = 'comment-rich-editor';
     editor.dataset.sourceKey = textarea.id || textarea.name || 'comment';
-    editor.contentEditable = 'true';
+    editor.contentEditable = String(!textarea.disabled);
     editor.spellcheck = true;
     editor.setAttribute('role', 'textbox');
     editor.setAttribute('aria-multiline', 'true');
@@ -424,6 +412,8 @@ function ensureCommentRichEditor(textarea) {
 
   syncTextareaToEditor(textarea, editor);
   syncEditorToTextarea(textarea, editor);
+
+  bindInlineEmoticonDeletion(editor);
 
   editor.addEventListener('input', () => {
     syncEditorToTextarea(textarea, editor);
@@ -464,16 +454,6 @@ function bindCommentRichEditor(textarea) {
   if (!textarea || textarea.dataset.richEditorBound === '1') return;
   ensureCommentRichEditor(textarea);
   textarea.dataset.richEditorBound = '1';
-}
-
-function bindAllCommentRichEditors(root = document) {
-  root
-    .querySelectorAll(
-      '#commentBody, [data-role="reply-textarea"], [data-role="comment-edit-textarea"]',
-    )
-    .forEach((textarea) => {
-      bindCommentRichEditor(textarea);
-    });
 }
 
 function toBoolean(value) {
@@ -532,18 +512,16 @@ function getThreadToggleLabel(count, isOpen = false) {
   return `답글 ${safeCount}개 보기`;
 }
 
-function renderReplyItem(
-  reply,
-  currentUserId = '',
-  isAdmin = false,
-  profileImageMap = new Map(),
-) {
+function renderDeleteButton(commentId, isMine) {
+  return `<button type="button" class="comment-action-btn is-danger"
+    data-action="delete" data-comment-id="${commentId}" data-is-mine="${!!isMine}">삭제</button>`;
+}
+
+function renderReplyItem(reply, currentUserId = '') {
   const isMine =
     currentUserId &&
     reply.author_id &&
     String(currentUserId) === String(reply.author_id);
-
-  const canDelete = !!isMine || !!isAdmin;
 
   return `
 <article
@@ -552,51 +530,26 @@ function renderReplyItem(
   data-comment-id="${reply.id}"
 >      <div class="comment-reply-item__head">
         <div class="comment-reply-item__meta">
-                    ${renderAuthorProfileLink(
-                      reply.author_id,
-                      reply.author_nickname,
-                      (
-                        profileImageMap.get(
-                          String(reply.author_id || '').trim(),
-                        ) || {}
-                      ).profileImageUrl || DEFAULT_PROFILE_IMAGE,
-                      (
-                        profileImageMap.get(
-                          String(reply.author_id || '').trim(),
-                        ) || {}
-                      ).characterImageUrl || DEFAULT_CHARACTER_IMAGE,
-                      (
-                        profileImageMap.get(
-                          String(reply.author_id || '').trim(),
-                        ) || {}
-                      ).characterEffectItemId || '',
-                      'comment-reply-item__author',
-                    )}
+          ${renderAuthorProfileLink(reply.author_id, reply.author_nickname, 'comment-reply-item__author')}
           <div class="comment-meta-inline">
             ${renderDateMeta(reply.created_at, reply.updated_at)}
           </div>
         </div>
 
-        ${
-          canDelete
-            ? `
-          <div class="comment-item__actions">
-            <button
-              type="button"
-              class="comment-action-btn is-danger"
-              data-action="delete"
-              data-comment-id="${reply.id}"
-              data-is-mine="${isMine ? 'true' : 'false'}"
-            >
-              삭제
-            </button>
-          </div>
-        `
-            : ''
-        }
+        <div class="comment-item__tools">
+          <div class="community-safety__actions comment-item__safety" data-comment-safety></div>
+          ${
+            isMine
+              ? `
+            <div class="comment-item__actions">
+              ${renderDeleteButton(reply.id, true)}
+            </div>
+          `
+              : ''
+          }
+        </div>
       </div>
 
-      <div class="community-safety__actions" data-comment-safety></div>
       <div class="comment-item__view" data-role="comment-view">
         <div class="comment-item__body">${nl2brSafe(reply.body || '')}</div>
       </div>
@@ -604,21 +557,13 @@ function renderReplyItem(
   `;
 }
 
-function renderCommentItem(
-  comment,
-  replies = [],
-  currentUserId = '',
-  isAdmin = false,
-  profileImageMap = new Map(),
-) {
+function renderCommentItem(comment, replies = [], currentUserId = '') {
   const isMine =
     currentUserId &&
     comment.author_id &&
     String(currentUserId) === String(comment.author_id);
 
   const canEdit = !!isMine;
-  const canDelete = !!isMine || !!isAdmin;
-  const canReply = true;
   const replyCount = replies.length;
 
   return `
@@ -628,87 +573,44 @@ function renderCommentItem(
   data-comment-id="${comment.id}"
 >      <div class="comment-item__head">
         <div class="comment-item__meta">
-                    ${renderAuthorProfileLink(
-                      comment.author_id,
-                      comment.author_nickname,
-                      (
-                        profileImageMap.get(
-                          String(comment.author_id || '').trim(),
-                        ) || {}
-                      ).profileImageUrl || DEFAULT_PROFILE_IMAGE,
-                      (
-                        profileImageMap.get(
-                          String(comment.author_id || '').trim(),
-                        ) || {}
-                      ).characterImageUrl || DEFAULT_CHARACTER_IMAGE,
-                      (
-                        profileImageMap.get(
-                          String(comment.author_id || '').trim(),
-                        ) || {}
-                      ).characterEffectItemId || '',
-                      'comment-item__author',
-                    )}
+          ${renderAuthorProfileLink(comment.author_id, comment.author_nickname, 'comment-item__author')}
           <div class="comment-meta-inline">
             ${renderDateMeta(comment.created_at, comment.updated_at)}
           </div>
         </div>
 
-        ${
-          canDelete || canEdit || canReply
-            ? `
-          <div class="comment-item__actions">
-            ${
-              canReply
-                ? `
-              <button
-                type="button"
-                class="comment-action-btn"
-                data-action="reply"
-                data-comment-id="${comment.id}"
-              >
-                답글
-              </button>
-            `
-                : ''
-            }
+        <div class="comment-item__tools">
+          <div class="community-safety__actions comment-item__safety" data-comment-safety></div>
+            <div class="comment-item__actions">
+                <button
+                  type="button"
+                  class="comment-action-btn"
+                  data-action="reply"
+                  data-comment-id="${comment.id}"
+                >
+                  답글
+                </button>
 
-            ${
-              canEdit
-                ? `
-              <button
-                type="button"
-                class="comment-action-btn"
-                data-action="edit"
-                data-comment-id="${comment.id}"
-              >
-                수정
-              </button>
-            `
-                : ''
-            }
+              ${
+                canEdit
+                  ? `
+                <button
+                  type="button"
+                  class="comment-action-btn"
+                  data-action="edit"
+                  data-comment-id="${comment.id}"
+                >
+                  수정
+                </button>
+              `
+                  : ''
+              }
 
-            ${
-              canDelete
-                ? `
-              <button
-                type="button"
-                class="comment-action-btn is-danger"
-                data-action="delete"
-                data-comment-id="${comment.id}"
-                data-is-mine="${isMine ? 'true' : 'false'}"
-              >
-                삭제
-              </button>
-            `
-                : ''
-            }
-          </div>
-        `
-            : ''
-        }
+              ${isMine ? renderDeleteButton(comment.id, true) : ''}
+            </div>
+        </div>
       </div>
 
-      <div class="community-safety__actions" data-comment-safety></div>
       <div class="comment-item__view" data-role="comment-view">
         <div class="comment-item__body">${nl2brSafe(comment.body || '')}</div>
       </div>
@@ -732,7 +634,7 @@ function renderCommentItem(
                 data-action="toggle-emoticon"
                       aria-label="이모티콘 열기" aria-expanded="false"
               >
-                <img src="./images/good.png" alt="" />
+                <img src="./images/good.webp" alt="" />
               </button>
             </div>
 
@@ -741,10 +643,6 @@ function renderCommentItem(
               data-role="emoticon-panel"
               hidden
             >
-              ${renderCommentEmoticonPicker(ownedCommentEmoticons, {
-                emptyText:
-                  '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
-              })}
             </div>
           </div>
 
@@ -799,7 +697,7 @@ function renderCommentItem(
               data-action="toggle-emoticon"
                       aria-label="이모티콘 열기" aria-expanded="false"
             >
-              <img src="./images/good.png" alt="" />
+              <img src="./images/good.webp" alt="" />
             </button>
           </div>
 
@@ -808,10 +706,6 @@ function renderCommentItem(
             data-role="emoticon-panel"
             hidden
           >
-            ${renderCommentEmoticonPicker(ownedCommentEmoticons, {
-              emptyText:
-                '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
-            })}
           </div>
         </div>
 
@@ -859,9 +753,7 @@ function renderCommentItem(
             hidden
           >
             ${replies
-              .map((reply) =>
-                renderReplyItem(reply, currentUserId, isAdmin, profileImageMap),
-              )
+              .map((reply) => renderReplyItem(reply, currentUserId))
               .join('')}
           </div>
         </div>
@@ -874,6 +766,16 @@ function renderCommentItem(
 
 let currentSecretPassword = '';
 let isPrivatePostLocked = false;
+let commentRenderId = 0;
+
+function setCommentInputDisabled(textarea, disabled) {
+  if (!textarea) return;
+  textarea.disabled = disabled;
+  const editor = textarea.nextElementSibling;
+  if (editor?.dataset.role === 'comment-rich-editor') {
+    editor.contentEditable = String(!disabled);
+  }
+}
 
 function setCommentFormDisabled(disabled, hintText = '') {
   const hint = $('commentLoginHint');
@@ -889,41 +791,46 @@ function setCommentFormDisabled(disabled, hintText = '') {
     hint.textContent = hintText;
   }
 
-  if (textarea) {
-    textarea.disabled = !!disabled;
-  }
+  setCommentInputDisabled(textarea, !!disabled);
 
   if (submitBtn) {
     submitBtn.disabled = !!disabled;
   }
 }
 
-function renderLockedCommentState() {
+function renderLockedCommentState(unavailable = false) {
+  commentRenderId += 1;
   const listEl = $('commentList');
   const countEl = $('commentCount');
 
   if (countEl) countEl.textContent = '0';
-  syncTopCommentMeta(0, true);
+  syncTopCommentMeta(0, !unavailable);
 
   if (listEl) {
-    listEl.innerHTML = `<div class="comment-empty">비밀번호를 입력해야 댓글과 답글을 볼 수 있어.</div>`;
+    listEl.innerHTML = unavailable
+      ? '<div class="comment-empty">댓글을 불러오지 못했어.</div>'
+      : '<div class="comment-empty">비밀번호를 입력해야 댓글과 답글을 볼 수 있어.</div>';
   }
 
   setFormMessage('');
   setCommentFormDisabled(
     true,
-    '비밀글 비밀번호를 먼저 입력해야 댓글을 볼 수 있어.',
+    unavailable ? '게시글을 불러온 뒤 댓글을 작성할 수 있어.' : '비밀글 비밀번호를 먼저 입력해야 댓글을 볼 수 있어.',
   );
+  refreshCommentEmoticonUi();
 }
 
 async function loadComments(postId, secretPassword = null) {
-  const { data, error } = await supabase.rpc('get_post_comments', {
-    p_post_id: postId,
-    p_secret_password: secretPassword || null,
-  });
+  const [{ data, error }, blocked] = await Promise.all([
+    supabase.rpc('get_post_comments', {
+      p_post_id: postId,
+      p_secret_password: secretPassword || null,
+    }),
+    getBlockedMemberIds(),
+  ]);
 
   if (error) throw error;
-  return withoutBlockedMembers(data || []);
+  return (data || []).filter((comment) => !blocked.has(comment.author_id));
 }
 
 async function renderComments(postId, secretPassword = null) {
@@ -932,17 +839,17 @@ async function renderComments(postId, secretPassword = null) {
 
   if (!listEl || !countEl) return;
 
+  const renderId = ++commentRenderId;
+  const isCurrent = () => listEl.isConnected && renderId === commentRenderId;
   listEl.innerHTML = `<div class="comment-empty">댓글을 불러오는 중이야.</div>`;
 
   try {
-    const [comments, user, role] = await Promise.all([
-      loadComments(postId, secretPassword),
-      getCurrentUser(),
-      getMyRole(),
+    const [comments, user] = await Promise.all([
+      loadComments(postId, secretPassword), getCurrentUser(),
     ]);
+    if (!isCurrent()) return;
 
     const currentUserId = user?.id || '';
-    const isAdmin = !!role?.isAdmin;
     const nextCount = comments.length;
 
     countEl.textContent = String(nextCount);
@@ -956,10 +863,6 @@ async function renderComments(postId, secretPassword = null) {
 
     const repliesMap = groupRepliesByParent(comments);
 
-    const profileImageMap = await loadProfileAssetMap(
-      comments.map((comment) => comment.author_id),
-    );
-
     const visibleById = new Map(comments.map((comment) => [Number(comment.id), comment]));
     const rootComments = comments.filter((comment) =>
       !visibleById.has(Number(comment.parent_comment_id || 0)),
@@ -971,29 +874,65 @@ async function renderComments(postId, secretPassword = null) {
           comment,
           repliesMap.get(Number(comment.id)) || [],
           currentUserId,
-          isAdmin,
-          profileImageMap,
         ),
       )
       .join('');
 
+    const displayedComments = [];
     for (const container of listEl.querySelectorAll('[data-comment-safety]')) {
       const item = container.closest('[data-comment-id]');
       const comment = visibleById.get(Number(item?.dataset.commentId));
       if (!comment) continue;
+      displayedComments.push({ container, item, comment });
       void mountCommunityActions(container, {
         authorId: comment.author_id,
         kind: 'comment',
+        compact: true,
         id: comment.id,
         secretPassword,
         onBlock: () => renderComments(postId, secretPassword),
       });
     }
-    prepareCharacterEffects(listEl);
-    bindAllCommentRichEditors(listEl);
     focusTargetCommentFromUrl();
     refreshCommentEmoticonUi();
+
+    void loadProfileAssetMap(comments.map((comment) => comment.author_id)).then((profiles) => {
+      if (!isCurrent()) return;
+      for (const { item, comment } of displayedComments) {
+        const author = item.querySelector('.comment-author-wrap');
+        const profile = profiles.get(String(comment.author_id || '').trim());
+        if (!author || !profile) continue;
+        const { profileImageUrl, characterImageUrl, characterEffectItemId } = profile;
+        const avatar = author.querySelector('.comment-author-avatar');
+        const character = author.querySelector('.comment-author-character');
+        if (profileImageUrl !== DEFAULT_PROFILE_IMAGE) avatar.src = profileImageUrl;
+        if (characterImageUrl !== DEFAULT_CHARACTER_IMAGE) character.src = characterImageUrl;
+        if (characterEffectItemId) {
+          character.insertAdjacentHTML('afterend', renderCharacterEffectHtml(
+            getCharacterEffectRenderMeta(characterEffectItemId, 'comment'),
+          ));
+        }
+      }
+      prepareCharacterEffects(listEl);
+    }).catch((error) => console.error('[post-comments] decorate authors failed:', error));
+
+    if (currentUserId) {
+      void getMyRole().then((role) => {
+        if (!isCurrent() || !role.isAdmin) return;
+        for (const { container, comment } of displayedComments) {
+          if (String(comment.author_id) === String(currentUserId)) continue;
+          let actions = container.nextElementSibling;
+          if (!actions) {
+            actions = document.createElement('div');
+            actions.className = 'comment-item__actions';
+            container.after(actions);
+          }
+          actions.insertAdjacentHTML('beforeend', renderDeleteButton(comment.id, false));
+        }
+      }).catch((error) => console.error('[post-comments] get role failed:', error));
+    }
   } catch (error) {
+    if (!isCurrent()) return;
     console.error('[post-comments] render failed:', error);
     countEl.textContent = '0';
     syncTopCommentMeta(0, false);
@@ -1001,7 +940,7 @@ async function renderComments(postId, secretPassword = null) {
   }
 }
 
-async function syncCommentFormUser(forceLocked = false) {
+async function syncCommentFormUser() {
   const userBox = $('commentUserBox');
   const hint = $('commentLoginHint');
   const textarea = $('commentBody');
@@ -1009,28 +948,20 @@ async function syncCommentFormUser(forceLocked = false) {
 
   if (!userBox || !hint || !textarea || !submitBtn) return;
 
-  if (forceLocked || isPrivatePostLocked) {
-    userBox.textContent = '작성자: 잠금 상태';
-    hint.textContent = '비밀글 비밀번호를 먼저 입력해야 댓글을 볼 수 있어.';
-    textarea.disabled = true;
-    submitBtn.disabled = true;
-    return;
-  }
-
   const user = await getCurrentUser();
+  if (isPrivatePostLocked || !textarea.isConnected) return;
+
+  setCommentInputDisabled(textarea, !user);
+  submitBtn.disabled = false;
 
   if (user) {
     userBox.textContent = `작성자: ${getDisplayName(user)}`;
     hint.textContent = '로그인 상태야. 댓글과 답글을 남길 수 있어.';
-    textarea.disabled = false;
-    submitBtn.disabled = false;
     return;
   }
 
   userBox.textContent = '작성자: 게스트';
   hint.textContent = '댓글 작성은 로그인 후 가능해.';
-  textarea.disabled = true;
-  submitBtn.disabled = false;
 }
 
 function findCommentItemById(commentId) {
@@ -1081,7 +1012,7 @@ function setEditMessage(commentId, text, type = '') {
 }
 
 function closeAllReplyForms() {
-  const forms = document.querySelectorAll('[data-role="reply-form"]');
+  const forms = document.querySelectorAll('[data-role="reply-form"]:not([hidden])');
   forms.forEach((form) => {
     form.hidden = true;
 
@@ -1164,28 +1095,29 @@ function closeAllEmoticonPanels() {
     });
 }
 
-function refreshCommentEmoticonUi() {
-  const html = renderCommentEmoticonPicker(ownedCommentEmoticons, {
+function renderCommentEmoticonPanel(panel) {
+  panel.innerHTML = renderCommentEmoticonPicker(ownedCommentEmoticons, {
     emptyText:
       '장착한 이모티콘팩이 없어. 인벤토리에서 이모티콘팩을 장착해줘.',
   });
+  switchEmoticonPickerPack(panel);
+}
 
+function refreshCommentEmoticonUi() {
   document
-    .querySelectorAll('.emoticon-picker[data-role="emoticon-panel"]')
-    .forEach((panel) => {
-      panel.innerHTML = html;
-      switchEmoticonPickerPack(panel);
-    });
+    .querySelectorAll('.emoticon-picker[data-role="emoticon-panel"]:not([hidden])')
+    .forEach(renderCommentEmoticonPanel);
 
   document
     .querySelectorAll('.comment-emoticon-toggle[data-action="toggle-emoticon"]')
     .forEach((button) => {
-      button.disabled = !commentEmoticonUserLoggedIn;
+      button.disabled = isPrivatePostLocked || !commentEmoticonUserLoggedIn;
     });
 }
 
-async function syncOwnedCommentEmoticons() {
+async function syncOwnedCommentEmoticons(form) {
   const user = await getCurrentUser();
+  if (!form.isConnected) return;
 
   if (!user?.id) {
     commentEmoticonUserLoggedIn = false;
@@ -1194,8 +1126,10 @@ async function syncOwnedCommentEmoticons() {
     return;
   }
 
+  const emoticons = await loadOwnedEmoticons(user.id);
+  if (!form.isConnected) return;
   commentEmoticonUserLoggedIn = true;
-  ownedCommentEmoticons = await loadOwnedEmoticons(user.id);
+  ownedCommentEmoticons = emoticons;
   refreshCommentEmoticonUi();
 }
 
@@ -1206,6 +1140,7 @@ function toggleEmoticonPanel(button) {
 
   const nextOpen = panel.hidden;
   closeAllEmoticonPanels();
+  if (nextOpen) renderCommentEmoticonPanel(panel);
   panel.hidden = !nextOpen;
   button.setAttribute('aria-expanded', String(nextOpen));
   button.setAttribute('aria-label', nextOpen ? '이모티콘 닫기' : '이모티콘 열기');
@@ -1241,7 +1176,7 @@ function insertEmoticonToForm(formEl, emoticonCode) {
   if (
     selection &&
     selection.rangeCount > 0 &&
-    editor.contains(selection.anchorNode)
+    editor.contains(selection.getRangeAt(0).commonAncestorContainer)
   ) {
     range = selection.getRangeAt(0);
   } else {
@@ -1256,17 +1191,8 @@ function insertEmoticonToForm(formEl, emoticonCode) {
   img.classList.remove('inline-emoticon--comment');
   img.classList.add('inline-emoticon--editor');
 
-  const spacer = document.createTextNode('\u00A0');
-
-  range.insertNode(spacer);
   range.insertNode(img);
-
-  const nextRange = document.createRange();
-  nextRange.setStartAfter(spacer);
-  nextRange.collapse(true);
-
-  selection?.removeAllRanges();
-  selection?.addRange(nextRange);
+  placeCaretAfterEmoticon(img);
 
   syncEditorToTextarea(textarea, editor);
 }
@@ -1383,7 +1309,7 @@ function toggleReplyThread(commentId) {
   toggleBtn.textContent = getThreadToggleLabel(replyCount, nextOpen);
 }
 
-async function handleCreateComment(postId) {
+function handleCreateComment(postId) {
   const form = $('commentForm');
   const textarea = $('commentBody');
   const submitBtn = $('commentSubmitBtn');
@@ -1466,8 +1392,8 @@ async function handleCreateComment(postId) {
       window.dispatchEvent(new Event('pickle-balance-changed'));
     }
 
-    await syncCommentFormUser(false);
-    await renderComments(postId, currentSecretPassword);
+    if (!form.isConnected) return;
+    await Promise.all([syncCommentFormUser(), renderComments(postId, currentSecretPassword)]);
   });
 }
 
@@ -1724,59 +1650,51 @@ function bindCommentListEvents(postId) {
   listEl.dataset.bound = '1';
 }
 
-async function syncCommentAccess(postId, secretPassword = '') {
-  try {
-    const post = await loadPostById(postId, secretPassword || null);
-
-    if (!post) {
-      renderLockedCommentState();
-      return;
-    }
-
-    if (post.isPrivate && !post.isUnlocked) {
-      currentSecretPassword = '';
-      isPrivatePostLocked = true;
-      renderLockedCommentState();
-      return;
-    }
-
-    currentSecretPassword = secretPassword || '';
-    isPrivatePostLocked = false;
-    await syncCommentFormUser(false);
-    await renderComments(postId, currentSecretPassword);
-  } catch (error) {
-    console.error('[post-comments] sync access failed:', error);
-    renderLockedCommentState();
-  }
-}
-
-export async function initPostComments() {
-  initEmoticonSettingsNavigation();
+export function initPostComments() {
   const form = $('commentForm');
   const textarea = $('commentBody');
   const submitBtn = $('commentSubmitBtn');
   const postId = getPostIdFromUrl();
 
-  if (!form || !textarea || !submitBtn || !postId) return;
+  if (!form || !textarea || !submitBtn || !postId || form.dataset.commentsBound) return;
+  form.dataset.commentsBound = '1';
 
+  initEmoticonSettingsNavigation();
   bindCommentListEvents(postId);
   bindMainCommentFormExtras();
-  await syncOwnedCommentEmoticons();
-  await handleCreateComment(postId);
-  await syncCommentAccess(postId, '');
+  handleCreateComment(postId);
 
-  window.addEventListener('mallin:post-access', async (e) => {
-    const detail = e?.detail || {};
-    const eventPostId = Number(detail.postId || 0);
+  currentSecretPassword = '';
+  isPrivatePostLocked = true;
+  ownedCommentEmoticons = [];
+  commentEmoticonUserLoggedIn = false;
+  setCommentFormDisabled(true, '댓글 정보를 확인하고 있어.');
+  refreshCommentEmoticonUi();
 
-    if (eventPostId !== postId) return;
+  const controller = new AbortController();
+  window.addEventListener('mallin:post-access', ({ detail }) => {
+    if (Number(detail?.postId) !== postId || !form.isConnected) return;
 
-    await syncCommentAccess(postId, String(detail.secretPassword || ''));
-    await syncOwnedCommentEmoticons();
-  });
+    const unavailable = detail.isAvailable === false;
+    isPrivatePostLocked = unavailable || (detail.isPrivate && !detail.isUnlocked);
+    if (isPrivatePostLocked) {
+      currentSecretPassword = '';
+      renderLockedCommentState(unavailable);
+      return;
+    }
 
-  listenEquipmentChanged(async (detail = {}) => {
+    currentSecretPassword = String(detail.secretPassword || '');
+    void Promise.all([
+      renderComments(postId, currentSecretPassword),
+      syncCommentFormUser(),
+      syncOwnedCommentEmoticons(form),
+    ]).catch((error) => console.error('[post-comments] sync form failed:', error));
+  }, { signal: controller.signal });
+
+  const disposeEquipmentListener = listenEquipmentChanged(async (detail = {}) => {
+    if (!form.isConnected || isPrivatePostLocked) return;
     const user = await getCurrentUser();
+    if (!form.isConnected || isPrivatePostLocked) return;
     const currentUserId = String(user?.id || '').trim();
     const changedUserId = String(detail?.userId || '').trim();
 
@@ -1785,8 +1703,11 @@ export async function initPostComments() {
 
     clearCommentProfileAssetCache(currentUserId);
 
-    if (isPrivatePostLocked) return;
-
     await renderComments(postId, currentSecretPassword);
   });
+
+  window.addEventListener('mallin:before-pjax-swap', () => {
+    controller.abort();
+    disposeEquipmentListener();
+  }, { once: true });
 }

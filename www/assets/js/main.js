@@ -1,137 +1,33 @@
-function getRuntimeSiteVersion() {
-  return String(window.__SITE_VERSION__ || 'dev').trim();
+function withModuleVersion(path) {
+  const version = String(window.__SITE_VERSION__ || 'dev').trim();
+  return `${path}?v=${encodeURIComponent(version)}`;
 }
 
-function withModuleVersion(path = '') {
-  const raw = String(path || '').trim();
-  if (!raw) return raw;
-
-  const sep = raw.includes('?') ? '&' : '?';
-  return `${raw}${sep}v=${encodeURIComponent(getRuntimeSiteVersion())}`;
-}
-
-function isInAccountFolder() {
-  return window.location.pathname.includes('/account/');
+function getPageName() {
+  return String(document.body?.dataset?.page || '').trim().toLowerCase();
 }
 
 function getPostsAllBaseUrl() {
-  return isInAccountFolder() ? '../posts-all.html' : './posts-all.html';
+  return window.location.pathname.includes('/account/')
+    ? '../posts-all.html'
+    : './posts-all.html';
 }
 
-let coreModules = null;
-let globalInitialized = false;
-let calendarAppModeInitialized = false;
-let calendarAppModeEarlyResult = false;
-
-const CALENDAR_APP_PAGE_MODULES = new Map([
-  ['calendar-study', 'studyCalendarModule'],
-  ['calendar-work', 'workCalendarModule'],
-  ['calendar-event', 'eventCalendarModule'],
-  ['calendar-groups', 'calendarGroupsModule'],
-]);
-
-const CALENDAR_APP_CORE_MODULES = new Set([
-  'mobileStabilityModule',
-  'siteVersionModule',
-  'appUpdatePopupModule',
-  'refreshControlModule',
-  'appCalendarModeModule',
-  'scrollButtonsModule',
-  'authStoreModule',
-  'calendarGroupsModule',
-]);
-
-const CORE_MODULE_SPECS = [
-  ['mobileStabilityModule', './modules/mobile-stability.js'],
-  ['siteVersionModule', './modules/site-version.js'],
-  ['appUpdatePopupModule', './modules/app-update-popup.js'],
-  ['refreshControlModule', './modules/refresh-control.js'],
-  ['appCalendarModeModule', './modules/app-calendar-mode.js'],
-  [
-    'calendarAppDownloadPopupModule',
-    './modules/calendar-app-download-popup.js',
-  ],
-  ['pwaInstallModule', './modules/pwa-install.js'],
-  ['cursorBuddyModule', './modules/cursor-buddy.js'],
-  ['postsUiModule', './modules/posts-ui.js'],
-  ['postDetailModule', './modules/post-detail.js'],
-  ['postsAllModule', './modules/posts-all.js'],
-  ['searchNavModule', './modules/search-nav.js'],
-  ['postDetailListModule', './modules/post-detail-list.js'],
-  ['postPrevNextModule', './modules/post-prev-next.js'],
-  ['scrollButtonsModule', './modules/scroll-buttons.js'],
-  ['writeModule', './modules/write.js'],
-  ['loginModule', './modules/login.js'],
-  ['signupModule', './modules/signup.js'],
-  ['layoutIncludesModule', './modules/layout-includes.js'],
-  ['prevMypageModule', './modules/prev-mypage.js'],
-  ['mypageModule', './modules/mypage.js'],
-  ['accountRecoveryModule', './modules/account-recovery.js'],
-  ['authStoreModule', './modules/auth-store.js'],
-  ['serviceMenuModule', './modules/service-menu.js'],
-  ['postViewsModule', './modules/post-views.js'],
-  ['postCommentsModule', './modules/post-comments.js'],
-  ['suggestionsBoardModule', './modules/suggestions-board.js'],
-  ['postReactionsModule', './modules/post-reactions.js'],
-  ['profileModule', './modules/profile.js'],
-  ['profileHistoryModule', './modules/profile-history.js'],
-  ['storeModule', './modules/store.js'],
-  ['careerAwardPopupModule', './modules/career-award-popup.js'],
-  ['dailyAttendancePopupModule', './modules/daily-attendance-popup.js'],
-  ['notificationsModule', './modules/notifications.js'],
-  ['notificationsPageModule', './modules/notifications-page.js'],
-  ['bgmPlayerModule', './modules/bgm-player.js'],
-  ['pickleStatusModule', './modules/pickle-status.js'],
-  ['siteStatsModule', './modules/site-stats.js'],
-  ['communityMembersModule', './modules/community-members.js'],
-  ['pjaxRouterModule', './modules/pjax-router.js'],
-  ['qnaBoardModule', './modules/qna-board.js'],
-  ['studyCalendarModule', './modules/study-calendar.js'],
-  ['eventCalendarModule', './modules/event-calendar.js'],
-  ['workCalendarModule', './modules/work-calendar.js'],
-  ['calendarGroupsModule', './modules/calendar-groups.js'],
-];
-
-async function initCalendarAppModeEarly() {
-  if (calendarAppModeInitialized) return calendarAppModeEarlyResult;
-
+async function runSafe(label, task, fallback) {
   try {
-    const { initCalendarAppMode } = await import(
-      withModuleVersion('./modules/app-calendar-mode.js')
-    );
-    calendarAppModeEarlyResult = initCalendarAppMode();
-    calendarAppModeInitialized = true;
-    return calendarAppModeEarlyResult;
+    return await task();
   } catch (error) {
-    console.error('[main] calendar app mode load failed:', error);
-    return false;
+    console.error(`[main] ${label} failed:`, error);
+    fallback?.();
   }
 }
 
-async function loadCoreModules(calendarPageModule) {
-  if (coreModules) return coreModules;
+function loadModule(path) {
+  return import(withModuleVersion(path));
+}
 
-  const specs = calendarPageModule
-    ? CORE_MODULE_SPECS.filter(([key]) =>
-      key === calendarPageModule || CALENDAR_APP_CORE_MODULES.has(key),
-    )
-    : CORE_MODULE_SPECS;
-  const results = await Promise.allSettled(
-    specs.map(([, path]) => import(withModuleVersion(path))),
-  );
-
-  coreModules = Object.fromEntries(CORE_MODULE_SPECS.map(([key]) => [key, {}]));
-  specs.forEach(([key, path], index) => {
-    const result = results[index];
-
-    if (result.status === 'fulfilled') {
-      coreModules[key] = result.value;
-    } else {
-      console.error(`[main] module load failed: ${path}`, result.reason);
-    }
-  });
-
-  return coreModules;
+function initFeature(path, method, ...args) {
+  return runSafe(method, async () => (await loadModule(path))[method](...args));
 }
 
 function applyVersionToStaticLinks(withAssetVersion) {
@@ -142,526 +38,240 @@ function applyVersionToStaticLinks(withAssetVersion) {
     .forEach((link) => {
       const href = link.getAttribute('href');
       if (!href) return;
-      link.href = withAssetVersion(href);
+      const versioned = withAssetVersion(href);
+      if (versioned !== href) link.href = versioned;
     });
-}
-
-async function runSafe(label, fn, options = {}) {
-  const { fallback } = options;
-
-  try {
-    await fn();
-  } catch (error) {
-    console.error(`[main] ${label} failed:`, error);
-    if (typeof fallback === 'function') {
-      fallback(error);
-    }
-  }
 }
 
 function renderHomeFallback(selector, message) {
   const root = document.querySelector(selector);
-  if (!root) return;
-
-  root.innerHTML = `<div class="empty">${message}</div>`;
+  if (root) root.innerHTML = `<div class="empty">${message}</div>`;
 }
 
-async function initSocialAuthControls() {
-  const page = String(document.body?.dataset?.page || '').trim().toLowerCase();
-  if (['login', 'signup', 'prev-mypage', 'mypage'].includes(page)) {
-    await runSafe('social login controls', async () => {
-      const { initSocialAuthUI } = await import(withModuleVersion('./modules/social-auth.js'));
-      await initSocialAuthUI();
-    });
+function initSocialAuthControls() {
+  if (['login', 'signup', 'prev-mypage', 'mypage'].includes(getPageName())) {
+    return initFeature('./modules/social-auth.js', 'initSocialAuthUI');
   }
 }
 
-async function initPageModules(modules) {
-  const page = String(document.body?.dataset?.page || '')
-    .trim()
-    .toLowerCase();
-  await initSocialAuthControls();
+async function initPageModules() {
+  const root = document.querySelector('main');
+  const page = getPageName();
+  const isCurrentPage = () => root?.isConnected !== false;
+  const init = (path, method, fallback) => runSafe(method, async () => {
+    const module = await loadModule(path);
+    // The visitor may have opened another page while a feature was downloading.
+    if (isCurrentPage()) await module[method]();
+  }, () => { if (isCurrentPage()) fallback?.(); });
 
-  const {
-    postsUiModule,
-    postDetailModule,
-    postsAllModule,
-    postDetailListModule,
-    postPrevNextModule,
-    scrollButtonsModule,
-    writeModule,
-    loginModule,
-    signupModule,
-    prevMypageModule,
-    mypageModule,
-    accountRecoveryModule,
-    postViewsModule,
-    postCommentsModule,
-    suggestionsBoardModule,
-    postReactionsModule,
-    profileModule,
-    profileHistoryModule,
-    storeModule,
-    qnaBoardModule,
-    studyCalendarModule,
-    eventCalendarModule,
-    workCalendarModule,
-    calendarGroupsModule,
-    calendarAppDownloadPopupModule,
-    notificationsPageModule,
-  } = modules;
-
-  const { initPostsUI } = postsUiModule;
-  const { initPostDetail } = postDetailModule;
-  const { initPostsAll } = postsAllModule;
-  const { initPostDetailList } = postDetailListModule;
-  const { initPostPrevNext } = postPrevNextModule;
-  const { initScrollButtons } = scrollButtonsModule;
-  const { initWrite } = writeModule;
-  const { initLogin } = loginModule;
-  const { initSignup } = signupModule;
-  const { initPrevMypage } = prevMypageModule;
-  const { initMypage } = mypageModule;
-  const { initAccountRecovery } = accountRecoveryModule;
-  const { initPostViews } = postViewsModule;
-  const { initPostComments } = postCommentsModule;
-  const { initSuggestionsBoard } = suggestionsBoardModule;
-  const { initPostReactions } = postReactionsModule;
-  const { initProfile } = profileModule;
-  const { initProfileHistory } = profileHistoryModule;
-  const { initStore } = storeModule;
-  const { initQnaBoard } = qnaBoardModule;
-  const { initStudyCalendar } = studyCalendarModule;
-  const { initEventCalendar } = eventCalendarModule;
-  const { initWorkCalendar } = workCalendarModule;
-  const { initCalendarGroupsPage } = calendarGroupsModule;
-  const { initNotificationsPage } = notificationsPageModule;
-  const { initCalendarAppDownloadPopup = () => {} } =
-    calendarAppDownloadPopupModule;
-  // 공통
-  await runSafe('scroll buttons', async () => {
-    initScrollButtons();
-  });
+  void init('./modules/scroll-buttons.js', 'initScrollButtons');
+  if (page.startsWith('calendar-') && !document.documentElement.classList.contains('is-calendar-app-mode')) {
+    void init('./modules/calendar-app-download-popup.js', 'initCalendarAppDownloadPopup');
+  }
+  const year = document.querySelector('#year');
+  if (year) year.textContent = String(new Date().getFullYear());
 
   switch (page) {
-    case 'community-members':
-      await runSafe('community members page', async () => {
-        await modules.communityMembersModule.initCommunityMembers();
-      });
-      break;
     case 'home':
     case 'index':
     case 'study':
     case 'work':
     case 'event':
-    case 'career':
-      await runSafe('posts ui', async () => {
-        await initPostsUI();
-      }, {
-        fallback: () => {
+    case 'career': {
+      const posts = document.querySelector('#latestList, #careerBestList')
+        ? init('./modules/posts-ui.js', 'initPostsUI', () => {
           renderHomeFallback('#latestList', '최신 업로드를 불러오지 못했어.');
-        },
+        })
+        : undefined;
+      if (document.getElementById('storeFeaturedGrid')) {
+        void init('./modules/store.js', 'initStore', () => {
+          renderHomeFallback('#storeFeaturedGrid', '상점 품목을 불러오지 못했어. 잠시 후 다시 시도해줘.');
+        });
+      }
+      if (document.getElementById('studyCalendarPreview')) {
+        void init('./modules/study-calendar.js', 'initStudyCalendar');
+      }
+      if (document.getElementById('workCalendarPreview')) {
+        void init('./modules/work-calendar.js', 'initWorkCalendar');
+      }
+      if (document.getElementById('eventCalendarPreview')) {
+        void init('./modules/event-calendar.js', 'initEventCalendar');
+      }
+      return posts;
+    }
+    case 'post': {
+      // The comments listener must be ready when the post publishes its access state.
+      const comments = init('./modules/post-comments.js', 'initPostComments');
+      await runSafe('initPostDetail', async () => {
+        const { initPostDetail } = await loadModule('./modules/post-detail.js');
+        await comments;
+        if (isCurrentPage()) await initPostDetail();
+      }, () => {
+        if (!isCurrentPage()) return;
+        const title = document.getElementById('postTitle');
+        if (title) title.textContent = '로딩 실패';
       });
-
-      await runSafe('store module', async () => {
-        await initStore();
-      }, {
-        fallback: () => {
-          renderHomeFallback(
-            '#storeFeaturedGrid',
-            '상점 품목을 불러오지 못했어. 잠시 후 다시 시도해줘.',
-          );
-        },
-      });
-
-      await runSafe('study calendar', async () => {
-        initStudyCalendar();
-      });
-
-      await runSafe('event calendar', async () => {
-        initEventCalendar();
-      });
-
-      await runSafe('work calendar', async () => {
-        initWorkCalendar();
-      });
+      if (!isCurrentPage()) return;
+      void init('./modules/post-detail-list.js', 'initPostDetailList');
+      void init('./modules/post-prev-next.js', 'initPostPrevNext');
+      void init('./modules/post-reactions.js', 'initPostReactions');
       break;
-
-    case 'calendar-work':
-      await runSafe('work calendar', async () => {
-        await initWorkCalendar();
-      });
-      break;
-
-    case 'calendar-study':
-      await runSafe('study calendar', async () => {
-        await initStudyCalendar();
-      });
-      break;
-
-    case 'calendar-event':
-      await runSafe('event calendar', async () => {
-        await initEventCalendar();
-      });
-      break;
-
-    case 'calendar-groups':
-      await runSafe('calendar groups', async () => {
-        await initCalendarGroupsPage();
-      });
-      break;
-
+    }
     case 'posts-all':
-      await runSafe('posts all', async () => {
-        await initPostsAll();
-      });
-      break;
-
-    case 'qna':
-      await runSafe('qna board', async () => {
-        await initQnaBoard();
-      });
-      break;
-
-    case 'post':
-      await runSafe('post views', async () => {
-        initPostViews();
-      });
-
-      await runSafe(
-        'post detail',
-        async () => {
-          await initPostDetail();
-        },
-        {
-          fallback: () => {
-            const titleEl = document.getElementById('postTitle');
-            if (titleEl) titleEl.textContent = '로딩 실패';
-          },
-        },
-      );
-
-      await runSafe('post detail list', async () => {
-        await initPostDetailList();
-      });
-
-      await runSafe('post prev/next', async () => {
-        await initPostPrevNext();
-      });
-
-      await runSafe('post reactions', async () => {
-        await initPostReactions();
-      });
-
-      await runSafe('post comments', async () => {
-        await initPostComments();
-      });
-      break;
-
+      return init('./modules/posts-all.js', 'initPostsAll');
+    case 'saved-articles':
+      return init('./modules/saved-articles-page.js', 'initSavedArticlesPage');
+    case 'community-members':
+      return init('./modules/community-members.js', 'initCommunityMembers');
     case 'write':
-      await runSafe('write module', async () => {
-        await initWrite();
-      });
-      break;
+      return init('./modules/write.js', 'initWrite');
     case 'login':
-      await runSafe('login module', async () => {
-        initLogin();
-      });
-      break;
-
+      return init('./modules/login.js', 'initLogin');
     case 'signup':
-      await runSafe('signup module', async () => {
-        initSignup();
-      });
-      break;
-
+      return init('./modules/signup.js', 'initSignup');
     case 'prev-mypage':
-      await runSafe('prev mypage module', async () => {
-        initPrevMypage();
-      });
-      break;
-
+      return init('./modules/prev-mypage.js', 'initPrevMypage');
     case 'mypage':
-      await runSafe('mypage module', async () => {
-        await initMypage();
-      });
-      break;
-
+      return init('./modules/mypage.js', 'initMypage');
     case 'find-password':
     case 'reset-password':
-      await runSafe('account recovery module', async () => {
-        initAccountRecovery();
-      });
-      break;
-
+      return init('./modules/account-recovery.js', 'initAccountRecovery');
     case 'profile':
     case 'profile-setting':
     case 'inventory':
-      await runSafe('profile module', async () => {
-        await initProfile();
-      });
-      break;
-
+      return init('./modules/profile.js', 'initProfile');
     case 'profile-history':
-      await runSafe('profile history module', async () => {
-        await initProfileHistory();
-      });
-      break;
-
+      return init('./modules/profile-history.js', 'initProfileHistory');
     case 'store':
     case 'store-item':
-      await runSafe('store module', async () => {
-        await initStore();
-      });
-      break;
-
+      return init('./modules/store.js', 'initStore');
     case 'suggestion':
-      await runSafe('suggestions board', async () => {
-        await initSuggestionsBoard();
-      });
-      break;
-
+      return init('./modules/suggestions-board.js', 'initSuggestionsBoard');
+    case 'qna':
+      return init('./modules/qna-board.js', 'initQnaBoard');
     case 'notifications':
-      await runSafe('notifications page', async () => {
-        await initNotificationsPage();
-      });
-      break;
-
-    default:
-      break;
+      return init('./modules/notifications-page.js', 'initNotificationsPage');
+    case 'calendar-work':
+      return init('./modules/work-calendar.js', 'initWorkCalendar');
+    case 'calendar-study':
+      return init('./modules/study-calendar.js', 'initStudyCalendar');
+    case 'calendar-event':
+      return init('./modules/event-calendar.js', 'initEventCalendar');
+    case 'calendar-groups':
+      return init('./modules/calendar-groups.js', 'initCalendarGroupsPage');
   }
-
-  if (CALENDAR_APP_PAGE_MODULES.has(page)) {
-    await runSafe('calendar app download popup page retry', async () => {
-      initCalendarAppDownloadPopup();
-    });
-  }
-
-  const y = document.querySelector('#year');
-  if (y) y.textContent = String(new Date().getFullYear());
 }
 
-async function initGlobalModules(modules) {
-  if (globalInitialized) return;
-
-  const {
-    mobileStabilityModule,
-    siteVersionModule,
-    appUpdatePopupModule,
-    refreshControlModule,
-    pwaInstallModule,
-    appCalendarModeModule,
-    calendarAppDownloadPopupModule,
-    cursorBuddyModule,
-    searchNavModule,
-    layoutIncludesModule,
-    authStoreModule,
-    serviceMenuModule,
-
-    careerAwardPopupModule,
-    dailyAttendancePopupModule,
-    notificationsModule,
-    bgmPlayerModule,
-    pickleStatusModule,
-    siteStatsModule,
-    pjaxRouterModule,
-  } = modules;
-
-  const { initMobileStability = () => {} } = mobileStabilityModule;
-
-  const {
-    initSiteAutoUpdates = () => {},
-    withAssetVersion = (path) => path,
-  } = siteVersionModule;
-
-  const { initAppUpdatePopup = async () => {} } = appUpdatePopupModule;
-  const { initRefreshControls = () => {} } = refreshControlModule;
-  const { initPwaInstall = async () => {} } = pwaInstallModule;
-  const { initCalendarAppMode = () => false } = appCalendarModeModule;
-  const { initCalendarAppDownloadPopup = () => {} } =
-    calendarAppDownloadPopupModule;
-  const { initCursorBuddy = () => {} } = cursorBuddyModule;
-  const { initSearchNav = () => {} } = searchNavModule;
-  const {
-    initLayoutIncludes = async () => {},
-    refreshLayoutState = async () => {},
-  } = layoutIncludesModule;
-  const { initAuthUI = async () => {}, updateAuthUI = async () => {} } =
-    authStoreModule;
-  const { initServiceMenu = () => {} } = serviceMenuModule;
-  const { initCareerAwardPopup = async () => {} } =
-    careerAwardPopupModule;
-  const { initDailyAttendancePopup = async () => {} } =
-    dailyAttendancePopupModule;
-  const { initNotifications = async () => {} } = notificationsModule;
-  const { initBgmPlayer = async () => {} } = bgmPlayerModule;
-  const { initPickleStatus = async () => {} } = pickleStatusModule;
-  const { initSiteStats = async () => {} } = siteStatsModule;
-  const { initPjaxRouter = async () => {} } = pjaxRouterModule;
-
-  applyVersionToStaticLinks(withAssetVersion);
-
-  const calendarAppMode = calendarAppModeInitialized
-    ? calendarAppModeEarlyResult
-    : initCalendarAppMode();
-
-  if (!calendarAppMode) {
-    await runSafe('calendar app download popup', async () => {
-      initCalendarAppDownloadPopup();
-    });
-
-    await runSafe('pwa install', async () => {
-      await initPwaInstall();
-    });
-  }
-
-  await runSafe('mobile stability', async () => {
-    initMobileStability();
+async function initWebsiteFeatures(layoutReady, authStore, pageReady) {
+  // Ordinary documents already loaded these links from HTML. Only an update needs fresh URLs.
+  const refreshAssets = new URLSearchParams(window.location.search).has('_updated');
+  const versionReady = runSafe('site updates', async () => {
+    const version = await loadModule('./modules/site-version.js');
+    if (refreshAssets) applyVersionToStaticLinks(version.withAssetVersion);
+    version.initSiteAutoUpdates();
+    return version;
   });
 
-  await runSafe('app update popup', async () => {
-    await initAppUpdatePopup();
+  void initFeature('./modules/pwa-install.js', 'initPwaInstall', { pageReady });
+  void initFeature('./modules/cursor-buddy.js', 'initCursorBuddy', {
+    selector: '#cukeBuddy',
+    offsetX: 8,
+    offsetY: 8,
+    maxRotate: 50,
   });
 
-  if (!calendarAppMode) {
-    initSiteAutoUpdates();
-  }
-
-  // 저장된 세션 판정을 먼저 끝내 비로그인 UI가 잠깐 확정되는 것을 막는다.
-  await runSafe('auth session recovery', async () => {
-    await initAuthUI();
+  const layout = await layoutReady;
+  void runSafe('header authentication', authStore.updateAuthUI);
+  void initFeature('./modules/service-menu.js', 'initServiceMenu');
+  void initFeature('./modules/search-nav.js', 'initSearchNav', {
+    baseUrl: getPostsAllBaseUrl(),
+    defaultTab: 'all',
   });
 
-  if (!calendarAppMode) {
-    await runSafe('layout includes', async () => {
-      await initLayoutIncludes();
-      await updateAuthUI();
+  void runSafe('page navigation', async () => {
+    const { initPjaxRouter } = await loadModule('./modules/pjax-router.js');
+    initPjaxRouter({
+      mainSelector: 'main',
+      onAfterSwap: async () => {
+        if (refreshAssets) {
+          const version = await versionReady;
+          if (version) applyVersionToStaticLinks(version.withAssetVersion);
+        }
+        void initSocialAuthControls();
+        await layout?.refreshLayoutState();
+        await authStore.updateAuthUI();
+        void initFeature('./modules/refresh-control.js', 'initRefreshControls');
+        void initFeature('./modules/service-menu.js', 'initServiceMenu');
+        await initPageModules();
+        void initFeature('./modules/mobile-stability.js', 'initMobileStability');
+      },
     });
-  }
-
-  await runSafe('refresh controls', async () => {
-    initRefreshControls();
   });
 
-  // BGM은 최대한 빨리 초기화해서
-  // 새로고침 직후 자동 재생 복구 시도를 앞당긴다.
-  if (!calendarAppMode) {
-    await runSafe('bgm player module', async () => {
-      await initBgmPlayer();
-    });
-  }
-
-  if (!calendarAppMode) {
-    await runSafe('service menu', async () => {
-      initServiceMenu();
-    });
-
-    await runSafe('career award popup', async () => {
-      await initCareerAwardPopup();
-    });
-
-    await runSafe('daily attendance popup', async () => {
-      await initDailyAttendancePopup();
-    });
-
-    await runSafe('cursor buddy', async () => {
-      initCursorBuddy({
-        selector: '#cukeBuddy',
-        offsetX: 8,
-        offsetY: 8,
-        maxRotate: 50,
-      });
-    });
-
-    await runSafe('search nav', async () => {
-      initSearchNav({ baseUrl: getPostsAllBaseUrl(), defaultTab: 'all' });
-    });
-
-    await runSafe('notifications module', async () => {
-      await initNotifications();
-    });
-
-    await runSafe('pickle status module', async () => {
-      await initPickleStatus();
-    });
-
-    await runSafe('site stats', async () => {
-      void initSiteStats();
-    });
-
-    await runSafe('pjax router', async () => {
-      await initPjaxRouter({
-        mainSelector: 'main',
-        onAfterSwap: async () => {
-          applyVersionToStaticLinks(withAssetVersion);
-          initMobileStability();
-          await refreshLayoutState();
-          initRefreshControls();
-          await updateAuthUI();
-          initServiceMenu();
-          await initPageModules(modules);
-          initMobileStability();
-        },
-      });
-    });
-  }
-
-  globalInitialized = true;
+  void initFeature('./modules/notifications.js', 'initNotifications');
+  void initFeature('./modules/pickle-status.js', 'initPickleStatus');
+  void initFeature('./modules/site-stats.js', 'initSiteStats');
+  // Keep audio and the two popups in order without holding up page content.
+  await initFeature('./modules/bgm-player.js', 'initBgmPlayer');
+  await initFeature('./modules/career-award-popup.js', 'initCareerAwardPopup');
+  await initFeature('./modules/daily-attendance-popup.js', 'initDailyAttendancePopup');
 }
 
 async function initApp() {
-  let modules;
-
-  const page = String(document.body?.dataset?.page || '').trim().toLowerCase();
-  const calendarType = /^calendar-(study|work|event)$/.exec(page)?.[1];
+  const calendarType = /^calendar-(study|work|event|groups)$/.exec(getPageName())?.[1];
   if (calendarType) {
     const monthLabel = document.getElementById(`${calendarType}CalendarMonthLabel`);
     if (monthLabel) {
       const date = new Date();
       monthLabel.textContent = `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
     }
+    const moduleName = calendarType === 'groups' ? 'calendar-groups' : `${calendarType}-calendar`;
+    void runSafe('calendar preload', () => loadModule(`./modules/${moduleName}.js`));
   }
-
-  const calendarAppMode = await initCalendarAppModeEarly();
-  const calendarPageModule = calendarAppMode && CALENDAR_APP_PAGE_MODULES.get(page);
-  // Authentication controls do not depend on slower site counters, feeds or store modules.
+  const modeReady = initFeature('./modules/app-calendar-mode.js', 'initCalendarAppMode');
+  const layoutReady = modeReady.then(calendarMode => {
+    if (calendarMode) return null;
+    return runSafe('layout includes', async () => {
+      const layout = await loadModule('./modules/layout-includes.js');
+      await layout.initLayoutIncludes();
+      return layout;
+    });
+  });
   void initSocialAuthControls();
-
-  // Warm the active calendar while native routing checks for an incoming link.
-  const calendarModules = calendarPageModule ? loadCoreModules(calendarPageModule) : null;
+  const refreshAssets = new URLSearchParams(window.location.search).has('_updated');
+  const [calendarMode, authStore] = await Promise.all([
+    modeReady,
+    refreshAssets ? loadModule('./modules/auth-store.js') : import('./modules/auth-store.js'),
+  ]);
 
   if (window.Capacitor?.isNativePlatform?.()) {
-    let socialReturned = false;
-    await runSafe('social login app return', async () => {
-      const { initSocialAuthNative } = await import(withModuleVersion('./modules/social-auth-native.js'));
-      socialReturned = await initSocialAuthNative();
-    });
-    if (socialReturned) return;
-
-    let widgetOpened = false;
-    await runSafe('calendar widget navigation', async () => {
-      const { initCalendarWidgetNavigation } = await import(
-        withModuleVersion('./modules/calendar-native-widgets.js')
-      );
-      widgetOpened = await initCalendarWidgetNavigation();
-    });
-    if (widgetOpened) return;
+    if (await initFeature('./modules/social-auth-native.js', 'initSocialAuthNative')) return;
+    if (await initFeature('./modules/calendar-native-widgets.js', 'initCalendarWidgetNavigation')) return;
   }
 
-  try {
-    modules = await (calendarModules || loadCoreModules());
-  } catch (error) {
-    console.error('[main] core module load failed:', error);
-    return;
+  if (await authStore.routePendingSecondFactor()) return;
+  await runSafe('auth session recovery', authStore.initAuthUI);
+
+  const pageReady = initPageModules();
+  void initFeature('./modules/mobile-stability.js', 'initMobileStability');
+  void initFeature('./modules/refresh-control.js', 'initRefreshControls');
+  void initFeature('./modules/app-update-popup.js', 'initAppUpdatePopup');
+
+  if (!calendarMode) {
+    void runSafe('website features', () => initWebsiteFeatures(layoutReady, authStore, pageReady));
+  } else if (refreshAssets) {
+    void runSafe('refresh assets', async () => {
+      const { withAssetVersion } = await loadModule('./modules/site-version.js');
+      applyVersionToStaticLinks(withAssetVersion);
+    });
   }
 
-  if (await modules.authStoreModule.routePendingSecondFactor?.()) return;
-  await initGlobalModules(modules);
-  await initPageModules(modules);
+  await pageReady;
 }
 
+const start = () => { void runSafe('startup', initApp); };
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp, { once: true });
+  document.addEventListener('DOMContentLoaded', start, { once: true });
 } else {
-  initApp();
+  start();
 }

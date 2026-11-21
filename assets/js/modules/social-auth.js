@@ -78,10 +78,14 @@ export async function availableSocialProviders() {
 export async function startSocialLogin(provider, purpose = 'login') {
   if (!['login', 'reauth'].includes(purpose)) throw new Error('ACCOUNT_LINKING_DISABLED');
   const native = window.Capacitor?.isNativePlatform?.() === true;
+  const siteBridge = !native && window.location.origin === 'https://mallin-oi.com'
+    ? window.webkit?.messageHandlers?.mallinoiSite
+    : null;
+  const siteApp = typeof siteBridge?.postMessage === 'function';
   const verifier = randomVerifier();
   const callback = new URL(resolveSitePath('account/social-callback.html'), window.location.href);
   const result = await socialApi('start', { provider, purpose, challenge: await hash(verifier),
-    returnUri: native ? 'mallinoi://auth/callback' : callback.href });
+    returnUri: native || siteApp ? 'mallinoi://auth/callback' : callback.href });
   const allowedHosts = { google: 'accounts.google.com', kakao: 'kauth.kakao.com', apple: 'appleid.apple.com' };
   const destination = new URL(result.url);
   if (destination.protocol !== 'https:' || destination.hostname !== allowedHosts[provider]) throw new Error('AUTH_FAILED');
@@ -95,6 +99,21 @@ export async function startSocialLogin(provider, purpose = 'login') {
     if (!launcher) throw new Error('AUTH_FAILED');
     const result = await launcher.openUrl({ url: destination.href });
     if (result?.completed === false) throw new Error('AUTH_FAILED');
+  } else if (siteApp) {
+    let request;
+    try {
+      request = await siteBridge.postMessage({ action: 'authenticate', url: destination.href, request: pending.request });
+    } catch {
+      // A cancelled system session may be followed by a different login attempt.
+      if (pendingRequest()?.verifier === verifier) clearSocialRequest();
+      throw new Error('PROVIDER_FAILED');
+    }
+    const saved = pendingRequest();
+    if (typeof request !== 'string' || !request || request !== pending.request ||
+        saved?.request !== request || saved.verifier !== verifier) throw new Error('REQUEST_MISMATCH');
+    const returnUrl = new URL('/account/social-callback.html', window.location.origin);
+    returnUrl.hash = new URLSearchParams({ request }).toString();
+    window.location.assign(returnUrl.href);
   } else window.location.assign(destination.href);
 }
 export function accountVerificationHref() {

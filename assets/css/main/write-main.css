@@ -413,6 +413,10 @@
   margin: 12px 0;
 }
 
+.write-editor .write-embed[data-media-type="image"] {
+  margin-block-start: 0;
+}
+
 .write-embed.is-active .write-embed__media-el,
 .write-embed.is-active .write-embed__file {
   outline: 2px solid var(--color-primary);

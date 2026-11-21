@@ -251,19 +251,22 @@ function markStandaloneClass() {
   );
 }
 
-export async function initPwaInstall() {
+export async function initPwaInstall({ pageReady } = {}) {
   if (initialized) return;
   initialized = true;
 
   markStandaloneClass();
   loadPwaCss();
 
-  await registerServiceWorker();
-
-  installBeforeInstallPromptListener();
-  maybeShowIosGuide();
+  if (!window.webkit?.messageHandlers?.mallinoiSite) {
+    installBeforeInstallPromptListener();
+    maybeShowIosGuide();
+  }
 
   window
     .matchMedia?.('(display-mode: standalone)')
     .addEventListener?.('change', markStandaloneClass);
+
+  await pageReady;
+  await registerServiceWorker();
 }

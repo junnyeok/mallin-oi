@@ -87,6 +87,13 @@
         font-weight: 700;
         text-decoration: none;
       }
+
+      .offline-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--space-8);
+      }
     </style>
   </head>
 
@@ -107,10 +114,32 @@
           게시글, 로그인, 캘린더 데이터는 인터넷 연결 후 다시 이용할 수 있어.
         </p>
 
-        <a class="offline-card__button" href="./index.html">
-          홈으로 돌아가기
-        </a>
+        <div class="offline-card__actions">
+          <a class="offline-card__button" href="./index.html">
+            홈으로 돌아가기
+          </a>
+          <a class="offline-card__button" id="offlineSavedArticles" href="./saved-articles.html?offline=1">
+            저장된 글
+          </a>
+        </div>
       </section>
     </main>
+    <script type="module">
+      const savedLink = document.getElementById('offlineSavedArticles');
+      if (location.pathname.includes('/account/')) savedLink.href = '../saved-articles.html?offline=1';
+
+      const bridge = window.webkit?.messageHandlers?.mallinoiSite;
+      if (typeof bridge?.postMessage === 'function') {
+        savedLink.addEventListener('click', async (event) => {
+          event.preventDefault();
+          try {
+            if (await bridge.postMessage({ action: 'openOfflineLibrary' })) return;
+          } catch (error) {
+            console.warn('[offline] saved articles unavailable:', error);
+          }
+          location.assign(savedLink.href);
+        });
+      }
+    </script>
   </body>
 </html>

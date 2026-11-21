@@ -1,4 +1,4 @@
-import { loadPosts, sortByDateDesc } from './posts-repo.js';
+import { loadPostSummaries, sortByDateDesc } from './posts-repo.js';
 
 function truncateText(text, maxLength) {
   const value = String(text || '').trim();
@@ -53,11 +53,12 @@ export async function initPostPrevNext() {
 
   let posts = [];
   try {
-    posts = await loadPosts();
+    posts = await loadPostSummaries(prevBtn.closest('main'));
   } catch (e) {
     console.error('[post-prev-next] load failed:', e);
     return;
   }
+  if (!prevBtn.isConnected) return;
 
   const ordered = sortByDateDesc(posts);
   const idx = ordered.findIndex((p) => Number(p.id) === currentId);

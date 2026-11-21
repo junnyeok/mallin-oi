@@ -3,6 +3,65 @@ import { hasNativeSecondFactor, mfaEnabled, restoreSecondFactor, usesEmailMfa } 
 
 import { mountEmailCode } from './mfa-email.js';
 
+const authenticatorPackage = 'com.google.android.apps.authenticator2';
+const googlePlay = 'https://play.google.com/store/apps/details?id=' + authenticatorPackage;
+const appStore = 'https://apps.apple.com/kr/app/id388497605';
+const appStoreApp = 'itms-apps://apps.apple.com/kr/app/id388497605';
+
+function mountAuthenticatorShortcut(el, browser = globalThis.window) {
+  const { userAgent = '', maxTouchPoints = 0 } = browser?.navigator || {};
+  const ios = /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
+  const android = /Android/.test(userAgent);
+  const open = el('open-authenticator');
+  const apple = el('authenticator-app-store');
+  const google = el('authenticator-google-play');
+  apple.href = ios ? appStoreApp : appStore;
+  google.href = googlePlay;
+  apple.hidden = android;
+  google.hidden = ios;
+  open.hidden = !ios && !android;
+  el('authenticator-name').hidden = !open.hidden;
+  el('authenticator-links').hidden = false;
+
+  if (android) {
+    // Scope the launch to Google's app and let Chrome open Play when the app is unavailable.
+    open.href = 'intent://totp/#Intent;scheme=otpauth;package=' + authenticatorPackage +
+      ';S.browser_fallback_url=' + encodeURIComponent(googlePlay) + ';end';
+  } else if (ios) {
+    open.href = 'googleauthenticator://';
+    apple.removeAttribute('target');
+    let cancelFallback;
+    open.onclick = event => {
+      const bridge = browser.webkit?.messageHandlers?.mallinoiSite;
+      if (bridge?.postMessage) {
+        event.preventDefault();
+        bridge.postMessage({ action: 'openGoogleAuthenticator' }).then(opened => {
+          if (!opened && apple.isConnected) apple.click();
+        }).catch(() => { if (apple.isConnected) apple.click(); });
+        return;
+      }
+
+      // Safari does not report whether a custom URL opened an app.
+      const page = browser.document;
+      cancelFallback?.();
+      const cancel = () => {
+        browser.clearTimeout(timer);
+        page.removeEventListener('visibilitychange', onVisibility);
+        browser.removeEventListener('pagehide', cancel);
+        cancelFallback = null;
+      };
+      const onVisibility = () => { if (page.hidden) cancel(); };
+      const timer = browser.setTimeout(() => {
+        cancel();
+        if (open.isConnected && !page.hidden && page.hasFocus()) browser.location.assign(appStoreApp);
+      }, 1600);
+      cancelFallback = cancel;
+      page.addEventListener('visibilitychange', onVisibility);
+      browser.addEventListener('pagehide', cancel);
+    };
+  }
+}
+
 function value(result) {
   if (result.error) throw result.error;
   return result.data;
@@ -52,12 +111,24 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
       <p data-help></p>
       <label data-choice hidden>인증 앱 선택<select data-factors></select></label>
       <label data-name-field hidden>기기 이름<input data-name maxlength="48" placeholder="예: 내 휴대폰" autocomplete="off"></label>
-      <div data-setup hidden>
-        <img data-qr width="192" height="192" alt="인증 앱에 등록할 QR 코드">
-        <details><summary>같은 휴대폰에서 설정 키로 등록하기</summary>
-          <p>인증 앱에서 시간 기반 키를 선택하고 아래 키를 입력해 주세요.</p><code data-secret></code>
-        </details>
+      <div class="mfa-setup" data-setup tabindex="-1" hidden>
+        <div class="mfa-setup__scan">
+          <p><strong>QR 코드로 등록하기</strong></p>
+          <img data-qr width="192" height="192" alt="인증 앱에 등록할 QR 코드">
+        </div>
+        <div class="mfa-setup__key">
+          <p><strong>설정키로 등록하기</strong></p>
+          <p>인증 앱에서 시간 기반 키를 선택하고 아래 키를 입력해 주세요.</p>
+          <code data-secret></code>
+        </div>
       </div>
+      ${mode === 'login' ? '' : `
+        <div class="mfa-authenticator-links" data-authenticator-links aria-label="Google Authenticator" role="group" hidden>
+          <strong data-authenticator-name hidden>Google Authenticator</strong>
+          <a class="social-auth-link" data-open-authenticator hidden>Google Authenticator 열기</a>
+          <a class="social-auth-link" data-authenticator-app-store target="_blank" rel="noopener noreferrer">App Store</a>
+          <a class="social-auth-link" data-authenticator-google-play target="_blank" rel="noopener noreferrer">Google Play</a>
+        </div>`}
       <label data-code-field hidden>인증 앱의 6자리 코드
         <input data-code inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000">
       </label>
@@ -87,6 +158,7 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
       : '등록한 인증 앱을 열고 현재 표시된 코드를 입력해 주세요.';
     el('name').value = mode === 'add' ? '예비 인증 앱' : '내 휴대폰';
     el('submit').textContent = enrolling ? '등록용 QR 코드 보기' : '인증하기';
+    if (mode !== 'login') mountAuthenticatorShortcut(el);
     loaded = true;
   }
 
@@ -119,9 +191,9 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
         el('name-field').hidden = true;
         el('code-field').hidden = false;
         el('code').required = true;
-        el('help').textContent = '인증 앱으로 QR 코드를 스캔한 뒤 6자리 코드를 입력해 주세요.';
+        el('help').textContent = '인증 앱에 계정을 추가한 뒤 앱에 표시되는 6자리 코드를 입력해 주세요.';
         el('submit').textContent = '등록 완료';
-        el('code').focus();
+        el('setup').focus();
       } else {
         const code = el('code').value.trim();
         if (!/^\d{6}$/.test(code)) { el('status').textContent = '숫자 6자리를 입력해 주세요.'; return; }
@@ -172,13 +244,23 @@ export async function mountMfaSettings(root, userId, verifiedId) {
   const factors = (account.factors || []).filter(f => f.status === 'verified' && f.factor_type === 'totp');
   if (!root.isConnected) return;
   root.replaceChildren();
-  const help = document.createElement('p');
   const enabled = mfaEnabled(account);
-  help.textContent = !enabled ? '2차 인증이 꺼져 있어요. 켜면 로그인하거나 마이페이지에 들어갈 때 6자리 코드를 확인해요.' : emailMode ? '2차 인증이 켜져 있어요. 가입 이메일로 인증번호를 받아요. 인증 앱으로 변경하면 다음 로그인부터 앱에 표시된 코드를 사용해요.' : '2차 인증이 켜져 있어요. 인증 앱을 사용 중이에요. 휴대폰을 잃어버릴 때를 대비해 다른 기기에 예비 인증 앱을 등록할 수 있어요.';
-  root.append(help);
+  const overview = document.createElement('div');
+  overview.className = 'mypage-mfa-overview';
+  const summary = document.createElement('div');
+  const state = document.createElement('strong');
+  state.textContent = !enabled ? '2차 인증이 꺼져 있어요' : emailMode ? '이메일 인증 사용 중' : '인증 앱 사용 중';
+  const help = document.createElement('p');
+  help.textContent = !enabled
+    ? '켜면 로그인하거나 마이페이지에 들어갈 때 6자리 코드를 확인해요.'
+    : emailMode
+      ? '가입 이메일로 인증번호를 받아요. 인증 앱으로 변경하면 다음 로그인부터 앱에 표시된 코드를 사용해요.'
+      : '휴대폰을 잃어버릴 때를 대비해 다른 기기에 예비 인증 앱을 등록할 수 있어요.';
+  summary.append(state, help);
   const status = document.createElement('p');
   status.setAttribute('role', 'status');
   const editor = document.createElement('div');
+  editor.className = 'mypage-mfa-editor';
   async function readyToChange() {
     const { error } = await supabase.rpc('require_recent_account_mfa');
     if (!error) return true;
@@ -197,6 +279,7 @@ export async function mountMfaSettings(root, userId, verifiedId) {
   }
   const toggle = document.createElement('button');
   toggle.type = 'button';
+  toggle.className = enabled ? 'mypage-sub-btn' : 'mypage-btn';
   toggle.textContent = enabled ? '2차 인증 끄기' : '2차 인증 켜기';
   toggle.onclick = async () => {
     if (enabled && !window.confirm('2차 인증을 끌까요? 등록한 인증 앱도 이 계정에서 해제돼요.')) return;
@@ -221,19 +304,24 @@ export async function mountMfaSettings(root, userId, verifiedId) {
     } catch (error) { status.textContent = explain(error); }
     finally { toggle.disabled = false; }
   };
-  root.append(toggle);
+  overview.append(summary, toggle);
+  root.append(overview);
   if (!enabled) {
     root.append(editor, status);
     return;
   }
+  const devices = document.createElement('ul');
+  devices.className = 'mypage-mfa-devices';
+  devices.setAttribute('aria-label', '등록된 인증 앱');
   for (const factor of (emailMode ? [] : factors)) {
-    const row = document.createElement('div');
+    const row = document.createElement('li');
     row.className = 'social-auth-row';
     row.append(document.createTextNode(label(factor)));
     // The factor just proved on this page stays usable when retiring another device.
     if (factor.id !== verifiedId && factors.some(f => f.id === verifiedId)) {
       const remove = document.createElement('button');
       remove.type = 'button';
+      remove.className = 'mypage-sub-btn';
       remove.textContent = '등록 해제';
       remove.onclick = async () => {
         if (!window.confirm(label(factor) + ' 등록을 해제할까요?')) return;
@@ -248,10 +336,12 @@ export async function mountMfaSettings(root, userId, verifiedId) {
       };
       row.append(remove);
     }
-    root.append(row);
+    devices.append(row);
   }
+  if (devices.childElementCount) root.append(devices);
   const add = document.createElement('button');
   add.type = 'button';
+  add.className = 'mypage-btn';
   add.textContent = emailMode ? '인증 앱으로 변경' : '인증 앱 추가';
   add.onclick = async () => {
     add.disabled = true;

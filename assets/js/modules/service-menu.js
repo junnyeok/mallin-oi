@@ -6,6 +6,32 @@ export function openCalendarManagePopup() {
   return calendarManageController?.open() === true;
 }
 
+function loadMenuImages(panel) {
+  panel.querySelectorAll('img[data-src]').forEach((image) => {
+    image.src = image.dataset.src;
+    delete image.dataset.src;
+  });
+}
+
+function bindNativeSavedArticles(closeMenu) {
+  const link = document.getElementById('savedArticlesLink');
+  const bridge = window.webkit?.messageHandlers?.mallinoiSite;
+  if (!link || typeof bridge?.postMessage !== 'function') return;
+
+  link.addEventListener('click', async (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeMenu({ restoreFocus: true, immediate: true });
+    try {
+      if (await bridge.postMessage({ action: 'openOfflineLibrary' })) return;
+    } catch (error) {
+      console.warn('[service-menu] offline library failed:', error);
+    }
+    window.alert('저장된 글을 열지 못했어. 다시 시도해줘.');
+  });
+}
+
 export function initServiceMenu() {
   const menu = document.getElementById('serviceMenu');
   if (!menu) return;
@@ -93,6 +119,7 @@ export function initServiceMenu() {
     suppressClickUntil = 0;
     lockPageScroll();
 
+    loadMenuImages(panel);
     panel.hidden = false;
 
     if (backdrop) {
@@ -137,6 +164,8 @@ export function initServiceMenu() {
       button.focus({ preventScroll: true });
     }
   };
+
+  bindNativeSavedArticles(closeMenu);
 
   const settleSwipe = ({ shouldClose = false } = {}) => {
     if (!swipeGesture) return;
@@ -279,6 +308,7 @@ export function initServiceMenu() {
 
     closeMenu();
 
+    loadMenuImages(calendarManagePanel);
     calendarManagePanel.hidden = false;
     calendarManageBackdrop.hidden = false;
 

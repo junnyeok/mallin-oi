@@ -3,6 +3,7 @@ import { mountCommunityActions } from './community-safety.js';
 import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, publicProfileHref } from './auth-store.js';
+import { getSavedArticles, removeArticle, saveArticle } from './saved-articles.js';
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
@@ -13,17 +14,15 @@ const MODULE_VERSION = encodeURIComponent(
   String(window.__SITE_VERSION__ || 'dev').trim(),
 );
 
-const { getCharacterEffectRenderMeta } = await import(
-  `./store-data.js?v=${MODULE_VERSION}`
-);
-
-const { prepareCharacterEffects, renderCharacterEffectHtml } = await import(
-  `./character-effects.js?v=${MODULE_VERSION}`
-);
-
-const { listenEquipmentChanged } = await import(
-  `./equipment-events.js?v=${MODULE_VERSION}`
-);
+const [
+  { getCharacterEffectRenderMeta },
+  { prepareCharacterEffects, renderCharacterEffectHtml },
+  { listenEquipmentChanged },
+] = await Promise.all([
+  import(`./store-data.js?v=${MODULE_VERSION}`),
+  import(`./character-effects.js?v=${MODULE_VERSION}`),
+  import(`./equipment-events.js?v=${MODULE_VERSION}`),
+]);
 
 function getProfileImageSrc(url) {
   return String(url || '').trim() || DEFAULT_PROFILE_IMAGE;
@@ -178,11 +177,12 @@ function escapeHtml(str) {
     .replaceAll("'", '&#39;');
 }
 
-function emitPostAccessState(post, secretPassword = '') {
+function emitPostAccessState(post, secretPassword = '', postId = post?.id) {
   window.dispatchEvent(
     new CustomEvent('mallin:post-access', {
       detail: {
-        postId: Number(post?.id || 0),
+        postId: Number(postId || 0),
+        isAvailable: !!post,
         isPrivate: !!post?.isPrivate,
         isUnlocked: !!post?.isUnlocked,
         secretPassword: String(secretPassword || ''),
@@ -314,6 +314,7 @@ async function renderAuthor(post) {
         loadCharacterImageUrl(post.authorId),
         loadCharacterEffectItemId(post.authorId),
       ]);
+    if (!authorEl.isConnected) return;
 
     const characterEffectHtml = renderCharacterEffectImg(characterEffectItemId);
     authorEl.innerHTML = `
@@ -813,6 +814,7 @@ async function bindOwnerActions(post) {
 
   try {
     const [user, role] = await Promise.all([getCurrentUser(), getMyRole()]);
+    if (!actionWrap.isConnected) return;
 
     const isOwner =
       !!user && !!post?.authorId && String(user.id) === String(post.authorId);
@@ -917,7 +919,7 @@ function renderUnlockedState(post) {
   }
 }
 
-async function applyPost(post, secretPassword = null) {
+function applyPost(post, secretPassword = null) {
   syncThemeByCategory(post.category || 'home');
 
   const titleEl = $('postTitle');
@@ -951,8 +953,8 @@ async function applyPost(post, secretPassword = null) {
         : `💬 ${Number(post.commentCount || 0)}`;
   }
 
-  await renderAuthor(post);
   renderPostDateTime(post);
+  syncOfflineSaveButton(post);
   renderTags(post.tags);
 
   if (post.isPrivate && !post.isUnlocked) {
@@ -961,15 +963,19 @@ async function applyPost(post, secretPassword = null) {
     renderUnlockedState(post);
   }
 
-  await bindOwnerActions(post);
-  await mountCommunityActions($('postSafetyActions'), {
+  document.title = `${post.title} | 말린오이닷컴`;
+  emitPostAccessState(post, secretPassword);
+
+  const previousActions = $('postSafetyActions');
+  const currentActions = previousActions?.cloneNode(false);
+  if (currentActions) previousActions.replaceWith(currentActions);
+  void Promise.all([renderAuthor(post), bindOwnerActions(post), mountCommunityActions(currentActions, {
     authorId: post.authorId,
     kind: 'post',
     id: post.isPrivate && !post.isUnlocked ? null : post.id,
     secretPassword,
     onBlock: () => redirectToPostList(post.category),
-  });
-  document.title = `${post.title} | 말린오이닷컴`;
+  })]).catch((error) => console.error('[post-detail] post extras failed:', error));
 }
 
 let shareToastTimer = null;
@@ -1057,6 +1063,74 @@ function bindShareButton() {
   });
 }
 
+let postSaveListeners;
+
+function syncOfflineSaveButton(post) {
+  postSaveListeners?.abort();
+  const button = $('postOfflineSaveBtn');
+  if (!button) return;
+
+  button.hidden = post.isPrivate;
+  button.onclick = null;
+  if (post.isPrivate) return;
+
+  const bridge = window.webkit?.messageHandlers?.mallinoiSite;
+  if (typeof bridge?.postMessage === 'function') {
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        if (await bridge.postMessage({ action: 'saveOfflineArticle' })) return;
+      } catch (error) {
+        console.warn('[post-detail] offline save sheet failed:', error);
+      } finally {
+        button.disabled = false;
+      }
+      showShareToast('오프라인 저장 화면을 열지 못했어. 다시 시도해줘.');
+    };
+    return;
+  }
+
+  const isSaved = () => getSavedArticles().some((article) => article.id === String(post.id));
+  const syncPressedState = () => {
+    try {
+      const saved = isSaved();
+      button.setAttribute('aria-pressed', String(saved));
+      button.classList.toggle('is-active', saved);
+    } catch {
+      // Keep the post readable if this browser does not allow local storage.
+      button.setAttribute('aria-pressed', 'false');
+      button.classList.remove('is-active');
+    }
+  };
+  button.onclick = () => {
+    try {
+      if (isSaved()) {
+        if (removeArticle(post.id)) showShareToast('글 저장을 취소했어.');
+      } else {
+        saveArticle({ id: post.id, title: post.title, body: post.body });
+        showShareToast('글이 저장됐어.');
+      }
+    } catch (error) {
+      console.warn('[post-detail] saved article update failed:', error);
+      showShareToast('글 저장 상태를 바꾸지 못했어. 다시 시도해줘.');
+    } finally {
+      syncPressedState();
+    }
+  };
+
+  syncPressedState();
+  const listeners = new AbortController();
+  postSaveListeners = listeners;
+  document.addEventListener('mallin:saved-articles-changed', syncPressedState, {
+    signal: listeners.signal,
+  });
+  window.addEventListener('mallin:before-pjax-swap', () => listeners.abort(), {
+    once: true,
+    signal: listeners.signal,
+  });
+}
+
 export async function initPostDetail() {
   const bodyEl = document.getElementById('postBody');
   if (!bodyEl) return;
@@ -1072,26 +1146,36 @@ export async function initPostDetail() {
     return;
   }
 
-  let post = await loadPostById(postId);
-  let activePost = post;
+  let post;
+  try {
+    post = await loadPostById(postId, null, { includeCommentCount: false });
+  } catch (error) {
+    if (bodyEl.isConnected) emitPostAccessState(null, '', postId);
+    throw error;
+  }
+  if (!bodyEl.isConnected) return;
 
   if (!post) {
+    emitPostAccessState(null, '', postId);
     alert('지금 볼 수 없는 글이야. 전체 게시물로 이동할게.');
     redirectToPostList('home');
     return;
   }
 
-  const newViews = await incrementPostView(post.id);
-  if (Number.isFinite(newViews)) {
-    post = { ...post, views: newViews };
-  }
+  let activePost = post;
+  applyPost(post);
+  void incrementPostView(post.id).then((newViews) => {
+    if (!bodyEl.isConnected || !Number.isFinite(newViews)) return;
+    const views = Math.max(getDisplayViews(activePost), newViews);
+    activePost = { ...activePost, views };
+    const viewsEl = $('postViews');
+    if (viewsEl) viewsEl.textContent = `👀 ${views}`;
+  }).catch((error) => console.error('[post-detail] view count failed:', error));
 
-  await applyPost(post);
-  activePost = post;
-  emitPostAccessState(post, '');
-
-  listenEquipmentChanged(async (detail = {}) => {
+  const disposeEquipmentListener = listenEquipmentChanged(async (detail = {}) => {
+    if (!bodyEl.isConnected) return;
     const user = await getCurrentUser();
+    if (!bodyEl.isConnected) return;
     const currentUserId = String(user?.id || '').trim();
     const changedUserId = String(detail?.userId || '').trim();
 
@@ -1100,6 +1184,7 @@ export async function initPostDetail() {
 
     await refreshAuthorEquipmentIfMine(activePost);
   });
+  window.addEventListener('mallin:before-pjax-swap', disposeEquipmentListener, { once: true });
 
   const secretForm = $('postSecretForm');
   const secretInput = $('postSecretPassword');
@@ -1120,7 +1205,8 @@ export async function initPostDetail() {
       setSecretMessage('확인 중...');
 
       try {
-        const unlockedPost = await loadPostById(postId, pw);
+        const unlockedPost = await loadPostById(postId, pw, { includeCommentCount: false });
+        if (!bodyEl.isConnected) return;
 
         if (!unlockedPost) {
           setSecretMessage('게시물을 찾지 못했어.', true);
@@ -1135,9 +1221,8 @@ export async function initPostDetail() {
 
         secretInput.value = '';
         setSecretMessage('');
-        activePost = unlockedPost;
-        await applyPost(unlockedPost, pw);
-        emitPostAccessState(unlockedPost, pw);
+        activePost = { ...unlockedPost, views: Math.max(getDisplayViews(activePost), getDisplayViews(unlockedPost)) };
+        applyPost(activePost, pw);
       } catch (error) {
         console.error('[post-detail] unlock failed:', error);
         setSecretMessage('비밀번호 확인 중 오류가 발생했어.', true);

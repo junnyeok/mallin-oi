@@ -20,6 +20,16 @@ function detectBasePath() {
   return isSubDir ? '../' : './';
 }
 
+function getLayoutPage() {
+  const body = document.body;
+  const page = String(body?.dataset?.page || '').trim().toLowerCase();
+  if (page !== 'post') return page;
+
+  // The post may have applied its category before the layout finished loading.
+  return ['study', 'work', 'event', 'career']
+    .find(category => body.classList.contains(`theme-${category}`)) || page;
+}
+
 async function fetchPartial(url) {
   const res = await fetch(url, { cache: 'no-cache' });
   if (!res.ok) {
@@ -36,9 +46,13 @@ async function injectPartial(whereEl, fileName, base) {
     window.location.href,
   ).toString();
 
-  let html = await fetchPartial(url);
-  html = html.replaceAll('__BASE__', base);
-  whereEl.innerHTML = html;
+  try {
+    const html = await fetchPartial(url);
+    whereEl.innerHTML = html.replaceAll('__BASE__', base);
+  } catch (error) {
+    console.error(`[layout-includes] ${fileName} inject error:`, error);
+    whereEl.innerHTML = '';
+  }
 }
 
 /* ================= 로고 ================= */
@@ -73,29 +87,19 @@ function getLogoSrcByPage(page, base) {
 }
 
 function applyPageLogos(base) {
-  const page = String(document.body?.dataset?.page || '')
-    .trim()
-    .toLowerCase();
-
-  const src = getLogoSrcByPage(page, base);
+  const src = getLogoSrcByPage(getLayoutPage(), base);
 
   const headerLogo = document.getElementById('siteLogoImg');
-  if (headerLogo) headerLogo.src = src;
+  if (headerLogo && headerLogo.getAttribute('src') !== src) headerLogo.src = src;
 
   const footerLogo = document.getElementById('footerLogoImg');
-  if (footerLogo) footerLogo.src = src;
+  if (footerLogo && footerLogo.getAttribute('src') !== src) footerLogo.src = src;
 }
 
 function applyLayoutBase(base) {
   const setHref = (selector, href) => {
     document.querySelectorAll(selector).forEach((el) => {
       el.setAttribute('href', href);
-    });
-  };
-
-  const setSrc = (selector, src) => {
-    document.querySelectorAll(selector).forEach((el) => {
-      el.setAttribute('src', src);
     });
   };
 
@@ -128,8 +132,9 @@ function applyLayoutBase(base) {
     `${base}career.html`,
   );
 
-  setSrc('#siteLogoImg', `${base}images/logo-home.png`);
-  setSrc('#siteLogoWord', `${base}images/logo-word.png`);
+  const wordmark = document.getElementById('siteLogoWord');
+  const wordmarkSrc = `${base}images/logo-word.png`;
+  if (wordmark && wordmark.getAttribute('src') !== wordmarkSrc) wordmark.src = wordmarkSrc;
 
   // footer
   setHref('.site-footer .footer-brand__logo', `${base}index.html`);
@@ -141,7 +146,6 @@ function applyLayoutBase(base) {
     `${base}career.html`,
   );
 
-  setSrc('#footerLogoImg', `${base}images/logo-home.png`);
 }
 
 /* ================= nav 활성화 ================= */
@@ -163,11 +167,7 @@ function getNavHrefByPage(page, base) {
 }
 
 function applyCurrentNav(base) {
-  const page = String(document.body?.dataset?.page || '')
-    .trim()
-    .toLowerCase();
-
-  const currentHref = getNavHrefByPage(page, base);
+  const currentHref = getNavHrefByPage(getLayoutPage(), base);
   const links = document.querySelectorAll('.site-nav__link');
 
   if (!links.length) return;
@@ -356,24 +356,10 @@ export async function initLayoutIncludes() {
   }
 
   if (!layoutInjected) {
-    if (headerHost) {
-      try {
-        await injectPartial(headerHost, 'header.html', base);
-      } catch (err) {
-        console.error('[layout-includes] header inject error:', err);
-        headerHost.innerHTML = '';
-      }
-    }
-
-    if (footerHost) {
-      try {
-        await injectPartial(footerHost, 'footer.html', base);
-      } catch (err) {
-        console.error('[layout-includes] footer inject error:', err);
-        footerHost.innerHTML = '';
-      }
-    }
-
+    await Promise.all([
+      injectPartial(headerHost, 'header.html', base),
+      injectPartial(footerHost, 'footer.html', base),
+    ]);
     layoutInjected = true;
   }
 

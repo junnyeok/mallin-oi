@@ -36,13 +36,17 @@
 #mypagePrivate[hidden], #mypageMfaGate[hidden], .mfa-form [hidden] { display: none; }
 .mfa-form { display: grid; gap: 14px; }
 .mfa-form label { display: grid; gap: 6px; }
-.mfa-form :is(input, select), .mfa-form button, #mypageMfaSettings button {
+.mfa-form :is(input, select), .mfa-form button {
   min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-border);
   border-radius: var(--radius-btn); background: var(--color-surface); color: var(--color-text); font-size: 16px;
 }
 .mfa-form img { display: block; width: min(192px, 100%); height: auto; background: white; margin: 0 auto 12px; }
-.mfa-form code { overflow-wrap: anywhere; user-select: all; }
-.mfa-form button, #mypageMfaSettings button { cursor: pointer; font-weight: 700; }
+.mfa-form code {
+  display: block; padding: 8px 12px; border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn); overflow-wrap: anywhere; user-select: all;
+}
+.mfa-authenticator-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.mfa-form button { cursor: pointer; font-weight: 700; }
 .mfa-form button[type=submit] { background: var(--color-primary); }
 .mfa-form [data-status]:empty { display: none; }
 .mfa-countdown { margin: 0; font-variant-numeric: tabular-nums; }

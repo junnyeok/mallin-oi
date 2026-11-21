@@ -81,3 +81,77 @@ test('account verification exposes only its provider, never link or password-add
   get('socialProviderVerify').listeners.click();await new Promise(resolve=>setImmediate(resolve));
   assert.equal(calls.at(-1).start[0],'apple');assert.equal(calls.at(-1).start[1],'reauth');
 });
+
+const auth = (await readFile(new URL('../assets/js/modules/social-auth.js', import.meta.url), 'utf8'))
+  .replace(/^import[\s\S]*?from ['"][^'"]+['"];\n/gm, '')
+  .replace(/^export /gm, '');
+
+function startFixture({ siteApp = true, calendarApp = false, complete = request => request } = {}) {
+  const request = '11111111-1111-4111-8111-111111111111';
+  const providerUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+  const storage = new Map();
+  const requests = [];
+  const navigations = [];
+  const launchUrls = [];
+  const location = new URL('https://mallin-oi.com/login.html');
+  location.assign = value => navigations.push(value);
+  const window = { location };
+  if (calendarApp) window.Capacitor = { isNativePlatform: () => true,
+    Plugins: { AppLauncher: { openUrl: async ({ url }) => { launchUrls.push(url); return { completed: true }; } } } };
+  if (siteApp) window.webkit = { messageHandlers: { mallinoiSite: { postMessage: async message => {
+    assert.equal(message.action, 'authenticate');
+    assert.equal(message.url, providerUrl);
+    assert.equal(message.request, request);
+    const pending = JSON.parse(storage.get('mallin:social-request:v1'));
+    assert.equal(pending.request, request);
+    assert.match(pending.verifier, /^[A-Za-z0-9_-]{43}$/);
+    return complete(request, storage);
+  } } } };
+  const start = runInNewContext(auth + '\nstartSocialLogin', {
+    window, URL, URLSearchParams, crypto, btoa, TextEncoder, document: { getElementById: () => null },
+    resolveSitePath: path => '/' + path,
+    localStorage: { setItem: (key, value) => storage.set(key, value), getItem: key => storage.get(key),
+      removeItem: key => storage.delete(key) },
+    supabase: { functions: { invoke: async (_, { body }) => {
+      requests.push(body);
+      return { data: { request, url: providerUrl } };
+    } } },
+  });
+  return { start, request, providerUrl, requests, navigations, storage, launchUrls };
+}
+
+test('iPhone site app sends auth through the system browser and resumes in the initiating site', async () => {
+  const flow = startFixture();
+  await flow.start('google', 'reauth');
+  assert.equal(flow.requests[0].returnUri, 'mallinoi://auth/callback');
+  assert.equal(flow.requests[0].purpose, 'reauth');
+  assert.deepEqual(flow.navigations, [`https://mallin-oi.com/account/social-callback.html#request=${flow.request}`]);
+});
+
+test('iPhone site app rejects mismatches and returns a retryable error after cancellation', async () => {
+  const mismatch = startFixture({ complete: () => 'unmatched-request' });
+  await assert.rejects(mismatch.start('google'), /REQUEST_MISMATCH/);
+  assert.deepEqual(mismatch.navigations, []);
+  const cancelled = startFixture({ complete: () => { throw new Error('system cancellation'); } });
+  await assert.rejects(cancelled.start('google'), /PROVIDER_FAILED/);
+  assert.equal(cancelled.storage.size, 0);
+  assert.deepEqual(cancelled.navigations, []);
+  const superseded = startFixture({ complete: (request, storage) => {
+    storage.set('mallin:social-request:v1', JSON.stringify({ request: 'new-request', expires: Date.now() + 5000 }));
+    return request;
+  } });
+  await assert.rejects(superseded.start('google'), /REQUEST_MISMATCH/);
+  assert.deepEqual(superseded.navigations, []);
+});
+
+test('the ordinary website and Capacitor calendar keep their login transports', async () => {
+  const web = startFixture({ siteApp: false });
+  await web.start('google');
+  assert.equal(web.requests[0].returnUri, 'https://mallin-oi.com/account/social-callback.html');
+  assert.deepEqual(web.navigations, [web.providerUrl]);
+  const calendar = startFixture({ calendarApp: true });
+  await calendar.start('google');
+  assert.equal(calendar.requests[0].returnUri, 'mallinoi://auth/callback');
+  assert.deepEqual(calendar.launchUrls, [calendar.providerUrl]);
+  assert.deepEqual(calendar.navigations, []);
+});

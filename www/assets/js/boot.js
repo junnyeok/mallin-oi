@@ -18,10 +18,13 @@ function getMainJsPath() {
 
 async function loadSiteVersion() {
   const versionUrl = new URL(getVersionJsonPath(), window.location.href);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 3000);
 
   try {
     const response = await fetch(versionUrl.href, {
       cache: 'no-store',
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -39,11 +42,21 @@ async function loadSiteVersion() {
   } catch (error) {
     console.warn('[boot] version load fallback:', error);
     return FALLBACK_SITE_VERSION;
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
 
 (async () => {
   try {
+    // The session module is needed on every page. Fetch it during the version lookup.
+    if (!new URLSearchParams(window.location.search).has('_updated')) {
+      const sessionPreload = document.createElement('link');
+      sessionPreload.rel = 'modulepreload';
+      sessionPreload.href = new URL('./modules/auth-store.js', import.meta.url).href;
+      document.head.append(sessionPreload);
+    }
+
     const siteVersion = await loadSiteVersion();
     window.__SITE_VERSION__ = siteVersion;
 

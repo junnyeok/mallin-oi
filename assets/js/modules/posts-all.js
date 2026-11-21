@@ -1,4 +1,5 @@
-import { loadPosts, sortByDateDesc, formatMMDD } from './posts-repo.js';
+import { loadPostSummaries, fillPostCommentCounts, sortByDateDesc, formatMMDD } from './posts-repo.js';
+import { renderPostListCommentCount, updatePostListCommentCounts } from './post-list-counts.js';
 import { getDisplayViews } from './post-views.js';
 
 const PER_PAGE = 10;
@@ -249,25 +250,26 @@ function isPostInRange(post, range) {
   return time >= range.start.getTime() && time <= range.end.getTime();
 }
 
-function getFeaturedPosts(posts, featured) {
-  let scoped = posts;
-
+function getFeaturedCandidates(posts, featured) {
   if (featured === 'month') {
     const range = getMonthRange();
-    scoped = scoped.filter((post) => isPostInRange(post, range));
+    return posts.filter((post) => isPostInRange(post, range));
   }
 
   if (featured === 'week') {
     const range = getWeekRange();
-    scoped = scoped.filter((post) => isPostInRange(post, range));
+    return posts.filter((post) => isPostInRange(post, range));
   }
 
   if (featured === 'day') {
     const range = getTodayRange();
-    scoped = scoped.filter((post) => isPostInRange(post, range));
+    return posts.filter((post) => isPostInRange(post, range));
   }
+  return posts;
+}
 
-  return [...scoped]
+function getFeaturedPosts(posts) {
+  return [...posts]
     .sort((a, b) => {
       const scoreDiff = getFeaturedScore(b) - getFeaturedScore(a);
       if (scoreDiff !== 0) return scoreDiff;
@@ -294,7 +296,7 @@ function renderNoticeRow(post) {
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">
-        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${renderPostListCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
@@ -307,7 +309,7 @@ function renderRow(post) {
         ${escapeHtml(post.isPrivate ? `🔒 ${post.title}` : post.title)}
       </span>
       <span class="post-row__meta">
-        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${renderPostListCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
@@ -368,29 +370,27 @@ export async function initPostsAll() {
   let allPosts = [];
 
   try {
-    allPosts = await loadPosts();
+    allPosts = await loadPostSummaries();
   } catch (error) {
-    console.error('[posts-all] loadPosts failed:', error);
+    console.error('[posts-all] post summaries unavailable:', error);
     rowsEl.innerHTML = `<div class="empty">게시물을 불러오지 못했어.</div>`;
     noticeListEl.innerHTML = `<div class="empty">고정 게시물을 불러오지 못했어.</div>`;
     return;
   }
+  if (!rowsEl.isConnected) return;
 
   const pinnedPosts = sortByDateDesc(allPosts.filter((post) => post.pinned));
+  const regularPosts = sortByDateDesc(allPosts.filter((post) => !post.pinned));
 
   noticeListEl.innerHTML = pinnedPosts.length
     ? pinnedPosts.map(renderNoticeRow).join('')
     : `<div class="empty">고정 게시물이 없어.</div>`;
 
   let state = getState();
+  let renderVersion = 0;
 
   function getFilteredPosts() {
-    return sortByDateDesc(
-      filterPosts(
-        allPosts.filter((post) => !post.pinned),
-        state,
-      ),
-    );
+    return filterPosts(regularPosts, state);
   }
 
   function renderPager(totalPages) {
@@ -438,21 +438,27 @@ export async function initPostsAll() {
     });
   }
 
-  function renderFeatured() {
-    const filtered = filterPosts(
-      allPosts.filter((post) => !post.pinned),
-      state,
-    );
+  async function renderFeatured(version) {
+    const candidates = getFeaturedCandidates(getFilteredPosts(), state.featured);
+    if (candidates.some((post) => post.commentCount === null)) {
+      rowsEl.innerHTML = '<div class="empty" role="status">주요게시물을 불러오는 중이야.</div>';
+      try {
+        await fillPostCommentCounts(candidates);
+      } catch (error) {
+        if (version !== renderVersion || !rowsEl.isConnected) return;
+        console.warn('[posts-all] ranking counts unavailable:', error);
+        rowsEl.innerHTML = '<div class="empty">주요게시물을 불러오지 못했어.</div>';
+        return;
+      }
+      if (version !== renderVersion || !rowsEl.isConnected) return;
+    }
 
-    const featuredPosts = getFeaturedPosts(filtered, state.featured);
-
+    const featuredPosts = getFeaturedPosts(candidates);
     rowsEl.innerHTML = featuredPosts.length
       ? featuredPosts
           .map((post, index) => renderFeaturedRow(post, index))
           .join('')
       : `<div class="empty">${getFeaturedEmptyMessage(state.featured)}</div>`;
-
-    renderPager(1);
   }
 
   function renderNormalList() {
@@ -470,16 +476,22 @@ export async function initPostsAll() {
       : `<div class="empty">조건에 맞는 게시물이 없어.</div>`;
 
     renderPager(totalPages);
+    return pagePosts;
   }
 
   function render() {
+    if (!rowsEl.isConnected) return;
+    const version = ++renderVersion;
     syncTabs(state.tab);
     syncFeaturedTabs(state.featured);
 
     if (state.featured) {
-      renderFeatured();
+      renderPager(1);
+      void renderFeatured(version);
+      void updatePostListCommentCounts(pinnedPosts, noticeListEl);
     } else {
-      renderNormalList();
+      const pagePosts = renderNormalList();
+      void updatePostListCommentCounts([...pinnedPosts, ...pagePosts], noticeListEl, rowsEl);
     }
 
     setState(state);

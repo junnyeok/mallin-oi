@@ -1,5 +1,7 @@
-let postsRepoModule = null;
-let postViewsModule = null;
+import { formatMMDD, loadLatestPosts, loadCareerMonthlyBest, loadPosts } from './posts-repo.js';
+import { getDisplayViews } from './post-views.js';
+import { renderPostListCommentCount, updatePostListCommentCounts } from './post-list-counts.js';
+
 let careerBestCarouselCleanup = null;
 
 const KST_TIME_ZONE = 'Asia/Seoul';
@@ -22,23 +24,6 @@ const kstDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: '2-digit',
   day: '2-digit',
 });
-
-function getRuntimeVersion() {
-  return encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
-}
-
-function importVersioned(path) {
-  return import(`${path}?v=${getRuntimeVersion()}`);
-}
-
-async function ensurePostsUiDeps() {
-  if (postsRepoModule && postViewsModule) return;
-
-  [postsRepoModule, postViewsModule] = await Promise.all([
-    importVersioned('./posts-repo.js'),
-    importVersioned('./post-views.js'),
-  ]);
-}
 
 function getPageCategory() {
   return document.body.dataset.page || 'home';
@@ -176,14 +161,8 @@ export function selectCareerMonthlyBest(
     .slice(0, safeLimit);
 }
 
-function scopePosts(posts, pageCategory) {
-  if (pageCategory === 'home') return posts;
-  if (pageCategory === 'post') return posts;
-  return posts.filter((p) => p.category === pageCategory);
-}
-
 function getViews(post) {
-  return postViewsModule.getDisplayViews(post);
+  return getDisplayViews(post);
 }
 
 function getTitle(post) {
@@ -192,10 +171,6 @@ function getTitle(post) {
 
 function getAuthorNickname(post) {
   return String(post?.authorNickname || '익명').trim() || '익명';
-}
-
-function getCommentCount(post) {
-  return Number(post?.commentCount || 0);
 }
 
 function getReactionCount(post) {
@@ -823,16 +798,44 @@ function renderLatestList(posts, listEl, pageCategory) {
       >
         <span class="mini__title">${escapeHtml(getTitle(p))}</span>
         <span class="mini__meta">
-          ${escapeHtml(postsRepoModule.formatMMDD(p.date))} · ${escapeHtml(
+          ${escapeHtml(formatMMDD(p.date))} · ${escapeHtml(
         getAuthorNickname(p)
-      )} · 👀 ${getViews(p)} · 👍 ${getReactionCount(p)} · 💬 ${getCommentCount(
-        p
-      )} · ${escapeHtml(getCategoryLabel(p.category))}
+      )} · 👀 ${getViews(p)} · 👍 ${getReactionCount(p)} · 💬 ${renderPostListCommentCount(p)} · ${escapeHtml(getCategoryLabel(p.category))}
         </span>
       </a>
     `
     )
     .join('');
+}
+
+async function loadLatestSection(listEl, pageCategory) {
+  const category = ['home', 'index', 'post'].includes(pageCategory) ? undefined : pageCategory;
+  try {
+    const posts = await loadLatestPosts({ category });
+    if (!listEl.isConnected) return;
+    renderLatestList(posts, listEl, pageCategory);
+    void updatePostListCommentCounts(posts, listEl);
+  } catch (error) {
+    console.error('[posts-ui] latest posts failed:', error);
+    listEl.innerHTML = `<p class="panel__desc">${getLoadErrorMessage(pageCategory)}</p>`;
+  }
+}
+
+async function loadCareerBestSection(listEl, monthRange) {
+  const awardMonth = `${monthRange.year}-${String(monthRange.month).padStart(2, '0')}-01`;
+  try {
+    const posts = await loadCareerMonthlyBest(awardMonth, CAREER_BEST_LIMIT);
+    if (listEl.isConnected) renderCareerBest(posts, listEl, monthRange, { alreadyRanked: true });
+  } catch (error) {
+    console.warn('[posts-ui] monthly best RPC failed, local fallback 사용:', error);
+    try {
+      const posts = await loadPosts();
+      if (listEl.isConnected) renderCareerBest(posts, listEl, monthRange);
+    } catch (fallbackError) {
+      console.error('[posts-ui] career best fallback failed:', fallbackError);
+      if (listEl.isConnected) renderCareerBestError(listEl);
+    }
+  }
 }
 
 export async function initPostsUI() {
@@ -859,51 +862,8 @@ export async function initPostsUI() {
     }
   }
 
-  let allPosts = [];
-  try {
-    await ensurePostsUiDeps();
-    allPosts = await postsRepoModule.loadPosts();
-  } catch (error) {
-    console.error('[posts-ui] loadPosts failed:', error);
-    if (latestEl) {
-      latestEl.innerHTML = `<p class="panel__desc">${getLoadErrorMessage(
-        pageCategory,
-      )}</p>`;
-    }
-    renderCareerBestError(careerBestEl);
-    return;
-  }
-
-  if (careerBestEl && monthRange) {
-    try {
-      const awardMonth = `${monthRange.year}-${String(
-        monthRange.month,
-      ).padStart(2, '0')}-01`;
-      const careerBestPosts = await postsRepoModule.loadCareerMonthlyBest(
-        awardMonth,
-        CAREER_BEST_LIMIT,
-      );
-      renderCareerBest(careerBestPosts, careerBestEl, monthRange, {
-        alreadyRanked: true,
-      });
-    } catch (error) {
-      console.warn(
-        '[posts-ui] monthly best RPC failed, local fallback 사용:',
-        error,
-      );
-      try {
-        renderCareerBest(allPosts, careerBestEl, monthRange);
-      } catch (renderError) {
-        console.error('[posts-ui] renderCareerBest failed:', renderError);
-        renderCareerBestError(careerBestEl);
-      }
-    }
-  }
-
-  if (latestEl) {
-    const scoped = scopePosts(allPosts, pageCategory);
-    const latest = postsRepoModule.sortByDateDesc(scoped).slice(0, 12);
-
-    renderLatestList(latest, latestEl, pageCategory);
-  }
+  await Promise.all([
+    latestEl && loadLatestSection(latestEl, pageCategory),
+    careerBestEl && monthRange && loadCareerBestSection(careerBestEl, monthRange),
+  ]);
 }

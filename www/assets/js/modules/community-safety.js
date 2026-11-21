@@ -102,14 +102,50 @@ export async function showCommunityReport({ kind, id, secretPassword = null }) {
   dialog.showModal();
 }
 
-export async function mountCommunityActions(container, { authorId, kind, id, secretPassword = null, onBlock }) {
+function compactActions(actions) {
+  const details = element('details');
+  details.className = 'community-safety__menu';
+  details.name = 'comment-safety';
+  const trigger = element('summary');
+  trigger.className = 'community-safety__trigger';
+  trigger.setAttribute('aria-label', '신고 및 차단');
+  trigger.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4M2 9a10 10 0 0 1 2-6m18 6a10 10 0 0 0-2-6" />
+  </svg>`;
+
+  const panel = element('div');
+  panel.className = 'community-safety__menu-panel';
+  panel.append(...actions);
+  panel.addEventListener('click', (event) => {
+    if (!event.target.closest('button')) return;
+    details.open = false;
+    trigger.focus();
+  });
+  details.addEventListener('keydown', (event) => {
+    if (!details.open || event.key !== 'Escape') return;
+    event.stopPropagation();
+    details.open = false;
+    trigger.focus();
+  });
+  details.append(trigger, panel);
+  return details;
+}
+
+document.addEventListener('click', (event) => {
+  for (const menu of document.querySelectorAll('.community-safety__menu[open]')) {
+    if (!menu.contains(event.target)) menu.open = false;
+  }
+});
+
+export async function mountCommunityActions(container, { authorId, kind, id, secretPassword = null, onBlock, compact = false }) {
   if (!container) return;
   container.replaceChildren();
   const user = await getCurrentUser();
   if (user?.id === authorId) return;
   const blocked = await getBlockedMemberIds();
+  const actions = [];
   if (!blocked.has(authorId) && id) {
-    container.append(button(labels[kind] + ' 신고', () =>
+    actions.push(button(labels[kind] + ' 신고', () =>
       showCommunityReport({ kind, id, secretPassword })));
   }
   if (authorId) {
@@ -129,21 +165,26 @@ export async function mountCommunityActions(container, { authorId, kind, id, sec
       blockCache = null;
       onBlock?.(isBlocked);
     });
-    container.append(change);
+    actions.push(change);
   }
+  if (actions.length) container.append(...(compact ? [compactActions(actions)] : actions));
 }
 
 export async function mountCommunitySettings(container, isAdmin) {
   if (!container) return;
+  const panels = container.querySelector('[data-community-panels]');
+  if (!panels) return;
   const blocked = await getBlockedMemberIds();
-  const details = element('details');
-  details.append(element('summary', '차단한 회원'));
-  if (!blocked.size) details.append(element('p', '차단한 회원이 없어요.'));
+  const { details, summary, list } = settingsPanel('차단한 회원');
+  const count = element('span', `${blocked.size}명`);
+  count.className = 'community-settings__count';
+  summary.append(count);
+  if (!blocked.size) list.append(settingsMessage('차단한 회원이 없어요.'));
   else {
     const { data } = await supabase.from('public_profiles').select('id,nickname').in('id', [...blocked]);
     for (const id of blocked) {
       const row = element('div');
-      row.className = 'community-safety__row';
+      row.className = 'community-settings__row';
       const link = element('a', data?.find((member) => member.id === id)?.nickname || '차단한 회원');
       link.href = './profile.html?user=' + encodeURIComponent(id);
       row.append(link, button('차단 해제', async (event) => {
@@ -156,38 +197,59 @@ export async function mountCommunitySettings(container, isAdmin) {
           return;
         }
         blockCache = null;
+        if (row.contains(document.activeElement)) summary.focus();
         row.remove();
         blocked.delete(id);
-        if (!blocked.size) details.append(element('p', '차단한 회원이 없어요.'));
+        count.textContent = `${blocked.size}명`;
+        if (!blocked.size) list.append(settingsMessage('차단한 회원이 없어요.'));
       }));
-      details.append(row);
+      list.append(row);
     }
   }
-  container.replaceChildren(details);
-  if (isAdmin) mountReportQueue(container);
+  panels.replaceChildren(details);
+  if (isAdmin) mountReportQueue(panels);
+}
+
+function settingsPanel(title) {
+  const details = element('details');
+  details.className = 'community-settings__panel';
+  const summary = element('summary', title);
+  const list = element('div');
+  list.className = 'community-settings__list';
+  details.append(summary, list);
+  return { details, summary, list };
+}
+
+function settingsMessage(text) {
+  const message = element('p', text);
+  message.className = 'community-settings__message';
+  message.setAttribute('role', 'status');
+  return message;
 }
 
 function mountReportQueue(container) {
-  const details = element('details');
-  const list = element('div');
-  details.append(element('summary', '신고 관리'), list);
+  const { details, summary, list } = settingsPanel('신고 관리');
   container.append(details);
+  let loadId = 0;
   details.addEventListener('toggle', async () => {
+    const request = ++loadId;
     if (!details.open) return;
+    list.replaceChildren(settingsMessage('신고를 불러오는 중이에요.'));
     const { data, error } = await supabase
       .from('community_reports')
       .select('id,target_kind,target_id,post_id,inquiry_thread_id,reason,created_at')
       .eq('resolved', false)
       .order('created_at', { ascending: true })
       .limit(100);
+    if (request !== loadId || !details.open || !details.isConnected) return;
     list.replaceChildren();
-    if (error || !data.length) {
-      list.append(element('p', error ? '신고를 불러오지 못했어요.' : '처리 대기 중인 신고가 없어요.'));
+    if (error || !data?.length) {
+      list.append(settingsMessage(error ? '신고를 불러오지 못했어요.' : '처리 대기 중인 신고가 없어요.'));
       return;
     }
     for (const item of data) {
       const row = element('div');
-      row.className = 'community-safety__row';
+      row.className = 'community-settings__row';
       const target = element('a', labels[item.target_kind] + ' #' + item.target_id);
       if (item.inquiry_thread_id) {
         const board = item.target_kind.startsWith('qna') ? 'qna' : 'suggestion';
@@ -201,27 +263,34 @@ function mountReportQueue(container) {
         target.href = './post.html?id=' + encodeURIComponent(item.post_id) +
           (item.target_kind === 'comment' ? '&comment=' + encodeURIComponent(item.target_id) : '');
       }
-      const date = new Date(item.created_at).toLocaleDateString('ko-KR');
-      row.append(target, element('span', reportReasons.get(item.reason)), element('time', date),
-        button('검토 완료', async (event) => {
-          const control = event.currentTarget;
-          control.disabled = true;
-          const { error } = await supabase.from('community_reports').update({ resolved: true }).eq('id', item.id);
-          if (error) {
-            control.disabled = false;
-            alert('신고를 처리하지 못했어요.');
-            return;
-          }
-          row.remove();
-          if (!list.childElementCount) list.append(element('p', '목록을 다시 열어 남은 신고를 확인하세요.'));
-        }));
+      const info = element('div');
+      info.className = 'community-settings__report';
+      const date = element('time', new Date(item.created_at).toLocaleDateString('ko-KR'));
+      date.dateTime = item.created_at;
+      info.append(target, element('p', reportReasons.get(item.reason)), date);
+      const resolve = button('검토 완료', async (event) => {
+        const control = event.currentTarget;
+        control.disabled = true;
+        const { error } = await supabase.from('community_reports').update({ resolved: true }).eq('id', item.id);
+        if (error) {
+          control.disabled = false;
+          alert('신고를 처리하지 못했어요.');
+          return;
+        }
+        if (row.contains(document.activeElement)) summary.focus();
+        row.remove();
+        if (!list.childElementCount) list.append(settingsMessage('목록을 다시 열어 남은 신고를 확인하세요.'));
+      });
+      resolve.classList.add('community-settings__resolve');
+      row.append(info, resolve);
       if (item.target_kind !== 'member') {
         const preview = element('details');
+        preview.className = 'community-settings__preview';
         const body = element('p');
-        body.className = 'community-safety__preview';
         preview.append(element('summary', '내용 확인'), body);
         preview.addEventListener('toggle', async () => {
           if (!preview.open) return;
+          body.textContent = '내용을 불러오는 중이에요.';
           const { data, error } = await supabase.rpc('read_community_report_content', {
             p_report_id: item.id,
           });

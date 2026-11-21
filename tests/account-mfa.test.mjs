@@ -77,9 +77,12 @@ const totp = [{ id: 'first', factor_type: 'totp', status: 'verified' }];
 test('setup only succeeds after verifying the newly enrolled authenticator', async () => {
   const view = await fixture('activate', []);
   assert.equal(view.calls.length, 0);
+  assert.equal(view.field('setup').hidden, true);
   await view.submit();
   assert.equal(view.calls[0].factorType, 'totp');
   assert.equal(view.field('setup').hidden, false);
+  assert.equal(view.field('qr').src, 'data:image/svg+xml,qr');
+  assert.equal(view.field('secret').textContent, 'test');
   assert.deepEqual(view.completed, []);
   view.field('code').value = '000000';
   await view.submit();
@@ -87,6 +90,46 @@ test('setup only succeeds after verifying the newly enrolled authenticator', asy
   view.field('code').value = '123456';
   await view.submit();
   assert.deepEqual(view.completed, ['new']);
+  assert.equal(view.field('secret').textContent, '');
+});
+
+test('the Android shortcut targets Google Authenticator with its Play Store entry as fallback', () => {
+  const mount = runInNewContext(source + '\nmountAuthenticatorShortcut');
+  const fields = {};
+  const el = key => fields[key] ??= {};
+  mount(el, { navigator: { userAgent: 'Android' } });
+  const play = 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2';
+  assert.equal(el('authenticator-app-store').hidden, true);
+  assert.equal(el('authenticator-google-play').href, play);
+  assert.equal(el('open-authenticator').href, 'intent://totp/#Intent;scheme=otpauth;package=com.google.android.apps.authenticator2;S.browser_fallback_url=' + encodeURIComponent(play) + ';end');
+});
+
+test('the iOS web shortcut falls back to the App Store only while the page is still active', () => {
+  const mount = runInNewContext(source + '\nmountAuthenticatorShortcut');
+  const fields = {};
+  const el = key => fields[key] ??= { isConnected: true, removeAttribute() {} };
+  const browser = new EventTarget();
+  const opened = [];
+  let timer;
+  browser.navigator = { userAgent: 'Macintosh', maxTouchPoints: 5 };
+  browser.document = Object.assign(new EventTarget(), { hidden: false, hasFocus: () => true });
+  browser.location = { assign: url => opened.push(url) };
+  browser.setTimeout = callback => { timer = callback; return 1; };
+  browser.clearTimeout = () => { timer = null; };
+  mount(el, browser);
+
+  const open = el('open-authenticator');
+  assert.equal(open.href, 'googleauthenticator://');
+  open.onclick();
+  browser.document.hidden = true;
+  browser.document.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(timer, null);
+  assert.deepEqual(opened, []);
+
+  browser.document.hidden = false;
+  open.onclick();
+  timer();
+  assert.deepEqual(opened, ['itms-apps://apps.apple.com/kr/app/id388497605']);
 });
 for (const mode of ['login', 'entry']) {
   test(mode + ' requires proof from a verified factor for the same account', async () => {

@@ -1,12 +1,9 @@
-import { loadPosts, sortByDateDesc, formatMMDD } from './posts-repo.js';
+import { loadPostSummaries, sortByDateDesc, formatMMDD } from './posts-repo.js';
+import { renderPostListCommentCount, updatePostListCommentCounts } from './post-list-counts.js';
 import { getDisplayViews } from './post-views.js';
 
 function getViews(post) {
   return getDisplayViews(post);
-}
-
-function getCommentCount(post) {
-  return Number(post?.commentCount || 0);
 }
 
 function getReactionCount(post) {
@@ -45,7 +42,7 @@ function renderRow(post, currentId) {
       </span>
 
       <span class="post-row__meta post-detail-row__meta">
-        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${getCommentCount(post)} · ${escapeHtml(post.category)}
+        ${formatMMDD(post.date)} · ${escapeHtml(getAuthorNickname(post))} · 👀 ${getViews(post)} · 👍 ${getReactionCount(post)} · 💬 ${renderPostListCommentCount(post)} · ${escapeHtml(post.category)}
       </span>
     </a>
   `;
@@ -64,12 +61,13 @@ export async function initPostDetailList() {
 
   let posts = [];
   try {
-    posts = await loadPosts();
+    posts = await loadPostSummaries(listEl.closest('main'));
   } catch (e) {
     console.error('[post-detail-list] load failed:', e);
     listEl.innerHTML = `<div class="empty">다른 게시물을 불러오지 못했어.</div>`;
     return;
   }
+  if (!listEl.isConnected) return;
 
   const source = sortByDateDesc(posts);
   const PER_PAGE = 5;
@@ -94,6 +92,7 @@ export async function initPostDetailList() {
     pageInfo.textContent = `${page} / ${safeTotalPages}`;
     prevBtn.disabled = page <= 1;
     nextBtn.disabled = page >= safeTotalPages;
+    void updatePostListCommentCounts(pagePosts, listEl);
   }
 
   prevBtn.addEventListener('click', () => {

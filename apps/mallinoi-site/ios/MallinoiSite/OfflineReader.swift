@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct OfflineReader: View {
     @ObservedObject var library: OfflineLibrary
@@ -15,7 +14,7 @@ struct OfflineReader: View {
                             .font(.largeTitle)
                             .accessibilityHidden(true)
                         Text("저장한 글이 없어요").font(.headline)
-                        Text("공개 게시글에서 공유 버튼을 누르고 ‘오프라인에 저장’을 선택해 주세요.")
+                        Text("공개 게시글에서 ‘게시글 저장’을 눌러 주세요.")
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
@@ -67,38 +66,10 @@ struct OfflineReader: View {
     }
 }
 
-final class SaveOfflineActivity: UIActivity {
+struct OfflineSaveSheet: View {
     let id: Int64
     let library: OfflineLibrary
-
-    init(id: Int64, library: OfflineLibrary) {
-        self.id = id
-        self.library = library
-        super.init()
-    }
-
-    override var activityType: UIActivity.ActivityType? {
-        UIActivity.ActivityType("com.mallinoi.site.save-offline")
-    }
-
-    override var activityTitle: String? { "오프라인에 저장" }
-    override var activityImage: UIImage? { UIImage(systemName: "bookmark") }
-
-    override func canPerform(withActivityItems activityItems: [Any]) -> Bool { true }
-
-    override var activityViewController: UIViewController? {
-        let controller = UIHostingController(rootView: OfflineSaveSheet(id: id, library: library) { [weak self] succeeded in
-            self?.activityDidFinish(succeeded)
-        })
-        controller.isModalInPresentation = true
-        return controller
-    }
-}
-
-private struct OfflineSaveSheet: View {
-    let id: Int64
-    let library: OfflineLibrary
-    let finish: (Bool) -> Void
+    @Environment(\.dismiss) private var dismiss
     @State private var message: String?
     @State private var succeeded = false
 
@@ -119,22 +90,24 @@ private struct OfflineSaveSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(message == nil ? "취소" : "닫기") { finish(succeeded) }
+                    Button(message == nil ? "취소" : "닫기") { dismiss() }
                 }
             }
         }
         .task {
+            guard message == nil else { return }
             do {
                 let article = try await PublicPostService.load(id: id)
                 try Task.checkCancellation()
                 try library.save(article)
                 succeeded = true
-                message = "본문을 저장했어요. 앱 시작 화면의 ‘저장된 글’에서 읽을 수 있어요."
+                message = "본문을 저장했어요. 전체서비스의 ‘저장된 글’에서 읽을 수 있어요."
             } catch is CancellationError {
                 return
             } catch let error as OfflineSaveError {
                 message = error.localizedDescription
             } catch {
+                guard !Task.isCancelled else { return }
                 message = "글을 저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요."
             }
         }

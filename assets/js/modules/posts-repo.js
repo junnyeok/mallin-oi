@@ -1,7 +1,12 @@
 import { supabase } from './supabase-client.js';
-import { withoutBlockedMembers } from './community-safety.js';
+import { getBlockedMemberIds } from './community-safety.js';
 
 export const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
+
+const LATEST_FIELDS = 'id, title, category, views, total_reactions_count, author_id, author_nickname, created_at, is_private';
+const SUMMARY_FIELDS = `${LATEST_FIELDS}, excerpt, tags, pinned, likes_count, dislikes_count, updated_at`;
+const pendingSummaries = new WeakMap();
+const pendingCommentCounts = new WeakMap();
 
 function normalizeCategory(category) {
   const value = String(category || '')
@@ -128,7 +133,7 @@ export function mapPostRow(row, commentCount = 0) {
     likesCount: Number(row?.likes_count || 0),
     dislikesCount: Number(row?.dislikes_count || 0),
     totalReactionsCount: Number(row?.total_reactions_count || 0),
-    commentCount: Number(commentCount || 0),
+    commentCount: commentCount === null ? null : Number(commentCount || 0),
     pinned: !!row?.pinned,
     tags: normalizeTags(row?.tags),
     mediaItems,
@@ -166,42 +171,92 @@ export function sortByDateDesc(posts) {
   });
 }
 
-export async function loadPosts() {
-  const { data, error } = await supabase
-    .from('posts_public_list')
-    .select(
-      'id, title, excerpt, category, tags, pinned, views, likes_count, dislikes_count, total_reactions_count, media_items, author_id, author_nickname, created_at, updated_at, is_private',
-    )
-    .order('pinned', { ascending: false })
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false });
-
+async function readVisibleRows(query, blockedRequest = getBlockedMemberIds()) {
+  const [{ data, error }, blocked] = await Promise.all([query, blockedRequest]);
   if (error) throw error;
+  const rows = data || [];
+  return { rows: rows.filter((row) => !blocked.has(row.author_id)), total: rows.length };
+}
 
-  const rows = await withoutBlockedMembers(data || []);
-  const commentCountMap = await loadCommentCountMap(rows.map((row) => row.id));
+function mapPostSummary(row) {
+  return mapPostRow(row, null);
+}
 
-  return rows.map((row) =>
-    mapPostRow(
-      {
-        ...row,
-        body: '',
-        is_unlocked: !row.is_private,
-      },
-      commentCountMap.get(Number(row.id)) || 0,
-    ),
+export async function fillPostCommentCounts(posts) {
+  const requests = new Set();
+  const missing = [];
+  for (const post of posts) {
+    if (post.commentCount !== null) continue;
+    const pending = pendingCommentCounts.get(post);
+    if (pending) requests.add(pending);
+    else missing.push(post);
+  }
+
+  if (missing.length) {
+    const request = loadCommentCountMap(missing.map(({ id }) => id))
+      .then((counts) => {
+        missing.forEach((post) => { post.commentCount = counts.get(Number(post.id)) ?? 0; });
+      })
+      .finally(() => missing.forEach((post) => pendingCommentCounts.delete(post)));
+    missing.forEach((post) => pendingCommentCounts.set(post, request));
+    requests.add(request);
+  }
+  await Promise.all(requests);
+}
+
+export async function loadPosts({ includeMedia = true, includeCommentCounts = true } = {}) {
+  const { rows } = await readVisibleRows(
+    supabase.from('posts_public_list')
+      .select(includeMedia ? `${SUMMARY_FIELDS}, media_items` : SUMMARY_FIELDS)
+      .order('pinned', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }),
   );
+  const posts = rows.map(mapPostSummary);
+  if (includeCommentCounts) await fillPostCommentCounts(posts);
+  return posts;
+}
+
+export function loadPostSummaries(view) {
+  const load = () => loadPosts({ includeMedia: false, includeCommentCounts: false });
+  if (!view) return load();
+
+  // The two navigation widgets on the same detail page can share their first request.
+  if (!pendingSummaries.has(view)) {
+    const request = load().finally(() => pendingSummaries.delete(view));
+    pendingSummaries.set(view, request);
+  }
+  return pendingSummaries.get(view);
+}
+
+export async function loadLatestPosts({ category } = {}) {
+  const limit = 12;
+  const blockedRequest = getBlockedMemberIds();
+  const visible = [];
+
+  // Read farther only when a blocked author left a gap in the visible window.
+  for (let offset = 0; visible.length < limit; offset += limit) {
+    let query = supabase.from('posts_public_list').select(LATEST_FIELDS);
+    if (category) query = query.eq('category', category);
+    const { rows, total } = await readVisibleRows(
+      query.order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(offset, offset + limit - 1),
+      blockedRequest,
+    );
+    visible.push(...rows);
+    if (total < limit) break;
+  }
+  return visible.slice(0, limit).map(mapPostSummary);
 }
 
 export async function loadCareerMonthlyBest(awardMonth, limit = 5) {
-  const { data, error } = await supabase.rpc('get_career_monthly_best', {
-    p_award_month: awardMonth,
-    p_limit: Math.max(0, Math.min(Number(limit) || 5, 100)),
-  });
-
-  if (error) throw error;
-
-  const visiblePosts = await withoutBlockedMembers(data || []);
+  const { rows: visiblePosts } = await readVisibleRows(
+    supabase.rpc('get_career_monthly_best', {
+      p_award_month: awardMonth,
+      p_limit: Math.max(0, Math.min(Number(limit) || 5, 100)),
+    }),
+  );
   return visiblePosts.map((row) => {
     const post = mapPostRow(
       {
@@ -237,19 +292,23 @@ export async function loadCareerMonthlyBest(awardMonth, limit = 5) {
   });
 }
 
-export async function loadPostById(id, secretPassword = null) {
+export async function loadPostById(id, secretPassword = null, { includeCommentCount = true } = {}) {
   const safeId = Number(id);
   if (!Number.isFinite(safeId)) return null;
 
-  const { data, error } = await supabase.rpc('get_post_detail', {
-    p_post_id: safeId,
-    p_secret_password: secretPassword || null,
-  });
+  const [{ data, error }, blocked] = await Promise.all([
+    supabase.rpc('get_post_detail', {
+      p_post_id: safeId,
+      p_secret_password: secretPassword || null,
+    }),
+    getBlockedMemberIds(),
+  ]);
 
   if (error) throw error;
 
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row || !(await withoutBlockedMembers([row])).length) return null;
+  if (!row || blocked.has(row.author_id)) return null;
+  if (!includeCommentCount) return mapPostRow(row);
 
   const commentCountMap = await loadCommentCountMap([safeId]);
   return mapPostRow(row, commentCountMap.get(safeId) || 0);
@@ -301,18 +360,12 @@ export async function loadEditablePostById(id) {
 export async function loadPostsByAuthorId(authorId) {
   if (!authorId) return [];
 
-  const { data, error } = await supabase
-    .from('posts_public_list')
-    .select(
-      'id, title, excerpt, category, tags, pinned, views, likes_count, dislikes_count, total_reactions_count, media_items, author_id, author_nickname, created_at, updated_at, is_private',
-    )
-    .eq('author_id', authorId)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false });
-
-  if (error) throw error;
-
-  const rows = await withoutBlockedMembers(data || []);
+  const { rows } = await readVisibleRows(
+    supabase.from('posts_public_list').select(`${SUMMARY_FIELDS}, media_items`)
+      .eq('author_id', authorId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }),
+  );
   const commentCountMap = await loadCommentCountMap(rows.map((row) => row.id));
 
   return rows.map((row) =>

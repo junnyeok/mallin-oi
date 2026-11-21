@@ -1,6 +1,6 @@
 // sw.js
 
-const SITE_VERSION = '20261121-02';
+const SITE_VERSION = '20261122-01';
 
 const STATIC_CACHE = `mallin-static-${SITE_VERSION}`;
 const HTML_CACHE = `mallin-html-${SITE_VERSION}`;
@@ -20,6 +20,7 @@ const APP_SHELL_FILES = [
   './calendar-event.html',
   './calendar-groups.html',
   './offline.html',
+  './saved-articles.html',
 
   './site.webmanifest',
   './assets/version.json',
@@ -43,6 +44,7 @@ const APP_SHELL_FILES = [
   './assets/css/components/app-update-popup.css',
   './assets/css/components/pwa-install.css',
   './assets/css/components/refresh-control.css',
+  './assets/css/components/saved-articles.css',
   './assets/css/components/calendar-entry-sheet.css',
   './assets/css/components/calendar-loading.css',
 
@@ -65,6 +67,8 @@ const APP_SHELL_FILES = [
   './assets/js/modules/notifications-page.js',
   './assets/js/modules/pwa-install.js',
   './assets/js/modules/refresh-control.js',
+  './assets/js/modules/saved-articles.js',
+  './assets/js/modules/saved-articles-page.js',
   './assets/js/modules/calendar-native-widgets.js',
   './assets/js/modules/calendar-widget-data.js',
   './assets/js/modules/calendar-groups.js',

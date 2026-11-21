@@ -335,6 +335,16 @@ export async function initMypage() {
   const card = $('mypagePrivate');
   const gate = $('mypageMfaGate');
   const proof = $('mypageMfaProof');
+  card.querySelector('.mypage-nav')?.addEventListener('click', (event) => {
+    const shortcut = event.target.closest('button[data-mypage-target]');
+    if (!shortcut || shortcut.hidden || card.hidden) return;
+    const target = $(shortcut.dataset.mypageTarget);
+    if (!target || target.hidden || !card.contains(target)) return;
+
+    // Keep section jumps out of browser history so PJAX cannot reopen the page.
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start' });
+  });
   // Browsers can restore an entire document from the back/forward cache.
   const lock = () => { card.hidden = true; gate.hidden = false; };
   const onRestore = event => { if (event.persisted) window.location.reload(); };
@@ -406,6 +416,7 @@ async function showVerifiedMypage(form, user) {
     const communitySettings = $('communitySafetySettings');
     if (communitySettings && !isCalendarAppMode()) {
       communitySettings.hidden = false;
+      $('mypageCommunityShortcut')?.removeAttribute('hidden');
       void mountCommunitySettings(communitySettings, role.isAdmin);
     }
   } catch (e) {

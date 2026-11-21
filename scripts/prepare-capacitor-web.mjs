@@ -14,6 +14,8 @@ const filesToCopy = [
   'store.html',
   'store-item.html',
   'post.html',
+  'saved-articles.html',
+  'mallin-plus.html',
   'profile.html',
   'notifications.html',
   'community-members.html',
@@ -221,7 +223,7 @@ function getMainModuleImports() {
   const mainPath = path.join(rootDir, 'assets/js/main.js');
   const mainSource = fs.readFileSync(mainPath, 'utf8');
   const imports = new Set();
-  const re = /withModuleVersion\('\.\/modules\/([^']+\.js)'\)/g;
+  const re = /\b(?:init|initFeature|loadModule|import)\('\.\/modules\/([^']+\.js)'/g;
   let match;
 
   while ((match = re.exec(mainSource)) !== null) {

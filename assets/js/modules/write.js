@@ -8,6 +8,7 @@ import {
   switchEmoticonPickerPack,
 } from './emoticons.js';
 import { attachWriteEmoticonAnchor } from './write-emoticon-anchor.js';
+import { bindInlineEmoticonDeletion, placeCaretAfterEmoticon, stripEmoticonCaretMarkers } from './editor-emoticon.js';
 import { playPickleBurst } from './pickle-burst.js';
 
 const ALLOWED_CATEGORIES = new Set(['study', 'work', 'event', 'career']);
@@ -849,10 +850,7 @@ async function initWriteEmoticonPicker(user) {
     restoreSavedSelectionRange();
 
     const node = createInlineEmoticonNode(emoticon);
-    insertInlineNodeAtCaret(node, {
-      appendSpace: true,
-      sync: true,
-    });
+    insertInlineNodeAtCaret(node);
 
     saveCurrentSelectionRange();
     anchor.setOpen(true);
@@ -1190,11 +1188,14 @@ function buildPersistedBodyHtml(mediaItems = []) {
 
   clone
     .querySelectorAll('.write-editor__tail-placeholder')
-    .forEach((node) => node.remove());
+    .forEach((node) => {
+      if (isDiscardableAttachmentSpacingNode(node)) node.remove();
+      else node.classList.remove('write-editor__tail-placeholder');
+    });
 
   removeEmptyNodesAroundAttachments(clone);
 
-  return clone.innerHTML.trim();
+  return stripEmoticonCaretMarkers(clone.innerHTML).trim();
 }
 
 function focusEditor() {
@@ -1256,7 +1257,7 @@ function syncBodyFromEditor(options = {}) {
   }
 
   const isEmpty = updateEditorEmptyState(editor);
-  const html = isEmpty ? '' : editor.innerHTML.trim();
+  const html = isEmpty ? '' : stripEmoticonCaretMarkers(editor.innerHTML).trim();
 
   bodyField.value = html;
   return bodyField.value;
@@ -1345,6 +1346,12 @@ function getAttachmentSpacingTarget(embed, root) {
   return target;
 }
 
+function removeEmptyNodesBeforeAttachment(target) {
+  while (isDiscardableAttachmentSpacingNode(target.previousSibling)) {
+    target.previousSibling.remove();
+  }
+}
+
 function removeEmptyNodesAroundAttachments(root) {
   if (!root) return;
 
@@ -1352,9 +1359,7 @@ function removeEmptyNodesAroundAttachments(root) {
     (embed) => {
       const target = getAttachmentSpacingTarget(embed, root);
 
-      while (isDiscardableAttachmentSpacingNode(target.previousSibling)) {
-        target.previousSibling.remove();
-      }
+      removeEmptyNodesBeforeAttachment(target);
 
       while (isDiscardableAttachmentSpacingNode(target.nextSibling)) {
         target.nextSibling.remove();
@@ -1406,12 +1411,27 @@ function ensureEditableTailAfterAttachment(root = getBodyEditor()) {
 
   const placeholders = Array.from(
     root.querySelectorAll(':scope > .write-editor__tail-placeholder'),
-  );
+  ).filter((node) => {
+    if (isDiscardableAttachmentSpacingNode(node)) return true;
+    node.classList.remove('write-editor__tail-placeholder');
+    return false;
+  });
   const lastMeaningful = getLastMeaningfulEditorChild(root);
   const needsTail = isAttachmentEmbedNode(lastMeaningful);
 
   if (!needsTail) {
     placeholders.forEach((node) => node.remove());
+    return;
+  }
+
+  const firstEditableLine = lastMeaningful.nextElementSibling;
+  if (
+    firstEditableLine?.matches('p, div') &&
+    isDiscardableAttachmentSpacingNode(firstEditableLine)
+  ) {
+    placeholders.forEach((node) => {
+      if (node !== firstEditableLine) node.remove();
+    });
     return;
   }
 
@@ -1609,46 +1629,60 @@ function placeCaretInsideEditableBlock(block) {
   return range;
 }
 
-function insertBlockAttachmentAtRange(editor, range, node, sel) {
-  if (!editor || !range || !node || !sel) return null;
+function insertBlockAttachmentAtRange(editor, range, node) {
+  if (!editor || !range || !node) return null;
 
   if (!range.collapsed) {
     range.deleteContents();
   }
 
-  const block = findClosestEditableBlock(range.startContainer);
-  const caretBlock = createEmptyEditorParagraph();
+  range = wrapRootTextNodeSelectionIntoParagraph(editor, range);
+
+  let block = findClosestEditableBlock(range.startContainer);
+  while (block?.parentElement && block.parentElement !== editor) {
+    block = block.parentElement;
+  }
+  let caretBlock = createEmptyEditorParagraph();
 
   if (!block || block.parentNode !== editor) {
     range.insertNode(node);
+    const following = node.nextElementSibling;
+    if (
+      following?.matches('p, div') &&
+      isDiscardableAttachmentSpacingNode(following)
+    ) {
+      caretBlock = following;
+    } else {
+      node.after(caretBlock);
+    }
+  } else {
+    const align = block.getAttribute('data-align') || 'left';
+    caretBlock.setAttribute('data-align', align);
+
+    const afterRange = range.cloneRange();
+    afterRange.setEnd(block, block.childNodes.length);
+    const moved = afterRange.extractContents();
+
+    if (isDiscardableAttachmentSpacingNode(block)) {
+      block.replaceWith(node);
+    } else {
+      block.after(node);
+    }
     node.after(caretBlock);
-    return placeCaretInsideEditableBlock(caretBlock);
+
+    if (!isNodeVisuallyEmpty(moved)) {
+      const afterBlock = document.createElement(block.tagName.toLowerCase());
+      afterBlock.setAttribute('data-align', align);
+      afterBlock.appendChild(moved);
+      caretBlock.after(afterBlock);
+    }
   }
 
-  const align = block.getAttribute('data-align') || 'left';
-  caretBlock.setAttribute('data-align', align);
-
-  const afterBlock = document.createElement(block.tagName.toLowerCase());
-  afterBlock.setAttribute('data-align', align);
-
-  const afterRange = range.cloneRange();
-  afterRange.setEndAfter(block.lastChild || block);
-  const moved = afterRange.extractContents();
-  const hasMovedContent = moved.childNodes.length && !isNodeVisuallyEmpty(moved);
-
-  if (hasMovedContent) {
-    afterBlock.appendChild(moved);
+  if (node.dataset.mediaType === 'image') {
+    removeEmptyNodesBeforeAttachment(node);
   }
 
-  ensureEditableBlockPlaceholder(block);
-
-  block.insertAdjacentElement('afterend', node);
-  node.insertAdjacentElement('afterend', caretBlock);
-
-  if (hasMovedContent) {
-    caretBlock.insertAdjacentElement('afterend', afterBlock);
-  }
-
+  ensureEditableTailAfterAttachment(editor);
   return placeCaretInsideEditableBlock(caretBlock);
 }
 
@@ -1752,9 +1786,7 @@ function insertSingleParagraphAtCaret() {
   refreshEditorToolbarState();
 }
 
-function insertInlineNodeAtCaret(node, options = {}) {
-  const { appendSpace = true, sync = true } = options;
-
+function insertInlineNodeAtCaret(node) {
   const editor = getBodyEditor();
   if (!editor || !node) return;
 
@@ -1807,47 +1839,10 @@ function insertInlineNodeAtCaret(node, options = {}) {
   }
 
   range.insertNode(node);
-
-  let lastInsertedNode = node;
-
-  if (appendSpace) {
-    const spaceNode = document.createTextNode('\u00a0');
-    node.after(spaceNode);
-    lastInsertedNode = spaceNode;
-  }
-
-  const nextRange = document.createRange();
-  nextRange.setStartAfter(lastInsertedNode);
-  nextRange.collapse(true);
-
-  const nextSel = window.getSelection();
-  if (nextSel) {
-    nextSel.removeAllRanges();
-    nextSel.addRange(nextRange);
-  }
-
+  const nextRange = placeCaretAfterEmoticon(node);
   savedSelectionRange = nextRange.cloneRange();
-
-  if (sync) {
-    syncBodyFromEditor({ normalize: false });
-  }
-
+  syncBodyFromEditor({ normalize: false });
   refreshEditorToolbarState();
-
-  if (isMobileRichEditorInputDevice()) {
-    requestAnimationFrame(() => {
-      const currentSel = window.getSelection();
-
-      if (currentSel) {
-        currentSel.removeAllRanges();
-        currentSel.addRange(nextRange.cloneRange());
-      }
-
-      savedSelectionRange = nextRange.cloneRange();
-      syncBodyFromEditor({ normalize: false });
-      refreshEditorToolbarState();
-    });
-  }
 }
 
 function insertNodeAtCaret(node) {
@@ -1879,7 +1874,6 @@ function insertNodeAtCaret(node) {
       editor,
       safeRange,
       node,
-      sel2,
     );
 
     if (attachmentRange) {
@@ -2338,6 +2332,8 @@ function bindAttachmentInputs(note) {
 
   window.__mallinDisposeWriteEditorObserver = disposeEditorObserver;
 
+  bindInlineEmoticonDeletion(editor);
+
   editor.addEventListener('compositionstart', () => {
     isEditorComposing = true;
     editorCompositionSequence += 1;
@@ -2420,12 +2416,13 @@ function bindAttachmentInputs(note) {
   editor.addEventListener('blur', () => {
     if (isEditorComposing) return;
     reconcileAttachmentStateWithEditor();
-    syncBodyFromEditor();
+    // The file picker moves focus away from the editor while its range is saved.
+    syncBodyFromEditor({ normalize: false });
     refreshEditorToolbarState();
   });
 
   editor.addEventListener('beforeinput', (event) => {
-    if (event.isComposing || event.nativeEvent?.isComposing) return;
+    if (event.defaultPrevented || event.isComposing || event.nativeEvent?.isComposing) return;
 
     const inputType = String(event.inputType || '');
 

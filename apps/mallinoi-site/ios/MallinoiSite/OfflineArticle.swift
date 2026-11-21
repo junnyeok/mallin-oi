@@ -7,15 +7,17 @@ struct OfflineArticle: Codable, Identifiable {
     let body: String
 
     static func postID(from url: URL) -> Int64? {
-        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              parts.scheme == "https", parts.host == "mallin-oi.com",
-              parts.user == nil, parts.password == nil, parts.port == nil,
-              parts.percentEncodedPath == "/post.html", parts.fragment == nil,
-              let query = parts.percentEncodedQuery,
-              query.range(of: #"^id=[1-9][0-9]*$"#, options: .regularExpression) != nil else {
+        guard SiteURLs.isSitePage(url),
+              let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.percentEncodedPath == "/post.html" else {
             return nil
         }
-        return Int64(query.dropFirst(3))
+        let ids = parts.queryItems?.filter { $0.name == "id" } ?? []
+        guard ids.count == 1, let id = ids.first?.value,
+              id.range(of: #"^[1-9][0-9]*$"#, options: .regularExpression) != nil else {
+            return nil
+        }
+        return Int64(id)
     }
 
     static func bodyText(from body: String) -> String {
