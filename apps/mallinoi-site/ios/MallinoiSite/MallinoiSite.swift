@@ -37,6 +37,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 
 final class SiteViewController: UIViewController {
+    private static let initialThemeColor = UIColor(red: 182 / 255, green: 216 / 255, blue: 106 / 255, alpha: 1)
+    private static let themeWorld = WKContentWorld.world(name: "MallinoiSiteTheme")
+    private static let themeMessage = "mallinoiTheme"
+
     private let library = OfflineLibrary()
     private let loading = UIActivityIndicatorView(style: .medium)
     private let connectionError = UIStackView()
@@ -45,15 +49,22 @@ final class SiteViewController: UIViewController {
     private var isCheckingForAppUpdate = false
     private var nextAppUpdateCheck = Date.distantPast
     private var pendingAppUpdate: String?
+    private var themeStatusBarStyle: UIStatusBarStyle = .darkContent
+
+    override var preferredStatusBarStyle: UIStatusBarStyle { themeStatusBarStyle }
 
     private lazy var webView: WKWebView = {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
         configuration.limitsNavigationsToAppBoundDomains = true
-        configuration.userContentController.addScriptMessageHandler(
-            SiteMessageHandler(controller: self), contentWorld: .page, name: "mallinoiSite"
-        )
+        let content = configuration.userContentController
+        let handler = SiteMessageHandler(controller: self)
+        content.addScriptMessageHandler(handler, contentWorld: .page, name: "mallinoiSite")
+        content.addScriptMessageHandler(handler, contentWorld: Self.themeWorld, name: Self.themeMessage)
+        content.addUserScript(WKUserScript(
+            source: Self.themeScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: Self.themeWorld
+        ))
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -64,7 +75,7 @@ final class SiteViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = Self.initialThemeColor
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
         let safeArea = view.safeAreaLayoutGuide
@@ -174,6 +185,9 @@ final class SiteViewController: UIViewController {
 
     private func loadSite() {
         connectionError.isHidden = true
+        if webView.isHidden {
+            applyPageTheme(Self.initialThemeColor, statusBarStyle: .darkContent)
+        }
         webView.isHidden = false
         loading.startAnimating()
         webView.load(retryRequest)
@@ -183,6 +197,7 @@ final class SiteViewController: UIViewController {
         loading.stopAnimating()
         webView.isHidden = true
         connectionError.isHidden = false
+        applyPageTheme(.systemBackground, statusBarStyle: .default)
     }
 
     private func showReader() -> Bool {
@@ -206,8 +221,23 @@ final class SiteViewController: UIViewController {
     fileprivate func handle(_ message: WKScriptMessage, reply: @escaping (Any?, String?) -> Void) {
         guard message.webView === webView, confirmTrustedOrigin(message.frameInfo),
               let url = webView.url, SiteURLs.isSitePage(url),
-              let body = message.body as? [String: Any],
-              let action = body["action"] as? String else {
+              let body = message.body as? [String: Any] else {
+            reply(nil, "UNAVAILABLE")
+            return
+        }
+        if message.name == Self.themeMessage {
+            guard !webView.isHidden, let path = body["path"] as? String,
+                  path == URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath,
+                  let rgb = body["rgb"] as? [Int], rgb.count == 3,
+                  rgb.allSatisfy((0...255).contains) else {
+                reply(nil, "UNAVAILABLE")
+                return
+            }
+            updatePageTheme(rgb)
+            reply(true, nil)
+            return
+        }
+        guard let action = body["action"] as? String else {
             reply(nil, "UNAVAILABLE")
             return
         }
@@ -247,6 +277,82 @@ final class SiteViewController: UIViewController {
             reply(nil, "UNAVAILABLE")
         }
     }
+
+    private func applyPageTheme(_ color: UIColor, statusBarStyle: UIStatusBarStyle) {
+        view.backgroundColor = color
+        guard themeStatusBarStyle != statusBarStyle else { return }
+        themeStatusBarStyle = statusBarStyle
+        setNeedsStatusBarAppearanceUpdate()
+    }
+
+    private func updatePageTheme(_ rgb: [Int]) {
+        let components = rgb.map { Double($0) / 255 }
+        let linear = components.map { value in
+            value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+        let color = UIColor(red: components[0], green: components[1], blue: components[2], alpha: 1)
+        applyPageTheme(color, statusBarStyle: luminance > 0.179 ? .darkContent : .lightContent)
+    }
+
+    // Observe the live theme in an isolated world. The site swaps pages and post themes in place.
+    private static let themeScript = #"""
+        (() => {
+          const body = document.body;
+          const root = document.documentElement;
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const pixel = canvas.getContext('2d', { willReadFrequently: true });
+          if (!body || !pixel) return;
+
+          function opaqueRGB(color) {
+            if (!color) return null;
+            pixel.clearRect(0, 0, 1, 1);
+            pixel.fillStyle = 'transparent';
+            pixel.fillStyle = color.trim();
+            pixel.fillRect(0, 0, 1, 1);
+            const [red, green, blue, alpha] = pixel.getImageData(0, 0, 1, 1).data;
+            return alpha === 255 ? [red, green, blue] : null;
+          }
+
+          let lastTheme = '';
+          let frame = 0;
+          function publish() {
+            frame = 0;
+            const header = document.querySelector('.site-header');
+            const style = getComputedStyle(body);
+            const themed = [...body.classList].some(name => name.startsWith('theme-'));
+            const rgb = (header && opaqueRGB(getComputedStyle(header).backgroundColor)) ||
+              (themed && opaqueRGB(style.getPropertyValue('--color-primary'))) ||
+              opaqueRGB(style.backgroundColor) || opaqueRGB(getComputedStyle(root).backgroundColor);
+            if (!rgb) return;
+            const path = location.pathname;
+            const theme = `${path}:${rgb.join(',')}`;
+            if (theme === lastTheme) return;
+            lastTheme = theme;
+            window.webkit.messageHandlers.mallinoiTheme.postMessage({ path, rgb }).catch(() => {
+              if (lastTheme === theme) lastTheme = '';
+            });
+          }
+
+          function schedule() {
+            if (!frame) frame = requestAnimationFrame(publish);
+          }
+
+          const observer = new MutationObserver(schedule);
+          const attributes = { attributes: true, attributeFilter: ['class', 'style', 'data-calendar-appearance'] };
+          observer.observe(root, attributes);
+          observer.observe(body, attributes);
+          const headerHost = document.querySelector('[data-include="header"]');
+          if (headerHost) observer.observe(headerHost, { childList: true });
+          document.addEventListener('load', event => {
+            if (event.target instanceof HTMLLinkElement && event.target.rel === 'stylesheet') schedule();
+          }, true);
+          window.addEventListener('pageshow', schedule);
+          window.addEventListener('popstate', schedule);
+          schedule();
+        })();
+        """#
 
     private func authenticate(at url: URL, request: String, reply: @escaping (Any?, String?) -> Void) {
         guard view.window != nil, presentedViewController == nil, authentication == nil else {

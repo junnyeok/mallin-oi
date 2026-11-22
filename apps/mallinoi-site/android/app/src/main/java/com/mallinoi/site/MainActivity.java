@@ -51,8 +51,11 @@ public final class MainActivity extends Activity {
     private void openSite() {
         View error = findViewById(R.id.browser_error);
         error.setVisibility(View.GONE);
+        int siteGreen = getColor(R.color.site_green);
         CustomTabColorSchemeParams colors = new CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(getColor(R.color.site_green))
+            .setToolbarColor(siteGreen)
+            .setNavigationBarColor(siteGreen)
+            .setNavigationBarDividerColor(siteGreen)
             .build();
         // Chrome supplies the current address as data when it sends this explicit intent.
         int mutableFlag = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;

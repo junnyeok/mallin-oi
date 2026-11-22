@@ -27,6 +27,7 @@
         <item name="android:colorAccent">@color/site_ink</item>
         <item name="android:windowBackground">@color/site_paper</item>
         <item name="android:statusBarColor">@color/site_paper</item>
+        <item name="android:navigationBarColor">@color/site_ink</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>
