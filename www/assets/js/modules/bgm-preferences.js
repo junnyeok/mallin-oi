@@ -3,7 +3,7 @@ import { supabase } from './supabase-client.js';
 const BGM_TRACK_ID_STORAGE_KEY = 'mallin_bgm_selected_track_id_v1';
 const BGM_TRACK_IDS_STORAGE_KEY = 'mallin_bgm_selected_track_ids_v1';
 const DEFAULT_BGM_TRACK_ID = 'mallin-oi-welcome';
-const STORE_ITEM_ID_PATTERN = /^[a-zA-Z0-9_-]{1,100}$/;
+const STORE_ITEM_ID_PATTERN = /^(?:[a-zA-Z0-9_-]{1,100}|bgm-cucumbergirl&grilledegg-01)$/;
 
 function normalizeTrackIds(trackIds = []) {
   const safe = [...new Set(trackIds)]

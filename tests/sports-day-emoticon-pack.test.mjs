@@ -26,11 +26,17 @@ const emoticonModule = emoticonSource
   .replace('await import(`./store-data.js?v=${MODULE_VERSION}`)', `await import('${storeUrl.href}')`);
 const renderers = await import(`data:text/javascript;base64,${Buffer.from(emoticonModule).toString('base64')}`);
 
-test('말오닷 운동회 is the first release with the requested metadata and ten previews', () => {
+test('말오닷 운동회 precedes the banknote effect and retains the requested metadata and ten previews', () => {
   const item = catalog.getStoreItemById(itemId);
   assert.equal(catalog.STORE_ITEMS.filter((entry) => entry.id === itemId).length, 1);
-  assert.equal(catalog.getFeaturedStoreItems(1)[0], item);
-  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[0], item);
+  const featuredIds = catalog.getFeaturedStoreItems(catalog.STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('emo-sportsday-01');
+  assert.deepEqual(featuredIds.slice(previousIndex, previousIndex + 2), ['emo-sportsday-01', 'cha-cash-01']);
+  const releaseIds = catalog.STORE_ITEMS
+    .toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))
+    .map((entry) => entry.id);
+  const releaseIndex = releaseIds.indexOf('emo-sportsday-01');
+  assert.deepEqual(releaseIds.slice(releaseIndex, releaseIndex + 2), ['emo-sportsday-01', 'cha-cash-01']);
   assert.equal(item.name, '말오닷 운동회 이모티콘팩');
   assert.equal(item.price, 521);
   assert.equal(item.category, 'emoticon');

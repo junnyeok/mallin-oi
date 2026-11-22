@@ -153,6 +153,18 @@ export const BOYGROUP_BGM_PREVIEW = [
   },
 ];
 
+const MUSCLE_FESTIVAL_BGM_ITEM_ID = 'bgm-cucumbergirl&grilledegg-01';
+const MUSCLE_FESTIVAL_BGM_TITLE = 'シャキッ！ムキッ！マッスル祭！';
+const MUSCLE_FESTIVAL_BGM_AUDIO = withAssetVersion('./assets/mp3/シャキッ！ムキッ！マッスル祭！.mp3');
+const MUSCLE_FESTIVAL_BGM_PREVIEW = [
+  {
+    code: 'bgm-cucumbergirl-grilledegg-01-lp',
+    label: `${MUSCLE_FESTIVAL_BGM_TITLE} LP`,
+    imagePath: withAssetVersion('./images/BGM/シャキッ！ムキッ！マッスル祭！.png'),
+    displayOrder: 1,
+  },
+];
+
 export const BGM_CATALOG = [
   {
     id: 'mallin-oi-welcome',
@@ -325,6 +337,16 @@ export const BGM_CATALOG = [
     coverPath: withAssetVersion('./images/BGM/네가머문자리.png'),
     isDefault: false,
     displayOrder: 17,
+  },
+  {
+    id: 'mallin-oi-cucumbergirl-grilledegg-01',
+    storeItemId: MUSCLE_FESTIVAL_BGM_ITEM_ID,
+    title: MUSCLE_FESTIVAL_BGM_TITLE,
+    artist: '말린오이닷컴',
+    audioPath: MUSCLE_FESTIVAL_BGM_AUDIO,
+    coverPath: MUSCLE_FESTIVAL_BGM_PREVIEW[0].imagePath,
+    isDefault: false,
+    displayOrder: 18,
   },
 ];
 
@@ -2470,6 +2492,23 @@ export const STORE_ITEMS = [
     releaseDate: '2026-11-19',
     isPurchasable: true,
   },
+  {
+    id: MUSCLE_FESTIVAL_BGM_ITEM_ID,
+    name: MUSCLE_FESTIVAL_BGM_TITLE,
+    category: 'bgm',
+    badge: 'BGM',
+    icon: '🥒👧🏼🥚🎵',
+    thumbImagePath: MUSCLE_FESTIVAL_BGM_PREVIEW[0].imagePath,
+    previewAudioPath: MUSCLE_FESTIVAL_BGM_AUDIO,
+    price: 687,
+    state: '판매 중',
+    description: '오이소녀와 구운계란 형님이 만났어.',
+    detailDescription:
+      '오이소녀와 구운계란 형님이 만났어. <br>구매하면 내프로필의 인벤토리에 추가되고, 장착 후 상단 BGM 버튼 팝업에서 재생할 수 있어.',
+    previewImages: MUSCLE_FESTIVAL_BGM_PREVIEW,
+    releaseDate: '2026-11-22',
+    isPurchasable: true,
+  },
 ].map((item, index) => ({
   ...item,
   // 정확한 출시일 데이터가 없어서 현재 등록 순서를 기준으로 임시값 부여
@@ -2479,6 +2518,7 @@ export const STORE_ITEMS = [
 }));
 
 const FEATURED_STORE_ITEM_PRIORITY = [
+  MUSCLE_FESTIVAL_BGM_ITEM_ID,
   'emo-sportsday-01',
   'cha-cash-01',
   'BF-03',

@@ -76,11 +76,11 @@ test('신규 스킨 2종이 지정 가격·이미지·설명으로 한 번씩 �
     );
   }
 
+  const featuredIds = getFeaturedStoreItems(STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('BG-05');
   assert.deepEqual(
-    getFeaturedStoreItems(18)
-      .slice(16)
-      .map((item) => item.id),
-    SKINS.map((item) => item.itemId),
+    featuredIds.slice(previousIndex, previousIndex + 1 + SKINS.length),
+    ['BG-05', ...SKINS.map((item) => item.itemId)],
   );
 });
 

@@ -16,7 +16,9 @@ test('늦가을 산책은 지정 문구·455피클로 NEW에서 네가 머문 �
   const product = catalog.getStoreItemById(itemId);
   assert.equal(catalog.STORE_ITEMS.filter(item => item.id === itemId).length, 1);
   assert.equal(catalog.CHARACTER_EFFECT_CATALOG.filter(item => item.itemId === itemId).length, 1);
-  assert.deepEqual(catalog.getFeaturedStoreItems(5).slice(3).map(item => item.id), ['bgm-boygroup-01', itemId]);
+  const featuredIds = catalog.getFeaturedStoreItems(catalog.STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('bgm-boygroup-01');
+  assert.deepEqual(featuredIds.slice(previousIndex, previousIndex + 2), ['bgm-boygroup-01', itemId]);
   assert.equal(product.name, '늦가을 산책');
   assert.equal(product.price, 455);
   assert.equal(product.category, 'cha-effects');

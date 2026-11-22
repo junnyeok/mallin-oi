@@ -16,8 +16,14 @@ test('지폐 흩뿌리기 follows the sports day pack in New and in release-date
   const item = catalog.getStoreItemById(itemId);
   assert.equal(catalog.STORE_ITEMS.filter(product => product.id === itemId).length, 1);
   assert.equal(catalog.CHARACTER_EFFECT_CATALOG.filter(effect => effect.itemId === itemId).length, 1);
-  assert.equal(catalog.getFeaturedStoreItems(2)[1], item);
-  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[1], item);
+  const featuredIds = catalog.getFeaturedStoreItems(catalog.STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('emo-sportsday-01');
+  assert.deepEqual(featuredIds.slice(previousIndex, previousIndex + 2), ['emo-sportsday-01', itemId]);
+  const releaseIds = catalog.STORE_ITEMS
+    .toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))
+    .map((entry) => entry.id);
+  const releaseIndex = releaseIds.indexOf('emo-sportsday-01');
+  assert.deepEqual(releaseIds.slice(releaseIndex, releaseIndex + 2), ['emo-sportsday-01', itemId]);
   assert.equal(catalog.getStoreItemDetailHref(itemId), './store-item.html?id=cha-cash-01');
   assert.equal(item.name, '지폐 흩뿌리기');
   assert.equal(item.price, 413);

@@ -76,7 +76,9 @@ test('BG-05 상품과 프로필배경 카탈로그가 지정값으로 한 번씩
 });
 
 test('BG-05는 오이소년 이모티콘팩 다음이고 전체 상품 ID에는 중복이 없다', () => {
-  assert.equal(getFeaturedStoreItems(24)[15].id, ITEM_ID);
+  const featuredIds = getFeaturedStoreItems(STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('emo-cucumberboy-01');
+  assert.deepEqual(featuredIds.slice(previousIndex, previousIndex + 2), ['emo-cucumberboy-01', ITEM_ID]);
 
   const itemIds = STORE_ITEMS.map((item) => item.id);
   const backgroundIds = PROFILE_BACKGROUND_CATALOG.map((item) => item.itemId);

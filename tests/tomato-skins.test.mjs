@@ -63,7 +63,12 @@ function readPngAlpha(png) {
 }
 
 test('DGB PARK 다음 토마토 스킨 두 상품의 순서, 가격, 원본 문구와 미리보기', () => {
-  assert.deepEqual(catalog.getFeaturedStoreItems(12).slice(9).map(item => item.id), ['BG-06', ...specs.map(item => item.id)]);
+  const featuredIds = catalog.getFeaturedStoreItems(catalog.STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('BG-06');
+  assert.deepEqual(
+    featuredIds.slice(previousIndex, previousIndex + 1 + specs.length),
+    ['BG-06', ...specs.map((item) => item.id)],
+  );
   for (const spec of specs) {
     const item = catalog.getStoreItemById(spec.id);
     assert.equal(catalog.STORE_ITEMS.filter(row => row.id === spec.id).length, 1);

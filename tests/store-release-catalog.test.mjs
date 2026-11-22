@@ -65,4 +65,56 @@ test('the deployment command exports the actual store catalog to JSON', async (t
   assert.ok(items.length > 0);
   assert.deepEqual(items.map(({ id }) => id), items.map(({ id }) => id).sort());
   assert.ok(items.every((item) => Object.keys(item).join() === 'id,name,price'));
+  assert.deepEqual(items.find(({ id }) => id === 'bgm-cucumbergirl&grilledegg-01'), {
+    id: 'bgm-cucumbergirl&grilledegg-01',
+    name: 'シャキッ！ムキッ！マッスル祭！',
+    price: 687,
+  });
+});
+
+test('the festival BGM leads New and shares its preview media with the inventory track', async () => {
+  globalThis.window = { __SITE_VERSION__: 'test', location: new URL('https://mallin-oi.com/') };
+  const catalog = await import('../assets/js/modules/store-data.js');
+  const id = 'bgm-cucumbergirl&grilledegg-01';
+  const title = 'シャキッ！ムキッ！マッスル祭！';
+  const item = catalog.getStoreItemById(id);
+  const track = catalog.BGM_CATALOG.find((entry) => entry.storeItemId === id);
+  const newest = catalog.STORE_ITEMS.toSorted((left, right) => right.releaseDate.localeCompare(left.releaseDate));
+
+  assert.equal(catalog.getFeaturedStoreItems(1)[0], item);
+  assert.equal(newest[0], item);
+  assert.equal(item.category, 'bgm');
+  assert.equal(item.isPurchasable, true);
+  assert.equal(item.previewAudioPath, `/assets/mp3/${encodeURIComponent(title)}.mp3?v=test`);
+  assert.equal(item.thumbImagePath, `/images/BGM/${encodeURIComponent(title)}.png?v=test`);
+  assert.equal(item.previewImages.length, 1);
+  assert.equal(item.previewImages[0].imagePath, item.thumbImagePath);
+  assert.equal(track.id, 'mallin-oi-cucumbergirl-grilledegg-01');
+  assert.equal(track.title, title);
+  assert.equal(track.coverPath, item.thumbImagePath);
+  assert.equal(track.audioPath, item.previewAudioPath);
+  assert.equal(new URL(catalog.getStoreItemDetailHref(id), 'https://mallin-oi.com/').searchParams.get('id'), id);
+});
+
+test('the representative BGM request accepts the festival ID and rejects unrelated ampersand IDs', async () => {
+  const moduleUrl = new URL('../assets/js/modules/bgm-preferences.js', import.meta.url);
+  const source = await readFile(moduleUrl, 'utf8');
+  const stubbedSource = source.replace(
+    "import { supabase } from './supabase-client.js';",
+    `export const calls = [];
+    const supabase = {
+      rpc: async (name, args) => {
+        calls.push({ name, args });
+        return { data: [{ success: true, profile_featured_bgm_item_id: args.p_item_id }] };
+      },
+    };`,
+  );
+  const { calls, saveMyProfileFeaturedBgm } = await import(
+    `data:text/javascript,${encodeURIComponent(stubbedSource)}`
+  );
+  const id = 'bgm-cucumbergirl&grilledegg-01';
+
+  assert.equal((await saveMyProfileFeaturedBgm(id)).itemId, id);
+  await assert.rejects(saveMyProfileFeaturedBgm('other&bgm'), /상품 정보가 올바르지 않아/);
+  assert.deepEqual(calls, [{ name: 'set_my_profile_featured_bgm', args: { p_item_id: id } }]);
 });

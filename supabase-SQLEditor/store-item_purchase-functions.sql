@@ -463,6 +463,11 @@ begin
     v_name := 'PIXEL HEART';
     v_category := 'bgm';
 
+  elsif p_item_id = 'bgm-cucumbergirl&grilledegg-01' then
+    v_price := 687;
+    v_name := 'シャキッ！ムキッ！マッスル祭！';
+    v_category := 'bgm';
+
   elsif p_item_id = 'bgm-boygroup-01' then
     v_price := 655;
     v_name := '네가 머문 자리';
@@ -591,6 +596,10 @@ begin
       v_can_bypass_store_balance := false;
     end if;
 
+    if p_item_id = 'bgm-cucumbergirl&grilledegg-01' then
+      v_can_bypass_store_balance := false;
+    end if;
+
     if p_item_id = 'cha-cash-01' then
       v_can_bypass_store_balance := false;
     end if;
@@ -644,6 +653,10 @@ begin
       end if;
 
       if p_item_id = 'cha-fall-01' then
+        v_is_auto_topup_admin := false;
+      end if;
+
+      if p_item_id = 'bgm-cucumbergirl&grilledegg-01' then
         v_is_auto_topup_admin := false;
       end if;
 
@@ -1520,6 +1533,9 @@ begin
   elsif p_item_id = 'bgm-cucumbergirl-03' then
     null;
 
+  elsif p_item_id = 'bgm-cucumbergirl&grilledegg-01' then
+    null;
+
   elsif p_item_id = 'bgm-boygroup-01' then
     null;
 
@@ -1805,6 +1821,8 @@ begin
         then 'MUSCLE NIGHT 구매가 완료됐어. 653피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-cucumbergirl-03'
         then 'PIXEL HEART 구매가 완료됐어. 588피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
+      when p_item_id = 'bgm-cucumbergirl&grilledegg-01'
+        then 'シャキッ！ムキッ！マッスル祭！ 구매가 완료됐어. 687피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'bgm-boygroup-01'
         then '네가 머문 자리 구매가 완료됐어. 655피클이 차감됐고 내프로필 BGM 인벤토리에서 선택할 수 있어.'
       when p_item_id = 'cha-effects-cucumberheart-01'

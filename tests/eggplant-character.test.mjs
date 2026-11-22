@@ -17,8 +17,14 @@ const migrationPath = 'supabase/migrations/20261110000000_eggplant_character.sql
 
 test('뒷골목 가지소년이 NEW 앞부분에 유지되며 지정 문구·589피클·미리보기가 정확하다', () => {
   const item = catalog.getStoreItemById(itemId);
-  assert.equal(catalog.getFeaturedStoreItems(6)[5].id, itemId);
-  assert.equal(catalog.STORE_ITEMS.toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))[5].id, itemId);
+  const featuredIds = catalog.getFeaturedStoreItems(catalog.STORE_ITEMS.length).map((entry) => entry.id);
+  const previousIndex = featuredIds.indexOf('cha-fall-01');
+  assert.deepEqual(featuredIds.slice(previousIndex, previousIndex + 2), ['cha-fall-01', itemId]);
+  const releaseIds = catalog.STORE_ITEMS
+    .toSorted((a, b) => b.releaseDate.localeCompare(a.releaseDate))
+    .map((entry) => entry.id);
+  const releaseIndex = releaseIds.indexOf('cha-fall-01');
+  assert.deepEqual(releaseIds.slice(releaseIndex, releaseIndex + 2), ['cha-fall-01', itemId]);
   assert.equal(item.name, '뒷골목 가지소년');
   assert.equal(item.category, 'character');
   assert.equal(item.badge, '캐릭터');

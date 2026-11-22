@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const STORE_RELEASE_STATES = new Set(['판매 중', '무료 지급']);
-const ITEM_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+const ITEM_ID_PATTERN = /^(?:[A-Za-z0-9_-]{1,100}|bgm-cucumbergirl&grilledegg-01)$/;
 const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
 const MAX_ITEMS = 500;
 const MAX_PRICE = 2147483647;

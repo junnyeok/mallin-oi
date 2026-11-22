@@ -2017,3 +2017,7 @@
 ./tests/account-email-mfa.test.mjs
 ./supabase/migrations/20261120030000_optional_account_mfa.sql
 ./supabase-SQLEditor/20261120-optional-account-mfa.sql
+./assets/mp3/シャキッ！ムキッ！マッスル祭！.mp3
+./images/BGM/シャキッ！ムキッ！マッスル祭！.png
+./supabase-SQLEditor/20261122-muscle-festival-bgm.sql
+./supabase/migrations/20261122000000_muscle_festival_bgm.sql
