@@ -222,7 +222,10 @@ final class SiteViewController: UIViewController {
             }
             authenticate(at: url, request: request, reply: reply)
         case "openGoogleAuthenticator":
-            guard url.path == "/mypage.html" else { reply(nil, "UNAVAILABLE"); return }
+            guard url.path == "/mypage.html" || url.path == "/account/mfa.html" else {
+                reply(nil, "UNAVAILABLE")
+                return
+            }
             let authenticator = URL(string: "googleauthenticator://")!
             let store = URL(string: "itms-apps://apps.apple.com/kr/app/id388497605")!
             UIApplication.shared.open(authenticator) { opened in

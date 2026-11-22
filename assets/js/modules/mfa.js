@@ -8,7 +8,7 @@ const googlePlay = 'https://play.google.com/store/apps/details?id=' + authentica
 const appStore = 'https://apps.apple.com/kr/app/id388497605';
 const appStoreApp = 'itms-apps://apps.apple.com/kr/app/id388497605';
 
-function mountAuthenticatorShortcut(el, browser = globalThis.window) {
+function mountAuthenticatorShortcut(el, { browser = globalThis.window, login = false } = {}) {
   const { userAgent = '', maxTouchPoints = 0 } = browser?.navigator || {};
   const ios = /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
   const android = /Android/.test(userAgent);
@@ -21,7 +21,7 @@ function mountAuthenticatorShortcut(el, browser = globalThis.window) {
   google.hidden = ios;
   open.hidden = !ios && !android;
   el('authenticator-name').hidden = !open.hidden;
-  el('authenticator-links').hidden = false;
+  el('authenticator-links').hidden = login && open.hidden;
 
   if (android) {
     // Scope the launch to Google's app and let Chrome open Play when the app is unavailable.
@@ -35,9 +35,17 @@ function mountAuthenticatorShortcut(el, browser = globalThis.window) {
       const bridge = browser.webkit?.messageHandlers?.mallinoiSite;
       if (bridge?.postMessage) {
         event.preventDefault();
+        const unavailable = () => {
+          if (!open.isConnected) return;
+          if (login) {
+            el('status').textContent = 'Google Authenticator 앱을 직접 열고 코드를 확인해 주세요.';
+          } else if (apple.isConnected) {
+            apple.click();
+          }
+        };
         bridge.postMessage({ action: 'openGoogleAuthenticator' }).then(opened => {
-          if (!opened && apple.isConnected) apple.click();
-        }).catch(() => { if (apple.isConnected) apple.click(); });
+          if (!opened) unavailable();
+        }).catch(unavailable);
         return;
       }
 
@@ -122,13 +130,12 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
           <code data-secret></code>
         </div>
       </div>
-      ${mode === 'login' ? '' : `
-        <div class="mfa-authenticator-links" data-authenticator-links aria-label="Google Authenticator" role="group" hidden>
-          <strong data-authenticator-name hidden>Google Authenticator</strong>
-          <a class="social-auth-link" data-open-authenticator hidden>Google Authenticator 열기</a>
-          <a class="social-auth-link" data-authenticator-app-store target="_blank" rel="noopener noreferrer">App Store</a>
-          <a class="social-auth-link" data-authenticator-google-play target="_blank" rel="noopener noreferrer">Google Play</a>
-        </div>`}
+      <div class="mfa-authenticator-links" data-authenticator-links aria-label="Google Authenticator" role="group" hidden>
+        <strong data-authenticator-name hidden>Google Authenticator</strong>
+        <a class="social-auth-link" data-open-authenticator hidden>Google Authenticator 열기</a>
+        <a class="social-auth-link" data-authenticator-app-store target="_blank" rel="noopener noreferrer">App Store</a>
+        <a class="social-auth-link" data-authenticator-google-play target="_blank" rel="noopener noreferrer">Google Play</a>
+      </div>
       <label data-code-field hidden>인증 앱의 6자리 코드
         <input data-code inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000">
       </label>
@@ -158,7 +165,7 @@ export async function mountMfa(root, { userId, mode = 'login', onVerified }) {
       : '등록한 인증 앱을 열고 현재 표시된 코드를 입력해 주세요.';
     el('name').value = mode === 'add' ? '예비 인증 앱' : '내 휴대폰';
     el('submit').textContent = enrolling ? '등록용 QR 코드 보기' : '인증하기';
-    if (mode !== 'login') mountAuthenticatorShortcut(el);
+    mountAuthenticatorShortcut(el, { login: mode === 'login' });
     loaded = true;
   }
 
