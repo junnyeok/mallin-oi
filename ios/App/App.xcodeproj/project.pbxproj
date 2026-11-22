@@ -21,6 +21,9 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		77A100222C19A00100100001 /* MallinoiCalendarWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A100212C19A00100100001 /* MallinoiCalendarWidgets.swift */; };
+		77A100622C19A00100100001 /* GroupWeekWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A100612C19A00100100001 /* GroupWeekWidget.swift */; };
+		77A100642C19A00100100001 /* GroupWidgetSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A100632C19A00100100001 /* GroupWidgetSelection.swift */; };
+		77A100652C19A00100100001 /* GroupWidgetSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A100632C19A00100100001 /* GroupWidgetSelection.swift */; };
 		77A100242C19A00100100001 /* MallinoiCalendarWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 77A100202C19A00100100001 /* MallinoiCalendarWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -67,6 +70,8 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		77A100202C19A00100100001 /* MallinoiCalendarWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MallinoiCalendarWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		77A100212C19A00100100001 /* MallinoiCalendarWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MallinoiCalendarWidgets.swift; sourceTree = "<group>"; };
+		77A100612C19A00100100001 /* GroupWeekWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupWeekWidget.swift; sourceTree = "<group>"; };
+		77A100632C19A00100100001 /* GroupWidgetSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupWidgetSelection.swift; sourceTree = "<group>"; };
 		77A100262C19A00100100001 /* MallinoiCalendarWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MallinoiCalendarWidgets.entitlements; sourceTree = "<group>"; };
 		77A100272C19A00100100001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -133,6 +138,8 @@
 			isa = PBXGroup;
 			children = (
 				77A100212C19A00100100001 /* MallinoiCalendarWidgets.swift */,
+				77A100612C19A00100100001 /* GroupWeekWidget.swift */,
+				77A100632C19A00100100001 /* GroupWidgetSelection.swift */,
 				A7B111110000000000000002 /* WidgetAssets.xcassets */,
 				77A100262C19A00100100001 /* MallinoiCalendarWidgets.entitlements */,
 				77A100272C19A00100100001 /* Info.plist */,
@@ -254,6 +261,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				77A100652C19A00100100001 /* GroupWidgetSelection.swift in Sources */,
 				77A1003A2C19A00100100001 /* MainViewController.swift in Sources */,
 				77A1001F2C19A00100100001 /* CalendarWidgetsPlugin.swift in Sources */,
 				77A100412C19A00100100001 /* CompletionAudioSessionPlugin.swift in Sources */,
@@ -266,6 +274,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				77A100222C19A00100100001 /* MallinoiCalendarWidgets.swift in Sources */,
+				77A100622C19A00100100001 /* GroupWeekWidget.swift in Sources */,
+				77A100642C19A00100100001 /* GroupWidgetSelection.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -415,7 +425,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = W8LSQN97JV;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "말린오이 캘린더";
@@ -424,7 +434,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.36;
+				MARKETING_VERSION = 1.0.37;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mallinoi.calendar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -440,7 +450,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = W8LSQN97JV;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "말린오이 캘린더";
@@ -449,7 +459,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.36;
+				MARKETING_VERSION = 1.0.37;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mallinoi.calendar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -464,7 +474,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MallinoiCalendarWidgets/MallinoiCalendarWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = W8LSQN97JV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MallinoiCalendarWidgets/Info.plist;
@@ -474,7 +484,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.36;
+				MARKETING_VERSION = 1.0.37;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mallinoi.calendar.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -490,7 +500,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MallinoiCalendarWidgets/MallinoiCalendarWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = W8LSQN97JV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MallinoiCalendarWidgets/Info.plist;
@@ -500,7 +510,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.36;
+				MARKETING_VERSION = 1.0.37;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mallinoi.calendar.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

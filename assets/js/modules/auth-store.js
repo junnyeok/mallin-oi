@@ -453,7 +453,17 @@ export function isMypageVerified() {
 }
 
 function applySession(session) {
-  if (sessionAllowsAccess(session)) {
+  const canAccess = sessionAllowsAccess(session);
+  const accountId = canAccess ? session.user.id : '';
+  const capacitor = globalThis.window?.Capacitor;
+  const widgetPlugin = capacitor?.Plugins?.CalendarWidgets;
+  if (capacitor?.isNativePlatform?.() && typeof widgetPlugin?.setWidgetAccount === 'function' && authState.widgetAccount !== accountId) {
+    authState.widgetAccount = accountId;
+    widgetPlugin.setWidgetAccount({ accountId }).catch(() => {
+      if (authState.widgetAccount === accountId) delete authState.widgetAccount;
+    });
+  }
+  if (canAccess) {
     authState.cachedSession = session;
     authState.status = 'authenticated';
     return session;

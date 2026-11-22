@@ -1,8 +1,7 @@
 import SwiftUI
 import WidgetKit
 
-private let appGroupName = "group.com.mallinoi.calendar"
-private let koreanWeekdays = ["일", "월", "화", "수", "목", "금", "토"]
+let koreanWeekdays = ["일", "월", "화", "수", "목", "금", "토"]
 
 struct CalendarWidgetItem: Decodable, Identifiable {
     let calendarType: String
@@ -192,7 +191,7 @@ struct CalendarWidgetProvider: TimelineProvider {
     }
 }
 
-private struct CalendarWidgetBackground: ViewModifier {
+struct CalendarWidgetBackground: ViewModifier {
     let theme: CalendarWidgetTheme
 
     private var fill: some View {
@@ -495,14 +494,14 @@ struct DayCellView: View {
                 Text(displayTitle(for: item))
                     .strikethrough(calendarType == "study" && item.isDone == true)
                     .font(.system(size: badgeFontSize, weight: .bold))
-                    .foregroundStyle(badgeTextColor(for: item.displayColor ?? item.categoryColor))
+                    .foregroundStyle(theme.badgeTextColor(for: item.displayColor ?? item.categoryColor))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
                     .padding(.horizontal, 4 * monthContentScale)
                     .padding(.vertical, badgeVerticalPadding)
                     .frame(maxWidth: .infinity, minHeight: badgeHeight, maxHeight: badgeHeight)
-                    .background(textColor(for: item.displayColor ?? item.categoryColor))
+                    .background(theme.textColor(for: item.displayColor ?? item.categoryColor))
                     .clipShape(RoundedRectangle(cornerRadius: 5 * monthContentScale, style: .continuous))
                     .opacity(calendarType == "study" && item.isDone == true ? 0.62 : 1)
             }
@@ -775,8 +774,12 @@ struct DayCellView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func badgeTextColor(for hex: String) -> Color {
-        if hex.lowercased() == "transparent" { return theme.text }
+
+}
+
+extension CalendarWidgetTheme {
+    func badgeTextColor(for hex: String) -> Color {
+        if hex.lowercased() == "transparent" { return text }
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else {
             return Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255)
@@ -786,11 +789,11 @@ struct DayCellView: View {
         return brightness > 160 ? Color(red: 17 / 255, green: 17 / 255, blue: 17 / 255) : .white
     }
 
-    private func textColor(for hex: String) -> Color {
+    func textColor(for hex: String) -> Color {
         if hex.lowercased() == "transparent" { return .clear }
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else {
-            return theme.secondary
+            return secondary
         }
 
         return Color(
@@ -923,8 +926,7 @@ struct EventMonthWidget: Widget {
     var body: some WidgetConfiguration { makeWidgetConfiguration(definitions[8]) }
 }
 
-@main
-struct MallinoiCalendarWidgetsBundle: WidgetBundle {
+struct PersonalCalendarWidgets: WidgetBundle {
     var body: some Widget {
         StudyFourDaysWidget()
         StudyTwoWeeksWidget()
@@ -935,5 +937,28 @@ struct MallinoiCalendarWidgetsBundle: WidgetBundle {
         EventFourDaysWidget()
         EventTwoWeeksWidget()
         EventMonthWidget()
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct GroupCalendarWidgets: WidgetBundle {
+    var body: some Widget {
+        PersonalCalendarWidgets().body
+        GroupWeekWidget<StudyGroupIntent>()
+        GroupWeekWidget<WorkGroupIntent>()
+        GroupWeekWidget<EventGroupIntent>()
+    }
+}
+
+@main
+enum MallinoiCalendarWidgetsBundle {
+    @MainActor static func main() {
+        if #available(iOSApplicationExtension 18.0, *) {
+            PromptedGroupBundle.main()
+        } else if #available(iOSApplicationExtension 17.0, *) {
+            GroupCalendarWidgets.main()
+        } else {
+            PersonalCalendarWidgets.main()
+        }
     }
 }

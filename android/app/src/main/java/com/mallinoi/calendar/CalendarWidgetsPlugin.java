@@ -30,7 +30,10 @@ public class CalendarWidgetsPlugin extends Plugin {
             new WorkMonthWidgetProvider(),
             new EventFourDayWidgetProvider(),
             new EventTwoWeekWidgetProvider(),
-            new EventMonthWidgetProvider()
+            new EventMonthWidgetProvider(),
+            new StudyGroupWidgetProvider(),
+            new WorkGroupWidgetProvider(),
+            new EventGroupWidgetProvider()
     };
 
     @Override
@@ -85,11 +88,26 @@ public class CalendarWidgetsPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void setWidgetAccount(PluginCall call) {
+        String account = call.getString("accountId", "");
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (!account.equals(prefs.getString("widget_account", null))) {
+            prefs.edit().putString("widget_account", account).remove(KEY_PAYLOAD).putBoolean(KEY_LOGGED_IN, false).apply();
+            refreshAllWidgets(getContext());
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
     public void saveWidgetData(PluginCall call) {
         boolean isLoggedIn = call.getBoolean("isLoggedIn", false);
         JSObject payload = call.getObject("payload", new JSObject());
 
         SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (!call.getString("accountId", "").equals(prefs.getString("widget_account", ""))) {
+            call.resolve();
+            return;
+        }
         prefs.edit()
                 .putBoolean(KEY_LOGGED_IN, isLoggedIn)
                 .putString(KEY_PAYLOAD, payload.toString())
@@ -104,16 +122,19 @@ public class CalendarWidgetsPlugin extends Plugin {
     public void consumePendingRoute(PluginCall call) {
         SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String calendarType = prefs.getString(KEY_PENDING_TYPE, "");
-        prefs.edit().remove(KEY_PENDING_TYPE).apply();
+        String groupId = prefs.getString("pending_group_id", "");
+        prefs.edit().remove(KEY_PENDING_TYPE).remove("pending_group_id").apply();
 
         JSObject result = new JSObject();
         result.put("calendarType", calendarType);
+        result.put("groupId", groupId);
         call.resolve(result);
     }
 
-    static void setPendingCalendarType(Context context, String calendarType) {
+    static void setPendingCalendarType(Context context, String calendarType, String groupId) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
+                .putString("pending_group_id", groupId)
                 .putString(KEY_PENDING_TYPE, calendarType)
                 .apply();
     }

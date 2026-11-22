@@ -60,6 +60,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         let defaults = UserDefaults(suiteName: "group.com.mallinoi.calendar") ?? .standard
+        let group = components?.queryItems?.first(where: { $0.name == "group" })?.value
+        defaults.set(group.flatMap(UUID.init(uuidString:))?.uuidString.lowercased(), forKey: "pending_group_id")
         defaults.set(calendarType, forKey: "pending_calendar_type")
         defaults.synchronize()
     }

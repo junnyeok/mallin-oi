@@ -5,6 +5,7 @@ const REFRESH_DELAY_MS = 800;
 
 let refreshTimer = null;
 let refreshPromise = null;
+let queuedRefresh = null;
 let authStoreModulePromise = null;
 let widgetDataModulePromise = null;
 let widgetNavigationReady = null;
@@ -110,7 +111,13 @@ export async function refreshCalendarWidgets({ force = false } = {}) {
 
   if (refreshPromise) {
     if (!force) return refreshPromise;
-    await refreshPromise;
+    if (!queuedRefresh) {
+      queuedRefresh = refreshPromise.then(() => {
+        queuedRefresh = null;
+        return refreshCalendarWidgets();
+      });
+    }
+    return queuedRefresh;
   }
 
   refreshPromise = (async () => {
@@ -124,9 +131,11 @@ export async function refreshCalendarWidgets({ force = false } = {}) {
       }
 
       const fetchCalendarWidgetPayload = await loadCalendarWidgetPayloadFetcher();
-      const payload = await fetchCalendarWidgetPayload();
+      const payload = await fetchCalendarWidgetPayload({ currentUserId: user.id });
+      if ((await getCurrentUser())?.id !== user.id) return false;
       await plugin.saveWidgetData({
         isLoggedIn: true,
+        accountId: user.id,
         payload,
       });
 
@@ -147,7 +156,7 @@ export function scheduleCalendarWidgetRefresh() {
 
   window.clearTimeout(refreshTimer);
   refreshTimer = window.setTimeout(() => {
-    void refreshCalendarWidgets();
+    void refreshCalendarWidgets({ force: true });
   }, REFRESH_DELAY_MS);
 }
 
@@ -159,8 +168,13 @@ export async function consumeCalendarWidgetRoute({ navigate = true } = {}) {
     const result = await plugin.consumePendingRoute();
     const href = getCalendarHref(result?.calendarType);
 
-    // Consume a tap on the current calendar without reloading its month or group.
-    if (!navigate || !href || window.location.pathname === href.split('?')[0]) return false;
+    // A group tap can change the group without changing the calendar type.
+    if (!navigate || !href) return false;
+    if (result.groupId) {
+      window.location.replace(href + '&widgetGroup=' + encodeURIComponent(result.groupId));
+      return true;
+    }
+    if (window.location.pathname === href.split('?')[0]) return false;
 
     window.location.replace(href);
     return true;
@@ -185,6 +199,10 @@ export async function initCalendarWidgetNavigation({ discardPending = false } = 
       } catch (error) {
         console.error('[calendar-native-widgets] route listener failed:', error);
       }
+
+      globalThis.document?.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') scheduleCalendarWidgetRefresh();
+      });
 
       // A cold-start URL may arrive before this document can receive events.
       return consumeCalendarWidgetRoute();

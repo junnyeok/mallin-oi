@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/groupDay" android:layout_width="0dp" android:layout_weight="1"
+    android:layout_height="wrap_content" android:orientation="vertical"
+    android:layout_marginHorizontal="1dp">
+    <TextView android:id="@+id/groupFirst" style="@style/GroupWidgetItem" />
+    <TextView android:id="@+id/groupSecond" style="@style/GroupWidgetItem" />
+    <TextView android:id="@+id/groupMore" style="@style/GroupWidgetItem" />
+</LinearLayout>

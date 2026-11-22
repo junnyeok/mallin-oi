@@ -181,6 +181,7 @@ export function enableCalendarListReorder({
   items,
   onReorder,
   handleSide = 'left',
+  showMoveButtons = false,
   allowPageScroll = false,
   statusClass = 'calendar-category-order-status',
   instructions = `${handleSide === 'right' ? '오른쪽' : '왼쪽'} 손잡이를 누른 채 위아래로 끌어 순서를 바꿔요.`,
@@ -207,15 +208,23 @@ export function enableCalendarListReorder({
   let destroyed = false;
   const itemsByRow = new Map();
   const rowByHandle = new Map();
+  const moveButtonsByRow = new Map();
   const handleSelector = `.${handleClass}`;
   const rows = () => Array.from(root.children).filter((row) => itemsByRow.has(row));
   const ids = () => rows().map((row) => itemsByRow.get(row).id);
   // Shared/read-only schedules follow the editable entries in the same list.
   const boundary = () => Array.from(root.children).find((row) => !itemsByRow.has(row)) || null;
+  const updateMoveButtons = () => {
+    moveButtonsByRow.forEach(({ up, down }, row) => {
+      up.disabled = !itemsByRow.has(row.previousElementSibling);
+      down.disabled = !itemsByRow.has(row.nextElementSibling);
+    });
+  };
   const restore = (order) => {
     const byId = new Map(rows().map((row) => [itemsByRow.get(row).id, row]));
     const afterEditable = boundary();
     order.forEach((id) => { if (byId.has(id)) root.insertBefore(byId.get(id), afterEditable); });
+    updateMoveButtons();
   };
   const announcePosition = (row) => {
     status.textContent = `${itemsByRow.get(row).name}, ${rows().indexOf(row) + 1}번째`;
@@ -237,12 +246,32 @@ export function enableCalendarListReorder({
     rowByHandle.set(handle, row);
     if (handleSide === 'right') row.append(handle);
     else row.prepend(handle);
+    if (showMoveButtons) {
+      const controls = documentRef.createElement('span');
+      controls.className = 'calendar-list-move-buttons';
+      const up = makeMoveButton('위로', '↑', -1);
+      const down = makeMoveButton('아래로', '↓', 1);
+      controls.append(up, down);
+      row.append(controls);
+      moveButtonsByRow.set(row, { up, down });
+
+      function makeMoveButton(label, symbol, direction) {
+        const button = documentRef.createElement('button');
+        button.type = 'button';
+        button.textContent = symbol;
+        button.setAttribute('aria-label', `${item.name} ${label} 이동`);
+        button.addEventListener('click', () => moveAdjacent(row, direction, handle), options);
+        return button;
+      }
+    }
   });
+  updateMoveButtons();
 
   async function commit(before, focusHandle) {
     const order = ids();
     if (order.every((id, index) => id === before[index])) return;
     busy = true;
+    updateMoveButtons();
     root.inert = true;
     root.setAttribute('aria-busy', 'true');
     status.removeAttribute('data-error');
@@ -329,15 +358,20 @@ export function enableCalendarListReorder({
     announcePosition(row);
     frame = windowRef.requestAnimationFrame(tick);
   }, options);
-  root.addEventListener('pointermove', (event) => {
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    event.preventDefault();
+  function movePointer(event) {
     drag.y = event.clientY;
     if (Math.abs(drag.y - drag.startY) >= 4) drag.hasMoved = true;
     moveAtPointer();
+  }
+  root.addEventListener('pointermove', (event) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    movePointer(event);
   }, options);
   root.addEventListener('pointerup', (event) => {
-    if (drag?.pointerId === event.pointerId) stop();
+    if (drag?.pointerId !== event.pointerId) return;
+    if (drag.y !== event.clientY) movePointer(event);
+    stop();
   }, options);
   const cancelPointerDrag = (event) => {
     if (drag?.pointerId === event.pointerId) stop(true);
@@ -373,17 +407,21 @@ export function enableCalendarListReorder({
     }
     else if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.preventDefault();
   }, { ...options, capture: true });
+  function moveAdjacent(row, direction, handle) {
+    if (busy || drag) return;
+    const before = ids();
+    const adjacent = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!itemsByRow.has(adjacent)) return;
+    if (direction < 0) root.insertBefore(row, adjacent);
+    else root.insertBefore(adjacent, row);
+    void commit(before, handle);
+  }
   root.addEventListener('keydown', (event) => {
     const handle = event.target.closest(handleSelector);
     const row = rowByHandle.get(handle);
     if (event.defaultPrevented || !row || handle.disabled || busy || drag || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault();
-    const before = ids();
-    const adjacent = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
-    if (!itemsByRow.has(adjacent)) return;
-    if (event.key === 'ArrowUp') root.insertBefore(row, adjacent);
-    else root.insertBefore(adjacent, row);
-    void commit(before, handle);
+    moveAdjacent(row, event.key === 'ArrowUp' ? -1 : 1, handle);
   }, options);
 
   controllers.set(root, {
@@ -396,6 +434,7 @@ export function enableCalendarListReorder({
       root.removeAttribute('aria-busy');
       rowByHandle.forEach((row, handle) => {
         handle.remove();
+        moveButtonsByRow.get(row)?.up.parentElement?.remove();
         row.classList.remove(itemClass);
       });
       controllers.delete(root);

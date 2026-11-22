@@ -600,6 +600,7 @@ test('그룹 일정 표시는 최초 개인 일정 재조회와 백업 비교를
     `${methods.join('\n')}\n({ loadGroups, refreshCalendar });`,
     {
       state,
+      URL, window: { location: { href: "https://example.test/calendar-work.html" } },
       groupsPromise: Promise.resolve([group]),
       fetchCalendarGroups: () => assert.fail('이미 시작한 그룹 요청을 재사용해야 한다'),
       calendarType: 'work',

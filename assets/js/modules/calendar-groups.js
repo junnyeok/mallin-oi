@@ -1,3 +1,5 @@
+import { refreshCalendarWidgets, scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
+import { enableCalendarListReorder, resetCalendarListReorder } from './calendar-category-order.js';
 import { normalizeCategoryColor } from './calendar-category-color.js';
 // assets/js/modules/calendar-groups.js
 
@@ -10,6 +12,7 @@ import {
 } from './auth-store.js';
 import { isCalendarAppMode } from './app-calendar-mode.js';
 import { normalizeBackupPayload } from './calendar-group-backup-comparison.js';
+import { orderWidgetMembers, readWidgetMemberOrder, saveWidgetMemberOrder } from './calendar-widget-member-order.js';
 import { appendKoreanHolidayBadge } from './calendar-holidays.js';
 import { openCalendarManagePopup } from './service-menu.js';
 
@@ -478,6 +481,33 @@ function collectWeekScheduleRows(week, groupState) {
     personalEventsByDateAndUser,
     sharedEventsByDate,
   };
+}
+
+// Use the board's deduplicated events and send only display text to the widget.
+export function buildGroupWidgetRows(group, calendarType, roster, events, dates, currentUserId, savedMemberIds) {
+  const state = {
+    selectedGroup: group, calendarType, eventsByDate: groupEventsByDateAndUser(events),
+  };
+  const board = collectWeekScheduleRows(dates.map(dateKey => ({ dateKey })), state);
+  function makeRow(name, getEvents) {
+    const days = {};
+    for (const date of dates) {
+      const items = getEvents(date);
+      if (items?.length) days[date] = items.map(event => ({
+        title: event.title || event.event_type || '일정',
+        color: normalizeColor(event.color, group.color || '#eeeeee'),
+        done: event.isDone,
+      }));
+    }
+    return { name, days };
+  }
+  const members = orderWidgetMembers(roster, currentUserId, savedMemberIds);
+  const rows = members.map(member => makeRow(getNicknameInitial(member.nickname),
+    date => board.personalEventsByDateAndUser.get(`${date}|${member.user_id}`)));
+  if (board.hasSharedEvents) {
+    rows.push({ ...makeRow('우리', date => board.sharedEventsByDate.get(date)), shared: true });
+  }
+  return rows;
 }
 
 async function rpc(name, params = {}) {
@@ -1024,6 +1054,7 @@ export async function initCalendarGroupBar({
   const panelId = `${calendarType}CalendarGroupPanel`;
   const panelTitleId = `${calendarType}CalendarGroupPanelTitle`;
   const panelStatusId = `${calendarType}CalendarGroupPanelStatus`;
+  const widgetOrderId = `${calendarType}CalendarWidgetOrder`;
   bar.innerHTML = `
     <div class="calendar-group-bar__actions">
       <button
@@ -1069,6 +1100,14 @@ export async function initCalendarGroupBar({
             <option value="">그룹 연동 OFF</option>
           </select>
         </label>
+        <button class="calendar-group-bar__widget-order" type="button" aria-expanded="false" aria-controls="${widgetOrderId}" hidden>
+          위젯 순서 편집
+        </button>
+        <section class="calendar-group-widget-order" id="${widgetOrderId}" aria-label="위젯 순서 편집" hidden>
+          <p class="calendar-group-widget-order__status" role="status" hidden></p>
+          <div class="calendar-group-widget-order__own calendar-group-widget-order__member" hidden></div>
+          <ol class="calendar-group-widget-order__list"></ol>
+        </section>
         <button class="calendar-group-bar__close" type="button">닫기</button>
       </div>
       <div class="calendar-group-bar__status" id="${panelStatusId}" aria-live="polite">
@@ -1099,6 +1138,11 @@ export async function initCalendarGroupBar({
   const status = panel.querySelector('.calendar-group-bar__status-main');
   const toggleButton = bar.querySelector('.calendar-group-bar__toggle');
   const closeButton = panel.querySelector('.calendar-group-bar__close');
+  const widgetOrderButton = panel.querySelector('.calendar-group-bar__widget-order');
+  const widgetOrderPanel = panel.querySelector('.calendar-group-widget-order');
+  const widgetOrderStatus = panel.querySelector('.calendar-group-widget-order__status');
+  const widgetOrderOwn = panel.querySelector('.calendar-group-widget-order__own');
+  const widgetOrderList = panel.querySelector('.calendar-group-widget-order__list');
   const focusableSelector = [
     'a[href]',
     'button:not([disabled])',
@@ -1111,6 +1155,75 @@ export async function initCalendarGroupBar({
   let lockedScrollY = 0;
   let previousBodyTop = '';
   let previousFocusedElement = null;
+  let widgetOrderRequest = 0;
+
+  function closeWidgetOrder() {
+    widgetOrderRequest += 1;
+    if (!widgetOrderPanel || widgetOrderPanel.hidden) return;
+    resetCalendarListReorder(widgetOrderList);
+    widgetOrderPanel.hidden = true;
+    widgetOrderButton.setAttribute('aria-expanded', 'false');
+    widgetOrderOwn.hidden = true;
+    widgetOrderOwn.textContent = '';
+    widgetOrderList.replaceChildren();
+  }
+
+  widgetOrderButton?.addEventListener('click', async () => {
+    if (!widgetOrderPanel.hidden) {
+      closeWidgetOrder();
+      return;
+    }
+    const groupId = state.selectedGroup?.id;
+    if (!groupId) return;
+    const request = ++widgetOrderRequest;
+    const scope = { userId, groupId, calendarType };
+    const setOrderStatus = (message) => {
+      widgetOrderStatus.hidden = !message;
+      widgetOrderStatus.textContent = message;
+    };
+    widgetOrderButton.setAttribute('aria-expanded', 'true');
+    widgetOrderPanel.hidden = false;
+    setOrderStatus('그룹원을 불러오는 중…');
+    try {
+      const roster = await rpc('get_calendar_group_members', { p_group_id: groupId });
+      if (request !== widgetOrderRequest || !widgetOrderPanel.isConnected) return;
+      const members = orderWidgetMembers(roster || [], userId, readWidgetMemberOrder(scope));
+      const own = members.find((member) => member.user_id === userId);
+      const others = members.filter((member) => member.user_id !== userId);
+      if (!own) {
+        setOrderStatus('그룹원 목록을 불러오지 못했어요. 그룹을 다시 열어 주세요.');
+        return;
+      }
+      widgetOrderOwn.textContent = `${own.nickname || '회원'} · 내 일정 (맨 위 고정)`;
+      widgetOrderOwn.hidden = false;
+      for (const member of others) {
+        const row = document.createElement('li');
+        row.className = 'calendar-group-widget-order__member';
+        row.textContent = member.nickname || '회원';
+        widgetOrderList.append(row);
+      }
+      if (others.length < 2) {
+        setOrderStatus('다른 그룹원이 두 명 이상이면 순서를 바꿀 수 있어요.');
+        return;
+      }
+      setOrderStatus('');
+      enableCalendarListReorder({
+        root: widgetOrderList,
+        items: others.map((member) => ({ id: member.user_id, name: member.nickname || '회원' })),
+        showMoveButtons: true,
+        instructions: '손잡이를 끌거나 화살표를 누르면 순서가 저장돼요.',
+        failureMessage: '이 기기에 순서를 저장하지 못했어요. 다시 시도해 주세요.',
+        onReorder(ids) {
+          saveWidgetMemberOrder(scope, ids);
+          void refreshCalendarWidgets({ force: true });
+        },
+      });
+    } catch (error) {
+      if (request !== widgetOrderRequest) return;
+      setOrderStatus('그룹원 목록을 불러오지 못했어요. 순서 편집을 다시 열어 주세요.');
+      console.error('[calendar-groups] widget members failed:', error);
+    }
+  });
 
   function getFocusableElements() {
     if (!dialog) return [];
@@ -1136,7 +1249,7 @@ export async function initCalendarGroupBar({
   }
 
   function handlePanelKeydown(event) {
-    if (panel.hidden || document.querySelector('dialog[open]')) return;
+    if (event.defaultPrevented || panel.hidden || document.querySelector('dialog[open]')) return;
 
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -1183,6 +1296,7 @@ export async function initCalendarGroupBar({
         dialog.focus({ preventScroll: true });
       });
     } else {
+      closeWidgetOrder();
       panel.hidden = true;
       document.removeEventListener('keydown', handlePanelKeydown);
       unlockPageScroll();
@@ -1319,6 +1433,9 @@ export async function initCalendarGroupBar({
     });
 
     select.value = selectedId;
+    if (widgetOrderButton) {
+      widgetOrderButton.hidden = !selectedId || !window.Capacitor?.isNativePlatform?.();
+    }
     updateBackupButtonState();
   }
 
@@ -1426,17 +1543,25 @@ export async function initCalendarGroupBar({
     if (!isInitialLoadCurrent()) return;
 
     state.groups = groups;
-    const selectedId = getSelectedGroupId();
+    const widgetUrl = new URL(window.location.href);
+    const requestedGroup = widgetUrl.searchParams.get('widgetGroup');
+    const selectedId = requestedGroup ?? getSelectedGroupId();
     // 선택 키는 세 캘린더가 공유하므로 저장값은 보존하고,
     // 현재 캘린더에서 허용되는 그룹만 이 화면의 선택으로 복원한다.
     state.selectedGroup = getAllowedGroups(state.groups, calendarType)
       .find((group) => group.id === selectedId) || null;
 
+    if (requestedGroup !== null) {
+      setSelectedGroupId(state.selectedGroup?.id || '');
+      widgetUrl.searchParams.delete('widgetGroup');
+      window.history.replaceState(window.history.state, '', widgetUrl);
+    }
     renderSelect();
     await loadGroupEvents('initial-group', { isCurrent: isInitialLoadCurrent });
   }
 
   select.addEventListener('change', async () => {
+    closeWidgetOrder();
     const groupId = select.value;
     state.selectedGroup = getAllowedGroups(state.groups, calendarType)
       .find((group) => group.id === groupId) || null;
@@ -1495,6 +1620,7 @@ export async function initCalendarGroupBar({
           backedUpAt,
         ).toLocaleString('ko-KR')}`,
       );
+      scheduleCalendarWidgetRefresh();
       await refreshCalendar({ reason: 'group-backup' });
     } catch (error) {
       console.error('[calendar-groups] backup failed:', error);
@@ -1512,6 +1638,7 @@ export async function initCalendarGroupBar({
 
   try {
     await loadGroups();
+    scheduleCalendarWidgetRefresh();
   } catch (error) {
     console.error('[calendar-groups] init bar failed:', error);
     setStatus('그룹 기능을 불러오지 못했어. Supabase SQL 적용이 필요해.');
@@ -1890,6 +2017,7 @@ export async function initCalendarGroupsPage() {
       privateToggle?.dispatchEvent(new Event('change'));
       setCreatePanelOpen(false);
       setStatus('그룹을 만들었어.');
+      scheduleCalendarWidgetRefresh();
       await load();
     } catch (error) {
       console.error('[calendar-groups] create failed:', error);
@@ -2035,6 +2163,7 @@ export async function initCalendarGroupsPage() {
         setStatus('그룹 설정을 저장했어.');
       }
 
+      scheduleCalendarWidgetRefresh();
       await load();
     } catch (error) {
       console.error('[calendar-groups] action failed:', error);

@@ -8,6 +8,7 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CalendarWidgetsPlugin"
     public let jsName = "CalendarWidgets"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "setWidgetAccount", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "saveWidgetData", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getAppearance", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAppearance", returnType: CAPPluginReturnPromise),
@@ -72,11 +73,27 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    @objc func setWidgetAccount(_ call: CAPPluginCall) {
+        let account = call.getString("accountId") ?? ""
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        if defaults.string(forKey: "widget_account") != account {
+            defaults.set(account, forKey: "widget_account")
+            defaults.removeObject(forKey: "payload_json")
+            defaults.set(false, forKey: "is_logged_in")
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        call.resolve()
+    }
+
     @objc func saveWidgetData(_ call: CAPPluginCall) {
         let isLoggedIn = call.getBool("isLoggedIn") ?? false
         let payload = call.getObject("payload") ?? [:]
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard
 
+        guard (defaults.string(forKey: "widget_account") ?? "") == (call.getString("accountId") ?? "") else {
+            call.resolve()
+            return
+        }
         if let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
            let json = String(data: data, encoding: .utf8) {
             defaults.set(json, forKey: "payload_json")
@@ -95,11 +112,13 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func consumePendingRoute(_ call: CAPPluginCall) {
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard
         let calendarType = defaults.string(forKey: "pending_calendar_type") ?? ""
+        let groupId = defaults.string(forKey: "pending_group_id") ?? ""
+        defaults.removeObject(forKey: "pending_group_id")
         defaults.removeObject(forKey: "pending_calendar_type")
         defaults.synchronize()
 
         call.resolve([
-            "calendarType": calendarType
+            "calendarType": calendarType, "groupId": groupId
         ])
     }
 }

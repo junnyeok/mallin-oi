@@ -37,7 +37,9 @@ public class MainActivity extends BridgeActivity {
         if (calendarType == null) return;
 
         if ("study".equals(calendarType) || "work".equals(calendarType) || "event".equals(calendarType)) {
-            CalendarWidgetsPlugin.setPendingCalendarType(this, calendarType);
+            String group = data != null && "mallinoi".equals(data.getScheme()) && "calendar".equals(data.getHost())
+                    ? data.getQueryParameter("group") : null;
+            CalendarWidgetsPlugin.setPendingCalendarType(this, calendarType, group);
         }
     }
 }

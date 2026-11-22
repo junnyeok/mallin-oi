@@ -3,6 +3,7 @@
 import { supabase } from './supabase-client.js';
 import { getKoreanPublicHoliday } from './calendar-holidays.js';
 import { resolveWorkCalendarTimeRange } from './calendar-time.js';
+import { readWidgetMemberOrder } from './calendar-widget-member-order.js';
 
 export const CALENDAR_WIDGET_TYPES = ['study', 'work', 'event'];
 export const CALENDAR_WIDGET_RANGES = ['fourDays', 'twoWeeks', 'month'];
@@ -502,10 +503,49 @@ export async function fetchCalendarWidgetItems(options = {}) {
   ];
 }
 
-export async function fetchCalendarWidgetPayload(options = {}) {
-  const items = await fetchCalendarWidgetItems(options);
+async function fetchWidgetGroupBoards(today, currentUserId) {
+  const { buildGroupWidgetRows, fetchCalendarGroups } = await import('./calendar-groups.js');
+  const start = getTwoWeekRange(parseDateKey(toDateKey(today))).startDate;
+  const dates = getDateKeys(start, 14);
+  const groups = await fetchCalendarGroups();
+  const boards = { study: [], work: [], event: [] };
+  async function read(name, params) {
+    const { data, error } = await supabase.rpc(name, params);
+    if (error) throw error;
+    return data || [];
+  }
 
-  return buildCalendarWidgetPayload(items, {
-    today: options.today || new Date(),
-  });
+  // Warm both weeks so Sunday rollover and first-time widget configuration
+  // work while the app is closed. Bound concurrency to one group at a time.
+  for (const group of groups) {
+    const types = CALENDAR_WIDGET_TYPES.filter(type => group[`allow_${type}`]);
+    if (!types.length) continue;
+    const roster = read('get_calendar_group_members', { p_group_id: group.id });
+    await Promise.all(types.map(async type => {
+      const board = { id: group.id, name: group.name, weeks: {} };
+      boards[type].push(board);
+      try {
+        const [members, events] = await Promise.all([roster, read('get_group_calendar_view', {
+          p_group_id: group.id, p_calendar_type: type,
+          p_start_date: dates[0], p_end_date: dates[13],
+        })]);
+        const savedMemberIds = readWidgetMemberOrder({ userId: currentUserId, groupId: group.id, calendarType: type });
+        for (const week of [dates.slice(0, 7), dates.slice(7)]) {
+          board.weeks[week[0]] = buildGroupWidgetRows(group, type, members, events, week, currentUserId, savedMemberIds);
+        }
+      } catch {
+        // A failed or revoked view must never reuse a previous membership's rows.
+      }
+    }));
+  }
+  return boards;
+}
+
+export async function fetchCalendarWidgetPayload(options = {}) {
+  const today = options.today || new Date();
+  const [items, groupBoards] = await Promise.all([
+    fetchCalendarWidgetItems(options),
+    fetchWidgetGroupBoards(today, options.currentUserId).catch(() => ({})),
+  ]);
+  return { ...buildCalendarWidgetPayload(items, { today }), groupBoards };
 }

@@ -12,7 +12,7 @@ function start(pending, { pathname = '/index.html', native = true } = {}) {
     console, URL,
     window: {
       Capacitor: { isNativePlatform: () => native, registerPlugin: () => ({
-        consumePendingRoute: async () => { reads++; const calendarType = pending; pending = ''; return { calendarType }; },
+        consumePendingRoute: async () => { reads++; const calendarType = pending; pending = ''; return typeof calendarType === 'object' ? calendarType : { calendarType }; },
       }), Plugins: { App: { addListener: async (name, callback) => {
         assert.equal(name, 'appUrlOpen');
         assert.equal(onUrlOpen, undefined);
@@ -138,5 +138,16 @@ test('실제 홈 초기화는 명시적인 홈 이동을 우선하고 일반 위
     await context.launch();
     assert.equal(reads, expectedReads);
     assert.deepEqual(destinations, expected);
+  }
+});
+
+test('같은 종류의 위젯도 선택한 그룹을 지정하여 새로 열고 요청을 한 번만 처리한다', async () => {
+  for (const type of ['study', 'work', 'event']) {
+    const app = start({ calendarType: type, groupId: 'first' }, { pathname: `/calendar-${type}.html` });
+    assert.equal(await app.init(), true);
+    await app.open(`mallinoi://calendar?type=${type}&group=second`, { calendarType: type, groupId: 'second' });
+    assert.equal(await app.consume(), false);
+    assert.deepEqual(app.destinations, ['first', 'second'].map(id =>
+      `/calendar-${type}.html?app=calendar&widgetGroup=${id}`));
   }
 });

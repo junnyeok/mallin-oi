@@ -13,4 +13,7 @@
     <string name="widget_event_four_days">말린오이 이벤트 4일</string>
     <string name="widget_event_two_weeks">말린오이 이벤트 2주</string>
     <string name="widget_event_month">말린오이 이벤트 한 달</string>
+    <string name="widget_study_group">자기개발 그룹 1주</string>
+    <string name="widget_work_group">업무 그룹 1주</string>
+    <string name="widget_event_group">이벤트 그룹 1주</string>
 </resources>
