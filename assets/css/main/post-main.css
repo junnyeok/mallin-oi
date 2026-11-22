@@ -348,6 +348,19 @@
   .post {
     --post-author-character-size: 80px;
   }
+
+  .post-excerpt:not(:empty) + .post-author-meta-block {
+    margin-block-start: calc(-1 * var(--space-8));
+  }
+
+  .post-excerpt:not(:empty) + .post-author-meta-block .post-author:has([data-character-effect-banknote]) {
+    padding-block-start: 0;
+  }
+
+  /* Keep the banknotes below the summary even on a wide character. */
+  .post-excerpt:not(:empty) + .post-author-meta-block .post-author [data-character-effect-id='cha-cash-01'] {
+    max-width: calc(var(--post-author-character-size) * 1.2);
+  }
 }
 
 @media (max-width: 360px) {
