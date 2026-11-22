@@ -33,7 +33,7 @@ test('지폐 흩뿌리기 follows the sports day pack in New and in release-date
   assert.equal(item.previewImages[0].imagePath, item.thumbImagePath);
 });
 
-test('the shared character renderer displays the animated SVG in each context', () => {
+test('post, comment, and reply authors mount banknotes inline while previews still use the image', () => {
   for (const context of ['profile', 'inventory', 'post', 'comment', 'store', 'thumbnail']) {
     const effect = catalog.getCharacterEffectRenderMeta(itemId, context);
     const html = renderCharacterEffectHtml(effect);
@@ -41,13 +41,24 @@ test('the shared character renderer displays the animated SVG in each context', 
     assert.equal(effect.animation, 'none');
     assert.match(html, /data-character-effect-id="cha-cash-01"/);
     assert.match(html, new RegExp(`data-character-effect-context="${context}"`));
-    assert.match(html, /<img\s+class="character-effect-img"/);
-    assert.ok(html.includes(`src="/${asset}?v=test"`));
+    if (context === 'post' || context === 'comment') {
+      assert.match(html, /<span class="character-effect-banknote" data-character-effect-banknote><\/span>/);
+      assert.doesNotMatch(html, /<img/);
+    } else {
+      assert.match(html, /<img\s+class="character-effect-img"/);
+      assert.ok(html.includes(`src="/${asset}?v=test"`));
+    }
   }
 });
 
 test('the published web files and the packaged web files share the same animation and catalog', async () => {
-  for (const path of [asset, 'assets/js/modules/store-data.js']) {
+  for (const path of [
+    asset,
+    'assets/js/modules/store-data.js',
+    'assets/js/modules/character-effects.js',
+    'assets/css/components/character-effects.css',
+    'assets/css/main/post-main.css',
+  ]) {
     assert.deepEqual(await readFile(path), await readFile(`www/${path}`));
   }
   const prepareScript = await readFile('scripts/prepare-capacitor-web.mjs', 'utf8');

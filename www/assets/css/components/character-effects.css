@@ -160,7 +160,8 @@
     var(--character-effect-motion-easing) infinite;
 }
 
-.character-effect-img {
+.character-effect-img,
+.character-effect-banknote {
   display: block;
   width: 100%;
   height: auto;

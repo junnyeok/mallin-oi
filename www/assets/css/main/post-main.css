@@ -3,6 +3,8 @@
 ========================= */
 
 .post {
+  --post-author-character-size: 100px;
+
   padding: var(--space-24) 0 var(--space-32);
 }
 
@@ -279,6 +281,22 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
+}
+
+.post-author__link,
+.comment-author-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The banknote artwork extends above and to the right of the character. */
+:is(.post-author, .comment-author-wrap):has([data-character-effect-banknote]) {
+  padding-block-start: calc(var(--post-author-character-size) * 0.4);
+}
+
+:is(.post-author__value, .comment-author-wrap):has([data-character-effect-banknote]) {
+  padding-inline-end: calc(var(--post-author-character-size) * 0.325);
 }
 
 .post-author__avatar {
@@ -312,17 +330,29 @@
 .comment-author-character {
   width: auto;
   height: auto;
-  max-width: 100px;
-  max-height: 100px;
+  max-width: var(--post-author-character-size);
+  max-height: var(--post-author-character-size);
   object-fit: contain;
   flex-shrink: 0;
 }
 
 @media (max-width: 700px) {
-  .post-author__character,
-  .comment-author-character {
-    max-width: 80px;
-    max-height: 80px;
+  .post {
+    --post-author-character-size: 80px;
+  }
+}
+
+@media (max-width: 360px) {
+  .comment-author-wrap:has([data-character-effect-banknote]) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 0;
+  }
+
+  .comment-author-character-effect-wrap:has([data-character-effect-banknote]) {
+    grid-column: 2;
+    justify-self: start;
+    margin-block-start: calc(var(--post-author-character-size) * 0.4);
   }
 }
 

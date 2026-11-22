@@ -4,10 +4,61 @@ const EFFECT_WRAP_SELECTOR = '.character-effect-wrap';
 const EFFECT_LAYER_SELECTOR = '.character-effect-layer';
 const CHARACTER_SELECTOR = '.character-effect-character';
 const SPRITE_SELECTOR = '[data-character-effect-sprite]';
+const BANKNOTE_SELECTOR = '[data-character-effect-banknote]';
 const wrapperStates = new WeakMap();
 const animatedSpriteLayers = new Set();
+const pendingBanknoteHosts = new WeakSet();
+let banknoteTemplate;
 let spriteAnimationFrameId = 0;
 let spiderWebSvgSequence = 0;
+
+function loadBanknoteTemplate(url) {
+  banknoteTemplate ??= fetch(url, { mode: 'same-origin', redirect: 'error' })
+    .then(async (response) => {
+      if (!response.ok) throw new Error('Banknote effect could not be loaded');
+
+      const { documentElement: svg } = new DOMParser().parseFromString(
+        await response.text(),
+        'image/svg+xml',
+      );
+      if (svg.localName !== 'svg' || svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+        throw new Error('Invalid banknote effect artwork');
+      }
+      return svg;
+    })
+    .catch((error) => {
+      banknoteTemplate = undefined;
+      throw error;
+    });
+  return banknoteTemplate;
+}
+
+async function mountBanknoteEffect(host) {
+  if (host.shadowRoot || host.firstElementChild || pendingBanknoteHosts.has(host)) return;
+
+  pendingBanknoteHosts.add(host);
+  const artworkUrl = new URL('../../../images/character-effects/banknote-toss-effect-01.svg', import.meta.url);
+  artworkUrl.search = new URL(import.meta.url).search;
+  try {
+    const template = await loadBanknoteTemplate(artworkUrl);
+    if (!host.isConnected) return;
+
+    // Keep the animation on the page timeline. Each shadow root scopes the SVG's styles and IDs.
+    const svg = host.ownerDocument.importNode(template, true);
+    svg.style.cssText = 'display: block; width: 100%; height: auto; overflow: visible';
+    host.attachShadow({ mode: 'open' }).append(svg);
+  } catch {
+    if (!host.isConnected) return;
+
+    const image = host.ownerDocument.createElement('img');
+    image.className = 'character-effect-img';
+    image.alt = '';
+    image.src = artworkUrl.href;
+    host.append(image);
+  } finally {
+    pendingBanknoteHosts.delete(host);
+  }
+}
 
 function getSpriteMeta(sprite = {}) {
   const columnCount = Math.max(1, Math.trunc(Number(sprite.columnCount) || 1));
@@ -445,8 +496,12 @@ export function renderCharacterEffectHtml(effect = null) {
   const initialSpriteBottomOffset = sprite
     ? (sprite.frameBottomOffsets[0] / sprite.frameHeight) * 100
     : 0;
+  const isPostBanknote = effect.itemId === 'cha-cash-01' &&
+    (context === 'post' || context === 'comment');
   const effectMedia = effect.itemId === 'cha-fall-01'
     ? renderAutumnLeavesSvg()
+    : isPostBanknote
+    ? '<span class="character-effect-banknote" data-character-effect-banknote></span>'
     : renderMode === 'spider-web-svg'
     ? renderSpiderWebSvg(effect, effectClassName)
     : sprite
@@ -503,6 +558,10 @@ export function prepareCharacterEffectWrap(wrap) {
 
   removeDuplicateEffectLayers(wrap);
   registerSpriteLayers(wrap);
+  for (const layer of getDirectEffectLayers(wrap)) {
+    const banknote = layer.querySelector(BANKNOTE_SELECTOR);
+    if (banknote) void mountBanknoteEffect(banknote);
+  }
 
   if (!getDirectEffectLayers(wrap).length) {
     const existingState = wrapperStates.get(wrap);

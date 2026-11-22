@@ -30,6 +30,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         self.window = window
         window.makeKeyAndVisible()
     }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        (window?.rootViewController as? SiteViewController)?.checkForAppUpdate()
+    }
 }
 
 final class SiteViewController: UIViewController {
@@ -38,6 +42,9 @@ final class SiteViewController: UIViewController {
     private let connectionError = UIStackView()
     private var retryRequest = URLRequest(url: SiteURLs.home)
     private var authentication: (request: String, session: ASWebAuthenticationSession)?
+    private var isCheckingForAppUpdate = false
+    private var nextAppUpdateCheck = Date.distantPast
+    private var pendingAppUpdate: String?
 
     private lazy var webView: WKWebView = {
         let configuration = WKWebViewConfiguration()
@@ -78,6 +85,60 @@ final class SiteViewController: UIViewController {
 
         configureConnectionError()
         loadSite()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        checkForAppUpdate()
+    }
+
+    func checkForAppUpdate() {
+        guard viewIfLoaded?.window?.windowScene?.activationState == .foregroundActive else { return }
+        if let version = pendingAppUpdate {
+            presentAppUpdate(version)
+            return
+        }
+        guard !isCheckingForAppUpdate, Date() >= nextAppUpdateCheck else { return }
+
+        isCheckingForAppUpdate = true
+        Task { [weak self] in
+            do {
+                let version = try await SiteAppUpdate.availableVersion()
+                guard let self else { return }
+                self.isCheckingForAppUpdate = false
+                self.nextAppUpdateCheck = Date().addingTimeInterval(SiteAppUpdate.checkInterval)
+                if let version {
+                    self.pendingAppUpdate = version
+                    self.presentAppUpdate(version)
+                }
+            } catch {
+                self?.isCheckingForAppUpdate = false
+                self?.nextAppUpdateCheck = Date().addingTimeInterval(SiteAppUpdate.retryInterval)
+            }
+        }
+    }
+
+    private func presentAppUpdate(_ version: String) {
+        guard viewIfLoaded?.window?.windowScene?.activationState == .foregroundActive,
+              presentedViewController == nil, authentication == nil else { return }
+        pendingAppUpdate = nil
+        guard !SiteAppUpdate.isPostponed(version) else { return }
+
+        let alert = UIAlertController(
+            title: "말린오이닷컴 업데이트",
+            message: "새 버전 \(version)이 나왔어요. App Store에서 업데이트할 수 있어요.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "나중에", style: .cancel) { _ in
+            SiteAppUpdate.postpone(version)
+        })
+        let update = UIAlertAction(title: "업데이트하기", style: .default) { _ in
+            SiteAppUpdate.postpone(version)
+            UIApplication.shared.open(SiteAppUpdate.appStoreURL)
+        }
+        alert.addAction(update)
+        alert.preferredAction = update
+        present(alert, animated: true)
     }
 
     private func configureConnectionError() {
