@@ -13,17 +13,39 @@ import androidx.browser.customtabs.CustomTabsIntent;
 
 public final class MainActivity extends Activity {
     private static final Uri HOME = Uri.parse("https://mallin-oi.com/");
+    private SiteAppUpdate appUpdate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.site_launcher);
-        findViewById(R.id.open_site).setOnClickListener(view -> openSite());
-        findViewById(R.id.open_offline_articles).setOnClickListener(
-            view -> startActivity(new Intent(this, OfflineArticlesActivity.class)));
-        if (savedInstanceState == null) {
+        appUpdate = new SiteAppUpdate(this, savedInstanceState == null, this::openSite);
+        findViewById(R.id.open_site).setOnClickListener(view -> {
+            appUpdate.leaveLauncher();
             openSite();
-        }
+        });
+        findViewById(R.id.open_offline_articles).setOnClickListener(view -> {
+            appUpdate.leaveLauncher();
+            startActivity(new Intent(this, OfflineArticlesActivity.class));
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        appUpdate.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        appUpdate.onPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        appUpdate.onDestroy();
+        super.onDestroy();
     }
 
     private void openSite() {

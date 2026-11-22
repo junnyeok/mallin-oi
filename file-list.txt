@@ -444,6 +444,7 @@
 ./apps/cucumber-grow-mobile/package-lock.json
 ./apps/cucumber-grow-mobile/package.json
 ./apps/cucumber-grow-mobile/scripts/build-web.mjs
+./apps/mallinoi-site/android/app/src/main/java/com/mallinoi/site/SiteAppUpdate.java
 ./apps/mallinoi-site/ios/MallinoiSite/PrivacyInfo.xcprivacy
 ./apps/mallinoi-site/ios/MallinoiSite/SiteAppUpdate.swift
 ./apps/mallinoi-site/ios/MallinoiSite/SiteURLs.swift

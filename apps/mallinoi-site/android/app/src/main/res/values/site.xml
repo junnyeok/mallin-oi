@@ -2,6 +2,11 @@
     <string name="app_name">말린오이닷컴</string>
     <string name="open_site">말린오이닷컴 열기</string>
     <string name="no_browser">사이트를 열 수 있는 브라우저를 설치한 뒤 다시 시도해 주세요.</string>
+    <string name="app_update_title">말린오이닷컴 업데이트</string>
+    <string name="app_update_message">새 버전이 나왔어요. Google Play에서 업데이트할 수 있어요.</string>
+    <string name="app_update_open">업데이트하기</string>
+    <string name="app_update_later">나중에</string>
+    <string name="app_update_store_unavailable">Google Play 페이지를 열 수 없어요.</string>
     <string name="save_offline_article">오프라인에 저장</string>
     <string name="offline_articles">저장한 게시글</string>
     <string name="offline_article_loading">게시글을 저장하는 중…</string>

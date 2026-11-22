@@ -15,11 +15,12 @@ android {
         applicationId 'com.mallinoi.site'
         minSdk 24
         targetSdk 36
-        versionCode 3
-        versionName '1.0.1'
+        versionCode 4
+        versionName '1.0.2'
     }
 }
 
 dependencies {
     implementation 'androidx.browser:browser:1.10.0'
+    implementation 'com.google.android.play:app-update:2.1.0'
 }
