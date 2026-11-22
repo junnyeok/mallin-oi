@@ -26,6 +26,10 @@
   gap: var(--space-12);
 }
 
+.post-head > :is(.post-excerpt, .post-tags, .community-safety__actions):empty {
+  display: none;
+}
+
 .post-head__top {
   display: flex;
   align-items: flex-start;
@@ -290,8 +294,12 @@
   overflow-wrap: anywhere;
 }
 
-/* The banknote artwork extends above and to the right of the character. */
-:is(.post-author, .comment-author-wrap):has([data-character-effect-banknote]) {
+/* The header gap also leaves room for the banknotes above the post author. */
+.post-author:has([data-character-effect-banknote]) {
+  padding-block-start: calc(var(--post-author-character-size) * 0.27);
+}
+
+.comment-author-wrap:has([data-character-effect-banknote]) {
   padding-block-start: calc(var(--post-author-character-size) * 0.4);
 }
 
@@ -406,7 +414,7 @@
 .post-divider {
   border: 0;
   border-top: 1px solid var(--color-border);
-  margin: var(--space-24) 0;
+  margin: var(--space-12) 0 var(--space-24);
 }
 
 .post-body {

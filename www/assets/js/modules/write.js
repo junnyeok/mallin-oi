@@ -2936,8 +2936,8 @@ export async function initWrite() {
       $('#privatePassword')?.value || '',
     );
 
-    if (!title || !excerpt || !body) {
-      if (note) note.textContent = '제목, 요약, 본문은 필수야.';
+    if (!title || !body) {
+      if (note) note.textContent = '제목과 본문은 필수야.';
       return;
     }
 
