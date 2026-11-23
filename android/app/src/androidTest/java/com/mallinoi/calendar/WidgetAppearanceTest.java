@@ -39,7 +39,8 @@ public class WidgetAppearanceTest {
                     String date = "2026-11-01";
                     JSONObject member = new JSONObject().put("name", "회원").put("days", new JSONObject().put(date,
                             new JSONArray().put(new JSONObject().put("title", "휴무").put("color", "transparent"))));
-                    RemoteViews groupRow = ((GroupWeekWidgetProvider) provider).memberView(context, member, new String[]{date}, theme);
+                    RemoteViews groupRow = ((GroupWeekWidgetProvider) provider)
+                            .memberView(context, member, new String[]{date}, theme, provider.dp(context, 2));
                     TextView item = groupRow.apply(context, null).findViewById(R.id.groupFirst);
                     assertEquals(theme.text, item.getCurrentTextColor());
                     assertEquals("휴무", item.getText().toString());
@@ -216,7 +217,14 @@ public class WidgetAppearanceTest {
                 .putString("group_widget_101", "selected-group").commit();
         FutureTask<Void> render = new FutureTask<>(() -> {
             AppWidgetManager manager = AppWidgetManager.getInstance(app);
-            EventGroupWidgetProvider provider = new EventGroupWidgetProvider();
+            class ResizableEventWidget extends EventGroupWidgetProvider {
+                int height = 110;
+
+                @Override int availableWidgetHeight(Context context, AppWidgetManager widgetManager, int id) {
+                    return height;
+                }
+            }
+            ResizableEventWidget provider = new ResizableEventWidget();
             AppWidgetHostView host = new AppWidgetHostView(app);
             host.updateAppWidget(provider.buildViews(isolated, manager, 101));
             ViewGroup dateRows = host.findViewById(R.id.groupDates);
@@ -248,6 +256,22 @@ public class WidgetAppearanceTest {
             assertEquals("말", ((TextView) list.getChildAt(0).findViewById(R.id.groupMemberName)).getText().toString());
             assertEquals("다", ((TextView) list.getChildAt(1).findViewById(R.id.groupMemberName)).getText().toString());
 
+            int smallPadding = list.getChildAt(0).findViewById(R.id.groupRow).getPaddingTop();
+            provider.height = 188;
+            host.updateAppWidget(provider.buildViews(isolated, manager, 101));
+            list = host.findViewById(R.id.groupMembers);
+            int tallHeight = Math.round(provider.height * density);
+            host.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(tallHeight, View.MeasureSpec.EXACTLY));
+            host.layout(0, 0, width, tallHeight);
+            int spaciousPadding = list.getChildAt(0).findViewById(R.id.groupRow).getPaddingTop();
+            assertTrue(spaciousPadding > smallPadding);
+            assertEquals(2, list.getChildCount());
+            assertTrue("Spaced second member ends at " + list.getChildAt(1).getBottom() + "px in "
+                    + list.getHeight() + "px of available list height",
+                    list.getChildAt(1).getBottom() <= list.getHeight());
+            assertEquals(0, ((ViewGroup) host.findViewById(R.id.groupDates)).getChildAt(1).getPaddingTop());
+
             AppWidgetHostView study = new AppWidgetHostView(app);
             study.updateAppWidget(new StudyGroupWidgetProvider().buildViews(isolated, manager, 101));
             assertEquals(1, ((ViewGroup) study.findViewById(R.id.groupDates)).getChildCount());
@@ -259,6 +283,17 @@ public class WidgetAppearanceTest {
             host.updateAppWidget(provider.buildViews(isolated, manager, 101));
             assertEquals(1, ((ViewGroup) host.findViewById(R.id.groupDates)).getChildCount());
             assertEquals(2, ((ListView) host.findViewById(R.id.groupMembers)).getAdapter().getCount());
+
+            for (int i = 0; i < 4; i++) {
+                entries.put(new JSONObject().put("name", "회" + i).put("days", memberDays));
+            }
+            prefs.edit().putString(CalendarWidgetsPlugin.KEY_PAYLOAD,
+                    new JSONObject().put("groupBoards", boards).toString()).commit();
+            host.updateAppWidget(provider.buildViews(isolated, manager, 101));
+            list = host.findViewById(R.id.groupMembers);
+            assertEquals(6, list.getAdapter().getCount());
+            View denseRow = list.getAdapter().getView(0, null, list).findViewById(R.id.groupRow);
+            assertTrue(denseRow.getPaddingTop() < spaciousPadding);
             return null;
         });
         try {

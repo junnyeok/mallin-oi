@@ -9,7 +9,10 @@ import android.content.SharedPreferences;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Parcel;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -26,6 +29,8 @@ import java.util.Locale;
 public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
     // Leave room for concurrent Binder traffic and the widget header.
     private static final int MAX_INLINE_ROWS_BYTES = 384 * 1024;
+    private static final int MIN_MEMBER_PADDING_DP = 2;
+    private static final int MAX_MEMBER_PADDING_DP = 22;
 
     GroupWeekWidgetProvider(String type, String label) {
         super(type, "groupWeek", label, R.layout.widget_group_week, 7);
@@ -165,11 +170,13 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         view.addView(R.id.groupDates, header);
         if (rows.shared != null) view.addView(R.id.groupDates, rowView(context, rows.shared, dates, theme, true));
         if (!hasMembers) return view;
+        int padding = memberPadding(context, availableWidgetHeight(context, manager, id), rows, dates);
         int mutable = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
         view.setPendingIntentTemplate(R.id.groupMembers, PendingIntent.getActivity(context, id, tap,
                 mutable | PendingIntent.FLAG_UPDATE_CURRENT));
         // Android can skip conversion of service-backed lists during first configuration.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && bindInlineRows(context, view, rows.members, dates, theme)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && bindInlineRows(context, view, rows.members, dates, theme, padding)) {
             return view;
         }
         Intent service = new Intent(context, GroupWidgetRowsService.class);
@@ -179,14 +186,41 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         return view;
     }
 
+    int memberPadding(Context context, int widgetHeight, WeekRows rows, String[] dates) {
+        int memberCount = rows.members.length();
+        if (memberCount == 0) return dp(context, MIN_MEMBER_PADDING_DP);
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        int lineHeight = (int) Math.ceil(TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, 14, metrics) / metrics.density) + 2;
+        // Reserve space for the title, dates, and compact shared row before spacing the members.
+        int remaining = (widgetHeight > 0 ? widgetHeight : 110) - 16
+                - (rows.shared == null ? 42 + lineHeight : 34 + 2 * lineHeight)
+                - (memberCount - 1);
+        for (int i = 0; i < memberCount; i++) {
+            JSONObject member = rows.members.optJSONObject(i);
+            JSONObject days = member == null ? null : member.optJSONObject("days");
+            int lines = 1;
+            if (days != null) {
+                for (String date : dates) {
+                    JSONArray items = days.optJSONArray(date);
+                    if (items != null) lines = Math.max(lines, Math.min(3, items.length()));
+                }
+            }
+            remaining -= lines * lineHeight;
+        }
+        int padding = remaining / (2 * memberCount);
+        return dp(context, Math.max(MIN_MEMBER_PADDING_DP, Math.min(MAX_MEMBER_PADDING_DP, padding)));
+    }
+
     @RequiresApi(Build.VERSION_CODES.S)
-    private boolean bindInlineRows(Context context, RemoteViews widget, JSONArray members, String[] dates, WidgetTheme theme) {
+    private boolean bindInlineRows(Context context, RemoteViews widget, JSONArray members, String[] dates,
+            WidgetTheme theme, int padding) {
         RemoteViews.RemoteCollectionItems.Builder collection = new RemoteViews.RemoteCollectionItems.Builder()
                 .setViewTypeCount(1);
         Parcel parcel = Parcel.obtain();
         try {
             for (int i = 0; i < members.length(); i++) {
-                RemoteViews row = memberView(context, members.optJSONObject(i), dates, theme);
+                RemoteViews row = memberView(context, members.optJSONObject(i), dates, theme, padding);
                 row.writeToParcel(parcel, 0);
                 if (parcel.dataSize() > MAX_INLINE_ROWS_BYTES) return false;
                 collection.addItem(i, row);
@@ -198,8 +232,9 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         return true;
     }
 
-    RemoteViews memberView(Context context, JSONObject row, String[] dates, WidgetTheme theme) {
+    RemoteViews memberView(Context context, JSONObject row, String[] dates, WidgetTheme theme, int padding) {
         RemoteViews view = rowView(context, row, dates, theme, false);
+        view.setViewPadding(R.id.groupRow, 0, padding, 0, padding);
         view.setOnClickFillInIntent(R.id.groupRow, new Intent());
         return view;
     }
@@ -250,6 +285,11 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         super.onUpdate(context, manager, ids);
         manager.notifyAppWidgetViewDataChanged(ids, R.id.groupMembers);
+    }
+
+    @Override public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        super.onAppWidgetOptionsChanged(context, manager, id, options);
+        manager.notifyAppWidgetViewDataChanged(id, R.id.groupMembers);
     }
 
     @Override public void onDeleted(Context context, int[] ids) {

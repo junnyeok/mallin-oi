@@ -15,6 +15,7 @@ public class GroupWidgetRowsService extends RemoteViewsService {
             private CalendarWidgetProvider.WidgetTheme theme;
             private JSONArray rows;
             private String[] dates;
+            private int padding;
 
             public void onCreate() { onDataSetChanged(); }
             public void onDestroy() { rows = null; }
@@ -24,13 +25,18 @@ public class GroupWidgetRowsService extends RemoteViewsService {
                 rows = null;
                 if (provider != null) {
                     theme = provider.currentTheme(GroupWidgetRowsService.this);
-                    rows = provider.weekRows(provider.selectedBoard(GroupWidgetRowsService.this, id), dates[0]).members;
+                    GroupWeekWidgetProvider.WeekRows week = provider.weekRows(
+                            provider.selectedBoard(GroupWidgetRowsService.this, id), dates[0]);
+                    int height = provider.availableWidgetHeight(GroupWidgetRowsService.this,
+                            AppWidgetManager.getInstance(GroupWidgetRowsService.this), id);
+                    padding = provider.memberPadding(GroupWidgetRowsService.this, height, week, dates);
+                    rows = week.members;
                 }
             }
             public int getCount() { return rows == null ? 0 : rows.length(); }
             public RemoteViews getViewAt(int index) {
                 if (index < 0 || index >= getCount()) return null;
-                return provider.memberView(GroupWidgetRowsService.this, rows.optJSONObject(index), dates, theme);
+                return provider.memberView(GroupWidgetRowsService.this, rows.optJSONObject(index), dates, theme, padding);
             }
             public RemoteViews getLoadingView() { return null; }
             public int getViewTypeCount() { return 1; }

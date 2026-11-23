@@ -150,7 +150,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
     boolean isCompactTwoWeek(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         if (!"twoWeeks".equals(range)) return false;
+        return availableWidgetHeight(context, appWidgetManager, appWidgetId) < 110;
+    }
 
+    int availableWidgetHeight(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
         int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
         int maxHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
@@ -160,7 +163,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (availableHeight == 0) {
             availableHeight = isLandscape ? maxHeight : minHeight;
         }
-        return availableHeight == 0 || availableHeight < 110;
+        return availableHeight;
     }
 
     void configureLayout(Context context, RemoteViews views, boolean isCompactTwoWeek) {
