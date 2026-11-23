@@ -131,7 +131,19 @@ export async function refreshCalendarWidgets({ force = false } = {}) {
       }
 
       const fetchCalendarWidgetPayload = await loadCalendarWidgetPayloadFetcher();
-      const payload = await fetchCalendarWidgetPayload({ currentUserId: user.id });
+      const options = { currentUserId: user.id };
+      if (window.Capacitor?.getPlatform?.() === 'ios' && plugin.saveWidgetGroupChoices) {
+        options.onGroupChoices = async (groups) => {
+          try {
+            if ((await getCurrentUser())?.id === user.id) {
+              await plugin.saveWidgetGroupChoices({ accountId: user.id, groups });
+            }
+          } catch (error) {
+            console.warn('[calendar-native-widgets] group choices update failed:', error);
+          }
+        };
+      }
+      const payload = await fetchCalendarWidgetPayload(options);
       if ((await getCurrentUser())?.id !== user.id) return false;
       await plugin.saveWidgetData({
         isLoggedIn: true,

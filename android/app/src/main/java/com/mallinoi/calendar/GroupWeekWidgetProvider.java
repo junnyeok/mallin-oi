@@ -9,8 +9,11 @@ import android.content.SharedPreferences;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Parcel;
 import android.view.View;
 import android.widget.RemoteViews;
+
+import androidx.annotation.RequiresApi;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,6 +24,9 @@ import java.util.Calendar;
 import java.util.Locale;
 
 public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
+    // Leave room for concurrent Binder traffic and the widget header.
+    private static final int MAX_INLINE_ROWS_BYTES = 384 * 1024;
+
     GroupWeekWidgetProvider(String type, String label) {
         super(type, "groupWeek", label, R.layout.widget_group_week, 7);
     }
@@ -79,6 +85,31 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         return weeks == null ? null : weeks.optJSONArray(sunday);
     }
 
+    static final class WeekRows {
+        final JSONArray members;
+        final JSONObject shared;
+
+        WeekRows(JSONArray members, JSONObject shared) {
+            this.members = members;
+            this.shared = shared;
+        }
+    }
+
+    WeekRows weekRows(JSONObject board, String sunday) {
+        JSONArray entries = rows(board, sunday);
+        if (entries == null) return new WeekRows(new JSONArray(), null);
+        if (!"event".equals(calendarType)) return new WeekRows(entries, null);
+        JSONArray members = new JSONArray();
+        JSONObject shared = null;
+        for (int i = 0; i < entries.length(); i++) {
+            JSONObject entry = entries.optJSONObject(i);
+            if (entry == null) continue;
+            if (entry.optBoolean("shared")) shared = entry;
+            else members.put(entry);
+        }
+        return new WeekRows(members, shared);
+    }
+
     WidgetTheme currentTheme(Context context) {
         return getTheme("dark".equals(preferences(context).getString(CalendarWidgetsPlugin.KEY_APPEARANCE, "light")));
     }
@@ -89,8 +120,12 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         String group = board == null ? null : board.optString("id");
         Calendar today = Calendar.getInstance();
         String[] dates = weekKeys(today);
-        JSONArray members = rows(board, dates[0]);
+        WeekRows rows = weekRows(board, dates[0]);
+        boolean hasMembers = rows.members.length() > 0;
         RemoteViews view = new RemoteViews(context.getPackageName(), layoutId);
+        int horizontalPadding = dp(context, 8);
+        int verticalPadding = dp(context, rows.shared == null ? 10 : 6);
+        view.setViewPadding(R.id.widgetRoot, horizontalPadding, verticalPadding, horizontalPadding, verticalPadding);
         view.setInt(R.id.widgetRoot, "setBackgroundResource", theme.isDark ? R.drawable.widget_background_dark : R.drawable.widget_background);
         view.setImageViewResource(R.id.widgetMascot, "study".equals(calendarType) ? R.drawable.widget_mascot_study
                 : "work".equals(calendarType) ? R.drawable.widget_mascot_work : R.drawable.widget_mascot_event);
@@ -106,9 +141,9 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         view.setOnClickPendingIntent(R.id.widgetRoot, PendingIntent.getActivity(context, id, tap,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.removeAllViews(R.id.groupDates);
-        boolean showRows = members != null && members.length() > 0;
+        boolean showRows = hasMembers || rows.shared != null;
         view.setViewVisibility(R.id.widgetEmpty, showRows ? View.GONE : View.VISIBLE);
-        view.setViewVisibility(R.id.groupMembers, showRows ? View.VISIBLE : View.GONE);
+        view.setViewVisibility(R.id.groupMembers, hasMembers ? View.VISIBLE : View.GONE);
         if (!showRows) {
             boolean loggedIn = preferences(context).getBoolean(CalendarWidgetsPlugin.KEY_LOGGED_IN, false);
             String message = !loggedIn ? "앱에서 로그인해 주세요" : board == null
@@ -128,9 +163,15 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
             header.addView(R.id.groupDays, cell);
         }
         view.addView(R.id.groupDates, header);
+        if (rows.shared != null) view.addView(R.id.groupDates, rowView(context, rows.shared, dates, theme, true));
+        if (!hasMembers) return view;
         int mutable = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
         view.setPendingIntentTemplate(R.id.groupMembers, PendingIntent.getActivity(context, id, tap,
                 mutable | PendingIntent.FLAG_UPDATE_CURRENT));
+        // Android can skip conversion of service-backed lists during first configuration.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && bindInlineRows(context, view, rows.members, dates, theme)) {
+            return view;
+        }
         Intent service = new Intent(context, GroupWidgetRowsService.class);
         service.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
         service.setData(Uri.parse("mallinoi-widget://rows/" + id));
@@ -138,34 +179,72 @@ public abstract class GroupWeekWidgetProvider extends CalendarWidgetProvider {
         return view;
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
+    private boolean bindInlineRows(Context context, RemoteViews widget, JSONArray members, String[] dates, WidgetTheme theme) {
+        RemoteViews.RemoteCollectionItems.Builder collection = new RemoteViews.RemoteCollectionItems.Builder()
+                .setViewTypeCount(1);
+        Parcel parcel = Parcel.obtain();
+        try {
+            for (int i = 0; i < members.length(); i++) {
+                RemoteViews row = memberView(context, members.optJSONObject(i), dates, theme);
+                row.writeToParcel(parcel, 0);
+                if (parcel.dataSize() > MAX_INLINE_ROWS_BYTES) return false;
+                collection.addItem(i, row);
+            }
+        } finally {
+            parcel.recycle();
+        }
+        widget.setRemoteAdapter(R.id.groupMembers, collection.build());
+        return true;
+    }
+
     RemoteViews memberView(Context context, JSONObject row, String[] dates, WidgetTheme theme) {
+        RemoteViews view = rowView(context, row, dates, theme, false);
+        view.setOnClickFillInIntent(R.id.groupRow, new Intent());
+        return view;
+    }
+
+    private RemoteViews rowView(Context context, JSONObject row, String[] dates, WidgetTheme theme, boolean compact) {
         RemoteViews view = new RemoteViews(context.getPackageName(), R.layout.widget_group_row);
         view.setTextViewText(R.id.groupMemberName, row.optString("name"));
         view.setTextColor(R.id.groupMemberName, theme.text);
+        if (compact) {
+            view.setInt(R.id.groupMemberName, "setMaxLines", 1);
+            view.setViewPadding(R.id.groupRow, 0, 0, 0, 0);
+        }
         view.removeAllViews(R.id.groupDays);
-        view.setOnClickFillInIntent(R.id.groupRow, new Intent());
         JSONObject days = row.optJSONObject("days");
         for (String date : dates) {
             RemoteViews cell = new RemoteViews(context.getPackageName(), R.layout.widget_group_day);
             JSONArray items = days == null ? null : days.optJSONArray(date);
-            for (int i = 0; items != null && i < Math.min(2, items.length()); i++) {
-                int slot = i == 0 ? R.id.groupFirst : R.id.groupSecond;
-                JSONObject item = items.optJSONObject(i);
-                int color = parseColor(item.optString("color"), theme.secondary);
-                cell.setViewVisibility(slot, View.VISIBLE);
-                cell.setTextViewText(slot, item.optString("title"));
-                cell.setInt(slot, "setBackgroundColor", color);
-                cell.setTextColor(slot, badgeTextColor(color, theme));
-                cell.setInt(slot, "setPaintFlags", Paint.ANTI_ALIAS_FLAG | (item.optBoolean("done") ? Paint.STRIKE_THRU_TEXT_FLAG : 0));
-            }
-            if (items != null && items.length() > 2) {
-                cell.setViewVisibility(R.id.groupMore, View.VISIBLE);
-                cell.setTextColor(R.id.groupMore, theme.mutedText);
-                cell.setTextViewText(R.id.groupMore, "+" + (items.length() - 2));
+            if (items != null && compact && items.length() > 1) {
+                showCount(cell, R.id.groupFirst, items.length(), theme);
+            } else if (items != null) {
+                for (int i = 0; i < Math.min(2, items.length()); i++) {
+                    int slot = i == 0 ? R.id.groupFirst : R.id.groupSecond;
+                    bindItem(cell, slot, items.optJSONObject(i), theme);
+                }
+                if (items.length() > 2) showCount(cell, R.id.groupMore, items.length() - 2, theme);
             }
             view.addView(R.id.groupDays, cell);
         }
         return view;
+    }
+
+    private void bindItem(RemoteViews cell, int slot, JSONObject item, WidgetTheme theme) {
+        if (item == null) return;
+        int color = parseColor(item.optString("color"), theme.secondary);
+        cell.setViewVisibility(slot, View.VISIBLE);
+        cell.setTextViewText(slot, item.optString("title"));
+        cell.setInt(slot, "setBackgroundColor", color);
+        cell.setTextColor(slot, badgeTextColor(color, theme));
+        cell.setInt(slot, "setPaintFlags", Paint.ANTI_ALIAS_FLAG | (item.optBoolean("done") ? Paint.STRIKE_THRU_TEXT_FLAG : 0));
+    }
+
+    private void showCount(RemoteViews cell, int slot, int count, WidgetTheme theme) {
+        cell.setViewVisibility(slot, View.VISIBLE);
+        cell.setTextColor(slot, theme.mutedText);
+        cell.setTextViewText(slot, "+" + count);
     }
 
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {

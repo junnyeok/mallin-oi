@@ -98,3 +98,32 @@ test('가입·허용된 종류만 조회하며 이번 주와 해가 바뀌는 �
   assert.equal(reads.length, 3);
   assert.ok(reads.every(call => call.p_start_date === '2026-12-27' && call.p_end_date === '2027-01-09'));
 });
+
+test('iPhone 위젯 그룹 선택지는 개인 일정 실패 및 그룹 일정 지연과 별도로 저장한다', async () => {
+  let finishGroupRead;
+  let choicesPublished;
+  const published = new Promise(resolve => { choicesPublished = resolve; });
+  const groupRead = new Promise(resolve => { finishGroupRead = resolve; });
+  const personalError = new Error('개인 일정 조회 실패');
+  const fetch = vm.runInNewContext(data + '\nfetchCalendarWidgetItems = readPersonal; fetchCalendarWidgetPayload;', {
+    Date, readWidgetMemberOrder, readPersonal: async () => { throw personalError; },
+    groupModule: { buildGroupWidgetRows: board, fetchCalendarGroups: async () => [
+      group, { id: 'group-b', name: '다른 모임', allow_study: true }, { id: 'off', name: '비공유' },
+    ] },
+    supabase: { rpc: async (name) => name === 'get_calendar_group_members' ? { data: roster } : groupRead },
+  });
+  const fetchResult = assert.rejects(fetch({ today: new Date(2026, 10, 23), currentUserId: 'b',
+    onGroupChoices: choicesPublished,
+  }), error => error === personalError);
+  const choices = await published;
+  try {
+    assert.deepEqual(JSON.parse(JSON.stringify(choices)), {
+      study: [{ id: 'group-b', name: '다른 모임' }],
+      work: [{ id: group.id, name: group.name }],
+      event: [{ id: group.id, name: group.name }],
+    });
+  } finally {
+    finishGroupRead({ error: '일정 연결 지연' });
+    await fetchResult;
+  }
+});

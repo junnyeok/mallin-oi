@@ -34,21 +34,23 @@ private struct GroupWeekEntry: TimelineEntry {
             groupID = nil
             groupName = "우리 그룹"
             let titles = type == "work" ? ["주간", "야간"] : type == "event" ? ["약속", "모임"] : ["운동", "공부"]
-            rows = (0..<2).map { i in
-                .init(name: ["오", "친"][i], days: [keys[i]: [.init(title: titles[i], color: ["#e3f4c8", "#ffe3ee"][i], done: false)]])
+            let members = (0..<2).map { i in
+                GroupWeekBoard.Row(name: ["오", "친"][i], days: [keys[i]: [.init(title: titles[i], color: ["#e3f4c8", "#ffe3ee"][i], done: false)]], shared: nil)
             }
+            let shared = GroupWeekBoard.Row(name: "우리", days: [keys[2]: [.init(title: "같이 장보기", color: "#e3f4c8", done: false)]], shared: true)
+            rows = type == "event" ? [shared] + members : members
             message = ""
             return
         }
-        let options = GroupSnapshot.read()[type] ?? []
-        let board = selected.flatMap { id in options.first { $0.id == id } } ?? (selected == nil && options.count == 1 ? options.first : nil)
-        groupID = board?.id
-        groupName = board?.name
-        rows = board?.weeks[keys[0]]
-        if defaults?.bool(forKey: "is_logged_in") != true {
-            message = "앱에서 로그인해 주세요"
-        } else if board != nil {
+        let options = GroupSnapshot.choices(for: type, in: defaults)
+        let choice = selected.flatMap { id in options.first { $0.id == id } } ?? (selected == nil && options.count == 1 ? options.first : nil)
+        groupID = choice?.id
+        groupName = choice?.name
+        rows = choice.flatMap { GroupSnapshot.board(for: type, id: $0.id, in: defaults)?.weeks[keys[0]] }
+        if choice != nil {
             message = "앱을 열어 이번 주 일정을 갱신해 주세요"
+        } else if options.isEmpty && defaults?.bool(forKey: "is_logged_in") != true {
+            message = "앱에서 로그인해 주세요"
         } else if options.isEmpty {
             message = "앱에서 연결할 그룹을 확인해 주세요"
         } else {
@@ -96,13 +98,18 @@ private struct GroupWeekView: View {
                             .overlay(Capsule().stroke(key == entry.today ? palette.primary : .clear))
                     }
                 }
-                let limit = family == .systemLarge ? 6 : 2
-                ForEach(0..<min(limit, rows.count), id: \.self) { index in
-                    memberRow(rows[index])
-                    if index + 1 < min(limit, rows.count) { Divider() }
+                let shared = entry.type == "event" ? rows.first { $0.shared == true } : nil
+                let members = shared == nil ? rows : rows.filter { $0.shared != true }
+                if let shared {
+                    sharedScheduleRow(shared)
                 }
-                if rows.count > limit {
-                    Text("나머지 \(rows.count - limit)줄 · 그룹 열기 ›")
+                let visibleCount = min(family == .systemLarge ? 6 : 2, members.count)
+                ForEach(0..<visibleCount, id: \.self) { index in
+                    memberRow(members[index])
+                    if index + 1 < visibleCount { Divider() }
+                }
+                if members.count > visibleCount {
+                    Text("나머지 \(members.count - visibleCount)줄 · 그룹 열기 ›")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(palette.mutedText)
                         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -123,6 +130,37 @@ private struct GroupWeekView: View {
         url?.queryItems = [URLQueryItem(name: "type", value: entry.type)]
         if let id = entry.groupID { url?.queryItems?.append(URLQueryItem(name: "group", value: id)) }
         return url?.url
+    }
+
+    private func sharedScheduleRow(_ row: GroupWeekBoard.Row) -> some View {
+        HStack(spacing: 2) {
+            Text(row.name)
+                .font(.system(size: 9, weight: .bold))
+                .lineLimit(1)
+                .frame(width: 25, alignment: .leading)
+            ForEach(entry.dates, id: \.self) { date in
+                let items = row.days[date] ?? []
+                Group {
+                    if items.count > 1 {
+                        Text("+\(items.count)")
+                            .frame(maxWidth: .infinity)
+                            .background(palette.soft, in: RoundedRectangle(cornerRadius: 3))
+                            .accessibilityLabel("우리 일정 \(items.count)개")
+                    } else if let item = items.first {
+                        Text(item.title)
+                            .strikethrough(item.done)
+                            .foregroundStyle(palette.badgeTextColor(for: item.color))
+                            .frame(maxWidth: .infinity)
+                            .background(palette.textColor(for: item.color), in: RoundedRectangle(cornerRadius: 3))
+                    } else {
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                }
+                .font(.system(size: 9, weight: .semibold))
+                .lineLimit(1)
+            }
+        }
+        .frame(height: 12)
     }
 
     private func memberRow(_ row: GroupWeekBoard.Row) -> some View {

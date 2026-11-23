@@ -10,6 +10,7 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "setWidgetAccount", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "saveWidgetData", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "saveWidgetGroupChoices", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getAppearance", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAppearance", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "consumePendingRoute", returnType: CAPPluginReturnPromise)
@@ -79,7 +80,27 @@ public class CalendarWidgetsPlugin: CAPPlugin, CAPBridgedPlugin {
         if defaults.string(forKey: "widget_account") != account {
             defaults.set(account, forKey: "widget_account")
             defaults.removeObject(forKey: "payload_json")
+            defaults.removeObject(forKey: GroupSnapshot.choicesKey)
             defaults.set(false, forKey: "is_logged_in")
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        call.resolve()
+    }
+
+    @objc func saveWidgetGroupChoices(_ call: CAPPluginCall) {
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        guard let account = call.getString("accountId"), !account.isEmpty,
+              defaults.string(forKey: "widget_account") == account,
+              let groups = call.getObject("groups"),
+              let data = try? JSONSerialization.data(withJSONObject: ["accountID": account, "groups": groups], options: .sortedKeys),
+              let json = String(data: data, encoding: .utf8) else {
+            call.resolve()
+            return
+        }
+
+        if defaults.string(forKey: GroupSnapshot.choicesKey) != json {
+            defaults.set(json, forKey: GroupSnapshot.choicesKey)
+            defaults.synchronize()
             WidgetCenter.shared.reloadAllTimelines()
         }
         call.resolve()

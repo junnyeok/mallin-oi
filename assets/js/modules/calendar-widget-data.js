@@ -503,11 +503,17 @@ export async function fetchCalendarWidgetItems(options = {}) {
   ];
 }
 
-async function fetchWidgetGroupBoards(today, currentUserId) {
+async function fetchWidgetGroupBoards(today, currentUserId, onGroupChoices) {
   const { buildGroupWidgetRows, fetchCalendarGroups } = await import('./calendar-groups.js');
   const start = getTwoWeekRange(parseDateKey(toDateKey(today))).startDate;
   const dates = getDateKeys(start, 14);
   const groups = await fetchCalendarGroups();
+  if (onGroupChoices) {
+    await onGroupChoices(Object.fromEntries(CALENDAR_WIDGET_TYPES.map(type => [
+      type,
+      groups.filter(group => group[`allow_${type}`]).map(({ id, name }) => ({ id, name })),
+    ])));
+  }
   const boards = { study: [], work: [], event: [] };
   async function read(name, params) {
     const { data, error } = await supabase.rpc(name, params);
@@ -543,9 +549,11 @@ async function fetchWidgetGroupBoards(today, currentUserId) {
 
 export async function fetchCalendarWidgetPayload(options = {}) {
   const today = options.today || new Date();
-  const [items, groupBoards] = await Promise.all([
+  const [personal, group] = await Promise.allSettled([
     fetchCalendarWidgetItems(options),
-    fetchWidgetGroupBoards(today, options.currentUserId).catch(() => ({})),
+    fetchWidgetGroupBoards(today, options.currentUserId, options.onGroupChoices),
   ]);
-  return { ...buildCalendarWidgetPayload(items, { today }), groupBoards };
+  if (personal.status === 'rejected') throw personal.reason;
+  const groupBoards = group.status === 'fulfilled' ? group.value : {};
+  return { ...buildCalendarWidgetPayload(personal.value, { today }), groupBoards };
 }

@@ -1,18 +1,26 @@
 package com.mallinoi.calendar;
 
 import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetHostView;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.Parcel;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.ImageView;
 import android.widget.RemoteViews;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.util.Calendar;
+import java.util.concurrent.FutureTask;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
@@ -111,6 +119,153 @@ public class WidgetAppearanceTest {
             if (hadAppearance) editor.putString(CalendarWidgetsPlugin.KEY_APPEARANCE, original);
             else editor.remove(CalendarWidgetsPlugin.KEY_APPEARANCE);
             editor.commit();
+        }
+    }
+
+    @Test @SdkSuppress(minSdkVersion = 31)
+    public void groupMemberRowsRenderOnFirstWidgetUpdate() throws Exception {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences prefs = app.getSharedPreferences("group-widget-first-update-fixture", Context.MODE_PRIVATE);
+        Context isolated = new ContextWrapper(app) {
+            @Override public SharedPreferences getSharedPreferences(String name, int mode) { return prefs; }
+        };
+        String[] dates = GroupWeekWidgetProvider.weekKeys(Calendar.getInstance());
+        JSONObject scheduledDays = new JSONObject();
+        for (String date : dates) {
+            scheduledDays.put(date, new JSONArray().put(new JSONObject().put("title", "일정"))
+                    .put(new JSONObject().put("title", "두 번째 일정"))
+                    .put(new JSONObject().put("title", "세 번째 일정")));
+        }
+        JSONArray members = new JSONArray();
+        for (int i = 0; i < 12; i++) {
+            members.put(new JSONObject().put("name", i == 0 ? "나" : "회" + i)
+                    .put("days", i == 1 ? new JSONObject() : scheduledDays));
+        }
+        JSONObject board = new JSONObject().put("id", "selected-group").put("name", "선택한 그룹")
+                .put("weeks", new JSONObject().put(dates[0], members));
+        JSONObject boards = new JSONObject();
+        for (String type : new String[]{"study", "work", "event"}) {
+            boards.put(type, new JSONArray().put(board));
+        }
+        prefs.edit().putBoolean(CalendarWidgetsPlugin.KEY_LOGGED_IN, true)
+                .putString(CalendarWidgetsPlugin.KEY_PAYLOAD, new JSONObject().put("groupBoards", boards).toString())
+                .putString("group_widget_101", "selected-group").commit();
+        FutureTask<Void> render = new FutureTask<>(() -> {
+            for (GroupWeekWidgetProvider provider : new GroupWeekWidgetProvider[]{
+                    new StudyGroupWidgetProvider(), new WorkGroupWidgetProvider(), new EventGroupWidgetProvider()}) {
+                RemoteViews update = provider.buildViews(isolated, AppWidgetManager.getInstance(app), 101);
+                Parcel parcel = Parcel.obtain();
+                try {
+                    update.writeToParcel(parcel, 0);
+                    parcel.setDataPosition(0);
+                    AppWidgetHostView host = new AppWidgetHostView(app);
+                    host.updateAppWidget(RemoteViews.CREATOR.createFromParcel(parcel));
+
+                    ListView list = host.findViewById(R.id.groupMembers);
+                    assertNotNull(list);
+                    ListAdapter adapter = list.getAdapter();
+                    assertNotNull("Initial widget update must include member rows", adapter);
+                    assertEquals(12, adapter.getCount());
+                    assertNotNull(list.getOnItemClickListener());
+
+                    View ownRow = adapter.getView(0, null, list);
+                    assertEquals("나", ((TextView) ownRow.findViewById(R.id.groupMemberName)).getText().toString());
+                    assertEquals("일정", ((TextView) ownRow.findViewById(R.id.groupFirst)).getText().toString());
+                    assertEquals("+1", ((TextView) ownRow.findViewById(R.id.groupMore)).getText().toString());
+                    View emptyRow = adapter.getView(1, null, list);
+                    assertEquals(View.GONE, emptyRow.findViewById(R.id.groupFirst).getVisibility());
+                    View lastRow = adapter.getView(11, null, list);
+                    assertEquals("회11", ((TextView) lastRow.findViewById(R.id.groupMemberName)).getText().toString());
+                } finally {
+                    parcel.recycle();
+                }
+            }
+            return null;
+        });
+        try {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(render);
+            render.get();
+        } finally {
+            prefs.edit().clear().commit();
+        }
+    }
+
+    @Test @SdkSuppress(minSdkVersion = 31)
+    public void eventSharedRowStaysCompactAboveMembers() throws Exception {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences prefs = app.getSharedPreferences("group-widget-shared-row-fixture", Context.MODE_PRIVATE);
+        Context isolated = new ContextWrapper(app) {
+            @Override public SharedPreferences getSharedPreferences(String name, int mode) { return prefs; }
+        };
+        String[] dates = GroupWeekWidgetProvider.weekKeys(Calendar.getInstance());
+        JSONObject item = new JSONObject().put("title", "모임").put("color", "#D4B9F2");
+        JSONObject memberDays = new JSONObject().put(dates[0], new JSONArray().put(item));
+        JSONObject sharedDays = new JSONObject().put(dates[0], new JSONArray().put(item))
+                .put(dates[1], new JSONArray().put(item).put(item))
+                .put(dates[2], new JSONArray().put(item).put(item).put(item));
+        JSONArray entries = new JSONArray()
+                .put(new JSONObject().put("name", "말").put("days", memberDays))
+                .put(new JSONObject().put("name", "다").put("days", memberDays))
+                .put(new JSONObject().put("name", "우리").put("shared", true).put("days", sharedDays));
+        JSONObject board = new JSONObject().put("id", "selected-group").put("name", "선택한 그룹")
+                .put("weeks", new JSONObject().put(dates[0], entries));
+        JSONObject boards = new JSONObject().put("event", new JSONArray().put(board))
+                .put("study", new JSONArray().put(board));
+        prefs.edit().putBoolean(CalendarWidgetsPlugin.KEY_LOGGED_IN, true)
+                .putString(CalendarWidgetsPlugin.KEY_PAYLOAD, new JSONObject().put("groupBoards", boards).toString())
+                .putString("group_widget_101", "selected-group").commit();
+        FutureTask<Void> render = new FutureTask<>(() -> {
+            AppWidgetManager manager = AppWidgetManager.getInstance(app);
+            EventGroupWidgetProvider provider = new EventGroupWidgetProvider();
+            AppWidgetHostView host = new AppWidgetHostView(app);
+            host.updateAppWidget(provider.buildViews(isolated, manager, 101));
+            ViewGroup dateRows = host.findViewById(R.id.groupDates);
+            assertEquals(2, dateRows.getChildCount());
+            View sharedRow = dateRows.getChildAt(1);
+            assertEquals("우리", ((TextView) sharedRow.findViewById(R.id.groupMemberName)).getText().toString());
+            ViewGroup sharedCells = sharedRow.findViewById(R.id.groupDays);
+            String[] expected = {"모임", "+2", "+3"};
+            for (int i = 0; i < sharedCells.getChildCount(); i++) {
+                View cell = sharedCells.getChildAt(i);
+                TextView first = cell.findViewById(R.id.groupFirst);
+                assertEquals(i < expected.length ? expected[i] : "", first.getText().toString());
+                assertEquals(i < expected.length ? View.VISIBLE : View.GONE, first.getVisibility());
+                assertEquals(View.GONE, cell.findViewById(R.id.groupSecond).getVisibility());
+                assertEquals(View.GONE, cell.findViewById(R.id.groupMore).getVisibility());
+            }
+            ListView list = host.findViewById(R.id.groupMembers);
+            assertEquals(2, list.getAdapter().getCount());
+            float density = app.getResources().getDisplayMetrics().density;
+            int width = Math.round(320 * density);
+            int height = Math.round(110 * density);
+            host.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+            host.layout(0, 0, width, height);
+            assertEquals(2, list.getChildCount());
+            assertTrue("Second member ends at " + list.getChildAt(1).getBottom() + "px in "
+                    + list.getHeight() + "px of available list height",
+                    list.getChildAt(1).getBottom() <= list.getHeight());
+            assertEquals("말", ((TextView) list.getChildAt(0).findViewById(R.id.groupMemberName)).getText().toString());
+            assertEquals("다", ((TextView) list.getChildAt(1).findViewById(R.id.groupMemberName)).getText().toString());
+
+            AppWidgetHostView study = new AppWidgetHostView(app);
+            study.updateAppWidget(new StudyGroupWidgetProvider().buildViews(isolated, manager, 101));
+            assertEquals(1, ((ViewGroup) study.findViewById(R.id.groupDates)).getChildCount());
+            assertEquals(3, ((ListView) study.findViewById(R.id.groupMembers)).getAdapter().getCount());
+
+            entries.remove(2);
+            prefs.edit().putString(CalendarWidgetsPlugin.KEY_PAYLOAD,
+                    new JSONObject().put("groupBoards", boards).toString()).commit();
+            host.updateAppWidget(provider.buildViews(isolated, manager, 101));
+            assertEquals(1, ((ViewGroup) host.findViewById(R.id.groupDates)).getChildCount());
+            assertEquals(2, ((ListView) host.findViewById(R.id.groupMembers)).getAdapter().getCount());
+            return null;
+        });
+        try {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(render);
+            render.get();
+        } finally {
+            prefs.edit().clear().commit();
         }
     }
 }

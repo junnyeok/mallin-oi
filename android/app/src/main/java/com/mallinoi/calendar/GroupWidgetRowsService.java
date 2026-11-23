@@ -24,7 +24,7 @@ public class GroupWidgetRowsService extends RemoteViewsService {
                 rows = null;
                 if (provider != null) {
                     theme = provider.currentTheme(GroupWidgetRowsService.this);
-                    rows = GroupWeekWidgetProvider.rows(provider.selectedBoard(GroupWidgetRowsService.this, id), dates[0]);
+                    rows = provider.weekRows(provider.selectedBoard(GroupWidgetRowsService.this, id), dates[0]).members;
                 }
             }
             public int getCount() { return rows == null ? 0 : rows.length(); }

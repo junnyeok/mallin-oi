@@ -5,6 +5,7 @@ import { normalizeCategoryColor, readCategoryColor, setCategoryColor, initCatego
 import { enableCategoryReorder, resetCategoryReorder, persistCategoryOrder, nextCategorySortOrder, syncReorderedCategorySelection } from './calendar-category-order.js';
 import {
   getCurrentUser,
+  getNicknameValue,
   loginHref,
   saveRedirect,
   showLoginRequiredPopup,
@@ -2180,6 +2181,7 @@ async function initPageCalendar(loadingController, user, isCurrent) {
   state.group = await initCalendarGroupBar({
     calendarType: 'work',
     userId: user.id,
+    userNickname: getNicknameValue(user),
     groupsPromise,
     isCurrent,
     pageRoot,

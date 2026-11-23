@@ -10,6 +10,7 @@ import {
 } from './calendar-schedule-order.js';
 import {
   getCurrentUser,
+  getNicknameValue,
   loginHref,
   saveRedirect,
   showLoginRequiredPopup,
@@ -1845,6 +1846,7 @@ async function initPageCalendar(loadingController, user, isCurrent) {
   state.group = await initCalendarGroupBar({
     calendarType: 'event',
     userId: user.id,
+    userNickname: getNicknameValue(user),
     groupsPromise,
     isCurrent,
     pageRoot,

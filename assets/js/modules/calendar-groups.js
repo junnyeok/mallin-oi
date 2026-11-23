@@ -924,6 +924,7 @@ export function appendCalendarGroupBoard(
   if (!root || !Array.isArray(dateItems) || !groupState?.selectedGroup?.id) return;
   if (!isCalendarGroupActive(groupState)) return;
 
+  const ownUserId = groupState.userId || null;
   const todayKey = toDateKey(new Date());
   const weeks = [];
 
@@ -944,7 +945,11 @@ export function appendCalendarGroupBoard(
       personalEventsByDateAndUser,
       sharedEventsByDate,
     } = collectWeekScheduleRows(week, groupState);
-    const isEmptyWeek = !hasSharedEvents && members.length === 0;
+    const ownMember = ownUserId
+      ? members.find(member => member.userId === ownUserId) ||
+        { userId: ownUserId, name: groupState.userNickname || '나' }
+      : null;
+    const isEmptyWeek = !hasSharedEvents && members.length === 0 && !ownMember;
 
     const weekEl = document.createElement('section');
     weekEl.className = 'calendar-group-schedule__week';
@@ -979,6 +984,21 @@ export function appendCalendarGroupBoard(
 
     weekEl.append(header);
 
+    const appendMemberRow = (member) => appendScheduleRow({
+      weekEl,
+      week,
+      rowMember: member,
+      groupState,
+      selectedDateKey: options.selectedDateKey,
+      todayKey,
+      onSelect: options.onSelect,
+      onSelectEvent: options.onSelectEvent,
+      getEvents: (dateKey) =>
+        personalEventsByDateAndUser.get(`${dateKey}|${member.userId}`) || [],
+    });
+
+    if (ownMember) appendMemberRow(ownMember);
+
     if (hasSharedEvents || isEmptyWeek) {
       appendScheduleRow({
         weekEl,
@@ -994,20 +1014,9 @@ export function appendCalendarGroupBoard(
       });
     }
 
-    members.forEach((member) => {
-      appendScheduleRow({
-        weekEl,
-        week,
-        rowMember: member,
-        groupState,
-        selectedDateKey: options.selectedDateKey,
-        todayKey,
-        onSelect: options.onSelect,
-        onSelectEvent: options.onSelectEvent,
-        getEvents: (dateKey) =>
-          personalEventsByDateAndUser.get(`${dateKey}|${member.userId}`) || [],
-      });
-    });
+    for (const member of members) {
+      if (member !== ownMember) appendMemberRow(member);
+    }
 
     wrap.append(weekEl);
   });
@@ -1019,6 +1028,7 @@ export function appendCalendarGroupBoard(
 export async function initCalendarGroupBar({
   calendarType,
   userId,
+  userNickname,
   groupsPromise,
   pageRoot,
   getViewDate,
@@ -1034,6 +1044,7 @@ export async function initCalendarGroupBar({
   const head = pageRoot.querySelector('[class$="-calendar-page__head"]');
   const state = {
     userId,
+    userNickname,
     calendarType,
     selectedGroup: null,
     groups: [],
