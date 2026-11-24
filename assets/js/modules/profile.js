@@ -52,9 +52,11 @@ const [
   { emitEquipmentChanged },
   { saveMyProfileFeaturedBgm },
   {
+    getBgmPlaybackState,
     PERSONAL_BGM_PLAY_EVENT,
     pauseBgmForExternalAudio,
     restoreBgmAfterExternalAudio,
+    waitForBgmResumeCheck,
   },
   {
     configureSecondaryAudioSession,
@@ -70,6 +72,7 @@ const [
     createProfileBackgroundContrastAnalyzer,
     PROFILE_BIO_LIGHT_CLASS,
   },
+  { navigateSitePage },
 ] = await Promise.all([
   import(`./emoticons.js?v=${MODULE_VERSION}`),
   import(`./store-data.js?v=${MODULE_VERSION}`),
@@ -79,6 +82,7 @@ const [
   import(`./completion-audio-session.js?v=${MODULE_VERSION}`),
   import(`./character-effects.js?v=${MODULE_VERSION}`),
   import(`./profile-background-contrast.js?v=${MODULE_VERSION}`),
+  import(`./pjax-router.js?v=${MODULE_VERSION}`),
 ]);
 
 let profileFeaturedBgmState = null;
@@ -414,6 +418,10 @@ async function initProfileFeaturedBgm(
 
   const shouldAutoPlay = await shouldPlaySecondaryAudio(window);
   if (profileFeaturedBgmState !== state || !shouldAutoPlay) return;
+  await waitForBgmResumeCheck();
+  if (profileFeaturedBgmState !== state) return;
+  const { isPlaying, isStarting } = getBgmPlaybackState();
+  if (isPlaying || isStarting) return;
 
   // 일반 웹/PWA는 다른 앱의 재생 상태를 조회할 수 없다. 지원되는
   // WebKit에서는 ambient 세션으로 재생해 기존 외부 오디오를 중단하지 않는다.
@@ -1046,7 +1054,7 @@ function renderCharacterEffectSection({
       ).trim();
 
       if (!isOwned) {
-        if (storeHref) window.location.href = storeHref;
+        if (storeHref) await navigateSitePage(storeHref);
         return;
       }
 
@@ -2049,7 +2057,7 @@ function renderProfileBackgroundSection({
       ).trim();
 
       if (!isOwned) {
-        if (storeHref) window.location.href = storeHref;
+        if (storeHref) await navigateSitePage(storeHref);
         return;
       }
 
@@ -2272,7 +2280,7 @@ function renderProfileFrameSection({
         ).trim();
 
         if (!isOwned) {
-          if (storeHref) window.location.href = storeHref;
+          if (storeHref) await navigateSitePage(storeHref);
           return;
         }
 
@@ -2471,7 +2479,7 @@ function renderBgmSection({
           const trackId = String(button.dataset.bgmTrackId || '').trim();
 
           if (!isOwned) {
-            if (storeHref) window.location.href = storeHref;
+            if (storeHref) await navigateSitePage(storeHref);
             return;
           }
 
@@ -3009,7 +3017,7 @@ function renderCharacterSection({
         const storeHref = String(button.dataset.storeHref || '').trim();
 
         if (!isOwned) {
-          if (storeHref) window.location.href = storeHref;
+          if (storeHref) await navigateSitePage(storeHref);
           return;
         }
 
@@ -3039,13 +3047,13 @@ function renderCharacterSection({
         const skinCode = String(button.dataset.skinCode || '').trim();
 
         if (!isOwned) {
-          if (storeHref) window.location.href = storeHref;
+          if (storeHref) await navigateSitePage(storeHref);
           return;
         }
 
         if (!canEquip) {
           if (requiredStoreHref) {
-            window.location.href = requiredStoreHref;
+            await navigateSitePage(requiredStoreHref);
             return;
           }
 

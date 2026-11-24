@@ -10,6 +10,7 @@ import {
   saveRedirect,
   showLoginRequiredPopup,
 } from './auth-store.js';
+import { navigateSitePage } from './pjax-router.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import {
   openCalendarConfirmation,
@@ -1341,9 +1342,7 @@ async function renderPreviewCalendar(user) {
     selectedDateKey: getTodayKey(),
     store,
     categories,
-    onSelect: () => {
-      window.location.href = './calendar-work.html';
-    },
+    onSelect: () => navigateSitePage('./calendar-work.html'),
     isMini: true,
   });
   compactPreviewCalendar(root, 'work');

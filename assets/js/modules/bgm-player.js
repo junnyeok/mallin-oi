@@ -32,6 +32,12 @@ let shuffleCursor = -1;
 const trackDurations = new Map();
 let scrubbingSeek = null;
 let playbackRequest = 0;
+let isPlaybackPending = false;
+let navigationResumeState = getTabPlaybackState();
+let resolveNavigationResumeCheck;
+const navigationResumeCheck = navigationResumeState
+  ? new Promise((resolve) => { resolveNavigationResumeCheck = resolve; })
+  : Promise.resolve();
 let audio = null;
 let playlist = [];
 let currentIndex = 0;
@@ -66,23 +72,6 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function isReloadNavigation() {
-  try {
-    const navEntry = performance.getEntriesByType?.('navigation')?.[0];
-    if (navEntry && navEntry.type) {
-      return navEntry.type === 'reload';
-    }
-
-    if (performance.navigation) {
-      return performance.navigation.type === 1;
-    }
-  } catch (error) {
-    console.warn('[bgm] reload navigation detect failed:', error);
-  }
-
-  return false;
-}
-
 function getReloadResumeNotice() {
   return document.getElementById(BGM_RELOAD_NOTICE_ID);
 }
@@ -109,7 +98,7 @@ function showReloadResumeNotice() {
     <div class="bgm-reload-notice__panel">
       <strong class="bgm-reload-notice__title">BGM이 일시정지됐어</strong>
       <p class="bgm-reload-notice__text">
-        브라우저 정책 때문에 새로고침 후에는 자동으로 이어재생되지 않을 수 있어.
+        브라우저가 재생을 일시정지했어.
         화면을 한 번 클릭하거나 터치하면 이어서 재생할게.
       </p>
       <p class="bgm-reload-notice__hint">화면 클릭 / 터치 시 닫힘</p>
@@ -119,42 +108,19 @@ function showReloadResumeNotice() {
   document.body.appendChild(notice);
 }
 
-function maybeShowReloadResumeNotice(savedState) {
-  if (!playBlocked) return;
-  if (!savedState?.wasPlaying) return;
-  if (!isReloadNavigation()) return;
-
-  showReloadResumeNotice();
+function finishNavigationResumeCheck() {
+  resolveNavigationResumeCheck?.();
+  resolveNavigationResumeCheck = null;
 }
 
-function shouldUseReloadResumeFlow(savedState = getSavedPlaybackState()) {
-  if (!hasAuthenticatedUser()) return false;
-  if (!isReloadNavigation()) return false;
-  if (!savedState?.wasPlaying) return false;
-  return true;
+export function waitForBgmResumeCheck() {
+  return navigationResumeCheck;
 }
 
-function bindReloadResumeNoticeDismiss() {
-  const dismiss = async () => {
-    const notice = getReloadResumeNotice();
-    if (!notice) return;
-    if (!hasAuthenticatedUser()) {
-      removeReloadResumeNotice();
-      return;
-    }
-
-    try {
-      await restorePlaybackPosition();
-    } catch (error) {
-      console.error('[bgm] reload resume restore failed:', error);
-    } finally {
-      removeReloadResumeNotice();
-    }
-  };
-
-  ['click', 'touchstart', 'keydown'].forEach((eventName) => {
-    document.addEventListener(eventName, dismiss);
-  });
+function clearNavigationResumeState() {
+  navigationResumeState = null;
+  finishNavigationResumeCheck();
+  removeReloadResumeNotice();
 }
 
 function getSavedTrackId() {
@@ -172,6 +138,10 @@ async function getSessionUser() {
 
 function setAuthenticatedUser(user) {
   authenticatedUserId = String(user?.id || '').trim();
+  if (authenticatedUserId && navigationResumeState?.userId &&
+      navigationResumeState.userId !== authenticatedUserId) {
+    clearSavedPlaybackState();
+  }
 }
 
 function hasAuthenticatedUser() {
@@ -221,28 +191,24 @@ function setPanelDesc(text) {
   if (desc) desc.textContent = text;
 }
 
-function getSavedPlaybackState() {
+function getTabPlaybackState() {
   try {
+    // Track preferences are shared. The intention to keep playing belongs to this tab.
     const raw =
-      localStorage.getItem(BGM_STATE_STORAGE_KEY) ||
       sessionStorage.getItem(BGM_STATE_STORAGE_KEY) ||
       sessionStorage.getItem(BGM_STATE_STORAGE_LEGACY_KEY);
 
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
+    if (!parsed?.wasPlaying || !parsed.trackId) return null;
+    const time = Number(parsed.currentTime);
 
     return {
-      trackId: String(parsed.trackId || ''),
+      userId: String(parsed.userId || ''),
+      trackId: String(parsed.trackId),
       index: Number.isFinite(Number(parsed.index)) ? Number(parsed.index) : 0,
-      currentTime: Number.isFinite(Number(parsed.currentTime))
-        ? Number(parsed.currentTime)
-        : 0,
-      wasPlaying: Boolean(parsed.wasPlaying),
-      savedAt: Number.isFinite(Number(parsed.savedAt))
-        ? Number(parsed.savedAt)
-        : Date.now(),
+      currentTime: Number.isFinite(time) ? Math.max(0, time) : 0,
     };
   } catch (error) {
     console.error('[bgm] failed to read playback state:', error);
@@ -251,14 +217,17 @@ function getSavedPlaybackState() {
 }
 
 function savePlaybackState() {
+  if (!hasAuthenticatedUser()) return;
+
   const track = getCurrentTrack();
   const player = audio;
   const suspendedState = externalPlaybackSession?.shouldResume
     ? externalPlaybackSession
-    : null;
+    : navigationResumeState;
 
   try {
     const payload = {
+      userId: authenticatedUserId,
       trackId: suspendedState?.trackId || track?.id || '',
       index: Number.isFinite(suspendedState?.index)
         ? suspendedState.index
@@ -270,12 +239,11 @@ function savePlaybackState() {
             ? player.currentTime
             : 0,
       wasPlaying: Boolean(
-        suspendedState || (isPlaying && player && !player.paused),
+        suspendedState || isPlaybackPending ||
+        (isPlaying && player && !player.paused && !player.ended),
       ),
-      savedAt: Date.now(),
     };
 
-    localStorage.setItem(BGM_STATE_STORAGE_KEY, JSON.stringify(payload));
     sessionStorage.setItem(BGM_STATE_STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
     console.error('[bgm] failed to save playback state:', error);
@@ -292,8 +260,8 @@ function scheduleSavePlaybackState() {
 }
 
 function clearSavedPlaybackState() {
+  clearNavigationResumeState();
   try {
-    localStorage.removeItem(BGM_STATE_STORAGE_KEY);
     sessionStorage.removeItem(BGM_STATE_STORAGE_KEY);
     sessionStorage.removeItem(BGM_STATE_STORAGE_LEGACY_KEY);
   } catch (error) {
@@ -330,6 +298,7 @@ function scheduleRemotePreferenceSave() {
 
 function stopAndResetPlayback() {
   playbackRequest += 1;
+  isPlaybackPending = false;
   shuffleHistory = [];
   shuffleCursor = -1;
   scrubbingSeek = null;
@@ -356,7 +325,6 @@ function stopAndResetPlayback() {
   playBlocked = false;
   currentTrackId = '';
   clearSavedPlaybackState();
-  removeReloadResumeNotice();
 }
 
 function renderLoginRequiredState() {
@@ -709,29 +677,10 @@ function waitForSeekable(player) {
   });
 }
 
-async function tryAutoplayWithMutedBootstrap(player) {
-  const originalMuted = player.muted;
-  const originalVolume = player.volume;
-
-  try {
-    player.muted = true;
-    player.volume = 0;
-
-    await player.play();
-
-    // 재생 시작 자체가 성공한 뒤 원래 상태 복구
-    // 약간의 지연을 줘야 브라우저가 재생 시작을 먼저 인정하는 경우가 있음
-    await new Promise((resolve) => window.setTimeout(resolve, 60));
-
-    player.muted = originalMuted;
-    player.volume = originalVolume;
-
-    return true;
-  } catch (error) {
-    player.muted = originalMuted;
-    player.volume = originalVolume;
-    throw error;
-  }
+function setPlaybackPosition(player, time) {
+  const duration = Number.isFinite(player.duration) ? player.duration : 0;
+  const lastPosition = duration > 1 ? duration - 0.35 : Infinity;
+  player.currentTime = Math.min(Math.max(0, time), lastPosition);
 }
 
 function setTrackSource(track, { waitForMetadata = true } = {}) {
@@ -755,7 +704,7 @@ async function syncPlaylistWithSelection({ autoPlay = false } = {}) {
     nextPlaylist.map((track) => String(track?.id || '').trim()).filter(Boolean),
   );
 
-  const savedState = getSavedPlaybackState();
+  const savedState = getTabPlaybackState();
   const restoreTargetTrackId = String(
     currentTrackId || savedState?.trackId || '',
   ).trim();
@@ -801,66 +750,44 @@ async function syncPlaylistWithSelection({ autoPlay = false } = {}) {
   }
 }
 
-async function restorePlaybackPosition() {
-  const player = ensureAudio();
+async function resumeAfterNavigation() {
+  const savedState = navigationResumeState;
+  if (!savedState) return;
+
+  const index = playlist.findIndex((track) => track.id === savedState.trackId);
+  if (index < 0) {
+    clearSavedPlaybackState();
+    return;
+  }
+
+  finishNavigationResumeCheck();
+  currentIndex = index;
+  saveIndex(currentIndex);
   const track = getCurrentTrack();
-  const savedState = getSavedPlaybackState();
-
-  if (!track || !savedState) return false;
-  if (savedState.trackId !== track.id) return false;
-
-  await setTrackSource(track);
-
-  const duration = Number.isFinite(player.duration) ? player.duration : 0;
-  const maxSeekTime = duration > 1 ? Math.max(0, duration - 0.35) : 0;
-  const safeTime =
-    maxSeekTime > 0
-      ? Math.min(Math.max(0, savedState.currentTime || 0), maxSeekTime)
-      : Math.max(0, savedState.currentTime || 0);
+  const player = ensureAudio();
 
   try {
-    if (safeTime > 0) {
-      player.currentTime = safeTime;
+    setTrackSource(track, { waitForMetadata: false });
+    if (savedState.currentTime > 0) {
+      await waitForSeekable(player);
+      if (navigationResumeState !== savedState || getCurrentTrack()?.id !== track.id) return;
+      setPlaybackPosition(player, savedState.currentTime);
     }
+    await tryPlayCurrentTrack({ resumeNavigation: true });
   } catch (error) {
-    console.warn('[bgm] failed to restore currentTime:', error);
+    if (navigationResumeState !== savedState) return;
+    clearSavedPlaybackState();
+    console.warn('[bgm] failed to prepare navigation resume:', error);
   }
-
-  isPlaying = false;
-  playBlocked = false;
-  renderPlaylist();
-  updatePanelDesc();
-
-  if (savedState.wasPlaying) {
-    notifyPersonalBgmPlay('restore');
-
-    try {
-      await tryAutoplayWithMutedBootstrap(player);
-      isPlaying = true;
-      playBlocked = false;
-      removeReloadResumeNotice();
-    } catch (error) {
-      isPlaying = false;
-      playBlocked = true;
-      maybeShowReloadResumeNotice(savedState);
-      console.warn('[bgm] autoplay blocked while restoring:', error);
-    }
-  } else {
-    removeReloadResumeNotice();
-  }
-
-  savePlaybackState();
-  renderPlaylist();
-  updatePanelDesc();
-  return true;
 }
 
-async function tryPlayCurrentTrack() {
+async function tryPlayCurrentTrack({ resumeNavigation = false } = {}) {
   const request = ++playbackRequest;
   const player = ensureAudio();
   const track = getCurrentTrack();
 
   if (!track) {
+    isPlaybackPending = false;
     isPlaying = false;
     playBlocked = false;
     clearSavedPlaybackState();
@@ -869,23 +796,27 @@ async function tryPlayCurrentTrack() {
     return;
   }
 
-  notifyPersonalBgmPlay('play');
-
-  setTrackSource(track, { waitForMetadata: false });
+  if (!resumeNavigation) clearNavigationResumeState();
+  isPlaybackPending = true;
+  playBlocked = false;
+  notifyPersonalBgmPlay(resumeNavigation ? 'restore' : 'play');
 
   try {
+    setTrackSource(track, { waitForMetadata: false });
     await player.play();
-    if (request !== playbackRequest || currentTrackId !== track.id) return;
+    if (request !== playbackRequest) return;
     isPlaying = true;
-    playBlocked = false;
-    removeReloadResumeNotice();
+    clearNavigationResumeState();
   } catch (error) {
-    if (request !== playbackRequest || currentTrackId !== track.id) return;
+    if (request !== playbackRequest) return;
     isPlaying = false;
-    playBlocked = true;
-    console.warn('[bgm] autoplay blocked or failed:', error);
+    playBlocked = error?.name === 'NotAllowedError';
+    if (resumeNavigation && playBlocked) showReloadResumeNotice();
+    else clearNavigationResumeState();
+    if (!playBlocked) console.warn('[bgm] play failed:', error);
   }
 
+  isPlaybackPending = false;
   savePlaybackState();
   updatePanelDesc();
   renderPlaylist();
@@ -909,29 +840,13 @@ async function playTrack(index = 0, options = {}) {
   else setTrackSource(track, { waitForMetadata: false });
 
   try {
-    if (startTime > 0) {
-      const duration = Number.isFinite(player.duration) ? player.duration : 0;
-      const maxSeekTime = duration > 1 ? Math.max(0, duration - 0.35) : 0;
-      const safeTime =
-        maxSeekTime > 0
-          ? Math.min(Math.max(0, startTime), maxSeekTime)
-          : Math.max(0, startTime);
-
-      player.currentTime = safeTime;
-    } else {
-      player.currentTime = 0;
-    }
+    setPlaybackPosition(player, startTime);
   } catch (error) {
     console.warn('[bgm] failed to set currentTime:', error);
   }
 
   if (!autoPlay) {
-    player.pause();
-    isPlaying = false;
-    playBlocked = false;
-    savePlaybackState();
-    updatePanelDesc();
-    renderPlaylist();
+    pauseTrack();
     return;
   }
 
@@ -940,6 +855,8 @@ async function playTrack(index = 0, options = {}) {
 
 function pauseTrack() {
   playbackRequest += 1;
+  isPlaybackPending = false;
+  clearNavigationResumeState();
   playBlocked = false;
   const player = ensureAudio();
   player.pause();
@@ -977,11 +894,13 @@ export function getBgmPlaybackState() {
   const track = getCurrentTrack();
 
   return {
-    isPlaying: Boolean(isPlaying && player && !player.paused),
+    isPlaying: Boolean(isPlaying && player && !player.paused && !player.ended),
+    isStarting: Boolean(isPlaybackPending || navigationResumeState),
     isSuspendedForExternalAudio: Boolean(externalPlaybackSession),
-    trackId: String(track?.id || currentTrackId || '').trim(),
+    trackId: String(navigationResumeState?.trackId || track?.id || currentTrackId || '').trim(),
     currentTime:
-      player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
+      navigationResumeState?.currentTime ??
+      (player && Number.isFinite(player.currentTime) ? player.currentTime : 0),
   };
 }
 
@@ -1000,32 +919,28 @@ export function pauseBgmForExternalAudio(source = 'external-audio') {
 
   const player = audio;
   const track = getCurrentTrack();
-  const savedState = getSavedPlaybackState();
-  const isActuallyPlaying = Boolean(isPlaying && player && !player.paused);
-  const shouldResumeReloadState = Boolean(
-    getReloadResumeNotice() && savedState?.wasPlaying,
+  const savedState = navigationResumeState;
+  const isActuallyPlaying = Boolean(
+    isPlaybackPending || (isPlaying && player && !player.paused && !player.ended),
   );
 
   externalPlaybackSessionSequence += 1;
   externalPlaybackSession = {
     id: externalPlaybackSessionSequence,
     source: normalizedSource,
-    shouldResume: isActuallyPlaying || shouldResumeReloadState,
-    trackId: String(track?.id || savedState?.trackId || '').trim(),
-    index: Number.isFinite(currentIndex)
-      ? currentIndex
-      : Number(savedState?.index) || 0,
+    shouldResume: isActuallyPlaying || Boolean(savedState),
+    trackId: String(savedState?.trackId || track?.id || '').trim(),
+    index: savedState?.index ?? currentIndex,
     currentTime:
-      player && Number.isFinite(player.currentTime) && player.currentTime > 0
-        ? player.currentTime
-        : Math.max(0, Number(savedState?.currentTime) || 0),
+      savedState?.currentTime ??
+      (player && Number.isFinite(player.currentTime) ? player.currentTime : 0),
   };
-
-  removeReloadResumeNotice();
 
   if (isActuallyPlaying) {
     pauseTrack();
   } else {
+    clearNavigationResumeState();
+    playBlocked = false;
     savePlaybackState();
   }
 
@@ -1283,12 +1198,12 @@ function bindRetryOnUserGesture() {
     if (!hasAuthenticatedUser()) return;
     if (externalPlaybackSession) return;
 
-    tryPlayCurrentTrack().catch((error) => {
+    tryPlayCurrentTrack({ resumeNavigation: Boolean(navigationResumeState) }).catch((error) => {
       console.error('[bgm] retry play failed:', error);
     });
   };
 
-  ['click', 'touchstart', 'keydown'].forEach((eventName) => {
+  ['click', 'keydown'].forEach((eventName) => {
     document.addEventListener(eventName, retry, { passive: true });
   });
 }
@@ -1411,7 +1326,7 @@ function bindStorePreviewWatcher() {
   });
 }
 
-export async function initBgmPlayer() {
+async function setupBgmPlayer() {
   const menu = $('bgmMenu');
   const btn = $('bgmBtn');
   const panel = $('bgmPanel');
@@ -1430,7 +1345,6 @@ export async function initBgmPlayer() {
   bindBgmSettingsQuickLink();
 
   bindRetryOnUserGesture();
-  bindReloadResumeNoticeDismiss();
   bindPageLifecycleSave();
   bindPanelGlobalEvents();
   bindAuthWatcher();
@@ -1542,12 +1456,13 @@ export async function initBgmPlayer() {
   renderPlaylist();
   updatePanelDesc();
 
-  const savedState = getSavedPlaybackState();
+  await resumeAfterNavigation();
+}
 
-  if (shouldUseReloadResumeFlow(savedState)) {
-    showReloadResumeNotice();
-    return;
+export async function initBgmPlayer() {
+  try {
+    await setupBgmPlayer();
+  } finally {
+    if (resolveNavigationResumeCheck) clearNavigationResumeState();
   }
-
-  removeReloadResumeNotice();
 }

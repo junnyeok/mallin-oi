@@ -245,6 +245,19 @@ let isNavigating = false;
 const PJAX_NAVIGATE_GLOBAL_KEY = '__mallinNavigate';
 let currentNavToken = 0;
 
+export function navigateSitePage(href, options = {}) {
+  const navigate = window[PJAX_NAVIGATE_GLOBAL_KEY];
+  if (typeof navigate === 'function') {
+    return navigate(href, { preserveHash: true, ...options });
+  }
+
+  if (options.replace) {
+    window.location.replace(href);
+  } else {
+    window.location.assign(href);
+  }
+}
+
 export async function initPjaxRouter({
   mainSelector = DEFAULT_MAIN_SELECTOR,
   onAfterSwap = async () => {},
@@ -347,6 +360,7 @@ export async function initPjaxRouter({
   window[PJAX_NAVIGATE_GLOBAL_KEY] = navigate;
 
   document.addEventListener('click', (event) => {
+    if (event.defaultPrevented) return;
     const anchor = event.target.closest('a[href]');
     if (!shouldHandleAnchor(anchor, event)) return;
 

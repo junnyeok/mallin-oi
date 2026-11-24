@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 
 import {
   configureSecondaryAudioSession,
@@ -10,6 +11,59 @@ import {
 } from '../assets/js/modules/completion-audio-session.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const profileSource = fs.readFileSync(
+  path.join(rootDir, 'assets/js/modules/profile.js'),
+  'utf8',
+);
+
+function createProfilePlayer({
+  isPlaying = false,
+  isStarting = false,
+  resumeCheck = Promise.resolve(),
+} = {}) {
+  const personalPlayback = { isPlaying, isStarting };
+  const calls = [];
+  let resolveExternalAudioCheck;
+  const externalAudioCheck = new Promise((resolve) => {
+    resolveExternalAudioCheck = resolve;
+  });
+  const profileAudioSource = profileSource.slice(
+    profileSource.indexOf('async function playProfileFeaturedBgm('),
+    profileSource.indexOf('function escapeHtml('),
+  );
+  const init = runInNewContext(`${profileAudioSource}\ninitProfileFeaturedBgm`, {
+    AbortController,
+    Audio: class extends EventTarget {
+      paused = true;
+
+      async play() {
+        this.paused = false;
+        calls.push('play featured BGM');
+      }
+    },
+    window: new EventTarget(),
+    document: { body: { dataset: { page: 'profile' } } },
+    $: () => new EventTarget(),
+    profileFeaturedBgmState: null,
+    profileFeaturedBgmResumeHandle: null,
+    PERSONAL_BGM_PLAY_EVENT: 'mallin:personal-bgm-play',
+    PROFILE_FEATURED_BGM_SOURCE: 'profile-featured-bgm',
+    destroyProfileFeaturedBgm: async () => {},
+    getProfileFeaturedBgmTrack: () => ({
+      audioPath: 'featured.mp3',
+      coverPath: 'featured.png',
+    }),
+    isUsableProfileBgmTrack: () => true,
+    updateProfileFeaturedBgmUi: () => {},
+    shouldPlaySecondaryAudio: () => externalAudioCheck,
+    getBgmPlaybackState: () => personalPlayback,
+    waitForBgmResumeCheck: () => resumeCheck,
+    configureSecondaryAudioSession: () => calls.push('configure audio session'),
+    pauseBgmForExternalAudio: () => calls.push('pause personal BGM'),
+  });
+
+  return { init, calls, resolveExternalAudioCheck, personalPlayback };
+}
 
 function createNativeWindow(isPlaying) {
   return {
@@ -57,20 +111,66 @@ test('웹 오디오 세션은 ambient로 설정해 다른 오디오를 중단하
   assert.equal(configureSecondaryAudioSession({}), false);
 });
 
-test('프로필 자동재생은 외부 오디오 판별 뒤에만 실행한다', () => {
-  const profile = fs.readFileSync(
-    path.join(rootDir, 'assets/js/modules/profile.js'),
-    'utf8',
-  );
+test('외부 오디오가 재생 중이면 대표 BGM을 시작하지 않는다', async () => {
+  const profile = createProfilePlayer();
+  const ready = profile.init();
+  profile.resolveExternalAudioCheck(false);
+  await ready;
+  assert.deepEqual(profile.calls, []);
+});
 
-  assert.match(
-    profile,
-    /const shouldAutoPlay = await shouldPlaySecondaryAudio\(window\);[\s\S]*?if \(profileFeaturedBgmState !== state \|\| !shouldAutoPlay\) return;/,
-  );
-  assert.match(
-    profile,
-    /configureSecondaryAudioSession\(window\);[\s\S]*?await playProfileFeaturedBgm\(state\);/,
-  );
+test('내 BGM 재생이나 이어재생이 진행 중이면 대표 BGM이 개입하지 않는다', async () => {
+  for (const playback of [{ isPlaying: true }, { isStarting: true }]) {
+    const profile = createProfilePlayer(playback);
+    const ready = profile.init();
+    profile.resolveExternalAudioCheck(true);
+    await ready;
+    assert.deepEqual(profile.calls, []);
+  }
+});
+
+test('자동재생 판단 중에 시작된 내 BGM을 유지한다', async () => {
+  const profile = createProfilePlayer();
+  const ready = profile.init();
+  await Promise.resolve();
+  assert.deepEqual(profile.calls, []);
+  profile.personalPlayback.isPlaying = true;
+  profile.resolveExternalAudioCheck(true);
+  await ready;
+  assert.deepEqual(profile.calls, []);
+});
+
+test('내 BGM이 멈춰 있고 외부 오디오도 없으면 대표 BGM을 재생한다', async () => {
+  const profile = createProfilePlayer();
+  const ready = profile.init();
+  profile.resolveExternalAudioCheck(true);
+  await ready;
+  assert.deepEqual(profile.calls, [
+    'configure audio session',
+    'pause personal BGM',
+    'play featured BGM',
+  ]);
+});
+
+test('내 BGM을 이어재생할 수 없다고 확인되면 대표 BGM을 시작한다', async () => {
+  let finishResumeCheck;
+  const resumeCheck = new Promise((resolve) => {
+    finishResumeCheck = resolve;
+  });
+  const profile = createProfilePlayer({ isStarting: true, resumeCheck });
+  const ready = profile.init();
+  profile.resolveExternalAudioCheck(true);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(profile.calls, []);
+  profile.personalPlayback.isStarting = false;
+  finishResumeCheck();
+  await ready;
+  assert.deepEqual(profile.calls, [
+    'configure audio session',
+    'pause personal BGM',
+    'play featured BGM',
+  ]);
 });
 
 test('루트와 www의 프로필 오디오 모듈이 일치한다', () => {

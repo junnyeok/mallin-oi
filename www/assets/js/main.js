@@ -180,15 +180,7 @@ async function initWebsiteFeatures(layoutReady, authStore, pageReady) {
     maxRotate: 50,
   });
 
-  const layout = await layoutReady;
-  void runSafe('header authentication', authStore.updateAuthUI);
-  void initFeature('./modules/service-menu.js', 'initServiceMenu');
-  void initFeature('./modules/search-nav.js', 'initSearchNav', {
-    baseUrl: getPostsAllBaseUrl(),
-    defaultTab: 'all',
-  });
-
-  void runSafe('page navigation', async () => {
+  const navigationReady = runSafe('page navigation', async () => {
     const { initPjaxRouter } = await loadModule('./modules/pjax-router.js');
     initPjaxRouter({
       mainSelector: 'main',
@@ -198,6 +190,7 @@ async function initWebsiteFeatures(layoutReady, authStore, pageReady) {
           if (version) applyVersionToStaticLinks(version.withAssetVersion);
         }
         void initSocialAuthControls();
+        const layout = await layoutReady;
         await layout?.refreshLayoutState();
         await authStore.updateAuthUI();
         void initFeature('./modules/refresh-control.js', 'initRefreshControls');
@@ -208,10 +201,19 @@ async function initWebsiteFeatures(layoutReady, authStore, pageReady) {
     });
   });
 
+  await layoutReady;
+  void runSafe('header authentication', authStore.updateAuthUI);
+  void initFeature('./modules/service-menu.js', 'initServiceMenu');
+  void initFeature('./modules/search-nav.js', 'initSearchNav', {
+    baseUrl: getPostsAllBaseUrl(),
+    defaultTab: 'all',
+  });
+
   void initFeature('./modules/notifications.js', 'initNotifications');
   void initFeature('./modules/pickle-status.js', 'initPickleStatus');
   void initFeature('./modules/site-stats.js', 'initSiteStats');
   // Keep audio and the two popups in order without holding up page content.
+  await navigationReady;
   await initFeature('./modules/bgm-player.js', 'initBgmPlayer');
   await initFeature('./modules/career-award-popup.js', 'initCareerAwardPopup');
   await initFeature('./modules/daily-attendance-popup.js', 'initDailyAttendancePopup');

@@ -18,10 +18,6 @@ import {
 } from './auth-store.js';
 import { scheduleCalendarWidgetRefresh } from './calendar-native-widgets.js';
 import {
-  pauseBgmForExternalAudio,
-  restoreBgmAfterExternalAudio,
-} from './bgm-player.js';
-import {
   beginCompletionAudioSession,
   endCompletionAudioSession,
   shouldPlayCompletionSound,
@@ -50,6 +46,10 @@ import {
   normalizeCalendarTime,
   splitLocalDateTimeValue,
 } from './calendar-time.js';
+
+const bgmModuleVersion = encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
+const { pauseBgmForExternalAudio, restoreBgmAfterExternalAudio } =
+  await import(`./bgm-player.js?v=${bgmModuleVersion}`);
 
 let appendCalendarGroupBoard;
 let fetchCalendarGroups;

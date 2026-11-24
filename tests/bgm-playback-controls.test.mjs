@@ -8,22 +8,42 @@ const source = (await readFile(new URL('../assets/js/modules/bgm-player.js', imp
   .replace(/const \{ BGM_CATALOG \} = await import\([^;]+;/, 'const BGM_CATALOG = [];')
   .replace(/^export /gm, '');
 
-function harness() {
-  const stored = new Map();
-  const storage = { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) };
+const playbackKey = 'mallin_bgm_play_state_v3';
+
+function harness({ session = {}, local = {}, playing = true } = {}) {
+  const stored = new Map(Object.entries(session));
+  const localStored = new Map(Object.entries(local));
+  const storage = (values) => ({
+    getItem: key => values.get(key),
+    setItem: (key, value) => values.set(key, value),
+    removeItem: key => values.delete(key),
+  });
   const handlers = {};
   const menu = { contains: () => false };
   const panel = { hidden: false };
   const list = { innerHTML: '', querySelectorAll: () => [] };
   const button = { setAttribute() {} };
-  const player = { src: 'track-1.mp3', duration: 200, readyState: 1, currentTime: 37.5, paused: false, pause() { this.paused = true; }, async play() { this.paused = false; } };
-  const context = { window: {__SITE_VERSION__: 'test'}, document: {getElementById: id => ({bgmMenu: menu, bgmPanel: panel, bgmBtn: button, bgmList: list})[id], addEventListener: (type, fn) => { handlers[type] = fn; }}, localStorage: storage, sessionStorage: storage, console, player, setTimeout, clearTimeout };
+  const player = { src: 'track-1.mp3', duration: 200, readyState: 1, currentTime: playing ? 37.5 : 0, paused: !playing, pause() { this.paused = true; }, async play() { this.paused = false; } };
+  const elements = {bgmMenu: menu, bgmPanel: panel, bgmBtn: button, bgmList: list};
+  const context = {
+    window: {__SITE_VERSION__: 'test'},
+    document: {
+      getElementById: id => elements[id],
+      addEventListener: (type, fn) => { handlers[type] = fn; },
+      createElement: () => ({setAttribute() {}, remove() { delete elements[this.id]; }}),
+      body: {appendChild: (element) => { elements[element.id] = element; }},
+    },
+    localStorage: storage(localStored),
+    sessionStorage: storage(stored),
+    console, player, playing, setTimeout, clearTimeout,
+  };
   const api = vm.runInNewContext(source + `
     audio = player;
     playlist = [1,2,3].map(i => ({id: 'track-'+i, title: 'Track '+i}));
     currentIndex = 0;
     currentTrackId = 'track-1';
-    isPlaying = true;
+    isPlaying = playing;
+    authenticatedUserId = 'test-user';
     panelOpen = true;
     const renderRows = renderPlaylist;
     revealCurrentTrack = () => {};
@@ -33,13 +53,13 @@ function harness() {
     scheduleRemotePreferenceSave = () => {};
     scheduleSavePlaybackState = () => {};
     setTrackSource = (track) => { currentTrackId = track.id; player.src = track.id+'.mp3'; };
-    removeReloadResumeNotice = () => {};
     bindPanelGlobalEvents();
     ({pauseTrack, handleTrackAction, playAdjacentTrack, playNextTrack, togglePlaybackMode, seekTrack, previewSeek, renderRows,
+      bindRetryOnUserGesture, resumeAfterNavigation, waitForBgmResumeCheck, setAuthenticatedUser,
       getAdjacentTrackIndex, getBgmPlaybackState, mode: () => playbackMode, setIndex: i => {currentIndex=i;currentTrackId=playlist[i].id;},
       reorder: () => { const id=getCurrentTrack().id; playlist.reverse(); currentIndex=playlist.findIndex(t=>t.id===id); }});
   `, context);
-  return {api, player, stored, handlers, menu, panel, list};
+  return {api, player, stored, localStored, elements, handlers, menu, panel, list};
 }
 
 test('pause preserves time and same-track play resumes', async () => {
@@ -88,10 +108,10 @@ test('sequential next wraps last to first; previous wraps first to last', async 
 });
 
 test('random next excludes current; previous/next follow actual history even after reordering', async () => {
-  const {api, stored} = harness();
+  const {api, localStored} = harness();
   api.togglePlaybackMode();
   assert.equal(api.mode(), 'shuffle');
-  assert.equal(stored.get('mallin_bgm_playback_mode_v1'), 'shuffle');
+  assert.equal(localStored.get('mallin_bgm_playback_mode_v1'), 'shuffle');
   await api.playNextTrack();
   const randomId = api.getBgmPlaybackState().trackId;
   assert.notEqual(randomId, 'track-1');
@@ -113,7 +133,7 @@ test('seeking playing or paused track clamps position, persists and keeps pause 
   await api.seekTrack(0, 0.4);
   assert.equal(player.currentTime, 80);
   assert.equal(player.paused, true);
-  assert.equal(JSON.parse(stored.get('mallin_bgm_play_state_v3')).currentTime, 80);
+  assert.equal(JSON.parse(stored.get(playbackKey)).currentTime, 80);
   await api.seekTrack(0, -1);
   assert.equal(player.currentTime, 0);
   await api.seekTrack(0, 2);
@@ -158,10 +178,75 @@ test('a late play result cannot undo a newer user pause', async () => {
   let resolvePlay;
   player.play = () => new Promise(resolve => {resolvePlay=resolve;});
   const pending = api.handleTrackAction(1);
+  assert.equal(api.getBgmPlaybackState().isStarting, true);
   api.pauseTrack();
   resolvePlay();
   await pending;
+  assert.equal(api.getBgmPlaybackState().isStarting, false);
   assert.equal(api.getBgmPlaybackState().isPlaying, false);
+});
+
+function playbackSnapshot(overrides = {}) {
+  return JSON.stringify({
+    userId: 'test-user', trackId: 'track-2', index: 1,
+    currentTime: 52.25, wasPlaying: true, ...overrides,
+  });
+}
+
+test('document navigation resumes the exact same-tab song and position', async () => {
+  const {api, player, stored} = harness({
+    playing: false,
+    session: {[playbackKey]: playbackSnapshot()},
+    local: {[playbackKey]: playbackSnapshot({ trackId: 'track-3' })},
+  });
+  assert.equal(api.getBgmPlaybackState().isStarting, true);
+  await api.resumeAfterNavigation();
+  await api.waitForBgmResumeCheck();
+  assert.equal(api.getBgmPlaybackState().isStarting, false);
+  assert.equal(api.getBgmPlaybackState().isPlaying, true);
+  assert.equal(player.src, 'track-2.mp3');
+  assert.equal(player.currentTime, 52.25);
+  assert.equal(JSON.parse(stored.get(playbackKey)).userId, 'test-user');
+});
+
+test('another tab, a paused track, a different account and an unavailable track never autoplay', async () => {
+  for (const storage of [
+    {local: {[playbackKey]: playbackSnapshot()}},
+    {session: {[playbackKey]: playbackSnapshot({ wasPlaying: false })}},
+    {session: {[playbackKey]: playbackSnapshot({ userId: 'other-user' })}},
+    {session: {[playbackKey]: playbackSnapshot({ trackId: 'missing' })}},
+  ]) {
+    const {api, player} = harness({playing: false, ...storage});
+    api.setAuthenticatedUser({id: 'test-user'});
+    await api.resumeAfterNavigation();
+    await api.waitForBgmResumeCheck();
+    assert.equal(api.getBgmPlaybackState().isStarting, false);
+    assert.equal(player.paused, true);
+    assert.equal(player.currentTime, 0);
+  }
+});
+
+test('autoplay blocked on document navigation keeps the same song until a tap', async () => {
+  const {api, player, stored, handlers, elements} = harness({
+    playing: false,
+    session: {[playbackKey]: playbackSnapshot()},
+  });
+  player.play = async () => { throw new DOMException('gesture required', 'NotAllowedError'); };
+  await api.resumeAfterNavigation();
+  await api.waitForBgmResumeCheck();
+  assert.equal(api.getBgmPlaybackState().isStarting, true);
+  assert.equal(api.getBgmPlaybackState().isPlaying, false);
+  assert.ok(elements.bgmReloadResumeNotice);
+  assert.equal(JSON.parse(stored.get(playbackKey)).currentTime, 52.25);
+
+  player.play = async () => { player.paused = false; };
+  api.bindRetryOnUserGesture();
+  handlers.click();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(api.getBgmPlaybackState().isStarting, false);
+  assert.equal(api.getBgmPlaybackState().isPlaying, true);
+  assert.equal(player.currentTime, 52.25);
+  assert.equal(elements.bgmReloadResumeNotice, undefined);
 });
 
 test('rapid song changes ignore an interrupted old play request', async () => {

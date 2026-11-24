@@ -2,14 +2,14 @@ import { supabase } from './supabase-client.js';
 import { getCurrentUser, resolveSitePath } from './auth-store.js';
 import { playPickleBurst } from './pickle-burst.js';
 import {
-  pauseBgmForExternalAudio,
-  restoreBgmAfterExternalAudio,
-} from './bgm-player.js';
-import {
   CAREER_AWARD_IMAGES,
   formatCareerAwardMonth,
   sortCareerAwards,
 } from './career-award-rules.js';
+
+const bgmModuleVersion = encodeURIComponent(String(window.__SITE_VERSION__ || 'dev').trim());
+const { pauseBgmForExternalAudio, restoreBgmAfterExternalAudio } =
+  await import(`./bgm-player.js?v=${bgmModuleVersion}`);
 
 const POPUP_ID = 'careerAwardPopup';
 const AUDIO_PATH = './assets/mp3/mallinoi-reward.mp3';
