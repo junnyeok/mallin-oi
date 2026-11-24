@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
 let koreanWeekdays = ["일", "월", "화", "수", "목", "금", "토"]
@@ -126,6 +127,11 @@ struct CalendarWidgetEntry: TimelineEntry {
     let widget: CalendarWidgetData?
     let calendarType: String
     let range: String
+
+    func at(_ date: Date) -> CalendarWidgetEntry {
+        CalendarWidgetEntry(isDark: isDark, date: date, isLoggedIn: isLoggedIn,
+                            widget: widget, calendarType: calendarType, range: range)
+    }
 }
 
 struct CalendarWidgetProvider: TimelineProvider {
@@ -133,18 +139,23 @@ struct CalendarWidgetProvider: TimelineProvider {
     let range: String
 
     func placeholder(in context: Context) -> CalendarWidgetEntry {
-        CalendarWidgetEntry(
-            isDark: UserDefaults(suiteName: appGroupName)?.string(forKey: "appearance") == "dark",
-            date: Date(),
-            isLoggedIn: true,
-            widget: SampleData.widget(calendarType: calendarType, range: range),
-            calendarType: calendarType,
-            range: range
-        )
+        previewEntry()
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CalendarWidgetEntry) -> Void) {
-        completion(loadEntry())
+        completion(context.isPreview ? previewEntry() : loadEntry())
+    }
+
+    private func previewEntry() -> CalendarWidgetEntry {
+        let now = Date()
+        return CalendarWidgetEntry(
+            isDark: UserDefaults(suiteName: appGroupName)?.string(forKey: "appearance") == "dark",
+            date: now,
+            isLoggedIn: true,
+            widget: SampleData.widget(calendarType: calendarType, range: range, today: now),
+            calendarType: calendarType,
+            range: range
+        )
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CalendarWidgetEntry>) -> Void) {
@@ -156,7 +167,8 @@ struct CalendarWidgetProvider: TimelineProvider {
             matchingPolicy: .nextTime
         ) ?? calendar.date(byAdding: .day, value: 1, to: now) ?? now
         let refreshAfterMidnight = calendar.date(byAdding: .minute, value: 1, to: nextMidnight) ?? nextMidnight
-        let entries = [loadEntry(at: now), loadEntry(at: nextMidnight)]
+        let entry = loadEntry(at: now)
+        let entries = [entry, entry.at(nextMidnight)]
 
         completion(Timeline(entries: entries, policy: .after(refreshAfterMidnight)))
     }
@@ -164,8 +176,7 @@ struct CalendarWidgetProvider: TimelineProvider {
     private func loadEntry(at date: Date = Date()) -> CalendarWidgetEntry {
         let defaults = UserDefaults(suiteName: appGroupName) ?? .standard
         let isLoggedIn = defaults.bool(forKey: "is_logged_in")
-        let json = defaults.string(forKey: "payload_json") ?? ""
-        let widget = decodeWidget(from: json)
+        let widget = isLoggedIn ? defaults.string(forKey: "payload_json").flatMap(decodeWidget(from:)) : nil
 
         return CalendarWidgetEntry(
             isDark: defaults.string(forKey: "appearance") == "dark",
@@ -182,7 +193,7 @@ struct CalendarWidgetProvider: TimelineProvider {
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let widgets = root["widgets"] as? [String: Any],
               let typeWidgets = widgets[calendarType] as? [String: Any],
-              let widgetObject = typeWidgets[range],
+              let widgetObject = typeWidgets[range] as? [String: Any],
               let widgetData = try? JSONSerialization.data(withJSONObject: widgetObject) else {
             return nil
         }
@@ -297,13 +308,34 @@ struct CalendarWidgetHeader: View {
     var height: CGFloat? = nil
     let theme: CalendarWidgetTheme
 
+    private static let mascotThumbnails = NSCache<NSString, UIImage>()
+
+    private var mascotThumbnail: UIImage? {
+        let key = theme.mascot as NSString
+        if let cached = Self.mascotThumbnails.object(forKey: key) { return cached }
+        guard let original = UIImage(named: theme.mascot) else { return nil }
+        let longEdge = max(original.size.width, original.size.height)
+        guard longEdge > 0 else { return nil }
+
+        // A resizable SwiftUI view still archives its source image in WidgetKit.
+        let scale = min(1, 72 / (longEdge * original.scale))
+        let size = CGSize(width: original.size.width * scale, height: original.size.height * scale)
+        guard let thumbnail = original.preparingThumbnail(of: size) else { return nil }
+        Self.mascotThumbnails.setObject(thumbnail, forKey: key)
+        return thumbnail
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 5 * scale) {
-            Image(theme.mascot)
-                .resizable()
-                .scaledToFit()
-                .frame(width: height ?? 18 * scale, height: height ?? 18 * scale)
-                .accessibilityHidden(true)
+            Group {
+                if let thumbnail = mascotThumbnail {
+                    Image(uiImage: thumbnail).resizable().scaledToFit()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: height ?? 18 * scale, height: height ?? 18 * scale)
+            .accessibilityHidden(true)
             Text(title)
                 .font(.system(size: 12 * scale, weight: .bold, design: .rounded))
                 .foregroundStyle(theme.text)
@@ -805,16 +837,23 @@ extension CalendarWidgetTheme {
 }
 
 struct SampleData {
-    static func widget(calendarType: String, range: String) -> CalendarWidgetData {
-        let calendar = Calendar.current
-        let today = Date()
+    static func widget(calendarType: String, range: String, today: Date) -> CalendarWidgetData {
+        let calendar = Calendar(identifier: .gregorian)
         let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         let label = calendarType == "work" ? "업무" : calendarType == "event" ? "이벤트" : "자기개발"
-        let days = (0..<42).map { index -> CalendarWidgetDay in
-            let date = calendar.date(byAdding: .day, value: index, to: today) ?? today
+        let month = calendar.dateInterval(of: .month, for: today)
+        let firstDay = range == "month" ? (month?.start ?? today) : today
+        let offset = range == "fourDays" ? 0 : 1 - calendar.component(.weekday, from: firstDay)
+        let start = calendar.date(byAdding: .day, value: offset, to: firstDay) ?? firstDay
+        let dayCount = range == "fourDays" ? 4 : range == "twoWeeks" ? 14 : 42
+        let days = (0..<dayCount).map { index -> CalendarWidgetDay in
+            let date = calendar.date(byAdding: .day, value: index, to: start) ?? start
             let dateKey = formatter.string(from: date)
-            let item = index % 3 == 0 ? CalendarWidgetItem(
+            let isCurrentMonth = calendar.isDate(date, equalTo: today, toGranularity: .month)
+            let item = index % 3 == 0 && (range != "month" || isCurrentMonth) ? CalendarWidgetItem(
                 calendarType: calendarType,
                 id: "\(index)",
                 date: dateKey,
@@ -833,8 +872,8 @@ struct SampleData {
             return CalendarWidgetDay(
                 date: dateKey,
                 weekday: koreanWeekdays[calendar.component(.weekday, from: date) - 1],
-                isToday: index == 0,
-                isCurrentMonth: true,
+                isToday: calendar.isDate(date, inSameDayAs: today),
+                isCurrentMonth: isCurrentMonth,
                 holiday: nil,
                 items: item.map { [$0] } ?? []
             )
@@ -848,8 +887,8 @@ struct SampleData {
             month: CalendarWidgetMonth(
                 year: calendar.component(.year, from: today),
                 month: calendar.component(.month, from: today),
-                startDate: formatter.string(from: today),
-                endDate: formatter.string(from: today)
+                startDate: formatter.string(from: month?.start ?? today),
+                endDate: formatter.string(from: month.flatMap { calendar.date(byAdding: .day, value: -1, to: $0.end) } ?? today)
             ),
             days: days
         )
