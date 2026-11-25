@@ -45,6 +45,7 @@ const filesToCopyIfExists = [
 
 const dirsToCopy = ['assets', 'images', 'partials'];
 const nativeCharacterImageFiles = [
+  'images/characters/cucumber.png',
   'images/characters/tomato.png',
   'images/characters/brocolli.png',
   'images/characters/paprikagirl.png',

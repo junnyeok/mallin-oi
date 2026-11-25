@@ -240,12 +240,8 @@ html[data-calendar-appearance] :is(.calendar-group-schedule__date-head, .calenda
 }
 
 html[data-calendar-appearance] .calendar-group-schedule__date-head.is-today .calendar-group-schedule__date-label {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
   outline-color: var(--color-primary);
 }
-
-html[data-calendar-appearance] .calendar-group-schedule__cell.is-today { border-radius: 10px; }
 
 html[data-calendar-appearance] :is(.calendar-group-bar__toggle, .calendar-group-bar__list,
   .work-repeat__trigger, .calendar-groups-page__back, .calendar-groups-page__action) {

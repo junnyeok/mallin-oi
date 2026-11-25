@@ -5,7 +5,7 @@ import { initEmoticonInventoryReturn } from './emoticon-inventory-return.js';
 import { supabase } from './supabase-client.js';
 import { mountCommunityActions } from './community-safety.js';
 import { loadPostsByAuthorId, formatMMDD } from './posts-repo.js';
-import { getCurrentUser, loginHref, getUserEmail } from './auth-store.js';
+import { getCurrentUser, loginHref, getUserEmail, saveRedirect } from './auth-store.js';
 import {
   applyBgmPreferencesToLocal,
   getBgmPreferencesFromProfileRow,
@@ -3436,6 +3436,7 @@ export async function initProfile() {
     isInventoryPage || isProfileSettingPage ? '' : getTargetUserIdFromUrl();
 
   if (!targetUserIdFromUrl && !currentUser) {
+    if (pageName === 'profile') saveRedirect();
     window.location.href = loginHref();
     return;
   }

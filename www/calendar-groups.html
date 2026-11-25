@@ -71,7 +71,6 @@
           <div class="container">
             <div class="calendar-groups-page__head">
               <div>
-                <p class="calendar-groups-page__eyebrow">캘린더 공유</p>
                 <h1 class="calendar-groups-page__title">캘린더 그룹</h1>
                 <p class="calendar-groups-page__desc">
                   자기개발, 업무, 이벤트 캘린더 중 선택한 종류만 그룹 멤버와 함께 볼 수 있어.
@@ -100,101 +99,196 @@
               </div>
             </div>
 
-            <p class="calendar-groups-status" id="calendarGroupsStatus" aria-live="polite">
+            <p class="calendar-groups-status" id="calendarGroupsStatus" role="status">
               그룹 목록을 불러오는 중...
             </p>
 
+            <div class="calendar-groups-tabs" role="tablist" aria-label="캘린더 그룹 보기">
+              <button
+                class="calendar-groups-tab"
+                id="calendar-groups-mine-tab"
+                type="button"
+                role="tab"
+                aria-controls="calendar-groups-mine-panel"
+                aria-selected="true"
+              >
+                내 그룹
+                <span
+                  class="calendar-groups-tab__count"
+                  id="calendar-groups-mine-count"
+                  aria-hidden="true"
+                ></span>
+              </button>
+              <button
+                class="calendar-groups-tab"
+                id="calendar-groups-discover-tab"
+                type="button"
+                role="tab"
+                aria-controls="calendar-groups-discover-panel"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                그룹 찾기
+                <span
+                  class="calendar-groups-tab__count"
+                  id="calendar-groups-discover-count"
+                  aria-hidden="true"
+                ></span>
+              </button>
+            </div>
+
             <div class="calendar-groups-layout">
-              <section class="panel calendar-groups-panel">
-                <h2 class="calendar-groups-panel__title">참여 가능한 그룹</h2>
-                <div class="calendar-group-list" id="calendarVisibleGroups"></div>
-              </section>
+              <div
+                class="calendar-groups-view"
+                id="calendar-groups-mine-panel"
+                role="tabpanel"
+                aria-labelledby="calendar-groups-mine-tab"
+                tabindex="0"
+              >
+                <section class="panel calendar-groups-panel">
+                  <h2 class="calendar-groups-panel__title">참여 중인 그룹</h2>
+                  <div class="calendar-group-list" id="calendarMyGroups"></div>
+                </section>
 
-              <section class="panel calendar-groups-panel">
-                <h2 class="calendar-groups-panel__title">내 그룹</h2>
-                <div class="calendar-group-list" id="calendarMyGroups"></div>
-              </section>
+                <section class="panel calendar-groups-panel" id="calendarGroupCreateSection">
+                  <div class="calendar-groups-panel__head">
+                    <h2 class="calendar-groups-panel__title">그룹 만들기</h2>
+                    <button
+                      class="calendar-groups-panel__ghost"
+                      id="calendarGroupCreateToggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="calendarGroupCreatePanel"
+                    >
+                      + 그룹 만들기
+                    </button>
+                  </div>
+                  <div id="calendarGroupCreatePanel" hidden>
+                    <form class="calendar-group-form" id="calendarGroupForm">
+                      <label class="calendar-group-form__field">
+                        <span>그룹 이름</span>
+                        <input name="name" type="text" maxlength="30" autocomplete="off" required />
+                      </label>
 
-              <section class="panel calendar-groups-panel" id="calendarHiddenGroupsPanel">
-                <div class="calendar-groups-panel__head">
-                  <h2 class="calendar-groups-panel__title">숨긴 그룹방 목록</h2>
-                  <button
-                    class="calendar-groups-panel__ghost"
-                    id="calendarGroupHiddenToggle"
-                    type="button"
-                    aria-expanded="false"
-                    aria-controls="calendarHiddenGroups"
-                  >
-                    숨긴 그룹 보기
-                  </button>
-                </div>
-                <div class="calendar-group-list" id="calendarHiddenGroups" hidden></div>
-              </section>
+                      <label class="calendar-group-form__field">
+                        <span>그룹 소개</span>
+                        <textarea
+                          name="description"
+                          maxlength="100"
+                          rows="3"
+                          placeholder="그룹을 짧게 소개해줘."
+                        ></textarea>
+                      </label>
 
-              <section class="panel calendar-groups-panel" id="calendarGroupCreateSection">
-                <div class="calendar-groups-panel__head">
-                  <h2 class="calendar-groups-panel__title">그룹 만들기</h2>
-                  <button
-                    class="calendar-groups-panel__ghost"
-                    id="calendarGroupCreateToggle"
-                    type="button"
-                    aria-expanded="false"
-                    aria-controls="calendarGroupCreatePanel"
-                  >
-                    + 그룹 만들기
-                  </button>
-                </div>
-                <div id="calendarGroupCreatePanel" hidden>
-                <form class="calendar-group-form" id="calendarGroupForm">
-                  <label class="calendar-group-form__field">
-                    <span>그룹 이름</span>
-                    <input name="name" type="text" maxlength="30" autocomplete="off" required />
-                  </label>
+                      <fieldset class="calendar-group-form__set">
+                        <legend>그룹 색상</legend>
+                        <div class="calendar-group-colors" id="calendarGroupColors"></div>
+                      </fieldset>
 
-                  <label class="calendar-group-form__field">
-                    <span>그룹 소개</span>
-                    <textarea
-                      name="description"
-                      maxlength="100"
-                      rows="3"
-                      placeholder="그룹을 짧게 소개해줘."
-                    ></textarea>
-                  </label>
+                      <fieldset class="calendar-group-form__set">
+                        <legend>연동 캘린더</legend>
+                        <label><input type="checkbox" name="allowStudy" checked /> 자기개발</label>
+                        <label><input type="checkbox" name="allowWork" checked /> 업무</label>
+                        <label><input type="checkbox" name="allowEvent" /> 이벤트</label>
+                      </fieldset>
 
-                  <fieldset class="calendar-group-form__set">
-                    <legend>그룹 색상</legend>
-                    <div class="calendar-group-colors" id="calendarGroupColors"></div>
-                  </fieldset>
+                      <fieldset class="calendar-group-form__set">
+                        <legend>공개 설정</legend>
+                        <label><input type="checkbox" name="isPrivate" id="calendarGroupPrivate" /> 비공개 그룹</label>
+                        <label><input type="checkbox" name="isHidden" /> 일반 목록에서 숨기기</label>
+                      </fieldset>
 
-                  <fieldset class="calendar-group-form__set">
-                    <legend>연동 캘린더</legend>
-                    <label><input type="checkbox" name="allowStudy" checked /> 자기개발</label>
-                    <label><input type="checkbox" name="allowWork" checked /> 업무</label>
-                    <label><input type="checkbox" name="allowEvent" /> 이벤트</label>
-                  </fieldset>
+                      <label class="calendar-group-form__field">
+                        <span>비밀번호</span>
+                        <input
+                          id="calendarGroupPassword"
+                          name="password"
+                          type="password"
+                          autocomplete="new-password"
+                          placeholder="비공개 그룹에서만 사용"
+                        />
+                      </label>
 
-                  <fieldset class="calendar-group-form__set">
-                    <legend>공개 설정</legend>
-                    <label><input type="checkbox" name="isPrivate" id="calendarGroupPrivate" /> 비공개 그룹</label>
-                    <label><input type="checkbox" name="isHidden" /> 일반 목록에서 숨기기</label>
-                  </fieldset>
+                      <button class="calendar-group-form__submit" type="submit">그룹 만들기</button>
+                    </form>
+                  </div>
+                </section>
+              </div>
 
-                  <label class="calendar-group-form__field">
-                    <span>비밀번호</span>
+              <div
+                class="calendar-groups-view"
+                id="calendar-groups-discover-panel"
+                role="tabpanel"
+                aria-labelledby="calendar-groups-discover-tab"
+                tabindex="0"
+                hidden
+              >
+                <section class="panel calendar-groups-panel">
+                  <h2 class="calendar-groups-panel__title">참여 가능한 그룹</h2>
+                  <label class="calendar-groups-search">
+                    <span class="sr-only">그룹 이름, 소개, 캘린더 종류 검색</span>
                     <input
-                      id="calendarGroupPassword"
-                      name="password"
-                      type="password"
-                      autocomplete="new-password"
-                      placeholder="비공개 그룹에서만 사용"
+                      class="calendar-groups-search__input"
+                      id="calendar-groups-search"
+                      type="search"
+                      autocomplete="off"
+                      placeholder="이름, 소개, 캘린더 종류 검색"
+                      aria-controls="calendarVisibleGroups"
                     />
                   </label>
+                  <div class="calendar-group-list" id="calendarVisibleGroups"></div>
+                </section>
 
-                  <button class="calendar-group-form__submit" type="submit">그룹 만들기</button>
-                </form>
-                </div>
-              </section>
+                <section class="panel calendar-groups-panel" id="calendarHiddenGroupsPanel">
+                  <div class="calendar-groups-panel__head">
+                    <h2 class="calendar-groups-panel__title">숨긴 그룹</h2>
+                    <button
+                      class="calendar-groups-panel__ghost"
+                      id="calendarGroupHiddenToggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="calendarHiddenGroups"
+                    >
+                      숨긴 그룹 보기
+                    </button>
+                  </div>
+                  <div class="calendar-group-list" id="calendarHiddenGroups" hidden></div>
+                </section>
+              </div>
             </div>
+          </div>
+        </section>
+
+        <div class="sr-only" id="calendar-groups-join-announcement" role="status"></div>
+        <section
+          class="calendar-groups-join-notice"
+          id="calendar-groups-join-notice"
+          aria-labelledby="calendar-groups-join-notice-title"
+          hidden
+        >
+          <span class="calendar-groups-join-notice__icon" aria-hidden="true">✓</span>
+          <div class="calendar-groups-join-notice__body">
+            <h2 class="calendar-groups-join-notice__title" id="calendar-groups-join-notice-title">
+              그룹에 참여했습니다
+            </h2>
+            <p class="calendar-groups-join-notice__message" id="calendar-groups-join-notice-message"></p>
+          </div>
+          <div class="calendar-groups-join-notice__actions">
+            <a
+              class="calendar-groups-join-notice__open"
+              id="calendar-groups-join-notice-open"
+              hidden
+            >
+              캘린더 열기
+            </a>
+            <button
+              class="calendar-groups-join-notice__close"
+              id="calendar-groups-join-notice-close"
+              type="button"
+              aria-label="참여 알림 닫기"
+            >
+              ×
+            </button>
           </div>
         </section>
       </main>

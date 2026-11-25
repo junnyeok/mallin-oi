@@ -33,6 +33,29 @@
   box-shadow: var(--shadow-card);
 }
 
+.app-calendar-launcher__profile {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  margin: 0 auto var(--space-16);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-calendar-launcher__character {
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+}
+
+.app-calendar-launcher__profile [data-character-effect-placement='overhead'] {
+  top: max(24%, var(--character-effect-y));
+}
+
 .app-calendar-launcher__eyebrow {
   margin: 0 0 var(--space-6);
   font-size: var(--text-small);
@@ -302,6 +325,7 @@ html.is-calendar-app-mode .home-section {
   box-shadow: none;
 }
 
+.app-calendar-launcher__profile:focus-visible,
 .app-calendar-account__btn:focus-visible,
 .calendar-app-shell__action:focus-visible,
 .app-calendar-settings a:focus-visible {

@@ -3,7 +3,12 @@ import Foundation
 enum SiteURLs {
     static let host = "mallin-oi.com"
     static let home = URL(string: "https://\(host)/")!
+    static let profile = home.appendingPathComponent("profile.html")
     static let authenticationCallbackScheme = "mallinoi"
+
+    static func isProfileLink(_ url: URL) -> Bool {
+        url.absoluteString == "mallinoisite://profile"
+    }
 
     static func isSitePage(_ url: URL) -> Bool {
         url.host?.lowercased() == host && isSecureWebURL(url)

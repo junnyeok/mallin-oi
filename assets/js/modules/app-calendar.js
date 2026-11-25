@@ -10,11 +10,14 @@ import {
   initCalendarWidgetNavigation,
   scheduleCalendarWidgetRefresh,
 } from './calendar-native-widgets.js';
+import { openCalendarProfile } from './calendar-profile-link.js';
 import { initRefreshControls } from './refresh-control.js';
 import { renderCalendarAppActions } from './app-calendar-mode.js';
 import { initSocialAuthNative } from './social-auth-native.js';
+import { supabase } from './supabase-client.js';
 
 const CALENDAR_APP_MODE_KEY = 'mallin:calendar-app-mode';
+const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
 
 function enableCalendarAppMode() {
   try {
@@ -96,7 +99,7 @@ function renderLoggedOut(accountEl) {
   );
 }
 
-function renderLoggedIn(accountEl, user) {
+function renderLoggedIn(accountEl, user, onSignOut) {
   const displayName = escapeHtml(getDisplayName(user));
 
   accountEl.innerHTML = `
@@ -118,7 +121,7 @@ function renderLoggedIn(accountEl, user) {
     async () => {
       try {
         await signOutUser();
-        renderLoggedOut(accountEl);
+        onSignOut();
       } catch (error) {
         console.error('[app-calendar] sign out failed:', error);
         alert(`로그아웃 실패: ${error.message}`);
@@ -127,17 +130,116 @@ function renderLoggedIn(accountEl, user) {
   );
 }
 
+function setCharacterImage(image, imagePath) {
+  const sources = new Set([imagePath]);
+  const assetPath = imagePath.replace(/^\.?\//, '');
+  if (window.Capacitor?.isNativePlatform?.() && /^images\/(characters|skins)\//.test(assetPath)) {
+    sources.add(new URL(assetPath, 'https://mallin-oi.com/').href);
+  }
+  sources.add(DEFAULT_CHARACTER_IMAGE);
+  sources.add('./images/logo-home.png');
+
+  const candidates = sources.values();
+  const loadNext = () => {
+    const { value } = candidates.next();
+    if (value) image.src = value;
+  };
+  image.onerror = loadNext;
+  loadNext();
+}
+
+function initAppCalendarCharacter() {
+  const logo = document.getElementById('appCalendarLogo');
+  const button = document.getElementById('appCalendarProfile');
+  const wrap = button?.querySelector('.character-effect-wrap');
+  const image = wrap?.querySelector('.character-effect-character');
+  if (!logo || !button || !image) return () => {};
+
+  let userId = '';
+  let profileRequest = 0;
+  let imagePath = '';
+  let effectItemId = '';
+  let applyEffect;
+
+  function showCharacter(nextImagePath) {
+    if (nextImagePath === imagePath) return;
+    imagePath = nextImagePath;
+    setCharacterImage(image, imagePath);
+  }
+
+  async function refreshCharacter() {
+    if (!userId) return;
+    const request = ++profileRequest;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('equipped_character_image_url, equipped_character_effect_item_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (request !== profileRequest) return;
+      if (error) throw error;
+
+      showCharacter(String(data?.equipped_character_image_url || '').trim() || DEFAULT_CHARACTER_IMAGE);
+      const nextEffectItemId = String(data?.equipped_character_effect_item_id || '').trim();
+      if (nextEffectItemId === effectItemId) return;
+
+      if (!applyEffect) {
+        const [{ replaceCharacterEffect }, { getCharacterEffectRenderMeta }] = await Promise.all([
+          import('./character-effects.js'),
+          import('./store-data.js'),
+        ]);
+        applyEffect = (itemId) => replaceCharacterEffect(wrap, getCharacterEffectRenderMeta(itemId, 'profile'));
+      }
+
+      if (request !== profileRequest) return;
+      applyEffect(nextEffectItemId);
+      effectItemId = nextEffectItemId;
+    } catch (error) {
+      if (request === profileRequest) console.warn('[app-calendar] character unavailable:', error);
+    }
+  }
+
+  button.addEventListener('click', () => openCalendarProfile(button));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshCharacter();
+  });
+
+  return (user) => {
+    userId = user?.id || '';
+    profileRequest += 1;
+    logo.hidden = Boolean(userId);
+    button.hidden = !userId;
+
+    if (userId) {
+      showCharacter(DEFAULT_CHARACTER_IMAGE);
+      refreshCharacter();
+    } else {
+      image.onerror = null;
+      image.removeAttribute('src');
+      applyEffect?.('');
+      imagePath = '';
+      effectItemId = '';
+    }
+  };
+}
+
 async function initAppCalendarAccount() {
   const accountEl = document.getElementById('appCalendarAccount');
   if (!accountEl) return;
 
+  const setCharacterUser = initAppCalendarCharacter();
   accountEl.setAttribute('aria-busy', 'true');
 
   try {
     const user = await getCurrentUser();
 
     if (user) {
-      renderLoggedIn(accountEl, user);
+      renderLoggedIn(accountEl, user, () => {
+        setCharacterUser(null);
+        renderLoggedOut(accountEl);
+      });
+      setCharacterUser(user);
     } else {
       renderLoggedOut(accountEl);
     }

@@ -38,7 +38,9 @@
     <link rel="stylesheet" href="./assets/css/01-tokens.css" />
     <link rel="stylesheet" href="./assets/css/02-base.css" />
     <link rel="stylesheet" href="./assets/css/components/refresh-control.css" />
+    <link rel="stylesheet" href="./assets/css/components/character-effects.css" />
     <link rel="stylesheet" href="./assets/css/main/app-calendar-main.css" />
+    <link rel="stylesheet" href="./assets/css/components/calendar-site-profile.css" />
   </head>
 
   <body
@@ -50,9 +52,26 @@
       <section class="app-calendar-launcher__hero">
         <img
           class="app-calendar-launcher__logo"
+          id="appCalendarLogo"
           src="./images/calendar-app-icon.png"
           alt=""
         />
+        <button
+          class="app-calendar-launcher__profile"
+          id="appCalendarProfile"
+          type="button"
+          aria-label="말린오이닷컴 내 프로필 열기"
+          hidden
+        >
+          <span class="character-effect-wrap" aria-hidden="true">
+            <img
+              class="app-calendar-launcher__character character-effect-character"
+              alt=""
+              width="82"
+              height="82"
+            />
+          </span>
+        </button>
 
         <p class="app-calendar-launcher__eyebrow">말린오이닷컴</p>
 

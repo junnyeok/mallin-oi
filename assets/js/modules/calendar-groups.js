@@ -165,8 +165,9 @@ function getAllowedGroups(groups, calendarType) {
   );
 }
 
-function makeAppHref(path) {
-  return isCalendarAppMode() ? `${path}?app=calendar` : path;
+function makeAppHref(path, params = {}) {
+  const query = new URLSearchParams(isCalendarAppMode() ? { app: 'calendar', ...params } : params).toString();
+  return query ? `${path}?${query}` : path;
 }
 
 function getCalendarSelectHref() {
@@ -877,12 +878,7 @@ function appendScheduleRow({
       cellButton.classList.add('is-muted');
     }
 
-    if (item?.dateKey === todayKey) {
-      cellButton.classList.add('is-today');
-      cellButton.setAttribute('aria-current', 'date');
-    }
-
-    if (item?.dateKey === selectedDateKey) {
+    if (item?.dateKey && item.dateKey === selectedDateKey && item.dateKey !== todayKey) {
       cellButton.classList.add('is-selected');
     }
 
@@ -925,6 +921,7 @@ export function appendCalendarGroupBoard(
   if (!isCalendarGroupActive(groupState)) return;
 
   const ownUserId = groupState.userId || null;
+  const showSharedFirst = groupState.calendarType === 'event';
   const todayKey = toDateKey(new Date());
   const weeks = [];
 
@@ -997,7 +994,7 @@ export function appendCalendarGroupBoard(
         personalEventsByDateAndUser.get(`${dateKey}|${member.userId}`) || [],
     });
 
-    if (ownMember) appendMemberRow(ownMember);
+    if (ownMember && !showSharedFirst) appendMemberRow(ownMember);
 
     if (hasSharedEvents || isEmptyWeek) {
       appendScheduleRow({
@@ -1013,6 +1010,8 @@ export function appendCalendarGroupBoard(
         isShared: true,
       });
     }
+
+    if (ownMember && showSharedFirst) appendMemberRow(ownMember);
 
     for (const member of members) {
       if (member !== ownMember) appendMemberRow(member);
@@ -1076,7 +1075,7 @@ export async function initCalendarGroupBar({
       >
         그룹 설정
       </button>
-      <a class="calendar-group-bar__list" href="${makeAppHref('./calendar-groups.html')}">그룹 목록</a>
+      <a class="calendar-group-bar__list" href="${escapeHtml(makeAppHref('./calendar-groups.html', { calendar: calendarType }))}">그룹 목록</a>
     </div>
   `;
 
@@ -1672,46 +1671,65 @@ function getCalendarTypeFlags(form) {
   };
 }
 
-function createGroupCard(group, { myGroup = false, members = [] } = {}) {
+function getGroupCalendarHref(group, preferredType) {
+  const calendarType = isAllowed(group, preferredType)
+    ? preferredType
+    : Object.keys(CALENDAR_LABELS).find((type) => isAllowed(group, type));
+  if (!calendarType) return '';
+
+  return makeAppHref(`./calendar-${calendarType}.html`, { widgetGroup: group.id });
+}
+
+function normalizeGroupSearch(value) {
+  return String(value || '').normalize('NFC').toLowerCase().trim();
+}
+
+function createGroupCard(group, { myGroup = false, members = [], preferredType } = {}) {
   const isPrivate = group.visibility === 'private';
   const color = normalizeColor(group.color);
   const isOwner = group.role === 'owner';
   const transferTargets = members.filter((member) => !member.is_owner);
   const description = normalizeGroupDescription(group.description);
-  const calendars = ['study', 'work', 'event']
-    .filter((type) => group[`allow_${type}`])
-    .map((type) => CALENDAR_LABELS[type])
-    .join(', ');
+  const name = escapeHtml(group.name);
+  const calendars = Object.keys(CALENDAR_LABELS).filter((type) => isAllowed(group, type));
+  const calendarHref = myGroup ? getGroupCalendarHref(group, preferredType) : '';
+  const memberCount = Number(group.member_count ?? members.length);
+  const memberLabel = Number.isFinite(memberCount) ? `참여자 ${memberCount}명` : '참여자';
+  const searchText = normalizeGroupSearch(
+    [group.name, description, ...calendars.map((type) => CALENDAR_LABELS[type])].join(' '),
+  );
 
   return `
-    <article class="calendar-group-card" data-group-id="${escapeHtml(group.id)}">
+    <article class="calendar-group-card" data-group-id="${escapeHtml(group.id)}" data-group-search="${escapeHtml(searchText)}">
       <div class="calendar-group-card__head">
-        <span class="calendar-group-card__dot" style="--calendar-group-color:${color}"></span>
-        <div>
-          <h3 class="calendar-group-card__title">${escapeHtml(group.name)}</h3>
+        <span class="calendar-group-card__dot" style="--calendar-group-color:${color}" aria-hidden="true"></span>
+        <div class="calendar-group-card__body">
+          <h3 class="calendar-group-card__title">${name}</h3>
+          <div class="calendar-group-card__badges">
+            <span class="calendar-group-card__badge calendar-group-card__badge--visibility">${isPrivate ? '비공개' : '공개'}</span>
+            ${calendars.map((type) => `<span class="calendar-group-card__badge calendar-group-card__badge--type-${type}">${CALENDAR_LABELS[type]}</span>`).join('')}
+            ${calendars.length ? '' : '<span class="calendar-group-card__badge">연동 꺼짐</span>'}
+            ${group.is_hidden ? '<span class="calendar-group-card__badge">숨김</span>' : ''}
+            ${isOwner ? '<span class="calendar-group-card__badge calendar-group-card__badge--role">그룹장</span>' : ''}
+          </div>
           ${
             description
               ? `<p class="calendar-group-card__description">${escapeHtml(description)}</p>`
               : ''
           }
-          <p class="calendar-group-card__meta">${isPrivate ? '비공개' : '공개'} · ${
-            calendars || '연동 꺼짐'
-          }</p>
         </div>
       </div>
       <div class="calendar-group-card__actions">
         ${
           myGroup
-            ? `<button type="button" data-action="leave">나가기</button>
-              ${
-                isOwner
-                  ? `<button type="button" data-action="transfer-owner">그룹장 넘기기</button>
-                    <button type="button" data-action="delete-group" class="calendar-group-card__danger">그룹 삭제</button>`
-                  : ''
-              }`
-            : `<input type="password" data-password placeholder="비밀번호" ${
-                isPrivate ? '' : 'hidden'
-              } /><button type="button" data-action="join">참여</button>`
+            ? (calendarHref ? `<a class="calendar-group-card__open calendar-group-card__primary" aria-label="${name} 캘린더 열기" href="${escapeHtml(calendarHref)}">캘린더 열기 <span aria-hidden="true">›</span></a>` : '')
+            : `<form class="calendar-group-card__join" data-join-group>
+                <div class="calendar-group-card__join-fields">
+                  ${isPrivate ? `<input type="password" data-password placeholder="그룹 비밀번호" aria-label="${name} 그룹 비밀번호" autocomplete="off" required />` : ''}
+                  <button class="calendar-group-card__primary" type="submit" data-action="join" aria-label="${name} 그룹 참여">그룹 참여</button>
+                </div>
+                <p class="calendar-group-card__join-error" data-join-error role="alert" hidden></p>
+              </form>`
         }
         ${
           group.can_manage
@@ -1724,8 +1742,8 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
       ${
         myGroup
           ? `
-            <div class="calendar-group-card__members">
-              <h4 class="calendar-group-card__section-title">참여자</h4>
+            <details class="calendar-group-card__members">
+              <summary class="calendar-group-card__section-title">${memberLabel} · 관리</summary>
               ${
                 members.length > 0
                   ? `<ul class="calendar-group-member-list">
@@ -1752,7 +1770,10 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
                     </ul>`
                   : '<p class="calendar-groups-empty">참여자 정보를 불러오지 못했어.</p>'
               }
-            </div>
+              <div class="calendar-group-card__actions">
+                ${isOwner ? `<button type="button" data-action="transfer-owner">그룹장 넘기기</button>
+                  <button type="button" data-action="delete-group" class="calendar-group-card__danger">그룹 삭제</button>` : '<button type="button" data-action="leave">그룹 나가기</button>'}
+              </div>
             ${
               isOwner
                 ? `<div class="calendar-group-card__transfer" data-transfer-panel hidden>
@@ -1781,6 +1802,7 @@ function createGroupCard(group, { myGroup = false, members = [] } = {}) {
                   </div>`
                 : ''
             }
+            </details>
           `
           : ''
       }
@@ -1863,11 +1885,88 @@ export async function initCalendarGroupsPage() {
   const createShortcut = document.getElementById('calendarGroupCreateShortcut');
   const hiddenPanel = document.getElementById('calendarHiddenGroupsPanel');
   const createSection = document.getElementById('calendarGroupCreateSection');
+  const tabs = {
+    mine: document.getElementById('calendar-groups-mine-tab'),
+    discover: document.getElementById('calendar-groups-discover-tab'),
+  };
+  const panels = {
+    mine: document.getElementById('calendar-groups-mine-panel'),
+    discover: document.getElementById('calendar-groups-discover-panel'),
+  };
+  const mineCount = document.getElementById('calendar-groups-mine-count');
+  const discoverCount = document.getElementById('calendar-groups-discover-count');
+  const search = document.getElementById('calendar-groups-search');
+  const joinNotice = document.getElementById('calendar-groups-join-notice');
+  const joinNoticeMessage = document.getElementById('calendar-groups-join-notice-message');
+  const joinNoticeOpen = document.getElementById('calendar-groups-join-notice-open');
+  const joinNoticeClose = document.getElementById('calendar-groups-join-notice-close');
+  const joinAnnouncement = document.getElementById('calendar-groups-join-announcement');
+  const preferredType = new URLSearchParams(window.location.search).get('calendar');
   const state = {
     myGroups: [],
+    joinableGroups: new Map(),
   };
+  let activeTab = 'mine';
+  let loadRevision = 0;
 
   renderColorChoices(colorRoot);
+
+  function selectTab(name) {
+    activeTab = name;
+    for (const [key, tab] of Object.entries(tabs)) {
+      const isSelected = key === name;
+      tab?.setAttribute('aria-selected', String(isSelected));
+      if (tab) tab.tabIndex = isSelected ? 0 : -1;
+      if (panels[key]) panels[key].hidden = !isSelected;
+    }
+  }
+
+  for (const [name, tab] of Object.entries(tabs)) {
+    tab?.addEventListener('click', () => selectTab(name));
+    tab?.addEventListener('keydown', (event) => {
+      const destinations = { Home: 'mine', End: 'discover' };
+      const otherTab = name === 'mine' ? 'discover' : 'mine';
+      const next = ['ArrowLeft', 'ArrowRight'].includes(event.key) ? otherTab : destinations[event.key];
+      if (!next) return;
+      event.preventDefault();
+      selectTab(next);
+      tabs[next]?.focus();
+    });
+  }
+
+  function updateSearch() {
+    const query = normalizeGroupSearch(search?.value);
+    const results = visibleList.querySelectorAll('[data-group-search]');
+    let matches = 0;
+    for (const card of results) {
+      card.hidden = !card.dataset.groupSearch.includes(query);
+      if (!card.hidden) matches += 1;
+    }
+    const searchEmpty = visibleList.querySelector('[data-group-search-empty]');
+    if (searchEmpty) searchEmpty.hidden = matches > 0 || !query;
+  }
+
+  search?.addEventListener('input', updateSearch);
+
+  function showJoinNotice(group) {
+    const href = getGroupCalendarHref(group, preferredType);
+    joinNotice.dataset.groupId = group.id;
+    joinNoticeMessage.textContent = group.name;
+    joinAnnouncement.textContent = `‘${group.name}’ 그룹에 참여했습니다.`;
+    joinNoticeOpen.hidden = !href;
+    if (href) joinNoticeOpen.setAttribute('href', href);
+    else joinNoticeOpen.removeAttribute('href');
+    joinNotice.hidden = false;
+  }
+
+  function dismissJoinNotice() {
+    if (joinNotice.contains(document.activeElement)) tabs[activeTab]?.focus({ preventScroll: true });
+    joinNotice.hidden = true;
+    delete joinNotice.dataset.groupId;
+    joinAnnouncement.textContent = '';
+  }
+
+  joinNoticeClose?.addEventListener('click', dismissJoinNotice);
 
   const backLink = page.querySelector('.calendar-groups-page__back');
   if (backLink) {
@@ -1909,6 +2008,7 @@ export async function initCalendarGroupsPage() {
   });
 
   createShortcut?.addEventListener('click', () => {
+    selectTab('mine');
     setCreatePanelOpen(true);
     createSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -1918,12 +2018,12 @@ export async function initCalendarGroupsPage() {
   }
 
   async function load() {
+    const revision = ++loadRevision;
     const [myGroups, visibleGroups, hiddenGroups] = await Promise.all([
       rpc('get_my_calendar_groups'),
       rpc('get_visible_calendar_groups', { p_include_hidden: false }),
       rpc('get_visible_calendar_groups', { p_include_hidden: true }),
     ]);
-    state.myGroups = myGroups || [];
     const memberEntries = await Promise.all(
       (myGroups || []).map(async (group) => {
         try {
@@ -1937,31 +2037,49 @@ export async function initCalendarGroupsPage() {
         }
       }),
     );
+    if (revision !== loadRevision) return;
+    state.myGroups = myGroups || [];
+    const myGroupIds = new Set(state.myGroups.map((group) => group.id));
+    const canJoin = (group) => !myGroupIds.has(group.id) && !group.role;
+    const openGroups = (visibleGroups || []).filter((group) => !group.is_hidden && canJoin(group));
+    const onlyHidden = (hiddenGroups || []).filter((group) => group.is_hidden && canJoin(group));
+    state.joinableGroups = new Map([...openGroups, ...onlyHidden].map((group) => [group.id, group]));
+    if (mineCount) mineCount.textContent = String(state.myGroups.length);
+    if (discoverCount) discoverCount.textContent = String(openGroups.length);
     const membersByGroupId = Object.fromEntries(memberEntries);
 
     myList.innerHTML =
-      myGroups?.length > 0
-        ? myGroups
+      state.myGroups.length > 0
+        ? state.myGroups
             .map((group) =>
               createGroupCard(group, {
                 myGroup: true,
                 members: membersByGroupId[group.id] || [],
+                preferredType,
               }),
             )
             .join('')
-        : '<p class="calendar-groups-empty">아직 들어간 그룹이 없어.</p>';
+        : `<div class="calendar-groups-empty"><p>참여한 그룹이 없어요.</p>
+             <button type="button" class="calendar-groups-panel__ghost" data-show-discover>참여할 그룹 찾기</button></div>`;
 
     visibleList.innerHTML =
-      visibleGroups?.length > 0
-        ? visibleGroups.map((group) => createGroupCard(group)).join('')
-        : '<p class="calendar-groups-empty">참여 가능한 그룹이 없어.</p>';
+      openGroups.length > 0
+        ? openGroups.map((group) => createGroupCard(group)).join('') +
+          '<p class="calendar-groups-empty" data-group-search-empty role="status" hidden>검색 결과가 없어요.</p>'
+        : '<p class="calendar-groups-empty">참여 가능한 그룹이 없어요.</p>';
+    updateSearch();
 
-    const onlyHidden = (hiddenGroups || []).filter((group) => group.is_hidden);
     hiddenList.innerHTML =
       onlyHidden.length > 0
         ? onlyHidden.map((group) => createGroupCard(group)).join('')
-        : '<p class="calendar-groups-empty">숨긴 그룹이 없어.</p>';
+        : '<p class="calendar-groups-empty">참여할 수 있는 숨긴 그룹이 없어요. 내가 참여한 숨긴 그룹은 내 그룹에서 볼 수 있어요.</p>';
   }
+
+  myList.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-show-discover]')) return;
+    selectTab('discover');
+    tabs.discover?.focus();
+  });
 
   privateToggle?.addEventListener('change', () => {
     if (!passwordInput) return;
@@ -1983,6 +2101,7 @@ export async function initCalendarGroupsPage() {
   });
 
   hiddenShortcut?.addEventListener('click', () => {
+    selectTab('discover');
     setHiddenGroupsOpen(true);
     hiddenPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -2036,6 +2155,70 @@ export async function initCalendarGroupsPage() {
     }
   });
 
+  function setJoinError(joinForm, message, invalidPassword = false) {
+    const error = joinForm.querySelector('[data-join-error]');
+    const password = joinForm.querySelector('[data-password]');
+    error.hidden = !message;
+    error.textContent = message;
+    if (invalidPassword) password?.setAttribute('aria-invalid', 'true');
+    else password?.removeAttribute('aria-invalid');
+  }
+
+  page.addEventListener('input', (event) => {
+    if (!event.target.matches('[data-password]')) return;
+    const joinForm = event.target.closest('[data-join-group]');
+    if (joinForm) setJoinError(joinForm, '');
+  });
+
+  page.addEventListener('submit', async (event) => {
+    const joinForm = event.target;
+    if (!joinForm.matches('[data-join-group]')) return;
+    event.preventDefault();
+
+    const group = state.joinableGroups.get(joinForm.closest('[data-group-id]')?.dataset.groupId);
+    const button = joinForm.querySelector('[data-action="join"]');
+    if (!group || button.disabled) return;
+
+    const password = joinForm.querySelector('[data-password]');
+    setJoinError(joinForm, '');
+    button.disabled = true;
+    button.textContent = '참여 중…';
+
+    try {
+      await rpc('join_calendar_group', {
+        p_group_id: group.id,
+        p_password: password?.value || null,
+      });
+    } catch (error) {
+      const invalidPassword = Boolean(password && error?.message?.includes('비밀번호'));
+      if (!invalidPassword) console.error('[calendar-groups] join failed:', error);
+      const message = invalidPassword
+        ? '비밀번호가 올바르지 않아요.'
+        : '그룹에 참여하지 못했어요. 다시 시도해 주세요.';
+      setJoinError(joinForm, message, invalidPassword);
+      button.disabled = false;
+      button.textContent = '그룹 참여';
+      return;
+    }
+
+    if (password) password.value = '';
+    button.textContent = '참여 완료';
+    showJoinNotice(group);
+    if (joinForm.contains(document.activeElement) || document.activeElement === document.body) {
+      (joinNoticeOpen.hidden ? joinNoticeClose : joinNoticeOpen)?.focus({ preventScroll: true });
+    }
+    setStatus('');
+    scheduleCalendarWidgetRefresh();
+    try {
+      await load();
+    } catch (error) {
+      console.error('[calendar-groups] refresh after join failed:', error);
+      if (joinNotice.dataset.groupId === group.id) {
+        joinNoticeMessage.textContent = `${group.name} · 새로고침하면 내 그룹에서 볼 수 있어요.`;
+      }
+    }
+  });
+
   page.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
@@ -2043,19 +2226,10 @@ export async function initCalendarGroupsPage() {
     const card = button.closest('[data-group-id]');
     const groupId = card?.dataset?.groupId || '';
     const action = button.dataset.action;
-    if (!groupId) return;
+    if (!groupId || action === 'join') return;
 
     try {
       button.disabled = true;
-
-      if (action === 'join') {
-        const password = card.querySelector('[data-password]')?.value || null;
-        await rpc('join_calendar_group', {
-          p_group_id: groupId,
-          p_password: password,
-        });
-        setStatus('그룹에 참여했어.');
-      }
 
       if (action === 'leave') {
         const group = state.myGroups.find((item) => item.id === groupId);
@@ -2070,6 +2244,7 @@ export async function initCalendarGroupsPage() {
 
         await rpc('leave_calendar_group', { p_group_id: groupId });
         if (getSelectedGroupId() === groupId) setSelectedGroupId('');
+        if (joinNotice.dataset.groupId === groupId) dismissJoinNotice();
         setStatus('그룹에서 나왔어.');
       }
 
@@ -2115,6 +2290,7 @@ export async function initCalendarGroupsPage() {
 
         await rpc('calendar_delete_group', { p_group_id: groupId });
         if (getSelectedGroupId() === groupId) setSelectedGroupId('');
+        if (joinNotice.dataset.groupId === groupId) dismissJoinNotice();
         setStatus('그룹을 삭제했어.');
       }
 
@@ -2186,9 +2362,9 @@ export async function initCalendarGroupsPage() {
 
   try {
     await load();
-    setStatus('그룹 목록을 불러왔어.');
+    setStatus('');
   } catch (error) {
     console.error('[calendar-groups] load failed:', error);
-    setStatus('그룹 목록을 불러오지 못했어. Supabase SQL을 먼저 적용해줘.');
+    setStatus('그룹 목록을 불러오지 못했어요. 새로고침해서 다시 시도해 주세요.');
   }
 }

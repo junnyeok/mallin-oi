@@ -1135,19 +1135,26 @@ export function openCalendarDetailSheet({
   activeSheet?.close?.({ restoreFocus: false });
   activeSheet = api;
   isOpen = true;
-  overlay.hidden = false;
+  const createTitleInput = mode === 'create' ? titleField?.input : null;
+  if (createTitleInput) overlay.classList.add('is-open');
   lockBodyScroll();
+  overlay.hidden = false;
   document.addEventListener('keydown', handleKeydown);
   window.addEventListener('mallin:before-pjax-swap', handlePageExit);
   window.addEventListener('pagehide', handlePageExit);
-  requestAnimationFrame(() => {
-    overlay.classList.add('is-open');
-    const initialFocusTarget =
-      calendarType === 'study' || calendarType === 'event'
+  if (createTitleInput) {
+    // Keep focus in the original tap handler so iOS opens the keyboard.
+    createTitleInput.focus({ preventScroll: true });
+  } else {
+    requestAnimationFrame(() => {
+      if (!isOpen) return;
+      overlay.classList.add('is-open');
+      const initialFocusTarget = calendarType === 'study' || calendarType === 'event'
         ? closeButton
-        : fields.find((field) => field.key === 'title')?.input || dialog;
-    initialFocusTarget.focus({ preventScroll: true });
-  });
+        : titleField?.input || dialog;
+      initialFocusTarget.focus({ preventScroll: true });
+    });
+  }
 
   return api;
 }

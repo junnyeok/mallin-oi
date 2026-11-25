@@ -15,8 +15,8 @@ android {
         applicationId 'com.mallinoi.site'
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName '1.0.3'
+        versionCode 7
+        versionName '1.0.5'
     }
 }
 

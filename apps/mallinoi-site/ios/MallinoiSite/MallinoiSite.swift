@@ -25,10 +25,19 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         options connectionOptions: UIScene.ConnectionOptions
     ) {
         guard let scene = scene as? UIWindowScene else { return }
+        let controller = SiteViewController()
+        if connectionOptions.urlContexts.contains(where: { SiteURLs.isProfileLink($0.url) }) {
+            controller.openProfile()
+        }
         let window = UIWindow(windowScene: scene)
-        window.rootViewController = SiteViewController()
+        window.rootViewController = controller
         self.window = window
         window.makeKeyAndVisible()
+    }
+
+    func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
+        guard contexts.contains(where: { SiteURLs.isProfileLink($0.url) }) else { return }
+        (window?.rootViewController as? SiteViewController)?.openProfile()
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
@@ -44,11 +53,16 @@ final class SiteViewController: UIViewController {
     private let library = OfflineLibrary()
     private let loading = UIActivityIndicatorView(style: .medium)
     private let connectionError = UIStackView()
+    private let topTheme = UIView()
+    private var scrollObservation: NSKeyValueObservation?
     private var retryRequest = URLRequest(url: SiteURLs.home)
     private var authentication: (request: String, session: ASWebAuthenticationSession)?
     private var isCheckingForAppUpdate = false
     private var nextAppUpdateCheck = Date.distantPast
     private var pendingAppUpdate: String?
+    private var pageStatusBarStyle: UIStatusBarStyle = .darkContent
+    private var pageHeaderTop: CGFloat = 0
+    private var pageHeaderBottom: CGFloat = 0
     private var themeStatusBarStyle: UIStatusBarStyle = .darkContent
 
     override var preferredStatusBarStyle: UIStatusBarStyle { themeStatusBarStyle }
@@ -69,22 +83,36 @@ final class SiteViewController: UIViewController {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.contentInsetAdjustmentBehavior = .always
         return webView
     }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = Self.initialThemeColor
+        view.backgroundColor = .systemBackground
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
         let safeArea = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
             webView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: safeArea.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor),
+            webView.topAnchor.constraint(equalTo: view.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+
+        topTheme.backgroundColor = Self.initialThemeColor
+        topTheme.translatesAutoresizingMaskIntoConstraints = false
+        topTheme.isUserInteractionEnabled = false
+        view.addSubview(topTheme)
+        NSLayoutConstraint.activate([
+            topTheme.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            topTheme.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            topTheme.topAnchor.constraint(equalTo: view.topAnchor),
+            topTheme.bottomAnchor.constraint(equalTo: safeArea.topAnchor),
+        ])
+        scrollObservation = webView.scrollView.observe(\.contentOffset, options: [.initial, .new]) { [weak self] _, _ in
+            self?.updateTopChrome()
+        }
 
         loading.accessibilityLabel = "말린오이닷컴을 불러오고 있어요"
         loading.translatesAutoresizingMaskIntoConstraints = false
@@ -101,6 +129,11 @@ final class SiteViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         checkForAppUpdate()
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateTopChrome()
     }
 
     func checkForAppUpdate() {
@@ -183,12 +216,20 @@ final class SiteViewController: UIViewController {
         ])
     }
 
+    func openProfile() {
+        retryRequest = URLRequest(url: SiteURLs.profile)
+        if isViewLoaded { loadSite() }
+    }
+
     private func loadSite() {
         connectionError.isHidden = true
         if webView.isHidden {
+            pageHeaderTop = 0
+            pageHeaderBottom = 0
             applyPageTheme(Self.initialThemeColor, statusBarStyle: .darkContent)
         }
         webView.isHidden = false
+        updateTopChrome()
         loading.startAnimating()
         webView.load(retryRequest)
     }
@@ -197,7 +238,7 @@ final class SiteViewController: UIViewController {
         loading.stopAnimating()
         webView.isHidden = true
         connectionError.isHidden = false
-        applyPageTheme(.systemBackground, statusBarStyle: .default)
+        updateTopChrome()
     }
 
     private func showReader() -> Bool {
@@ -229,12 +270,18 @@ final class SiteViewController: UIViewController {
             guard !webView.isHidden, let path = body["path"] as? String,
                   path == URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath,
                   let rgb = body["rgb"] as? [Int], rgb.count == 3,
-                  rgb.allSatisfy((0...255).contains) else {
+                  rgb.allSatisfy((0...255).contains),
+                  let headerTop = body["headerTop"] as? Double,
+                  let headerBottom = body["headerBottom"] as? Double,
+                  headerTop.isFinite, headerTop >= 0,
+                  headerBottom.isFinite, headerBottom >= headerTop else {
                 reply(nil, "UNAVAILABLE")
                 return
             }
+            pageHeaderTop = CGFloat(headerTop)
+            pageHeaderBottom = CGFloat(headerBottom)
             updatePageTheme(rgb)
-            reply(true, nil)
+            reply(Double(view.safeAreaInsets.bottom), nil)
             return
         }
         guard let action = body["action"] as? String else {
@@ -279,9 +326,22 @@ final class SiteViewController: UIViewController {
     }
 
     private func applyPageTheme(_ color: UIColor, statusBarStyle: UIStatusBarStyle) {
-        view.backgroundColor = color
-        guard themeStatusBarStyle != statusBarStyle else { return }
-        themeStatusBarStyle = statusBarStyle
+        topTheme.backgroundColor = color
+        pageStatusBarStyle = statusBarStyle
+        updateTopChrome()
+    }
+
+    private func updateTopChrome() {
+        let scrollView = webView.scrollView
+        let isAtTop = scrollView.contentOffset.y + scrollView.adjustedContentInset.top <= 1
+        let webVisible = !webView.isHidden
+        topTheme.isHidden = !webVisible || !isAtTop
+        let iconMidpoint = scrollView.contentOffset.y + view.safeAreaInsets.top / 2
+        let headerStillBehindIcons = pageHeaderTop * scrollView.zoomScale <= iconMidpoint &&
+            iconMidpoint < pageHeaderBottom * scrollView.zoomScale
+        let style = webVisible && (isAtTop || headerStillBehindIcons) ? pageStatusBarStyle : .default
+        guard themeStatusBarStyle != style else { return }
+        themeStatusBarStyle = style
         setNeedsStatusBarAppearanceUpdate()
     }
 
@@ -305,6 +365,17 @@ final class SiteViewController: UIViewController {
           const pixel = canvas.getContext('2d', { willReadFrequently: true });
           if (!body || !pixel) return;
 
+          const controlInsets = document.createElement('style');
+          controlInsets.textContent = `
+            .scroll-fab { margin-bottom: var(--mallinoi-bottom-safe-area, 0px); }
+            @media (max-width: 700px) {
+              .notification-menu, .bgm-menu, .pickle-menu {
+                margin-bottom: var(--mallinoi-bottom-safe-area, 0px);
+              }
+            }
+          `;
+          document.head.append(controlInsets);
+
           function opaqueRGB(color) {
             if (!color) return null;
             pixel.clearRect(0, 0, 1, 1);
@@ -327,12 +398,19 @@ final class SiteViewController: UIViewController {
               opaqueRGB(style.backgroundColor) || opaqueRGB(getComputedStyle(root).backgroundColor);
             if (!rgb) return;
             const path = location.pathname;
-            const theme = `${path}:${rgb.join(',')}`;
+            const headerRect = header?.getBoundingClientRect();
+            const headerTop = headerRect ? Math.max(0, Math.round(headerRect.top + scrollY)) : 0;
+            const headerBottom = headerRect ? Math.max(headerTop, Math.round(headerRect.bottom + scrollY)) : 0;
+            const theme = `${path}:${rgb.join(',')}:${headerTop}:${headerBottom}:${innerWidth}:${innerHeight}`;
             if (theme === lastTheme) return;
             lastTheme = theme;
-            window.webkit.messageHandlers.mallinoiTheme.postMessage({ path, rgb }).catch(() => {
-              if (lastTheme === theme) lastTheme = '';
-            });
+            window.webkit.messageHandlers.mallinoiTheme.postMessage({ path, rgb, headerTop, headerBottom })
+              .then(bottom => {
+                if (lastTheme === theme) root.style.setProperty('--mallinoi-bottom-safe-area', `${bottom}px`);
+              })
+              .catch(() => {
+                if (lastTheme === theme) lastTheme = '';
+              });
           }
 
           function schedule() {
@@ -350,6 +428,7 @@ final class SiteViewController: UIViewController {
           }, true);
           window.addEventListener('pageshow', schedule);
           window.addEventListener('popstate', schedule);
+          window.addEventListener('resize', schedule);
           schedule();
         })();
         """#

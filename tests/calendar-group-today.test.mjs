@@ -33,27 +33,29 @@ function render({ type = 'study', date = '2026-10-28', selected = '2026-10-29', 
   }, { selectedDateKey: selected });
   return root;
 }
-test('세 캘린더 그룹 모두 오늘 머리글과 모든 회원의 오늘 칸을 표시한다', () => {
+test('세 그룹 캘린더에서 오늘은 날짜 머리글에만 표시한다', () => {
   for (const type of ['study', 'work', 'event']) {
     const root = render({ type, members: true });
     const heads = all(root, 'calendar-group-schedule__date-head');
     assert.equal(heads[0].attributes['aria-current'], 'date');
     assert.match(heads[0].attributes['aria-label'], /오늘/);
-    assert.equal(all(root, 'is-today').length, 3);
+    assert.deepEqual(all(root, 'is-today'), [heads[0]]);
+    const cells = all(root, 'calendar-group-schedule__cell');
+    assert.ok(cells.every(cell => !cell.attributes['aria-current']));
     assert.equal(all(root, 'is-selected').length, 2);
     assert.equal(all(root, 'holiday-test').length, 2);
   }
 });
-test('빈 그룹의 공유 행에서도 오늘과 선택 날짜를 독립적으로 유지한다', () => {
+test('오늘을 선택해도 빈 그룹의 공유 일정 칸에 테두리를 표시하지 않는다', () => {
   const root = render({ selected: '2026-10-28' });
-  assert.equal(all(root, 'is-today').length, 2);
-  assert.equal(all(root, 'is-selected').length, 1);
+  assert.equal(all(root, 'is-today').length, 1);
+  assert.equal(all(root, 'is-selected').length, 0);
 });
 test('오늘이 없는 달에는 오늘 표시를 붙이지 않는다', () => {
   assert.equal(all(render({ date: '2026-11-28' }), 'is-today').length, 0);
 });
 
-test('세 그룹 캘린더의 앱과 웹에서 내 행이 공유 행보다 먼저 표시된다', () => {
+test('앱과 웹에서 이벤트 공유 행을 먼저 표시하고 자기개발·업무는 내 행을 먼저 표시한다', () => {
   const sharedEvent = { title: '같이 하는 일정', shared_group_id: 'group', shared_origin_todo_id: 'shared' };
   const eventsByDate = {
     '2026-10-28': [
@@ -63,25 +65,29 @@ test('세 그룹 캘린더의 앱과 웹에서 내 행이 공유 행보다 먼�
     ],
   };
   for (const type of ['study', 'work', 'event']) {
-    const root = render({ type, appMode: true, userId: 'own', eventsByDate });
-    assert.deepEqual(all(root, 'calendar-group-schedule__name').map(name => name.textContent), ['말', '우리', '다', '하']);
-    const badges = all(root, 'calendar-group-schedule__badge').map(badge => badge.textContent);
-    assert.deepEqual(badges, ['내 일정', '같이 하는 일정']);
+    const expectedNames = type === 'event' ? ['우리', '말', '다', '하'] : ['말', '우리', '다', '하'];
+    const expectedBadges = type === 'event' ? ['같이 하는 일정', '내 일정'] : ['내 일정', '같이 하는 일정'];
+    for (const appMode of [true, false]) {
+      const root = render({ type, appMode, userId: 'own', eventsByDate });
+      assert.deepEqual(all(root, 'calendar-group-schedule__name').map(name => name.textContent), expectedNames);
+      assert.deepEqual(all(root, 'calendar-group-schedule__badge').map(badge => badge.textContent), expectedBadges);
+    }
   }
-  const web = render({ userId: 'own', eventsByDate });
-  assert.deepEqual(all(web, 'calendar-group-schedule__name').map(name => name.textContent), ['말', '우리', '다', '하']);
 });
 
-test('앱에서 내 일정이 없는 주도 로그인한 계정이 첫 줄에 나온다', () => {
+test('이벤트에서 내 일정이 없는 주에도 내 행을 유지하고 공유 일정이 있는 주만 우리를 먼저 보여준다', () => {
   const dateItems = Array.from({ length: 14 }, (_, index) => {
     const date = new Date(Date.UTC(2026, 10, index + 1));
     return { dateKey: date.toISOString().slice(0, 10), dateNumber: date.getUTCDate(), isCurrentMonth: true };
   });
   const root = render({
-    appMode: true, userId: 'own', userNickname: '말오닷', dateItems,
-    eventsByDate: { '2026-11-01': [{ userId: 'other', name: '다순이', events: [] }] },
+    type: 'event', appMode: true, userId: 'own', userNickname: '말오닷', dateItems,
+    eventsByDate: {
+      '2026-11-01': [{ userId: 'other', name: '다순이', events: [] }],
+      '2026-11-08': [{ userId: 'other', name: '다순이', events: [{ title: '모임', shared_group_id: 'group' }] }],
+    },
   });
   const weeks = all(root, 'calendar-group-schedule__week');
   const names = weeks.map(week => all(week, 'calendar-group-schedule__name').map(name => name.textContent));
-  assert.deepEqual(names, [['말', '다'], ['말']]);
+  assert.deepEqual(names, [['말', '다'], ['우리', '말', '다']]);
 });

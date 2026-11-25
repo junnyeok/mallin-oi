@@ -8,26 +8,44 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
 
 public final class MainActivity extends Activity {
     private static final Uri HOME = Uri.parse("https://mallin-oi.com/");
+    private static final Uri PROFILE = Uri.withAppendedPath(HOME, "profile.html");
     private SiteAppUpdate appUpdate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.site_launcher);
-        appUpdate = new SiteAppUpdate(this, savedInstanceState == null, this::openSite);
+        boolean opensProfile = isProfileLink(getIntent());
+        boolean firstLaunch = savedInstanceState == null;
+        appUpdate = new SiteAppUpdate(this, firstLaunch && !opensProfile, () -> openSite(HOME));
         findViewById(R.id.open_site).setOnClickListener(view -> {
             appUpdate.leaveLauncher();
-            openSite();
+            openSite(HOME);
         });
         findViewById(R.id.open_offline_articles).setOnClickListener(view -> {
             appUpdate.leaveLauncher();
             startActivity(new Intent(this, OfflineArticlesActivity.class));
         });
+        if (firstLaunch && opensProfile) openSite(PROFILE);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (isProfileLink(intent)) {
+            appUpdate.leaveLauncher();
+            openSite(PROFILE);
+        }
+    }
+
+    private static boolean isProfileLink(Intent intent) {
+        return Intent.ACTION_VIEW.equals(intent.getAction())
+            && "mallinoisite://profile".equals(intent.getDataString());
     }
 
     @Override
@@ -48,15 +66,9 @@ public final class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    private void openSite() {
+    private void openSite(Uri destination) {
         View error = findViewById(R.id.browser_error);
         error.setVisibility(View.GONE);
-        int siteGreen = getColor(R.color.site_green);
-        CustomTabColorSchemeParams colors = new CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(siteGreen)
-            .setNavigationBarColor(siteGreen)
-            .setNavigationBarDividerColor(siteGreen)
-            .build();
         // Chrome supplies the current address as data when it sends this explicit intent.
         int mutableFlag = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
         PendingIntent save = PendingIntent.getActivity(this, 0,
@@ -64,13 +76,12 @@ public final class MainActivity extends Activity {
         PendingIntent library = PendingIntent.getActivity(this, 1,
             new Intent(this, OfflineArticlesActivity.class), PendingIntent.FLAG_IMMUTABLE);
         CustomTabsIntent tab = new CustomTabsIntent.Builder()
-            .setDefaultColorSchemeParams(colors)
             .setUrlBarHidingEnabled(true)
             .addMenuItem(getString(R.string.save_offline_article), save)
             .addMenuItem(getString(R.string.offline_articles), library)
             .build();
         try {
-            tab.launchUrl(this, HOME);
+            tab.launchUrl(this, destination);
         } catch (ActivityNotFoundException unavailable) {
             error.setVisibility(View.VISIBLE);
         }
