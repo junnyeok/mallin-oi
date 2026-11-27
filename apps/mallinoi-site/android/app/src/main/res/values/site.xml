@@ -9,6 +9,8 @@
     <string name="app_update_store_unavailable">Google Play 페이지를 열 수 없어요.</string>
     <string name="save_offline_article">오프라인에 저장</string>
     <string name="offline_articles">저장한 게시글</string>
+    <string name="offline_all_posts">전체 게시글</string>
+    <string name="offline_open_original">온라인 원문 보기</string>
     <string name="offline_article_loading">게시글을 저장하는 중…</string>
     <string name="offline_article_saved">게시글을 오프라인에 저장했어요.</string>
     <string name="offline_article_unavailable">공개 게시글 화면에서만 본문을 저장할 수 있어요.</string>

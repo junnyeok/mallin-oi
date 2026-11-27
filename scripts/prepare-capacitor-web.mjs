@@ -15,6 +15,7 @@ const filesToCopy = [
   'store-item.html',
   'post.html',
   'saved-articles.html',
+  'posts-all.html',
   'mallin-plus.html',
   'profile.html',
   'notifications.html',

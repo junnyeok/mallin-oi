@@ -3,7 +3,7 @@ import { mountCommunityActions } from './community-safety.js';
 import { getDisplayViews, incrementPostView } from './post-views.js';
 import { supabase } from './supabase-client.js';
 import { getCurrentUser, publicProfileHref } from './auth-store.js';
-import { getSavedArticles, removeArticle, saveArticle } from './saved-articles.js';
+import { getSavedArticles, removeArticle, saveArticle, savedArticlesChanged } from './saved-articles.js';
 
 const DEFAULT_PROFILE_IMAGE = './images/logo-home.png';
 const DEFAULT_CHARACTER_IMAGE = './images/characters/cucumber.png';
@@ -806,7 +806,6 @@ async function bindOwnerActions(post) {
 
   if (!actionWrap || !editBtn || !deleteBtn) return;
 
-  actionWrap.hidden = true;
   editBtn.hidden = true;
   deleteBtn.hidden = true;
   editBtn.disabled = true;
@@ -821,10 +820,6 @@ async function bindOwnerActions(post) {
     const isAdmin = !!role?.isAdmin;
     const canDelete = isOwner || isAdmin;
     const canEdit = isOwner;
-
-    if (!canDelete && !canEdit) return;
-
-    actionWrap.hidden = false;
 
     if (canEdit) {
       editBtn.hidden = false;
@@ -972,6 +967,7 @@ function applyPost(post, secretPassword = null) {
   void Promise.all([renderAuthor(post), bindOwnerActions(post), mountCommunityActions(currentActions, {
     authorId: post.authorId,
     kind: 'post',
+    compact: true,
     id: post.isPrivate && !post.isUnlocked ? null : post.id,
     secretPassword,
     onBlock: () => redirectToPostList(post.category),
@@ -1075,7 +1071,36 @@ function syncOfflineSaveButton(post) {
   if (post.isPrivate) return;
 
   const bridge = window.webkit?.messageHandlers?.mallinoiSite;
-  if (typeof bridge?.postMessage === 'function') {
+  const usesNativeLibrary = typeof bridge?.postMessage === 'function';
+  const isSaved = () => getSavedArticles().some((article) => article.id === String(post.id));
+  const listeners = new AbortController();
+  postSaveListeners = listeners;
+  let latestCheck = 0;
+
+  const syncPressedState = async () => {
+    const check = ++latestCheck;
+    let saved;
+    try {
+      saved = usesNativeLibrary
+        ? (await bridge.postMessage({ action: 'isOfflineArticleSaved' })) === true
+        : isSaved();
+    } catch {
+      // Older app builds do not expose the status of their native library.
+      return;
+    }
+    if (listeners.signal.aborted || check !== latestCheck || !button.isConnected) return;
+    button.setAttribute('aria-pressed', String(saved));
+    button.classList.toggle('is-active', saved);
+  };
+
+  document.addEventListener(savedArticlesChanged, syncPressedState, { signal: listeners.signal });
+  window.addEventListener('mallin:before-pjax-swap', () => listeners.abort(), {
+    once: true,
+    signal: listeners.signal,
+  });
+  void syncPressedState();
+
+  if (usesNativeLibrary) {
     button.setAttribute('aria-haspopup', 'dialog');
     button.onclick = async () => {
       button.disabled = true;
@@ -1091,18 +1116,6 @@ function syncOfflineSaveButton(post) {
     return;
   }
 
-  const isSaved = () => getSavedArticles().some((article) => article.id === String(post.id));
-  const syncPressedState = () => {
-    try {
-      const saved = isSaved();
-      button.setAttribute('aria-pressed', String(saved));
-      button.classList.toggle('is-active', saved);
-    } catch {
-      // Keep the post readable if this browser does not allow local storage.
-      button.setAttribute('aria-pressed', 'false');
-      button.classList.remove('is-active');
-    }
-  };
   button.onclick = () => {
     try {
       if (isSaved()) {
@@ -1115,20 +1128,9 @@ function syncOfflineSaveButton(post) {
       console.warn('[post-detail] saved article update failed:', error);
       showShareToast('글 저장 상태를 바꾸지 못했어. 다시 시도해줘.');
     } finally {
-      syncPressedState();
+      void syncPressedState();
     }
   };
-
-  syncPressedState();
-  const listeners = new AbortController();
-  postSaveListeners = listeners;
-  document.addEventListener('mallin:saved-articles-changed', syncPressedState, {
-    signal: listeners.signal,
-  });
-  window.addEventListener('mallin:before-pjax-swap', () => listeners.abort(), {
-    once: true,
-    signal: listeners.signal,
-  });
 }
 
 export async function initPostDetail() {

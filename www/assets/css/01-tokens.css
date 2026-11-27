@@ -93,6 +93,11 @@ var()로 쓴다. */
 
   /* Layout */
   --container-max: 1100px;
+  --mobile-floating-bottom: max(
+    var(--space-8),
+    env(safe-area-inset-bottom, 0px),
+    var(--mallinoi-bottom-safe-area, 0px)
+  );
 }
 
 /* 앱 전용 설정. 페이지 배경과 테마색을 분리해 라이트 모드의 기존 색을 보존한다. */

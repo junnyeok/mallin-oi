@@ -2,8 +2,10 @@ package com.mallinoi.site;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.database.SQLException;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -23,6 +25,10 @@ public final class OfflineArticlesActivity extends Activity {
         articleId = getIntent().getLongExtra(ARTICLE_ID, 0);
         setContentView(articleId > 0 ? R.layout.offline_article : R.layout.offline_library);
         findViewById(R.id.back).setOnClickListener(view -> finish());
+        if (articleId == 0) {
+            findViewById(R.id.open_all_posts).setOnClickListener(view ->
+                openOnline(Uri.withAppendedPath(MainActivity.HOME, "posts-all.html")));
+        }
     }
 
     @Override
@@ -58,6 +64,12 @@ public final class OfflineArticlesActivity extends Activity {
         TextView body = findViewById(R.id.saved_article_body);
         body.setText(article.body);
         findViewById(R.id.saved_article_note).setVisibility(View.VISIBLE);
+        View original = findViewById(R.id.open_online_post);
+        original.setVisibility(View.VISIBLE);
+        original.setOnClickListener(view ->
+            openOnline(Uri.withAppendedPath(MainActivity.HOME, "post.html").buildUpon()
+                .appendQueryParameter("id", Long.toString(articleId))
+                .build()));
         View remove = findViewById(R.id.remove_article);
         remove.setVisibility(View.VISIBLE);
         remove.setOnClickListener(view -> new AlertDialog.Builder(this)
@@ -65,6 +77,14 @@ public final class OfflineArticlesActivity extends Activity {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.offline_article_remove, (dialog, button) -> removeArticle())
             .show());
+    }
+
+    private void openOnline(Uri uri) {
+        try {
+            MainActivity.openInBrowser(this, uri);
+        } catch (ActivityNotFoundException unavailable) {
+            Toast.makeText(this, R.string.no_browser, Toast.LENGTH_LONG).show();
+        }
     }
 
     private void removeArticle() {

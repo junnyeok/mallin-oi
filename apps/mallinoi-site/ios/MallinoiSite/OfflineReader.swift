@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OfflineReader: View {
     @ObservedObject var library: OfflineLibrary
+    let openOnline: (URL) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var deleteFailed = false
 
@@ -28,6 +29,11 @@ struct OfflineReader: View {
                                         Text(verbatim: article.title)
                                             .font(.title2.bold())
                                             .accessibilityAddTraits(.isHeader)
+                                        Button {
+                                            openOnline(SiteURLs.post(id: article.id))
+                                        } label: {
+                                            Label("온라인 원문 보기", systemImage: "arrow.up.right")
+                                        }
                                         Text(verbatim: article.body)
                                             .textSelection(.enabled)
                                     }
@@ -47,6 +53,18 @@ struct OfflineReader: View {
                         }
                     }
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    openOnline(SiteURLs.allPosts)
+                } label: {
+                    Label("전체 게시글", systemImage: "arrow.up.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.bar)
             }
             .navigationTitle("저장된 글")
             .toolbar {

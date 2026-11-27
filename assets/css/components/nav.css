@@ -298,18 +298,31 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 @media (max-width: 700px) {
+  .site-header {
+    --mobile-header-button-height: 38px;
+    --mobile-header-button-step: calc(
+      var(--mobile-header-button-height) + var(--space-8)
+    );
+  }
+
+  /* The iOS app also injects a margin for older stylesheets. The offsets below
+     already include the inset, so the margin would count it twice. */
+  :root :is(.notification-menu, .bgm-menu, .pickle-menu) {
+    margin-bottom: 0;
+  }
+
   .notification-menu {
     position: fixed;
     top: auto;
     left: 12px;
     right: auto;
-    bottom: 20px;
+    bottom: var(--mobile-floating-bottom);
     z-index: 1100;
   }
 
   .notification-btn {
     min-width: 72px;
-    height: 38px;
+    height: var(--mobile-header-button-height);
     padding: 0 12px;
     font-size: 12px;
   }
@@ -322,8 +335,8 @@ body[data-page='post'] .logo #siteLogoImg {
     top: auto;
     left: 0;
     right: auto;
-    /* Clear the pickle button, positioned 92px above the notification button. */
-    bottom: calc(100% + 92px + var(--space-8));
+    /* Open above the pickle button. */
+    bottom: calc(100% + 2 * var(--mobile-header-button-step) + var(--space-8));
     width: min(360px, calc(100vw - 24px));
     max-height: min(420px, calc(100svh - 180px));
     overflow-x: hidden;
@@ -415,7 +428,8 @@ body[data-page='post'] .logo #siteLogoImg {
   display: flex;
   flex-direction: column;
   width: min(380px, calc(100vw - 32px));
-  max-height: min(780px, calc(100svh - 80px));
+  max-height: min(640px, calc(100vh - 80px));
+  max-height: min(640px, calc(100dvh - 80px));
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -458,6 +472,7 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 .bgm-panel__desc {
+  flex: none;
   margin: 0;
   padding: 10px 14px 0;
   font-size: 12px;
@@ -494,6 +509,7 @@ body[data-page='post'] .logo #siteLogoImg {
 }
 
 .bgm-panel__quick-link {
+  flex: none;
   margin: 10px 14px 0;
 }
 
@@ -702,29 +718,43 @@ body[data-page='post'] .logo #siteLogoImg {
 
 @media (max-width: 700px) {
   .bgm-menu {
+    --bgm-panel-gap: calc(var(--mobile-header-button-step) + var(--space-8));
     position: fixed;
     top: auto;
     left: 12px;
     right: auto;
-    bottom: 66px;
+    bottom: calc(var(--mobile-floating-bottom) + var(--mobile-header-button-step));
     z-index: 1100;
   }
 
   .bgm-btn {
     min-width: 72px;
-    height: 38px;
+    height: var(--mobile-header-button-height);
     padding: 0 12px;
     font-size: 12px;
   }
 
   .bgm-panel {
+    --bgm-panel-bottom: calc(
+      var(--mobile-floating-bottom) + var(--mobile-header-button-step) +
+        var(--mobile-header-button-height) + var(--bgm-panel-gap)
+    );
+    /* Leave room for the status bar in app pages without viewport-fit=cover. */
+    --bgm-panel-top: max(
+      calc(env(safe-area-inset-top, 0px) + var(--space-8)),
+      calc(var(--mallinoi-bottom-safe-area, 0px) + var(--space-24))
+    );
     top: auto;
     left: 0;
     right: auto;
-    /* Clear the pickle button, positioned 46px above the BGM button. */
-    bottom: calc(100% + 46px + var(--space-8));
+    bottom: calc(100% + var(--bgm-panel-gap));
     width: min(330px, calc(100vw - var(--space-24)));
-    max-height: min(720px, calc(100svh - 172px - env(safe-area-inset-bottom)));
+    max-height: min(
+      560px, calc(100vh - var(--bgm-panel-top) - var(--bgm-panel-bottom))
+    );
+    max-height: min(
+      560px, calc(100dvh - var(--bgm-panel-top) - var(--bgm-panel-bottom))
+    );
   }
 
   .bgm-panel__head {
@@ -782,6 +812,13 @@ body[data-page='post'] .logo #siteLogoImg {
     justify-self: end;
     padding: 7px 9px;
     font-size: 11px;
+  }
+}
+
+@media (max-width: 700px) and (max-height: 440px) {
+  .bgm-menu:has(.bgm-panel:not([hidden])) {
+    --bgm-panel-gap: var(--space-8);
+    z-index: 1101;
   }
 }
 
@@ -1213,13 +1250,13 @@ body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__ite
     top: auto;
     left: 12px;
     right: auto;
-    bottom: 112px;
+    bottom: calc(var(--mobile-floating-bottom) + 2 * var(--mobile-header-button-step));
     z-index: 1100;
   }
 
   .pickle-btn {
     min-width: 72px;
-    height: 38px;
+    height: var(--mobile-header-button-height);
     padding: 0 12px;
     font-size: 12px;
   }

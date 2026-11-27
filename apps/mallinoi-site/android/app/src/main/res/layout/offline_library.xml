@@ -24,4 +24,9 @@
             android:textColor="@color/site_ink" android:textSize="16sp"
             android:text="@string/offline_articles_empty" android:visibility="gone" />
     </FrameLayout>
+
+    <Button android:id="@+id/open_all_posts" style="?android:attr/borderlessButtonStyle"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:text="@string/offline_all_posts"
+        android:textColor="@color/site_ink" />
 </LinearLayout>

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>전체보기 | 말린오이닷컴</title>
+
+    <!-- 공통 css -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./images/favicon-16x16.png"
+    />
+    <link rel="shortcut icon" href="./images/favicon.ico" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말린오이닷컴" />
+    <link rel="stylesheet" href="./assets/css/00-reset.css" />
+    <link rel="stylesheet" href="./assets/css/01-tokens.css" />
+    <link rel="stylesheet" href="./assets/css/02-base.css" />
+    <link rel="stylesheet" href="./assets/css/03-layout.css" />
+    <link rel="stylesheet" href="./assets/css/components/forms.css" />
+    <link rel="stylesheet" href="./assets/css/components/cursor-buddy.css" />
+    <link rel="stylesheet" href="./assets/css/components/nav.css" />
+    <link rel="stylesheet" href="./assets/css/components/footer.css" />
+    <link rel="stylesheet" href="./assets/css/components/search-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/weekly-nav-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/scroll-buttons.css" />
+    <link rel="stylesheet" href="./assets/css/components/write-btn.css" />
+    <link rel="stylesheet" href="./assets/css/components/auth-links.css" />
+    <link rel="stylesheet" href="./assets/css/main/main.css" />
+    <link rel="stylesheet" href="./assets/css/components/update-banner.css" />
+    <link rel="stylesheet" href="./assets/css/main/posts-all-main.css" />
+  </head>
+
+  <body data-page="posts-all">
+    <div class="page">
+      <div data-include="header"></div>
+
+      <main class="site-main">
+        <section class="home-section">
+          <div class="container">
+            <div class="home-section__head posts-all__head">
+              <h2 class="home-section__title">📚 전체게시글</h2>
+
+              <a
+                class="posts-all__history-link"
+                href="./profile-history.html"
+                aria-label="내가 쓴 글, 댓글, 답글 내역 페이지로 이동"
+              >
+                내가 쓴 글/댓글/답글 내역
+              </a>
+            </div>
+
+            <!-- 고정 -->
+            <section class="posts-all__notice" aria-label="고정 게시물">
+              <h3 class="posts-all__notice-title">📌 고정</h3>
+              <div class="posts-all__notice-list" id="postsAllNoticeList"></div>
+            </section>
+
+            <!-- 탭 -->
+            <nav class="posts-all__tabs" aria-label="게시물 분류 탭">
+              <button
+                type="button"
+                class="tab-btn is-active"
+                data-tab="all"
+                aria-selected="true"
+              >
+                전체
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="study"
+                aria-selected="false"
+              >
+                자기개발
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="work"
+                aria-selected="false"
+              >
+                업무
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="event"
+                aria-selected="false"
+              >
+                이벤트
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                data-tab="career"
+                aria-selected="false"
+              >
+                이력
+              </button>
+            </nav>
+
+            <!-- 주요게시물 탭 -->
+            <nav class="posts-all__featured-tabs" aria-label="주요게시물 탭">
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="best"
+                aria-selected="false"
+              >
+                베스트
+              </button>
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="month"
+                aria-selected="false"
+              >
+                월간
+              </button>
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="week"
+                aria-selected="false"
+              >
+                주간
+              </button>
+              <button
+                type="button"
+                class="featured-tab-btn"
+                data-featured="day"
+                aria-selected="false"
+              >
+                일일
+              </button>
+            </nav>
+
+            <!-- 게시물 목록 -->
+            <section class="posts-all__list" aria-label="전체 게시물 목록">
+              <div class="posts-all__rows" id="postsAllRows"></div>
+            </section>
+
+            <!-- 페이지네이션 -->
+            <nav class="posts-all__pager" aria-label="페이지 이동">
+              <button
+                type="button"
+                class="posts-all__pager-btn"
+                id="postsAllPrevBtn"
+                aria-label="이전 5개 페이지"
+              >
+                ←
+              </button>
+
+              <div
+                class="posts-all__pager-pages"
+                id="postsAllPageNumbers"
+                aria-label="페이지 번호"
+              ></div>
+
+              <button
+                type="button"
+                class="posts-all__pager-btn"
+                id="postsAllNextBtn"
+                aria-label="다음 5개 페이지"
+              >
+                →
+              </button>
+            </nav>
+          </div>
+        </section>
+      </main>
+
+      <div data-include="footer"></div>
+    </div>
+
+    <img
+      id="cukeBuddy"
+      src="./images/logo-home.png"
+      alt="말린오이"
+      class="cursor-buddy"
+    />
+
+    <script type="module" src="./assets/js/boot.js"></script>
+  </body>
+</html>

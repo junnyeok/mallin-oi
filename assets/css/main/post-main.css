@@ -26,7 +26,7 @@
   gap: var(--space-12);
 }
 
-.post-head > :is(.post-excerpt, .post-tags, .community-safety__actions):empty {
+.post-head > :is(.post-excerpt, .post-tags):empty {
   display: none;
 }
 
@@ -57,8 +57,8 @@
   flex: 0 0 auto;
 }
 
-.post-owner-actions[hidden] {
-  display: none !important;
+.post-owner-actions:not(:has(> .post-owner-btn:not([hidden]), > .community-safety__actions:not(:empty))) {
+  display: none;
 }
 
 .post-owner-btn[hidden] {

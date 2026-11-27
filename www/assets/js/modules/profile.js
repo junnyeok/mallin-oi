@@ -3494,13 +3494,14 @@ export async function initProfile() {
   }
 
   if (pageName === 'profile') {
-    await initProfileFeaturedBgm(profileRow, { isOwnProfile });
     void mountCommunityActions($('profileSafetyActions'), {
       authorId: targetUserId,
       kind: 'member',
       id: targetUserId,
+      compact: true,
       onBlock: () => window.location.reload(),
     });
+    await initProfileFeaturedBgm(profileRow, { isOwnProfile });
   }
 
   const currentNickname =

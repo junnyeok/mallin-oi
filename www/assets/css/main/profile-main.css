@@ -281,6 +281,17 @@ body[data-page='profile']
   padding: 4px 0;
 }
 
+.profile-hero__safety {
+  position: absolute;
+  inset-block-start: var(--space-12);
+  inset-inline-start: var(--space-12);
+}
+
+.profile-hero__safety .community-safety__menu-panel {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+}
+
 .profile-avatar-wrap {
   display: flex;
   justify-content: center;
@@ -1164,6 +1175,10 @@ button.profile-character-card:hover {
   align-items: flex-end;
   gap: var(--space-12);
   flex-shrink: 0;
+}
+
+.profile-hero__actions:not(:has(> a:not([hidden]))) {
+  display: none;
 }
 
 .profile-setting-link,

@@ -1972,6 +1972,7 @@
 ./www/partials/footer.html
 ./www/partials/header.html
 ./www/post.html
+./www/posts-all.html
 ./www/prev-mypage.html
 ./www/privacy.html
 ./www/profile.html

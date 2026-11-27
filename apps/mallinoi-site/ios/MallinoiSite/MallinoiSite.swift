@@ -1,4 +1,5 @@
 import AuthenticationServices
+import Combine
 import SwiftUI
 import UIKit
 import WebKit
@@ -41,7 +42,13 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        (window?.rootViewController as? SiteViewController)?.checkForAppUpdate()
+        guard let controller = window?.rootViewController as? SiteViewController else { return }
+        controller.siteDidBecomeActive()
+        controller.checkForAppUpdate()
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        (window?.rootViewController as? SiteViewController)?.siteDidEnterBackground()
     }
 }
 
@@ -49,13 +56,19 @@ final class SiteViewController: UIViewController {
     private static let initialThemeColor = UIColor(red: 182 / 255, green: 216 / 255, blue: 106 / 255, alpha: 1)
     private static let themeWorld = WKContentWorld.world(name: "MallinoiSiteTheme")
     private static let themeMessage = "mallinoiTheme"
+    private static let resumeHomeAfter = Duration.seconds(300)
 
     private let library = OfflineLibrary()
+    private var offlineLibraryObservation: AnyCancellable?
     private let loading = UIActivityIndicatorView(style: .medium)
-    private let connectionError = UIStackView()
+    private let connectionNotice = UIStackView()
     private let topTheme = UIView()
     private var scrollObservation: NSKeyValueObservation?
     private var retryRequest = URLRequest(url: SiteURLs.home)
+    private var backgroundEnteredAt: ContinuousClock.Instant?
+    private var activeNavigation: WKNavigation?
+    private var needsHomeRecovery = false
+    private var didRetryTerminatedProcess = false
     private var authentication: (request: String, session: ASWebAuthenticationSession)?
     private var isCheckingForAppUpdate = false
     private var nextAppUpdateCheck = Date.distantPast
@@ -89,6 +102,13 @@ final class SiteViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        offlineLibraryObservation = library.$articles.dropFirst().sink { [weak self] _ in
+            guard let self, let url = webView.url, OfflineArticle.postID(from: url) != nil else { return }
+            webView.evaluateJavaScript(
+                "document.dispatchEvent(new Event('mallin:saved-articles-changed'))",
+                completionHandler: nil
+            )
+        }
         view.backgroundColor = .systemBackground
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
@@ -122,8 +142,24 @@ final class SiteViewController: UIViewController {
             loading.centerYAnchor.constraint(equalTo: safeArea.centerYAnchor),
         ])
 
-        configureConnectionError()
+        configureConnectionNotice()
         loadSite()
+    }
+
+    func siteDidEnterBackground(at time: ContinuousClock.Instant = .now) {
+        backgroundEnteredAt = time
+    }
+
+    func siteDidBecomeActive(at time: ContinuousClock.Instant = .now) {
+        let shouldStartAtHome = backgroundEnteredAt.map {
+            $0.duration(to: time) >= Self.resumeHomeAfter
+        } ?? false
+        backgroundEnteredAt = nil
+
+        guard authentication == nil else { return }
+        if shouldStartAtHome || needsHomeRecovery {
+            loadHome()
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -185,10 +221,10 @@ final class SiteViewController: UIViewController {
         present(alert, animated: true)
     }
 
-    private func configureConnectionError() {
+    private func configureConnectionNotice() {
         let title = UILabel()
-        title.text = "말린오이닷컴에 연결하지 못했어요"
-        title.font = .preferredFont(forTextStyle: .headline)
+        title.text = "인터넷 연결을 확인해 주세요."
+        title.font = .preferredFont(forTextStyle: .subheadline)
         title.adjustsFontForContentSizeCategory = true
         title.textAlignment = .center
         title.numberOfLines = 0
@@ -201,48 +237,61 @@ final class SiteViewController: UIViewController {
         saved.setTitle("저장된 글", for: .normal)
         saved.addAction(UIAction { [weak self] _ in _ = self?.showReader() }, for: .touchUpInside)
 
-        [title, retry, saved].forEach(connectionError.addArrangedSubview)
-        connectionError.axis = .vertical
-        connectionError.spacing = 14
-        connectionError.translatesAutoresizingMaskIntoConstraints = false
-        connectionError.isHidden = true
-        view.addSubview(connectionError)
+        let actions = UIStackView(arrangedSubviews: [retry, saved])
+        actions.distribution = .fillEqually
+        [title, actions].forEach(connectionNotice.addArrangedSubview)
+        connectionNotice.axis = .vertical
+        connectionNotice.spacing = 4
+        connectionNotice.isLayoutMarginsRelativeArrangement = true
+        connectionNotice.directionalLayoutMargins = .init(top: 10, leading: 12, bottom: 6, trailing: 12)
+        connectionNotice.backgroundColor = .secondarySystemBackground
+        connectionNotice.layer.cornerRadius = 12
+        connectionNotice.translatesAutoresizingMaskIntoConstraints = false
+        connectionNotice.isHidden = true
+        view.addSubview(connectionNotice)
         let safeArea = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            connectionError.centerXAnchor.constraint(equalTo: safeArea.centerXAnchor),
-            connectionError.centerYAnchor.constraint(equalTo: safeArea.centerYAnchor),
-            connectionError.leadingAnchor.constraint(greaterThanOrEqualTo: safeArea.leadingAnchor, constant: 24),
-            connectionError.trailingAnchor.constraint(lessThanOrEqualTo: safeArea.trailingAnchor, constant: -24),
+            connectionNotice.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: 12),
+            connectionNotice.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: -12),
+            connectionNotice.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: -8),
         ])
     }
 
     func openProfile() {
+        backgroundEnteredAt = nil
         retryRequest = URLRequest(url: SiteURLs.profile)
         if isViewLoaded { loadSite() }
     }
 
-    private func loadSite() {
-        connectionError.isHidden = true
-        if webView.isHidden {
-            pageHeaderTop = 0
-            pageHeaderBottom = 0
-            applyPageTheme(Self.initialThemeColor, statusBarStyle: .darkContent)
-        }
-        webView.isHidden = false
-        updateTopChrome()
-        loading.startAnimating()
-        webView.load(retryRequest)
+    private func loadHome() {
+        retryRequest = URLRequest(url: SiteURLs.home)
+        pageHeaderTop = 0
+        pageHeaderBottom = 0
+        applyPageTheme(Self.initialThemeColor, statusBarStyle: .darkContent)
+        loadSite()
     }
 
-    private func showConnectionError() {
+    private func loadSite() {
+        connectionNotice.isHidden = true
+        needsHomeRecovery = false
+        loading.startAnimating()
+        activeNavigation = webView.load(retryRequest)
+    }
+
+    private func showConnectionNotice() {
         loading.stopAnimating()
-        webView.isHidden = true
-        connectionError.isHidden = false
-        updateTopChrome()
+        needsHomeRecovery = true
+        connectionNotice.isHidden = false
     }
 
     private func showReader() -> Bool {
-        showSheet(OfflineReader(library: library))
+        showSheet(OfflineReader(library: library) { [weak self] url in
+            self?.dismiss(animated: true) { [weak self] in
+                guard let self else { return }
+                retryRequest = URLRequest(url: url)
+                loadSite()
+            }
+        })
     }
 
     private func showSheet<Content: View>(_ content: Content) -> Bool {
@@ -267,7 +316,7 @@ final class SiteViewController: UIViewController {
             return
         }
         if message.name == Self.themeMessage {
-            guard !webView.isHidden, let path = body["path"] as? String,
+            guard let path = body["path"] as? String,
                   path == URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath,
                   let rgb = body["rgb"] as? [Int], rgb.count == 3,
                   rgb.allSatisfy((0...255).contains),
@@ -314,6 +363,12 @@ final class SiteViewController: UIViewController {
             }
         case "openOfflineLibrary":
             reply(showReader(), nil)
+        case "isOfflineArticleSaved":
+            guard let id = OfflineArticle.postID(from: url) else {
+                reply(nil, "UNAVAILABLE")
+                return
+            }
+            reply(library.articles.contains { $0.id == id }, nil)
         case "saveOfflineArticle":
             guard let id = OfflineArticle.postID(from: url) else {
                 reply(nil, "UNAVAILABLE")
@@ -334,12 +389,11 @@ final class SiteViewController: UIViewController {
     private func updateTopChrome() {
         let scrollView = webView.scrollView
         let isAtTop = scrollView.contentOffset.y + scrollView.adjustedContentInset.top <= 1
-        let webVisible = !webView.isHidden
-        topTheme.isHidden = !webVisible || !isAtTop
+        topTheme.isHidden = !isAtTop
         let iconMidpoint = scrollView.contentOffset.y + view.safeAreaInsets.top / 2
         let headerStillBehindIcons = pageHeaderTop * scrollView.zoomScale <= iconMidpoint &&
             iconMidpoint < pageHeaderBottom * scrollView.zoomScale
-        let style = webVisible && (isAtTop || headerStillBehindIcons) ? pageStatusBarStyle : .default
+        let style = (isAtTop || headerStillBehindIcons) ? pageStatusBarStyle : .default
         guard themeStatusBarStyle != style else { return }
         themeStatusBarStyle = style
         setNeedsStatusBarAppearanceUpdate()
@@ -528,26 +582,49 @@ extension SiteViewController: WKNavigationDelegate {
         }
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        activeNavigation = navigation
+    }
+
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        guard let navigation, navigation === activeNavigation else { return }
         loading.stopAnimating()
+        connectionNotice.isHidden = true
+        needsHomeRecovery = false
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard let navigation, navigation === activeNavigation else { return }
+        didRetryTerminatedProcess = false
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        handleNavigationError(error)
+        handleNavigationError(error, navigation: navigation)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        handleNavigationError(error)
+        handleNavigationError(error, navigation: navigation)
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        showConnectionError()
+        activeNavigation = nil
+        loading.stopAnimating()
+        needsHomeRecovery = true
+        guard view.window?.windowScene?.activationState == .foregroundActive,
+              authentication == nil else { return }
+        if didRetryTerminatedProcess {
+            showConnectionNotice()
+        } else {
+            didRetryTerminatedProcess = true
+            loadHome()
+        }
     }
 
-    private func handleNavigationError(_ error: Error) {
+    private func handleNavigationError(_ error: Error, navigation: WKNavigation?) {
+        guard let navigation, navigation === activeNavigation else { return }
         let error = error as NSError
         if error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled { return }
-        showConnectionError()
+        showConnectionNotice()
     }
 }
 

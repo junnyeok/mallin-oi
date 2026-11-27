@@ -28,6 +28,10 @@
                 android:layout_marginTop="12dp" android:layout_marginBottom="16dp"
                 android:text="@string/offline_article_disclaimer"
                 android:textColor="@color/site_ink" android:textSize="14sp" android:visibility="gone" />
+            <Button android:id="@+id/open_online_post" style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:minHeight="48dp" android:text="@string/offline_open_original"
+                android:textColor="@color/site_ink" android:visibility="gone" />
             <TextView android:id="@+id/saved_article_body"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/site_ink" android:textSize="17sp"

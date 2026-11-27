@@ -3,11 +3,17 @@ import Foundation
 enum SiteURLs {
     static let host = "mallin-oi.com"
     static let home = URL(string: "https://\(host)/")!
+    static let allPosts = home.appendingPathComponent("posts-all.html")
     static let profile = home.appendingPathComponent("profile.html")
     static let authenticationCallbackScheme = "mallinoi"
 
     static func isProfileLink(_ url: URL) -> Bool {
         url.absoluteString == "mallinoisite://profile"
+    }
+
+    static func post(id: Int64) -> URL {
+        home.appendingPathComponent("post.html")
+            .appending(queryItems: [URLQueryItem(name: "id", value: String(id))])
     }
 
     static func isSitePage(_ url: URL) -> Bool {

@@ -11,7 +11,7 @@ import android.view.View;
 import androidx.browser.customtabs.CustomTabsIntent;
 
 public final class MainActivity extends Activity {
-    private static final Uri HOME = Uri.parse("https://mallin-oi.com/");
+    static final Uri HOME = Uri.parse("https://mallin-oi.com/");
     private static final Uri PROFILE = Uri.withAppendedPath(HOME, "profile.html");
     private SiteAppUpdate appUpdate;
 
@@ -69,21 +69,25 @@ public final class MainActivity extends Activity {
     private void openSite(Uri destination) {
         View error = findViewById(R.id.browser_error);
         error.setVisibility(View.GONE);
-        // Chrome supplies the current address as data when it sends this explicit intent.
-        int mutableFlag = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
-        PendingIntent save = PendingIntent.getActivity(this, 0,
-            new Intent(this, SaveOfflineArticleActivity.class), mutableFlag);
-        PendingIntent library = PendingIntent.getActivity(this, 1,
-            new Intent(this, OfflineArticlesActivity.class), PendingIntent.FLAG_IMMUTABLE);
-        CustomTabsIntent tab = new CustomTabsIntent.Builder()
-            .setUrlBarHidingEnabled(true)
-            .addMenuItem(getString(R.string.save_offline_article), save)
-            .addMenuItem(getString(R.string.offline_articles), library)
-            .build();
         try {
-            tab.launchUrl(this, destination);
+            openInBrowser(this, destination);
         } catch (ActivityNotFoundException unavailable) {
             error.setVisibility(View.VISIBLE);
         }
+    }
+
+    static void openInBrowser(Activity activity, Uri destination) {
+        // Chrome supplies the current address as data when it sends this explicit intent.
+        int mutableFlag = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
+        PendingIntent save = PendingIntent.getActivity(activity, 0,
+            new Intent(activity, SaveOfflineArticleActivity.class), mutableFlag);
+        PendingIntent library = PendingIntent.getActivity(activity, 1,
+            new Intent(activity, OfflineArticlesActivity.class), PendingIntent.FLAG_IMMUTABLE);
+        CustomTabsIntent tab = new CustomTabsIntent.Builder()
+            .setUrlBarHidingEnabled(true)
+            .addMenuItem(activity.getString(R.string.save_offline_article), save)
+            .addMenuItem(activity.getString(R.string.offline_articles), library)
+            .build();
+        tab.launchUrl(activity, destination);
     }
 }
