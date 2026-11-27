@@ -158,7 +158,8 @@ body[data-page='post'] .logo #siteLogoImg {
   top: calc(100% + 10px);
   left: 0;
   width: min(360px, calc(100vw - 32px));
-  max-height: 420px;
+  max-height: min(420px, calc(100vh - 80px));
+  max-height: min(420px, calc(100dvh - 80px));
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid var(--color-border);
@@ -303,6 +304,15 @@ body[data-page='post'] .logo #siteLogoImg {
     --mobile-header-button-step: calc(
       var(--mobile-header-button-height) + var(--space-8)
     );
+    --mobile-header-panel-bottom: calc(
+      var(--mobile-floating-bottom) + 2 * var(--mobile-header-button-step) +
+        var(--mobile-header-button-height) + var(--space-8)
+    );
+    /* App pages without viewport-fit=cover still need room for the status bar. */
+    --mobile-header-panel-top: max(
+      calc(env(safe-area-inset-top, 0px) + var(--space-8)),
+      calc(var(--mallinoi-bottom-safe-area, 0px) + var(--space-24))
+    );
   }
 
   /* The iOS app also injects a margin for older stylesheets. The offsets below
@@ -332,13 +342,22 @@ body[data-page='post'] .logo #siteLogoImg {
   }
 
   .notification-panel {
+    --notification-panel-gap: calc(2 * var(--mobile-header-button-step) + var(--space-8));
+    --notification-panel-bottom: calc(
+      var(--mobile-floating-bottom) + var(--mobile-header-button-height) +
+        var(--notification-panel-gap)
+    );
     top: auto;
     left: 0;
     right: auto;
-    /* Open above the pickle button. */
-    bottom: calc(100% + 2 * var(--mobile-header-button-step) + var(--space-8));
+    bottom: calc(100% + var(--notification-panel-gap));
     width: min(360px, calc(100vw - 24px));
-    max-height: min(420px, calc(100svh - 180px));
+    max-height: min(
+      420px, calc(100vh - var(--mobile-header-panel-top) - var(--notification-panel-bottom))
+    );
+    max-height: min(
+      420px, calc(100dvh - var(--mobile-header-panel-top) - var(--notification-panel-bottom))
+    );
     overflow-x: hidden;
     overflow-y: auto;
   }
@@ -511,10 +530,6 @@ body[data-page='post'] .logo #siteLogoImg {
 .bgm-panel__quick-link {
   flex: none;
   margin: 10px 14px 0;
-}
-
-.pickle-panel__quick-link {
-  margin: var(--space-8);
 }
 
 @media (max-width: 700px) {
@@ -739,21 +754,16 @@ body[data-page='post'] .logo #siteLogoImg {
       var(--mobile-floating-bottom) + var(--mobile-header-button-step) +
         var(--mobile-header-button-height) + var(--bgm-panel-gap)
     );
-    /* Leave room for the status bar in app pages without viewport-fit=cover. */
-    --bgm-panel-top: max(
-      calc(env(safe-area-inset-top, 0px) + var(--space-8)),
-      calc(var(--mallinoi-bottom-safe-area, 0px) + var(--space-24))
-    );
     top: auto;
     left: 0;
     right: auto;
     bottom: calc(100% + var(--bgm-panel-gap));
     width: min(330px, calc(100vw - var(--space-24)));
     max-height: min(
-      560px, calc(100vh - var(--bgm-panel-top) - var(--bgm-panel-bottom))
+      560px, calc(100vh - var(--mobile-header-panel-top) - var(--bgm-panel-bottom))
     );
     max-height: min(
-      560px, calc(100dvh - var(--bgm-panel-top) - var(--bgm-panel-bottom))
+      560px, calc(100dvh - var(--mobile-header-panel-top) - var(--bgm-panel-bottom))
     );
   }
 
@@ -1130,7 +1140,11 @@ body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__ite
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
+  display: flex;
+  flex-direction: column;
   width: min(340px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 80px));
+  max-height: min(640px, calc(100dvh - 80px));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -1139,6 +1153,7 @@ body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__ite
 }
 
 .pickle-panel__head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1164,10 +1179,17 @@ body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__ite
 }
 
 .pickle-panel__body {
-  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pickle-panel__body > * {
+  flex: none;
 }
 
 .pickle-balance-card {
@@ -1262,11 +1284,34 @@ body:is(.theme-study, .theme-work, .theme-event, .theme-career) .site-stats__ite
   }
 
   .pickle-panel {
+    --pickle-panel-bottom: var(--mobile-header-panel-bottom);
     top: auto;
     left: 0;
     right: auto;
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + var(--space-8));
     width: min(340px, calc(100vw - 24px));
+    max-height: min(
+      560px, calc(100vh - var(--mobile-header-panel-top) - var(--pickle-panel-bottom))
+    );
+    max-height: min(
+      560px, calc(100dvh - var(--mobile-header-panel-top) - var(--pickle-panel-bottom))
+    );
+  }
+}
+
+@media (max-width: 700px) and (max-height: 390px) {
+  .notification-panel {
+    --notification-panel-gap: var(--space-8);
+  }
+
+  .pickle-panel {
+    --pickle-panel-bottom: calc(var(--mobile-floating-bottom) + var(--space-8));
+    bottom: calc(var(--space-8) - 2 * var(--mobile-header-button-step));
+  }
+
+  .notification-menu:has(.notification-panel:not([hidden])),
+  .pickle-menu:has(.pickle-panel:not([hidden])) {
+    z-index: 1101;
   }
 }
 
